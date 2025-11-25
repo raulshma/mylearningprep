@@ -8,6 +8,12 @@ export const UserIterationsSchema = z.object({
   resetDate: z.date(),
 });
 
+export const UserInterviewsSchema = z.object({
+  count: z.number().int().min(0).default(0),
+  limit: z.number().int().min(0).default(3),
+  resetDate: z.date(),
+});
+
 export const UserPreferencesSchema = z.object({
   theme: z.enum(['light', 'dark']).default('dark'),
   defaultAnalogy: z.enum(['professional', 'construction', 'simple']).default('professional'),
@@ -19,6 +25,7 @@ export const UserSchema = z.object({
   stripeCustomerId: z.string().optional(),
   plan: UserPlanSchema.default('FREE'),
   iterations: UserIterationsSchema,
+  interviews: UserInterviewsSchema.optional(),
   preferences: UserPreferencesSchema,
   suspended: z.boolean().default(false),
   createdAt: z.date(),
@@ -29,10 +36,13 @@ export const CreateUserSchema = UserSchema.omit({
   _id: true, 
   createdAt: true, 
   updatedAt: true 
+}).extend({
+  suspended: z.boolean().default(false).optional(),
 });
 
 export type UserPlan = z.infer<typeof UserPlanSchema>;
 export type UserIterations = z.infer<typeof UserIterationsSchema>;
+export type UserInterviews = z.infer<typeof UserInterviewsSchema>;
 export type UserPreferences = z.infer<typeof UserPreferencesSchema>;
 export type User = z.infer<typeof UserSchema>;
 export type CreateUser = z.infer<typeof CreateUserSchema>;

@@ -19,6 +19,7 @@ export interface AdminUser {
   createdAt: string;
   iterationCount: number;
   iterationLimit: number;
+  interviewLimit: number;
 }
 
 export interface AdminUserDetails extends AdminUser {
@@ -360,6 +361,7 @@ export async function getAdminUsers(): Promise<AdminUser[]> {
       createdAt: dbUser.createdAt.toISOString(),
       iterationCount: dbUser.iterations.count,
       iterationLimit: dbUser.iterations.limit,
+      interviewLimit: dbUser.interviews?.limit ?? 3,
     };
   });
 }
@@ -425,6 +427,7 @@ export async function getAdminUserDetails(userId: string): Promise<AdminUserDeta
     createdAt: dbUser.createdAt.toISOString(),
     iterationCount: dbUser.iterations.count,
     iterationLimit: dbUser.iterations.limit,
+    interviewLimit: dbUser.interviews?.limit ?? 3,
     stripeCustomerId: dbUser.stripeCustomerId,
     interviews: interviews.map(i => ({
       id: i._id,
@@ -451,12 +454,20 @@ export async function updateUserPlan(
     MAX: 999999, // Unlimited
   };
   
+  // Set interview limits based on plan
+  const interviewLimits: Record<string, number> = {
+    FREE: 3,
+    PRO: 25,
+    MAX: 100,
+  };
+  
   const result = await usersCollection.updateOne(
     { _id: userId },
     { 
       $set: { 
         plan,
         'iterations.limit': iterationLimits[plan],
+        'interviews.limit': interviewLimits[plan],
         updatedAt: new Date(),
       } 
     }

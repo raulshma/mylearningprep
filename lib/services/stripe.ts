@@ -13,6 +13,7 @@ export interface PlanConfig {
   name: string;
   priceId: string;
   iterationLimit: number;
+  interviewLimit: number;
   plan: UserPlan;
 }
 
@@ -21,12 +22,14 @@ export const PLAN_CONFIGS: Record<string, PlanConfig> = {
     name: 'Pro',
     priceId: process.env.STRIPE_PRICE_PRO || '',
     iterationLimit: 50,
+    interviewLimit: 25,
     plan: 'PRO',
   },
   MAX: {
     name: 'Max',
     priceId: process.env.STRIPE_PRICE_MAX || '',
     iterationLimit: 500,
+    interviewLimit: 100,
     plan: 'MAX',
   },
 };
@@ -50,6 +53,19 @@ export function getPlanLimit(plan: UserPlan): number {
       return 500;
     default:
       return 5;
+  }
+}
+
+export function getPlanInterviewLimit(plan: UserPlan): number {
+  switch (plan) {
+    case 'FREE':
+      return 3;
+    case 'PRO':
+      return 25;
+    case 'MAX':
+      return 100;
+    default:
+      return 3;
   }
 }
 

@@ -37,14 +37,14 @@ const tiers: Tier[] = [
     period: '/month',
     description: 'Perfect for trying out the platform',
     features: [
-      { name: '5 interview preps/month', included: true },
+      { name: '3 interviews/month', included: true },
+      { name: '5 iterations/month', included: true },
       { name: 'Basic AI generation', included: true },
       { name: 'Community preps access', included: true },
       { name: 'Standard analogies', included: true },
       { name: 'PDF export', included: false },
       { name: 'Priority generation', included: false },
       { name: 'BYOK option', included: false },
-      { name: 'API access', included: false },
     ],
     cta: 'Get Started',
     href: '/onboarding',
@@ -56,14 +56,14 @@ const tiers: Tier[] = [
     description: 'For active job seekers',
     badge: 'Most Popular',
     features: [
-      { name: '50 interview preps/month', included: true },
+      { name: '25 interviews/month', included: true },
+      { name: '50 iterations/month', included: true },
       { name: 'Advanced AI generation', included: true },
       { name: 'Community preps access', included: true },
       { name: 'All analogy levels', included: true },
       { name: 'PDF export', included: true },
       { name: 'Priority generation', included: true },
       { name: 'BYOK option', included: false },
-      { name: 'API access', included: false },
     ],
     cta: 'Subscribe to Pro',
     plan: 'PRO',
@@ -75,14 +75,14 @@ const tiers: Tier[] = [
     period: '/month',
     description: 'For power users and teams',
     features: [
-      { name: '500 interview preps/month', included: true },
+      { name: '100 interviews/month', included: true },
+      { name: '500 iterations/month', included: true },
       { name: 'Everything in Pro', included: true },
       { name: 'BYOK option', included: true, tooltip: 'Bring Your Own Key - use your own OpenAI/Anthropic API keys' },
       { name: 'API access', included: true },
       { name: 'Team collaboration', included: true },
       { name: 'Custom system prompts', included: true },
       { name: 'Priority support', included: true },
-      { name: 'Usage analytics', included: true },
     ],
     cta: 'Subscribe to Max',
     plan: 'MAX',
@@ -257,6 +257,12 @@ export default function PricingPage() {
                   </tr>
                 </thead>
                 <tbody>
+                  <tr className="border-b border-border">
+                    <td className="py-4 px-4 text-muted-foreground">Monthly Interviews</td>
+                    <td className="py-4 px-4 text-center text-foreground">3</td>
+                    <td className="py-4 px-4 text-center text-foreground">25</td>
+                    <td className="py-4 px-4 text-center text-foreground">100</td>
+                  </tr>
                   <tr className="border-b border-border">
                     <td className="py-4 px-4 text-muted-foreground">Monthly Iterations</td>
                     <td className="py-4 px-4 text-center text-foreground">5</td>

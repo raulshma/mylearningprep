@@ -3,14 +3,16 @@ import { getUsersCollection } from '../collections';
 import { User, UserPlan, CreateUser, UserPreferences } from '../schemas/user';
 
 export interface UserRepository {
-  create(data: Omit<CreateUser, 'iterations'> & { iterations?: Partial<CreateUser['iterations']> }): Promise<User>;
+  create(data: Omit<CreateUser, 'iterations' | 'interviews'> & { iterations?: Partial<CreateUser['iterations']>; interviews?: Partial<NonNullable<CreateUser['interviews']>> }): Promise<User>;
   findByClerkId(clerkId: string): Promise<User | null>;
   findById(id: string): Promise<User | null>;
   findByStripeCustomerId(stripeCustomerId: string): Promise<User | null>;
-  updatePlan(clerkId: string, plan: UserPlan, newLimit: number): Promise<User | null>;
+  updatePlan(clerkId: string, plan: UserPlan, newIterationLimit: number, newInterviewLimit: number): Promise<User | null>;
   updateStripeCustomerId(clerkId: string, stripeCustomerId: string): Promise<User | null>;
   incrementIteration(clerkId: string): Promise<User | null>;
+  incrementInterview(clerkId: string): Promise<User | null>;
   resetIterations(clerkId: string): Promise<User | null>;
+  resetInterviews(clerkId: string): Promise<User | null>;
   updatePreferences(clerkId: string, preferences: Partial<UserPreferences>): Promise<User | null>;
 }
 
@@ -23,7 +25,7 @@ function getDefaultResetDate(): Date {
   return resetDate;
 }
 
-function getPlanLimit(plan: UserPlan): number {
+function getPlanIterationLimit(plan: UserPlan): number {
   switch (plan) {
     case 'FREE':
       return 5;
@@ -36,6 +38,19 @@ function getPlanLimit(plan: UserPlan): number {
   }
 }
 
+function getPlanInterviewLimit(plan: UserPlan): number {
+  switch (plan) {
+    case 'FREE':
+      return 3;
+    case 'PRO':
+      return 25;
+    case 'MAX':
+      return 100;
+    default:
+      return 3;
+  }
+}
+
 export const userRepository: UserRepository = {
   async create(data) {
     const collection = await getUsersCollection();
@@ -43,7 +58,8 @@ export const userRepository: UserRepository = {
     const id = new ObjectId().toString();
     
     const plan = data.plan ?? 'FREE';
-    const limit = data.iterations?.limit ?? getPlanLimit(plan);
+    const iterationLimit = data.iterations?.limit ?? getPlanIterationLimit(plan);
+    const interviewLimit = data.interviews?.limit ?? getPlanInterviewLimit(plan);
     
     const user: User = {
       _id: id,
@@ -52,13 +68,19 @@ export const userRepository: UserRepository = {
       plan,
       iterations: {
         count: data.iterations?.count ?? 0,
-        limit,
+        limit: iterationLimit,
         resetDate: data.iterations?.resetDate ?? getDefaultResetDate(),
+      },
+      interviews: {
+        count: data.interviews?.count ?? 0,
+        limit: interviewLimit,
+        resetDate: data.interviews?.resetDate ?? getDefaultResetDate(),
       },
       preferences: data.preferences ?? {
         theme: 'dark',
         defaultAnalogy: 'professional',
       },
+      suspended: false,
       createdAt: now,
       updatedAt: now,
     };
@@ -85,7 +107,7 @@ export const userRepository: UserRepository = {
     return user as User | null;
   },
 
-  async updatePlan(clerkId: string, plan: UserPlan, newLimit: number) {
+  async updatePlan(clerkId: string, plan: UserPlan, newIterationLimit: number, newInterviewLimit: number) {
     const collection = await getUsersCollection();
     const now = new Date();
     
@@ -94,9 +116,12 @@ export const userRepository: UserRepository = {
       {
         $set: {
           plan,
-          'iterations.limit': newLimit,
+          'iterations.limit': newIterationLimit,
           'iterations.count': 0,
           'iterations.resetDate': getDefaultResetDate(),
+          'interviews.limit': newInterviewLimit,
+          'interviews.count': 0,
+          'interviews.resetDate': getDefaultResetDate(),
           updatedAt: now,
         },
       },
@@ -140,6 +165,22 @@ export const userRepository: UserRepository = {
     return result as User | null;
   },
 
+  async incrementInterview(clerkId: string) {
+    const collection = await getUsersCollection();
+    const now = new Date();
+    
+    const result = await collection.findOneAndUpdate(
+      { clerkId },
+      {
+        $inc: { 'interviews.count': 1 },
+        $set: { updatedAt: now },
+      },
+      { returnDocument: 'after' }
+    );
+    
+    return result as User | null;
+  },
+
   async resetIterations(clerkId: string) {
     const collection = await getUsersCollection();
     const now = new Date();
@@ -150,6 +191,25 @@ export const userRepository: UserRepository = {
         $set: {
           'iterations.count': 0,
           'iterations.resetDate': getDefaultResetDate(),
+          updatedAt: now,
+        },
+      },
+      { returnDocument: 'after' }
+    );
+    
+    return result as User | null;
+  },
+
+  async resetInterviews(clerkId: string) {
+    const collection = await getUsersCollection();
+    const now = new Date();
+    
+    const result = await collection.findOneAndUpdate(
+      { clerkId },
+      {
+        $set: {
+          'interviews.count': 0,
+          'interviews.resetDate': getDefaultResetDate(),
           updatedAt: now,
         },
       },

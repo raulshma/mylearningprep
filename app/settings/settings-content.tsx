@@ -15,6 +15,7 @@ interface SettingsContentProps {
     imageUrl: string | null;
     plan: string;
     iterations: { count: number; limit: number; resetDate: Date };
+    interviews: { count: number; limit: number; resetDate: Date };
     hasStripeSubscription: boolean;
     hasByokKey: boolean;
   };
@@ -22,6 +23,7 @@ interface SettingsContentProps {
     plan: string;
     hasSubscription: boolean;
     iterations?: { count: number; limit: number; resetDate: Date };
+    interviews?: { count: number; limit: number; resetDate: Date };
   };
 }
 

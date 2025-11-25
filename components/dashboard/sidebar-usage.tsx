@@ -1,72 +1,101 @@
 import Link from "next/link";
 import { Infinity } from "lucide-react";
 
-interface SidebarUsageProps {
+interface UsageData {
   count: number;
   limit: number;
+}
+
+interface SidebarUsageProps {
+  iterations: UsageData;
+  interviews: UsageData;
   plan: string;
   isByok: boolean;
 }
 
 export function SidebarUsage({
-  count,
-  limit,
+  iterations,
+  interviews,
   plan,
   isByok,
 }: SidebarUsageProps) {
-  const percentage = limit > 0 ? Math.min((count / limit) * 100, 100) : 0;
-  const isAtLimit = count >= limit && !isByok;
-  const remaining = Math.max(0, limit - count);
+  const iterationsPercentage = iterations.limit > 0 ? Math.min((iterations.count / iterations.limit) * 100, 100) : 0;
+  const interviewsPercentage = interviews.limit > 0 ? Math.min((interviews.count / interviews.limit) * 100, 100) : 0;
+  const isIterationsAtLimit = iterations.count >= iterations.limit && !isByok;
+  const isInterviewsAtLimit = interviews.count >= interviews.limit && !isByok;
+  const isAtLimit = isIterationsAtLimit || isInterviewsAtLimit;
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-xs text-muted-foreground">Iterations</p>
-        {isByok ? (
-          <span className="text-xs font-mono text-foreground flex items-center gap-1">
-            <Infinity className="w-3 h-3" />
-            Unlimited
-          </span>
-        ) : (
-          <span
-            className={`text-xs font-mono ${
-              isAtLimit ? "text-red-400" : "text-foreground"
-            }`}
-          >
-            {count}/{limit}
-          </span>
+    <div className="space-y-3">
+      {/* Iterations */}
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-xs text-muted-foreground">Iterations</p>
+          {isByok ? (
+            <span className="text-xs font-mono text-foreground flex items-center gap-1">
+              <Infinity className="w-3 h-3" />
+            </span>
+          ) : (
+            <span
+              className={`text-xs font-mono ${
+                isIterationsAtLimit ? "text-red-400" : "text-foreground"
+              }`}
+            >
+              {iterations.count}/{iterations.limit}
+            </span>
+          )}
+        </div>
+        {!isByok && (
+          <div className="h-1.5 bg-muted">
+            <div
+              className={`h-full ${isIterationsAtLimit ? "bg-red-500" : "bg-foreground"}`}
+              style={{ width: `${iterationsPercentage}%` }}
+            />
+          </div>
         )}
       </div>
 
-      {!isByok && (
-        <>
-          <div className="h-2 bg-muted">
+      {/* Interviews */}
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-xs text-muted-foreground">Interviews</p>
+          {isByok ? (
+            <span className="text-xs font-mono text-foreground flex items-center gap-1">
+              <Infinity className="w-3 h-3" />
+            </span>
+          ) : (
+            <span
+              className={`text-xs font-mono ${
+                isInterviewsAtLimit ? "text-red-400" : "text-foreground"
+              }`}
+            >
+              {interviews.count}/{interviews.limit}
+            </span>
+          )}
+        </div>
+        {!isByok && (
+          <div className="h-1.5 bg-muted">
             <div
-              className={`h-full ${isAtLimit ? "bg-red-500" : "bg-foreground"}`}
-              style={{ width: `${percentage}%` }}
+              className={`h-full ${isInterviewsAtLimit ? "bg-red-500" : "bg-foreground"}`}
+              style={{ width: `${interviewsPercentage}%` }}
             />
           </div>
+        )}
+      </div>
 
-          {isAtLimit ? (
-            <p className="text-xs text-red-400 mt-1">
-              Limit reached -{" "}
-              <Link href="/pricing" className="underline hover:text-red-300">
-                upgrade for more
-              </Link>
-            </p>
-          ) : (
-            <p className="text-xs text-muted-foreground mt-1">
-              {remaining} remaining • {plan} plan
-            </p>
-          )}
-        </>
-      )}
-
-      {isByok && (
-        <p className="text-xs text-muted-foreground mt-1">
-          BYOK enabled • {plan} plan
+      {/* Status */}
+      {!isByok && isAtLimit && (
+        <p className="text-xs text-red-400">
+          Limit reached -{" "}
+          <Link href="/pricing" className="underline hover:text-red-300">
+            upgrade
+          </Link>
         </p>
       )}
+
+      <p className="text-xs text-muted-foreground">
+        {isByok ? "BYOK enabled • " : ""}{plan} plan
+      </p>
     </div>
   );
 }

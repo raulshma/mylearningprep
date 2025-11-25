@@ -205,7 +205,7 @@ export function UserActions({ user }: UserActionsProps) {
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Interviews</Label>
-                  <p className="font-mono">{userDetails.interviewCount}</p>
+                  <p className="font-mono">{userDetails.interviewCount} / {userDetails.interviewLimit}</p>
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Member Since</Label>
@@ -266,9 +266,9 @@ export function UserActions({ user }: UserActionsProps) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="FREE">FREE - 5 iterations/month</SelectItem>
-                  <SelectItem value="PRO">PRO - 50 iterations/month</SelectItem>
-                  <SelectItem value="MAX">MAX - Unlimited</SelectItem>
+                  <SelectItem value="FREE">FREE - 3 interviews, 5 iterations/month</SelectItem>
+                  <SelectItem value="PRO">PRO - 25 interviews, 50 iterations/month</SelectItem>
+                  <SelectItem value="MAX">MAX - 100 interviews, 500 iterations/month</SelectItem>
                 </SelectContent>
               </Select>
             </div>

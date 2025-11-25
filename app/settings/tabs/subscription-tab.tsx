@@ -18,6 +18,7 @@ interface SubscriptionTabProps {
   profile: {
     plan: string;
     iterations: { count: number; limit: number; resetDate: Date };
+    interviews: { count: number; limit: number; resetDate: Date };
     hasStripeSubscription: boolean;
   };
   subscription: {
@@ -35,9 +36,14 @@ export function SubscriptionTab({
 
   const plan = profile.plan;
   const iterations = profile.iterations;
-  const percentage =
+  const interviews = profile.interviews;
+  const iterationsPercentage =
     iterations.limit > 0
       ? Math.min((iterations.count / iterations.limit) * 100, 100)
+      : 0;
+  const interviewsPercentage =
+    interviews.limit > 0
+      ? Math.min((interviews.count / interviews.limit) * 100, 100)
       : 0;
 
   const handleManageSubscription = async () => {
@@ -90,16 +96,32 @@ export function SubscriptionTab({
               <p className="text-sm text-muted-foreground mb-2">
                 Monthly Usage
               </p>
-              <div className="h-3 bg-muted mb-2">
-                <div
-                  className="h-full bg-foreground"
-                  style={{ width: `${percentage}%` }}
-                />
+              <div className="space-y-3">
+                <div>
+                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                    <span>Iterations</span>
+                    <span>{iterations.count} / {iterations.limit}</span>
+                  </div>
+                  <div className="h-2 bg-muted">
+                    <div
+                      className="h-full bg-foreground"
+                      style={{ width: `${iterationsPercentage}%` }}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                    <span>Interviews</span>
+                    <span>{interviews.count} / {interviews.limit}</span>
+                  </div>
+                  <div className="h-2 bg-muted">
+                    <div
+                      className="h-full bg-foreground"
+                      style={{ width: `${interviewsPercentage}%` }}
+                    />
+                  </div>
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground">
-                {iterations.count} of {iterations.limit} iterations used this
-                month
-              </p>
             </div>
             <div className="flex gap-3">
               {plan !== "MAX" && (

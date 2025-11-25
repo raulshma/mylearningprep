@@ -51,7 +51,7 @@ export async function createInterview(
     // Get authenticated user
     const clerkId = await getAuthUserId();
     
-    // Get user from database to check iteration limits
+    // Get user from database to check limits
     const user = await userRepository.findByClerkId(clerkId);
     if (!user) {
       return {
@@ -60,17 +60,18 @@ export async function createInterview(
       };
     }
 
-    // Check iteration limits (unless BYOK)
+    // Check interview limits (unless BYOK)
     const isByok = await hasByokApiKey();
     if (!isByok) {
-      if (user.iterations.count >= user.iterations.limit) {
+      const interviews = user.interviews ?? { count: 0, limit: 3, resetDate: new Date() };
+      if (interviews.count >= interviews.limit) {
         return {
           success: false,
           error: createAPIError(
             'RATE_LIMIT',
-            `You have reached your ${user.plan} plan limit of ${user.iterations.limit} iterations. Please upgrade or wait until ${user.iterations.resetDate.toLocaleDateString()}.`,
-            { plan: user.plan, limit: String(user.iterations.limit) },
-            Math.floor((user.iterations.resetDate.getTime() - Date.now()) / 1000)
+            `You have reached your ${user.plan} plan limit of ${interviews.limit} interviews. Please upgrade or wait until ${interviews.resetDate.toLocaleDateString()}.`,
+            { plan: user.plan, limit: String(interviews.limit) },
+            Math.floor((interviews.resetDate.getTime() - Date.now()) / 1000)
           ),
         };
       }
@@ -127,6 +128,11 @@ export async function createInterview(
         rapidFire: [],
       },
     });
+
+    // Increment interview count (unless BYOK)
+    if (!isByok) {
+      await userRepository.incrementInterview(clerkId);
+    }
 
     return { success: true, data: interview };
   } catch (error) {

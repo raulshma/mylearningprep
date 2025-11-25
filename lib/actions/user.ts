@@ -177,7 +177,7 @@ export async function getCurrentUser(): Promise<ActionResult<User>> {
 }
 
 /**
- * Get user's iteration status
+ * Get user's iteration and interview status
  */
 export async function getIterationStatus(): Promise<ActionResult<{
   count: number;
@@ -186,6 +186,7 @@ export async function getIterationStatus(): Promise<ActionResult<{
   resetDate: Date;
   plan: string;
   isByok: boolean;
+  interviews: { count: number; limit: number; resetDate: Date };
 }>> {
   try {
     const clerkId = await getAuthUserId();
@@ -199,6 +200,7 @@ export async function getIterationStatus(): Promise<ActionResult<{
     }
 
     const isByok = await hasByokApiKey();
+    const interviews = user.interviews ?? { count: 0, limit: 3, resetDate: getDefaultResetDate() };
 
     return {
       success: true,
@@ -209,6 +211,7 @@ export async function getIterationStatus(): Promise<ActionResult<{
         resetDate: user.iterations.resetDate,
         plan: user.plan,
         isByok,
+        interviews,
       },
     };
   } catch (error) {
@@ -243,6 +246,7 @@ export async function getUserProfile(): Promise<ActionResult<{
   imageUrl: string | null;
   plan: string;
   iterations: { count: number; limit: number; resetDate: Date };
+  interviews: { count: number; limit: number; resetDate: Date };
   hasStripeSubscription: boolean;
   hasByokKey: boolean;
 }>> {
@@ -268,6 +272,7 @@ export async function getUserProfile(): Promise<ActionResult<{
         imageUrl: authUser.imageUrl,
         plan: dbUser?.plan ?? 'FREE',
         iterations: dbUser?.iterations ?? { count: 0, limit: 5, resetDate: getDefaultResetDate() },
+        interviews: dbUser?.interviews ?? { count: 0, limit: 3, resetDate: getDefaultResetDate() },
         hasStripeSubscription: !!dbUser?.stripeCustomerId,
         hasByokKey: !!authUser.byokApiKey,
       },

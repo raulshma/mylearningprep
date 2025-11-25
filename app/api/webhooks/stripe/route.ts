@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { constructWebhookEvent, getPlanFromPriceId, getPlanLimit } from '@/lib/services/stripe';
+import { constructWebhookEvent, getPlanFromPriceId, getPlanLimit, getPlanInterviewLimit } from '@/lib/services/stripe';
 import { userRepository } from '@/lib/db/repositories/user-repository';
 import { UserPlan } from '@/lib/db/schemas/user';
 
@@ -72,12 +72,13 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     return;
   }
 
-  const limit = getPlanLimit(plan);
+  const iterationLimit = getPlanLimit(plan);
+  const interviewLimit = getPlanInterviewLimit(plan);
   
   // Update user with new plan and Stripe customer ID
   const user = await userRepository.findByClerkId(clerkId);
   if (user) {
-    await userRepository.updatePlan(clerkId, plan, limit);
+    await userRepository.updatePlan(clerkId, plan, iterationLimit, interviewLimit);
     
     // Update stripeCustomerId if not already set
     if (!user.stripeCustomerId && customerId) {
@@ -115,7 +116,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   }
 
   // Update user plan
-  await userRepository.updatePlan(clerkId, planConfig.plan, planConfig.iterationLimit);
+  await userRepository.updatePlan(clerkId, planConfig.plan, planConfig.iterationLimit, planConfig.interviewLimit);
   console.log(`User ${clerkId} subscription updated to ${planConfig.plan}`);
 }
 
@@ -129,7 +130,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   }
 
   // Downgrade user to FREE plan
-  await userRepository.updatePlan(clerkId, 'FREE', 5);
+  await userRepository.updatePlan(clerkId, 'FREE', 5, 3);
   console.log(`User ${clerkId} downgraded to FREE plan after subscription cancellation`);
 }
 
@@ -163,7 +164,8 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
     return;
   }
 
-  // Reset iteration count on renewal
+  // Reset iteration and interview counts on renewal
   await userRepository.resetIterations(clerkId);
-  console.log(`User ${clerkId} iterations reset on subscription renewal`);
+  await userRepository.resetInterviews(clerkId);
+  console.log(`User ${clerkId} iterations and interviews reset on subscription renewal`);
 }

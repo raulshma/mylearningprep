@@ -18,12 +18,12 @@ async function SidebarUsageWrapper() {
   const iterationResult = await getIterationStatus()
   const iterationData = iterationResult.success 
     ? iterationResult.data 
-    : { count: 0, limit: 5, remaining: 5, resetDate: new Date(), plan: 'FREE', isByok: false }
+    : { count: 0, limit: 5, remaining: 5, resetDate: new Date(), plan: 'FREE', isByok: false, interviews: { count: 0, limit: 3, resetDate: new Date() } }
 
   return (
     <SidebarUsage 
-      count={iterationData.count}
-      limit={iterationData.limit}
+      iterations={{ count: iterationData.count, limit: iterationData.limit }}
+      interviews={{ count: iterationData.interviews.count, limit: iterationData.interviews.limit }}
       plan={iterationData.plan}
       isByok={iterationData.isByok}
     />
