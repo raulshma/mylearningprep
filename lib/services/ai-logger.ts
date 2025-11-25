@@ -89,15 +89,22 @@ export function createLoggerContext(): LoggerContext {
 
 /**
  * Helper to extract token usage from AI SDK response
+ * Handles both LanguageModelV2Usage and legacy formats
  */
-export function extractTokenUsage(usage?: { promptTokens?: number; completionTokens?: number }): {
+export function extractTokenUsage(usage?: Record<string, unknown>): {
   input: number;
   output: number;
 } {
-  return {
-    input: usage?.promptTokens ?? 0,
-    output: usage?.completionTokens ?? 0,
-  };
+  if (!usage) {
+    return { input: 0, output: 0 };
+  }
+  
+  // Handle LanguageModelV2Usage format (promptTokens, completionTokens)
+  // and also handle potential variations (inputTokens, outputTokens)
+  const input = (usage.promptTokens ?? usage.inputTokens ?? 0) as number;
+  const output = (usage.completionTokens ?? usage.outputTokens ?? 0) as number;
+  
+  return { input, output };
 }
 
 /**
@@ -106,7 +113,7 @@ export function extractTokenUsage(usage?: { promptTokens?: number; completionTok
 export interface AILogger {
   logAIRequest(entry: AILogEntry): Promise<void>;
   createLoggerContext(): LoggerContext;
-  extractTokenUsage(usage?: { promptTokens?: number; completionTokens?: number }): {
+  extractTokenUsage(usage?: Record<string, unknown>): {
     input: number;
     output: number;
   };
