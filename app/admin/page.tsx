@@ -9,11 +9,25 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Settings, Users, Activity, Terminal, Search, FileText, Filter, Cpu, Zap, Clock, Database } from "lucide-react"
-import { getAdminStats, getAILogs, getSearchToolStatus, getAIUsageByAction, getModelConfig, getAdminUsers } from "@/lib/actions/admin"
+import { 
+  getAdminStats, 
+  getAILogs, 
+  getSearchToolStatus, 
+  getAIUsageByAction, 
+  getModelConfig, 
+  getAdminUsers,
+  getUsageTrends,
+  getPopularTopics,
+  getPlanDistribution,
+  getTokenUsageTrends,
+  getTopCompanies,
+  getModelUsageDistribution,
+} from "@/lib/actions/admin"
 import { SearchToolToggle } from "@/components/admin/search-tool-toggle"
 import { AILogViewer } from "@/components/admin/ai-log-viewer"
 import { ModelSelector } from "@/components/admin/model-selector"
 import { UserActions } from "@/components/admin/user-management"
+import { AnalyticsDashboard } from "@/components/admin/analytics-dashboard"
 import { isAdmin } from "@/lib/auth/get-user"
 
 
@@ -36,13 +50,32 @@ export default async function AdminPage() {
   }
 
   // Fetch real data from the database
-  const [stats, aiLogs, searchStatus, usageByAction, modelConfig, users] = await Promise.all([
+  const [
+    stats, 
+    aiLogs, 
+    searchStatus, 
+    usageByAction, 
+    modelConfig, 
+    users,
+    usageTrends,
+    popularTopics,
+    planDistribution,
+    tokenUsageTrends,
+    topCompanies,
+    modelUsage,
+  ] = await Promise.all([
     getAdminStats(),
     getAILogs({ limit: 50 }),
     getSearchToolStatus(),
     getAIUsageByAction(),
     getModelConfig(),
     getAdminUsers(),
+    getUsageTrends(30),
+    getPopularTopics(10),
+    getPlanDistribution(),
+    getTokenUsageTrends(30),
+    getTopCompanies(10),
+    getModelUsageDistribution(),
   ]);
 
   const statsCards = [
@@ -353,38 +386,14 @@ export default async function AdminPage() {
           </TabsContent>
 
           <TabsContent value="analytics">
-            <div className="grid grid-cols-2 gap-6">
-              <Card className="bg-card border-border">
-                <CardHeader>
-                  <CardTitle className="font-mono">Usage Trends</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-64 flex items-center justify-center border border-dashed border-border rounded-lg">
-                    <p className="text-sm text-muted-foreground">Chart placeholder</p>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="bg-card border-border">
-                <CardHeader>
-                  <CardTitle className="font-mono">Popular Topics</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {["React Hooks", "System Design", "TypeScript", "Algorithms", "Behavioral"].map((topic, i) => (
-                      <div key={topic} className="flex items-center justify-between">
-                        <span className="text-sm text-foreground">{topic}</span>
-                        <div className="flex items-center gap-2">
-                          <div className="w-24 h-2 bg-muted rounded">
-                            <div className="h-full bg-foreground rounded" style={{ width: `${100 - i * 15}%` }} />
-                          </div>
-                          <span className="text-xs text-muted-foreground w-8">{100 - i * 15}%</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            <AnalyticsDashboard
+              usageTrends={usageTrends}
+              popularTopics={popularTopics}
+              planDistribution={planDistribution}
+              tokenUsageTrends={tokenUsageTrends}
+              topCompanies={topCompanies}
+              modelUsage={modelUsage}
+            />
           </TabsContent>
         </Tabs>
       </div>
