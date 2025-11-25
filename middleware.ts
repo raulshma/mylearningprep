@@ -22,8 +22,10 @@ export default clerkMiddleware(async (auth, req) => {
   const { userId, sessionClaims } = await auth.protect();
 
   // Check admin access for admin routes
+  // Role is stored in user's publicMetadata and exposed via custom session token
+  // Configure in Clerk Dashboard: Session Token -> Add claim "metadata" = "{{user.public_metadata}}"
   if (isAdminRoute(req)) {
-    const role = sessionClaims?.metadata?.role;
+    const role = (sessionClaims?.metadata as { role?: string })?.role;
     if (role !== "admin") {
       return Response.redirect(new URL("/dashboard", req.url));
     }
