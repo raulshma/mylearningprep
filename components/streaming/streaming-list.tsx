@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState, useRef, type ReactNode } from 'react';
-import { type StreamableValue, readStreamableValue } from '@ai-sdk/rsc';
+import { type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 interface StreamingListProps<T> {
-  stream: StreamableValue<T[]>;
+  items: T[];
+  isStreaming?: boolean;
   renderItem: (item: T, index: number) => ReactNode;
   onComplete?: (items: T[]) => void;
   className?: string;
@@ -28,53 +28,18 @@ const itemVariants = {
   },
 };
 
+/**
+ * StreamingList component for displaying list items during streaming
+ * Works with the new @ai-sdk/react-based streaming hooks
+ */
 export function StreamingList<T>({
-  stream,
+  items,
+  isStreaming = false,
   renderItem,
-  onComplete,
   className,
   itemClassName,
   keyExtractor,
 }: StreamingListProps<T>) {
-  const [items, setItems] = useState<T[]>([]);
-  const [isComplete, setIsComplete] = useState(false);
-  const finalItemsRef = useRef<T[]>([]);
-
-  useEffect(() => {
-    let isCancelled = false;
-
-    async function readStream() {
-      try {
-        for await (const chunk of readStreamableValue(stream)) {
-          if (isCancelled) break;
-          if (chunk !== undefined && Array.isArray(chunk)) {
-            // Use View Transitions API if available
-            if (typeof document !== 'undefined' && 'startViewTransition' in document) {
-              (document as Document & { startViewTransition: (cb: () => void) => void }).startViewTransition(() => {
-                setItems(chunk);
-              });
-            } else {
-              setItems(chunk);
-            }
-            finalItemsRef.current = chunk;
-          }
-        }
-        if (!isCancelled) {
-          setIsComplete(true);
-          onComplete?.(finalItemsRef.current);
-        }
-      } catch (error) {
-        console.error('Error reading stream:', error);
-      }
-    }
-
-    readStream();
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [stream, onComplete]);
-
   const getKey = (item: T, index: number): string => {
     if (keyExtractor) {
       return keyExtractor(item, index);
@@ -110,7 +75,7 @@ export function StreamingList<T>({
           </motion.div>
         ))}
       </AnimatePresence>
-      {!isComplete && items.length > 0 && (
+      {isStreaming && items.length > 0 && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

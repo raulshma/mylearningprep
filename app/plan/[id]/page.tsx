@@ -1,7 +1,6 @@
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
 import { getPublicPlan } from '@/lib/actions/public';
 import { Header } from '@/components/landing/header';
 import { Footer } from '@/components/landing/footer';
@@ -19,12 +18,7 @@ import {
   ArrowRight,
   Sparkles
 } from 'lucide-react';
-
-// Dynamic import for Shiki (code highlighting) - prevents SSR issues
-const MarkdownRenderer = dynamic(
-  () => import("@/components/streaming/markdown-renderer"),
-  { ssr: false }
-);
+import { PlanMarkdown } from './plan-content';
 
 interface PublicPlanPageProps {
   params: Promise<{ id: string }>;
@@ -150,7 +144,7 @@ export default async function PublicPlanPage({ params }: PublicPlanPageProps) {
                 </CardHeader>
                 <CardContent>
                   <div className="text-muted-foreground leading-relaxed mb-4">
-                    <MarkdownRenderer content={modules.openingBrief.content} isStreaming={false} />
+                    <PlanMarkdown content={modules.openingBrief.content} />
                   </div>
                   <div className="grid grid-cols-3 gap-4 pt-4 border-t border-border">
                     <div>
@@ -201,7 +195,7 @@ export default async function PublicPlanPage({ params }: PublicPlanPageProps) {
                             <p className="font-mono text-foreground mb-1">{topic.title}</p>
                             <p className="text-sm text-muted-foreground mb-2">{topic.reason}</p>
                             <div className="text-sm text-muted-foreground/80">
-                              <MarkdownRenderer content={topic.content} isStreaming={false} />
+                              <PlanMarkdown content={topic.content} />
                             </div>
                           </div>
                         </div>

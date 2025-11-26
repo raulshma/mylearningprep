@@ -11,7 +11,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@ai-sdk/rsc": "^1.0.103",
+    "@ai-sdk/react": "^1.2.12",
     "@clerk/nextjs": "^6.35.5",
     "@hookform/resolvers": "^3.10.0",
     "@llm-ui/code": "^0.13.3",

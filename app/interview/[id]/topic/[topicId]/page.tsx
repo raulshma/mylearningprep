@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,12 +22,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import {
-  getTopic,
-  regenerateAnalogy,
-  regenerateAnalogyWithInstructions,
-  type AnalogyStyle,
-} from "@/lib/actions/topic";
+import { getTopic, type AnalogyStyle } from "@/lib/actions/topic";
 
 import { RegenerateMenu } from "@/components/streaming/regenerate-menu";
 
@@ -38,7 +33,97 @@ const MarkdownRenderer = dynamic(
 );
 import { getInterview } from "@/lib/actions/interview";
 import type { RevisionTopic, Interview } from "@/lib/db/schemas/interview";
-import { readStreamableValue } from "@ai-sdk/rsc";
+
+// Stream event types for SSE parsing
+interface StreamEvent<T = unknown> {
+  type: "content" | "done" | "error";
+  data?: T;
+  topicId?: string;
+  style?: string;
+  error?: string;
+}
+
+/**
+ * Helper function to process SSE stream
+ */
+async function processSSEStream<T>(
+  response: Response,
+  onContent: (data: T) => void,
+  onDone: () => void,
+  onError: (error: string) => void
+) {
+  const reader = response.body?.getReader();
+  if (!reader) {
+    throw new Error("No response body");
+  }
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          const jsonStr = line.slice(6);
+          try {
+            const event: StreamEvent<T> = JSON.parse(jsonStr);
+
+            if (event.type === "content" && event.data !== undefined) {
+              onContent(event.data);
+            } else if (event.type === "done") {
+              onDone();
+            } else if (event.type === "error") {
+              onError(event.error || "Unknown error");
+            }
+          } catch {
+            // Ignore invalid JSON
+          }
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+interface StreamStatusResponse {
+  status: "none" | "active" | "completed" | "error";
+  streamId?: string;
+  createdAt?: number;
+}
+
+/**
+ * Check if there's an active generation for a topic
+ */
+async function checkStreamStatus(
+  interviewId: string,
+  topicId: string
+): Promise<StreamStatusResponse> {
+  try {
+    const moduleKey = `topic_${topicId}`;
+    const response = await fetch(
+      `/api/interview/${interviewId}/stream/${moduleKey}`,
+      {
+        credentials: "include",
+      }
+    );
+
+    if (!response.ok) {
+      return { status: "none" };
+    }
+
+    return await response.json();
+  } catch {
+    return { status: "none" };
+  }
+}
 
 const styleLabels: Record<AnalogyStyle, string> = {
   professional: "Professional",
@@ -67,7 +152,9 @@ export default function TopicDetailPage() {
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [streamingContent, setStreamingContent] = useState<string>("");
 
-  // Load topic and interview data
+  const resumeAttemptedRef = useRef(false);
+
+  // Load topic and interview data, and check for resumable streams
   useEffect(() => {
     async function loadData() {
       try {
@@ -97,74 +184,118 @@ export default function TopicDetailPage() {
     loadData();
   }, [interviewId, topicId]);
 
-  const handleStyleChange = async (newStyle: AnalogyStyle) => {
-    if (newStyle === selectedStyle || isRegenerating) return;
+  // Try to resume any active stream on mount using polling
+  useEffect(() => {
+    if (isLoading || resumeAttemptedRef.current) return;
+    resumeAttemptedRef.current = true;
 
-    setSelectedStyle(newStyle);
-    setIsRegenerating(true);
-    setStreamingContent("");
-
-    try {
-      const { stream } = await regenerateAnalogy(
-        interviewId,
-        topicId,
-        newStyle
-      );
-
-      for await (const chunk of readStreamableValue(stream)) {
-        if (chunk !== undefined) {
-          setStreamingContent(chunk);
+    const checkAndPoll = async () => {
+      const streamStatus = await checkStreamStatus(interviewId, topicId);
+      
+      if (streamStatus.status === "active") {
+        // Found an active generation - show loading state and poll for completion
+        setIsRegenerating(true);
+        
+        const pollInterval = setInterval(async () => {
+          const status = await checkStreamStatus(interviewId, topicId);
+          
+          if (status.status === "completed") {
+            clearInterval(pollInterval);
+            const result = await getTopic(interviewId, topicId);
+            if (result.success) {
+              setTopic(result.data);
+              setStreamingContent("");
+            }
+            setIsRegenerating(false);
+          } else if (status.status === "error" || status.status === "none") {
+            clearInterval(pollInterval);
+            setIsRegenerating(false);
+          }
+        }, 2000); // Poll every 2 seconds
+        
+        // Safety timeout - stop polling after 5 minutes
+        setTimeout(() => {
+          clearInterval(pollInterval);
+          setIsRegenerating(false);
+        }, 5 * 60 * 1000);
+      } else if (streamStatus.status === "completed") {
+        // Generation just completed - refresh data
+        const result = await getTopic(interviewId, topicId);
+        if (result.success) {
+          setTopic(result.data);
         }
       }
+    };
 
-      // Refresh topic data after regeneration
-      const result = await getTopic(interviewId, topicId);
-      if (result.success) {
-        setTopic(result.data);
-        setStreamingContent("");
-      }
-    } catch (err) {
-      console.error("Failed to regenerate analogy:", err);
-      // Revert to previous style on error
-      if (topic) {
-        setSelectedStyle(topic.style);
-      }
-    } finally {
-      setIsRegenerating(false);
-    }
-  };
+    checkAndPoll();
+  }, [isLoading, interviewId, topicId]);
 
-  const handleRegenerateWithInstructions = async (instructions: string) => {
-    if (isRegenerating) return;
+  const handleStyleChange = useCallback(
+    async (newStyle: AnalogyStyle, instructions?: string) => {
+      if (newStyle === selectedStyle && !instructions) return;
+      if (isRegenerating) return;
 
-    setIsRegenerating(true);
-    setStreamingContent("");
+      setSelectedStyle(newStyle);
+      setIsRegenerating(true);
+      setStreamingContent("");
 
-    try {
-      const { stream } = await regenerateAnalogyWithInstructions(
-        interviewId,
-        topicId,
-        selectedStyle,
-        instructions
-      );
+      try {
+        const response = await fetch(
+          `/api/interview/${interviewId}/topic/${topicId}/regenerate`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              style: newStyle,
+              instructions,
+            }),
+            credentials: "include",
+          }
+        );
 
-      for await (const chunk of readStreamableValue(stream)) {
-        if (chunk !== undefined) {
-          setStreamingContent(chunk);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to regenerate");
         }
-      }
 
-      const result = await getTopic(interviewId, topicId);
-      if (result.success) {
-        setTopic(result.data);
-        setStreamingContent("");
+        await processSSEStream(
+          response,
+          (data: string) => setStreamingContent(data),
+          async () => {
+            const result = await getTopic(interviewId, topicId);
+            if (result.success) {
+              setTopic(result.data);
+              setStreamingContent("");
+            }
+          },
+          () => {
+            // On error, revert to previous style
+            if (topic) {
+              setSelectedStyle(topic.style);
+            }
+          }
+        );
+      } catch (err) {
+        console.error("Failed to regenerate analogy:", err);
+        // Revert to previous style on error
+        if (topic) {
+          setSelectedStyle(topic.style);
+        }
+      } finally {
+        setIsRegenerating(false);
       }
-    } catch (err) {
-      console.error("Failed to regenerate with instructions:", err);
-    } finally {
-      setIsRegenerating(false);
-    }
-  };
+    },
+    [interviewId, topicId, selectedStyle, isRegenerating, topic]
+  );
+
+  const handleRegenerateWithInstructions = useCallback(
+    async (instructions: string) => {
+      await handleStyleChange(selectedStyle, instructions);
+    },
+    [selectedStyle, handleStyleChange]
+  );
 
   if (isLoading) {
     return (

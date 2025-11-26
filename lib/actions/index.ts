@@ -1,21 +1,25 @@
 /**
  * Server Actions Index
  * Re-exports all server actions for convenient imports
+ *
+ * NOTE: Streaming functions (generateModule, addMoreContent, regenerateAnalogy)
+ * have been migrated to API routes for resumable stream support.
+ * See /api/interview/[id]/generate, /api/interview/[id]/add-more, and
+ * /api/interview/[id]/topic/[topicId]/regenerate
  */
 
 // Interview actions
 export {
   createInterview,
   createInterviewFromPrompt,
-  generateModule,
-  addMoreContent,
   deleteInterview,
   getInterview,
   getUserInterviews,
+  getAIConcurrencyLimit,
   type ActionResult,
   type CreateInterviewActionInput,
   type CreateInterviewFromPromptInput,
-} from './interview';
+} from "./interview";
 
 // User actions
 export {
@@ -24,14 +28,10 @@ export {
   updatePreferences,
   getCurrentUser,
   getIterationStatus,
-} from './user';
+} from "./user";
 
 // Topic actions
-export {
-  regenerateAnalogy,
-  getTopic,
-  type AnalogyStyle,
-} from './topic';
+export { getTopic, type AnalogyStyle } from "./topic";
 
 // Public plan actions
 export {
@@ -39,7 +39,7 @@ export {
   getPublicPlan,
   isInterviewPublic,
   type PublicInterview,
-} from './public';
+} from "./public";
 
 // Stripe actions
 export {
@@ -48,7 +48,7 @@ export {
   getUserSubscriptionStatus,
   type SubscriptionPlan,
   type CheckoutResult,
-} from './stripe';
+} from "./stripe";
 
 // Admin actions
 export {
@@ -73,4 +73,4 @@ export {
   type PlanDistribution,
   type DailyActiveUsers,
   type TokenUsageTrend,
-} from './admin';
+} from "./admin";

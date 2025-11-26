@@ -40,6 +40,8 @@ interface StreamingCardProps {
   streamedCount?: number;
   /** Status message to show during streaming */
   streamingMessage?: string;
+  /** Callback to retry generation on error */
+  onRetry?: () => void;
 }
 
 const statusVariants = {
@@ -76,6 +78,7 @@ export function StreamingCard({
   className,
   streamedCount,
   streamingMessage,
+  onRetry,
 }: StreamingCardProps) {
   const isLoading = status === "loading";
   const isStreaming = status === "streaming";
@@ -202,9 +205,16 @@ export function StreamingCard({
                 initial="hidden"
                 animate="visible"
                 exit="exit"
-                className="text-destructive text-sm"
+                className="flex items-center justify-between"
               >
-                {errorMessage || "An error occurred while generating content."}
+                <span className="text-destructive text-sm">
+                  {errorMessage || "An error occurred while generating content."}
+                </span>
+                {onRetry && (
+                  <Button variant="outline" size="sm" onClick={onRetry}>
+                    Retry
+                  </Button>
+                )}
               </motion.div>
             )}
             {(status === "idle" || isStreaming || isComplete) && (

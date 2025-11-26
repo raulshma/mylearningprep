@@ -9,8 +9,6 @@ import {
   StreamingCard,
   type StreamingCardStatus,
 } from "@/components/streaming/streaming-card";
-import { StreamingText } from "@/components/streaming/streaming-text";
-import { StreamingList } from "@/components/streaming/streaming-list";
 import {
   ToolStatus,
   type ToolStatusStep,
@@ -24,14 +22,9 @@ import {
   Zap,
   Loader2,
   AlertCircle,
-  RefreshCw,
 } from "lucide-react";
 import {
   getInterview,
-  generateModule,
-  generateModuleWithInstructions,
-  addMoreContent,
-  addMoreContentWithInstructions,
   getAIConcurrencyLimit,
 } from "@/lib/actions/interview";
 import { runWithConcurrencyLimit } from "@/lib/utils/concurrency-limiter";
@@ -40,9 +33,8 @@ import type {
   RevisionTopic,
   MCQ,
   RapidFire,
-  OpeningBrief,
+  ModuleType,
 } from "@/lib/db/schemas/interview";
-import { type StreamableValue, readStreamableValue } from "@ai-sdk/rsc";
 import Link from "next/link";
 
 // Dynamic import for Shiki (code highlighting) - prevents SSR issues
@@ -57,6 +49,94 @@ type ModuleStatus = {
   mcqs: StreamingCardStatus;
   rapidFire: StreamingCardStatus;
 };
+
+type ModuleKey = keyof ModuleStatus;
+
+// Stream event types for SSE parsing
+interface StreamEvent<T = unknown> {
+  type: "content" | "done" | "error";
+  data?: T;
+  module?: string;
+  error?: string;
+}
+
+/**
+ * Helper function to process SSE stream from API routes
+ */
+async function processSSEStream<T>(
+  response: Response,
+  onContent: (data: T) => void,
+  onDone: () => void,
+  onError: (error: string) => void
+) {
+  const reader = response.body?.getReader();
+  if (!reader) {
+    throw new Error("No response body");
+  }
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        if (line.startsWith("data: ")) {
+          const jsonStr = line.slice(6);
+          try {
+            const event: StreamEvent<T> = JSON.parse(jsonStr);
+
+            if (event.type === "content" && event.data !== undefined) {
+              onContent(event.data);
+            } else if (event.type === "done") {
+              onDone();
+            } else if (event.type === "error") {
+              onError(event.error || "Unknown error");
+            }
+          } catch {
+            // Ignore invalid JSON
+          }
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
+interface StreamStatusResponse {
+  status: "none" | "active" | "completed" | "error";
+  streamId?: string;
+  createdAt?: number;
+}
+
+/**
+ * Check if there's an active generation for a module
+ */
+async function checkStreamStatus(
+  interviewId: string,
+  module: string
+): Promise<StreamStatusResponse> {
+  try {
+    const response = await fetch(`/api/interview/${interviewId}/stream/${module}`, {
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      return { status: "none" };
+    }
+
+    return await response.json();
+  } catch {
+    return { status: "none" };
+  }
+}
 
 export default function InterviewWorkspacePage() {
   const params = useParams();
@@ -83,8 +163,9 @@ export default function InterviewWorkspacePage() {
 
   // Track if initial generation has started to prevent duplicate runs
   const generationStartedRef = useRef(false);
+  const resumeAttemptedRef = useRef(false);
 
-  // Load interview data
+  // Load interview data and check for resumable streams
   useEffect(() => {
     async function loadInterview() {
       try {
@@ -117,6 +198,60 @@ export default function InterviewWorkspacePage() {
 
     loadInterview();
   }, [interviewId]);
+
+  // Try to resume any active streams on mount using polling
+  useEffect(() => {
+    if (!interview || isLoading || resumeAttemptedRef.current) return;
+    resumeAttemptedRef.current = true;
+
+    const checkAndPollModules = async () => {
+      const modules: ModuleType[] = ["openingBrief", "revisionTopics", "mcqs", "rapidFire"];
+      
+      for (const module of modules) {
+        const streamStatus = await checkStreamStatus(interviewId, module);
+        
+        if (streamStatus.status === "active") {
+          // Found an active generation - show loading state and poll for completion
+          setModuleStatus((prev) => ({ ...prev, [module]: "loading" }));
+          setToolStatus("generating");
+          
+          // Poll until generation completes
+          const pollInterval = setInterval(async () => {
+            const status = await checkStreamStatus(interviewId, module);
+            
+            if (status.status === "completed") {
+              clearInterval(pollInterval);
+              // Refresh interview data to get the generated content
+              const result = await getInterview(interviewId);
+              if (result.success) {
+                setInterview(result.data);
+                setModuleStatus((prev) => ({ ...prev, [module]: "complete" }));
+              }
+              setToolStatus("complete");
+            } else if (status.status === "error" || status.status === "none") {
+              clearInterval(pollInterval);
+              setModuleStatus((prev) => ({ ...prev, [module]: "error" }));
+              setToolStatus("idle");
+            }
+          }, 2000); // Poll every 2 seconds
+          
+          // Safety timeout - stop polling after 5 minutes
+          setTimeout(() => {
+            clearInterval(pollInterval);
+          }, 5 * 60 * 1000);
+        } else if (streamStatus.status === "completed") {
+          // Generation just completed - refresh data
+          const result = await getInterview(interviewId);
+          if (result.success) {
+            setInterview(result.data);
+            setModuleStatus((prev) => ({ ...prev, [module]: "complete" }));
+          }
+        }
+      }
+    };
+
+    checkAndPollModules();
+  }, [interview, isLoading, interviewId]);
 
   // Generate all modules on first load if empty (runs only once)
   useEffect(() => {
@@ -151,64 +286,62 @@ export default function InterviewWorkspacePage() {
     await runWithConcurrencyLimit(moduleTasks, concurrencyLimit);
   };
 
-  const handleGenerateModule = async (module: keyof ModuleStatus) => {
+  const handleGenerateModule = async (module: ModuleKey, instructions?: string) => {
     setModuleStatus((prev) => ({ ...prev, [module]: "loading" }));
     setToolStatus("generating");
 
     try {
-      const { stream } = await generateModule(interviewId, module);
+      const response = await fetch(`/api/interview/${interviewId}/generate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          module,
+          instructions,
+        }),
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to generate module");
+      }
+
       setModuleStatus((prev) => ({ ...prev, [module]: "streaming" }));
 
-      for await (const chunk of readStreamableValue(stream)) {
-        if (chunk !== undefined) {
+      await processSSEStream(
+        response,
+        (data: unknown) => {
           switch (module) {
             case "openingBrief":
-              // Opening brief streams as partial object with content field
-              try {
-                const parsed = JSON.parse(chunk);
-                if (parsed.content) {
-                  setStreamingBrief(parsed.content);
-                }
-              } catch {
-                setStreamingBrief(chunk);
-              }
+              setStreamingBrief(data as string);
               break;
             case "revisionTopics":
-              try {
-                const topics = JSON.parse(chunk) as RevisionTopic[];
-                setStreamingTopics(topics);
-              } catch {
-                /* ignore parse errors during streaming */
-              }
+              setStreamingTopics(data as RevisionTopic[]);
               break;
             case "mcqs":
-              try {
-                const mcqs = JSON.parse(chunk) as MCQ[];
-                setStreamingMcqs(mcqs);
-              } catch {
-                /* ignore parse errors during streaming */
-              }
+              setStreamingMcqs(data as MCQ[]);
               break;
             case "rapidFire":
-              try {
-                const questions = JSON.parse(chunk) as RapidFire[];
-                setStreamingRapidFire(questions);
-              } catch {
-                /* ignore parse errors during streaming */
-              }
+              setStreamingRapidFire(data as RapidFire[]);
               break;
           }
+        },
+        async () => {
+          setModuleStatus((prev) => ({ ...prev, [module]: "complete" }));
+          setToolStatus("complete");
+          // Refresh interview data
+          const result = await getInterview(interviewId);
+          if (result.success) {
+            setInterview(result.data);
+          }
+        },
+        () => {
+          setModuleStatus((prev) => ({ ...prev, [module]: "error" }));
+          setToolStatus("idle");
         }
-      }
-
-      setModuleStatus((prev) => ({ ...prev, [module]: "complete" }));
-      setToolStatus("complete");
-
-      // Refresh interview data to get persisted content
-      const result = await getInterview(interviewId);
-      if (result.success) {
-        setInterview(result.data);
-      }
+      );
     } catch (err) {
       console.error(`Failed to generate ${module}:`, err);
       setModuleStatus((prev) => ({ ...prev, [module]: "error" }));
@@ -217,178 +350,70 @@ export default function InterviewWorkspacePage() {
   };
 
   const handleAddMore = async (
-    module: "mcqs" | "rapidFire" | "revisionTopics"
+    module: "mcqs" | "rapidFire" | "revisionTopics",
+    instructions?: string
   ) => {
     setModuleStatus((prev) => ({ ...prev, [module]: "loading" }));
 
     try {
-      const { stream } = await addMoreContent({
-        interviewId,
-        module,
-        count: 5,
+      const response = await fetch(`/api/interview/${interviewId}/add-more`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          module,
+          count: 5,
+          instructions,
+        }),
+        credentials: "include",
       });
-      setModuleStatus((prev) => ({ ...prev, [module]: "streaming" }));
 
-      for await (const chunk of readStreamableValue(stream)) {
-        if (chunk !== undefined) {
-          try {
-            const items = JSON.parse(chunk);
-            switch (module) {
-              case "revisionTopics":
-                setStreamingTopics((prev) => [
-                  ...(interview?.modules.revisionTopics || []),
-                  ...items,
-                ]);
-                break;
-              case "mcqs":
-                setStreamingMcqs((prev) => [
-                  ...(interview?.modules.mcqs || []),
-                  ...items,
-                ]);
-                break;
-              case "rapidFire":
-                setStreamingRapidFire((prev) => [
-                  ...(interview?.modules.rapidFire || []),
-                  ...items,
-                ]);
-                break;
-            }
-          } catch {
-            /* ignore parse errors during streaming */
-          }
-        }
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to add more content");
       }
 
-      setModuleStatus((prev) => ({ ...prev, [module]: "complete" }));
-
-      // Refresh interview data
-      const result = await getInterview(interviewId);
-      if (result.success) {
-        setInterview(result.data);
-      }
-    } catch (err) {
-      console.error(`Failed to add more ${module}:`, err);
-      setModuleStatus((prev) => ({ ...prev, [module]: "error" }));
-    }
-  };
-
-  const handleGenerateModuleWithInstructions = async (
-    module: keyof ModuleStatus,
-    instructions: string
-  ) => {
-    setModuleStatus((prev) => ({ ...prev, [module]: "loading" }));
-    setToolStatus("generating");
-
-    try {
-      const { stream } = await generateModuleWithInstructions(
-        interviewId,
-        module,
-        instructions
-      );
       setModuleStatus((prev) => ({ ...prev, [module]: "streaming" }));
 
-      for await (const chunk of readStreamableValue(stream)) {
-        if (chunk !== undefined) {
+      await processSSEStream(
+        response,
+        (data: unknown) => {
           switch (module) {
-            case "openingBrief":
-              try {
-                const parsed = JSON.parse(chunk);
-                if (parsed.content) setStreamingBrief(parsed.content);
-              } catch {
-                setStreamingBrief(chunk);
-              }
-              break;
             case "revisionTopics":
-              try {
-                const topics = JSON.parse(chunk) as RevisionTopic[];
-                setStreamingTopics(topics);
-              } catch {
-                /* ignore */
-              }
+              setStreamingTopics([
+                ...(interview?.modules.revisionTopics || []),
+                ...(data as RevisionTopic[]),
+              ]);
               break;
             case "mcqs":
-              try {
-                const mcqs = JSON.parse(chunk) as MCQ[];
-                setStreamingMcqs(mcqs);
-              } catch {
-                /* ignore */
-              }
+              setStreamingMcqs([
+                ...(interview?.modules.mcqs || []),
+                ...(data as MCQ[]),
+              ]);
               break;
             case "rapidFire":
-              try {
-                const questions = JSON.parse(chunk) as RapidFire[];
-                setStreamingRapidFire(questions);
-              } catch {
-                /* ignore */
-              }
+              setStreamingRapidFire([
+                ...(interview?.modules.rapidFire || []),
+                ...(data as RapidFire[]),
+              ]);
               break;
           }
-        }
-      }
-
-      setModuleStatus((prev) => ({ ...prev, [module]: "complete" }));
-      setToolStatus("complete");
-
-      const result = await getInterview(interviewId);
-      if (result.success) setInterview(result.data);
-    } catch (err) {
-      console.error(`Failed to generate ${module} with instructions:`, err);
-      setModuleStatus((prev) => ({ ...prev, [module]: "error" }));
-      setToolStatus("idle");
-    }
-  };
-
-  const handleAddMoreWithInstructions = async (
-    module: "mcqs" | "rapidFire" | "revisionTopics",
-    instructions: string
-  ) => {
-    setModuleStatus((prev) => ({ ...prev, [module]: "loading" }));
-
-    try {
-      const { stream } = await addMoreContentWithInstructions({
-        interviewId,
-        module,
-        instructions,
-        count: 5,
-      });
-      setModuleStatus((prev) => ({ ...prev, [module]: "streaming" }));
-
-      for await (const chunk of readStreamableValue(stream)) {
-        if (chunk !== undefined) {
-          try {
-            const items = JSON.parse(chunk);
-            switch (module) {
-              case "revisionTopics":
-                setStreamingTopics((prev) => [
-                  ...(interview?.modules.revisionTopics || []),
-                  ...items,
-                ]);
-                break;
-              case "mcqs":
-                setStreamingMcqs((prev) => [
-                  ...(interview?.modules.mcqs || []),
-                  ...items,
-                ]);
-                break;
-              case "rapidFire":
-                setStreamingRapidFire((prev) => [
-                  ...(interview?.modules.rapidFire || []),
-                  ...items,
-                ]);
-                break;
-            }
-          } catch {
-            /* ignore */
+        },
+        async () => {
+          setModuleStatus((prev) => ({ ...prev, [module]: "complete" }));
+          // Refresh interview data
+          const result = await getInterview(interviewId);
+          if (result.success) {
+            setInterview(result.data);
           }
+        },
+        () => {
+          setModuleStatus((prev) => ({ ...prev, [module]: "error" }));
         }
-      }
-
-      setModuleStatus((prev) => ({ ...prev, [module]: "complete" }));
-
-      const result = await getInterview(interviewId);
-      if (result.success) setInterview(result.data);
+      );
     } catch (err) {
-      console.error(`Failed to add more ${module} with instructions:`, err);
+      console.error(`Failed to add more ${module}:`, err);
       setModuleStatus((prev) => ({ ...prev, [module]: "error" }));
     }
   };
@@ -475,6 +500,12 @@ export default function InterviewWorkspacePage() {
             title="Opening Brief"
             icon={Target}
             status={moduleStatus.openingBrief}
+            onRetry={
+              moduleStatus.openingBrief === "error" || 
+              (moduleStatus.openingBrief === "idle" && !openingBrief)
+                ? () => handleGenerateModule("openingBrief")
+                : undefined
+            }
             onAddMore={
               moduleStatus.openingBrief === "complete"
                 ? () => handleGenerateModule("openingBrief")
@@ -483,10 +514,7 @@ export default function InterviewWorkspacePage() {
             onAddMoreWithInstructions={
               moduleStatus.openingBrief === "complete"
                 ? (instructions) =>
-                    handleGenerateModuleWithInstructions(
-                      "openingBrief",
-                      instructions
-                    )
+                    handleGenerateModule("openingBrief", instructions)
                 : undefined
             }
             addMoreLabel="Regenerate"
@@ -539,6 +567,15 @@ export default function InterviewWorkspacePage() {
                   </div>
                 </div>
               </>
+            ) : moduleStatus.openingBrief === "idle" ? (
+              <div className="flex items-center justify-between">
+                <p className="text-muted-foreground">
+                  No opening brief generated yet.
+                </p>
+                <Button variant="outline" size="sm" onClick={() => handleGenerateModule("openingBrief")}>
+                  Generate
+                </Button>
+              </div>
             ) : (
               <p className="text-muted-foreground">
                 No opening brief generated yet.
@@ -551,6 +588,12 @@ export default function InterviewWorkspacePage() {
             title="Revision Topics"
             icon={BookOpen}
             status={moduleStatus.revisionTopics}
+            onRetry={
+              moduleStatus.revisionTopics === "error" ||
+              (moduleStatus.revisionTopics === "idle" && revisionTopics.length === 0)
+                ? () => handleGenerateModule("revisionTopics")
+                : undefined
+            }
             onAddMore={
               moduleStatus.revisionTopics === "complete"
                 ? () => handleAddMore("revisionTopics")
@@ -559,10 +602,7 @@ export default function InterviewWorkspacePage() {
             onAddMoreWithInstructions={
               moduleStatus.revisionTopics === "complete"
                 ? (instructions) =>
-                    handleAddMoreWithInstructions(
-                      "revisionTopics",
-                      instructions
-                    )
+                    handleAddMore("revisionTopics", instructions)
                 : undefined
             }
             streamedCount={
@@ -617,6 +657,15 @@ export default function InterviewWorkspacePage() {
                   </Link>
                 ))}
               </div>
+            ) : moduleStatus.revisionTopics === "idle" ? (
+              <div className="flex items-center justify-between">
+                <p className="text-muted-foreground">
+                  No revision topics generated yet.
+                </p>
+                <Button variant="outline" size="sm" onClick={() => handleGenerateModule("revisionTopics")}>
+                  Generate
+                </Button>
+              </div>
             ) : (
               <p className="text-muted-foreground">
                 No revision topics generated yet.
@@ -629,6 +678,12 @@ export default function InterviewWorkspacePage() {
             title="Multiple Choice Questions"
             icon={HelpCircle}
             status={moduleStatus.mcqs}
+            onRetry={
+              moduleStatus.mcqs === "error" ||
+              (moduleStatus.mcqs === "idle" && mcqs.length === 0)
+                ? () => handleGenerateModule("mcqs")
+                : undefined
+            }
             onAddMore={
               moduleStatus.mcqs === "complete"
                 ? () => handleAddMore("mcqs")
@@ -636,8 +691,7 @@ export default function InterviewWorkspacePage() {
             }
             onAddMoreWithInstructions={
               moduleStatus.mcqs === "complete"
-                ? (instructions) =>
-                    handleAddMoreWithInstructions("mcqs", instructions)
+                ? (instructions) => handleAddMore("mcqs", instructions)
                 : undefined
             }
             streamedCount={
@@ -694,6 +748,13 @@ export default function InterviewWorkspacePage() {
                   </div>
                 ))}
               </div>
+            ) : moduleStatus.mcqs === "idle" ? (
+              <div className="flex items-center justify-between">
+                <p className="text-muted-foreground">No MCQs generated yet.</p>
+                <Button variant="outline" size="sm" onClick={() => handleGenerateModule("mcqs")}>
+                  Generate
+                </Button>
+              </div>
             ) : (
               <p className="text-muted-foreground">No MCQs generated yet.</p>
             )}
@@ -704,6 +765,12 @@ export default function InterviewWorkspacePage() {
             title="Rapid Fire Questions"
             icon={Zap}
             status={moduleStatus.rapidFire}
+            onRetry={
+              moduleStatus.rapidFire === "error" ||
+              (moduleStatus.rapidFire === "idle" && rapidFire.length === 0)
+                ? () => handleGenerateModule("rapidFire")
+                : undefined
+            }
             onAddMore={
               moduleStatus.rapidFire === "complete"
                 ? () => handleAddMore("rapidFire")
@@ -711,8 +778,7 @@ export default function InterviewWorkspacePage() {
             }
             onAddMoreWithInstructions={
               moduleStatus.rapidFire === "complete"
-                ? (instructions) =>
-                    handleAddMoreWithInstructions("rapidFire", instructions)
+                ? (instructions) => handleAddMore("rapidFire", instructions)
                 : undefined
             }
             streamedCount={
@@ -747,6 +813,15 @@ export default function InterviewWorkspacePage() {
                     </p>
                   </div>
                 ))}
+              </div>
+            ) : moduleStatus.rapidFire === "idle" ? (
+              <div className="flex items-center justify-between">
+                <p className="text-muted-foreground">
+                  No rapid fire questions generated yet.
+                </p>
+                <Button variant="outline" size="sm" onClick={() => handleGenerateModule("rapidFire")}>
+                  Generate
+                </Button>
               </div>
             ) : (
               <p className="text-muted-foreground">
