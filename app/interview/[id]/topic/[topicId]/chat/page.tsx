@@ -4,9 +4,15 @@ import { useState, useEffect, useRef, useCallback } from "react"
 import { useParams } from "next/navigation"
 import dynamic from "next/dynamic"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import {
   ArrowLeft,
   Send,
@@ -20,6 +26,10 @@ import {
   Sparkles,
   Loader2,
   AlertCircle,
+  Square,
+  Trash2,
+  Download,
+  Clock,
 } from "lucide-react"
 import Link from "next/link"
 import { getTopic } from "@/lib/actions/topic"
@@ -35,6 +45,7 @@ interface Message {
   id: string
   role: "user" | "assistant"
   content: string
+  createdAt?: Date
 }
 
 const quickActions = [
@@ -43,6 +54,36 @@ const quickActions = [
   { icon: BookOpen, label: "Real-world Use", prompt: "How is this used in production apps?" },
   { icon: RefreshCw, label: "Different Angle", prompt: "Explain this from a different perspective" },
 ]
+
+function formatTimestamp(date?: Date): string {
+  if (!date) return ""
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(new Date(date))
+}
+
+function exportChatAsMarkdown(messages: Message[], topicTitle: string): void {
+  const content = messages
+    .filter((m) => m.id !== "welcome")
+    .map((m) => {
+      const role = m.role === "user" ? "**You**" : "**Assistant**"
+      const time = m.createdAt ? ` (${formatTimestamp(m.createdAt)})` : ""
+      return `### ${role}${time}\n\n${m.content}`
+    })
+    .join("\n\n---\n\n")
+
+  const markdown = `# Chat: ${topicTitle}\n\nExported on ${new Date().toLocaleDateString()}\n\n---\n\n${content}`
+  
+  const blob = new Blob([markdown], { type: "text/markdown" })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = `chat-${topicTitle.toLowerCase().replace(/\s+/g, "-")}.md`
+  a.click()
+  URL.revokeObjectURL(url)
+}
 
 export default function ChatRefinementPage() {
   const params = useParams()
@@ -58,9 +99,11 @@ export default function ChatRefinementPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [isStreaming, setIsStreaming] = useState(false)
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   // Load topic, interview data, and existing chat messages
   useEffect(() => {
@@ -80,10 +123,11 @@ export default function ChatRefinementPage() {
           // Load existing messages or show welcome message
           if (chatResponse.messages && chatResponse.messages.length > 0) {
             setMessages(
-              chatResponse.messages.map((m: { id: string; role: string; content: string }) => ({
+              chatResponse.messages.map((m: { id: string; role: string; content: string; createdAt?: string }) => ({
                 id: m.id,
                 role: m.role as "user" | "assistant",
                 content: m.content,
+                createdAt: m.createdAt ? new Date(m.createdAt) : undefined,
               }))
             )
           } else {
@@ -93,6 +137,7 @@ export default function ChatRefinementPage() {
                 id: "welcome",
                 role: "assistant",
                 content: `I'm here to help you understand **${topicResult.data.title}** better. What specific aspect would you like to explore?\n\nYou can ask me to:\n- Explain a concept differently\n- Give more examples\n- Compare with other patterns\n- Deep dive into implementation details`,
+                createdAt: new Date(),
               },
             ])
           }
@@ -122,10 +167,12 @@ export default function ChatRefinementPage() {
   const sendMessage = useCallback(async () => {
     if (!input.trim() || isStreaming) return
 
+    const now = new Date()
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
       content: input.trim(),
+      createdAt: now,
     }
 
     const assistantMessageId = (Date.now() + 1).toString()
@@ -133,6 +180,7 @@ export default function ChatRefinementPage() {
       id: assistantMessageId,
       role: "assistant",
       content: "",
+      createdAt: now,
     }
 
     setMessages((prev) => [...prev, userMessage, assistantMessage])
@@ -202,13 +250,55 @@ export default function ChatRefinementPage() {
     }
   }, [input, isStreaming, messages, interviewId, topicId])
 
+  const stopGeneration = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+      abortControllerRef.current = null
+      setIsStreaming(false)
+    }
+  }, [])
+
+  const clearChat = useCallback(() => {
+    if (topic) {
+      setMessages([
+        {
+          id: "welcome",
+          role: "assistant",
+          content: `I'm here to help you understand **${topic.title}** better. What specific aspect would you like to explore?\n\nYou can ask me to:\n- Explain a concept differently\n- Give more examples\n- Compare with other patterns\n- Deep dive into implementation details`,
+          createdAt: new Date(),
+        },
+      ])
+    }
+  }, [topic])
+
+  const copyMessage = useCallback((messageId: string, content: string) => {
+    navigator.clipboard.writeText(content)
+    setCopiedMessageId(messageId)
+    setTimeout(() => setCopiedMessageId(null), 2000)
+  }, [])
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     sendMessage()
   }
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Send on Enter, newline on Shift+Enter
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault()
+      sendMessage()
+    }
+  }
+
   const handleQuickAction = (prompt: string) => {
     setInput(prompt)
+    textareaRef.current?.focus()
+  }
+
+  const handleExportChat = () => {
+    if (topic) {
+      exportChatAsMarkdown(messages, topic.title)
+    }
   }
 
   const handleCopy = () => {
@@ -325,9 +415,39 @@ export default function ChatRefinementPage() {
                 <p className="text-xs text-muted-foreground">Refining: {topic.title}</p>
               </div>
             </div>
-            <Badge variant="secondary" className="font-mono capitalize">
-              {topic.style || "professional"}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleExportChat}
+                      disabled={messages.filter((m) => m.id !== "welcome").length === 0}
+                    >
+                      <Download className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Export chat as Markdown</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={clearChat}
+                      disabled={isStreaming || messages.filter((m) => m.id !== "welcome").length === 0}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Clear chat history</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <Badge variant="secondary" className="font-mono capitalize">
+                {topic.style || "professional"}
+              </Badge>
+            </div>
           </div>
         </header>
 
@@ -338,42 +458,72 @@ export default function ChatRefinementPage() {
               const isLastAssistant =
                 message.role === "assistant" && index === messages.length - 1
               const showStreamingIndicator = isStreaming && isLastAssistant && message.content === ""
+              const isWelcome = message.id === "welcome"
 
               return (
                 <div
                   key={message.id}
                   className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                 >
-                  <div
-                    className={`max-w-[85%] ${
-                      message.role === "user"
-                        ? "bg-foreground text-background"
-                        : "bg-card border border-border"
-                    } p-4`}
-                  >
-                    {showStreamingIndicator ? (
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse" />
-                        <div
-                          className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse"
-                          style={{ animationDelay: "150ms" }}
+                  <div className={`max-w-[85%] group relative`}>
+                    <div
+                      className={`${
+                        message.role === "user"
+                          ? "bg-foreground text-background"
+                          : "bg-card border border-border"
+                      } p-4`}
+                    >
+                      {showStreamingIndicator ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse" />
+                          <div
+                            className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse"
+                            style={{ animationDelay: "150ms" }}
+                          />
+                          <div
+                            className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse"
+                            style={{ animationDelay: "300ms" }}
+                          />
+                        </div>
+                      ) : message.role === "assistant" ? (
+                        <MarkdownRenderer
+                          content={message.content}
+                          isStreaming={isStreaming && isLastAssistant}
+                          className="text-sm"
                         />
-                        <div
-                          className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse"
-                          style={{ animationDelay: "300ms" }}
-                        />
-                      </div>
-                    ) : message.role === "assistant" ? (
-                      <MarkdownRenderer
-                        content={message.content}
-                        isStreaming={isStreaming && isLastAssistant}
-                        className="text-sm"
-                      />
-                    ) : (
-                      <p className="text-sm whitespace-pre-wrap leading-relaxed">
-                        {message.content}
-                      </p>
-                    )}
+                      ) : (
+                        <p className="text-sm whitespace-pre-wrap leading-relaxed">
+                          {message.content}
+                        </p>
+                      )}
+                    </div>
+                    {/* Message footer with timestamp and copy */}
+                    <div
+                      className={`flex items-center gap-2 mt-1 ${
+                        message.role === "user" ? "justify-end" : "justify-start"
+                      }`}
+                    >
+                      {message.createdAt && !isWelcome && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {formatTimestamp(message.createdAt)}
+                        </span>
+                      )}
+                      {message.content && !showStreamingIndicator && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => copyMessage(message.id, message.content)}
+                        >
+                          {copiedMessageId === message.id ? (
+                            <Check className="w-3 h-3 text-green-500" />
+                          ) : (
+                            <Copy className="w-3 h-3" />
+                          )}
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               )
@@ -406,21 +556,42 @@ export default function ChatRefinementPage() {
 
         {/* Input */}
         <div className="border-t border-border p-4 flex-shrink-0">
-          <form onSubmit={handleSubmit} className="max-w-2xl mx-auto flex gap-3">
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask a follow-up question..."
-              className="font-mono"
-              disabled={isStreaming}
-            />
-            <Button type="submit" disabled={!input.trim() || isStreaming}>
+          <form onSubmit={handleSubmit} className="max-w-2xl mx-auto">
+            <div className="flex gap-3">
+              <div className="flex-1 relative">
+                <Textarea
+                  ref={textareaRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Ask a follow-up question... (Enter to send, Shift+Enter for new line)"
+                  className="font-mono min-h-[44px] max-h-32 resize-none pr-10"
+                  disabled={isStreaming}
+                  rows={1}
+                />
+              </div>
               {isStreaming ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={stopGeneration}
+                  className="self-end"
+                >
+                  <Square className="w-4 h-4" />
+                </Button>
               ) : (
-                <Send className="w-4 h-4" />
+                <Button
+                  type="submit"
+                  disabled={!input.trim()}
+                  className="self-end"
+                >
+                  <Send className="w-4 h-4" />
+                </Button>
               )}
-            </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2 text-center">
+              Press Enter to send • Shift+Enter for new line
+            </p>
           </form>
         </div>
       </main>

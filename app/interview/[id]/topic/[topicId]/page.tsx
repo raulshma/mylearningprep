@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,16 +13,33 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   ArrowLeft,
   BookOpen,
   MessageSquare,
   Lightbulb,
   Loader2,
   AlertCircle,
+  Copy,
+  Check,
+  Clock,
+  Keyboard,
 } from "lucide-react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { getTopic, type AnalogyStyle } from "@/lib/actions/topic";
+
+// Calculate estimated reading time (average 200 words per minute)
+function getReadingTime(content: string): string {
+  const words = content.trim().split(/\s+/).length;
+  const minutes = Math.ceil(words / 200);
+  return minutes === 1 ? "1 min read" : `${minutes} min read`;
+}
 
 import { RegenerateMenu } from "@/components/streaming/regenerate-menu";
 
@@ -139,6 +156,7 @@ const styleDescriptions: Record<AnalogyStyle, string> = {
 
 export default function TopicDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const interviewId = params.id as string;
   const topicId = params.topicId as string;
 
@@ -151,8 +169,66 @@ export default function TopicDetailPage() {
     useState<AnalogyStyle>("professional");
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [streamingContent, setStreamingContent] = useState<string>("");
+  const [copied, setCopied] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   const resumeAttemptedRef = useRef(false);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if typing in an input
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
+        return;
+      }
+
+      // Escape - go back
+      if (e.key === "Escape") {
+        router.push(`/interview/${interviewId}`);
+        return;
+      }
+
+      // c - open chat
+      if (e.key === "c" && !e.metaKey && !e.ctrlKey) {
+        router.push(`/interview/${interviewId}/topic/${topicId}/chat`);
+        return;
+      }
+
+      // 1, 2, 3 - switch styles
+      if (e.key === "1" && !isRegenerating) {
+        handleStyleChange("professional");
+        return;
+      }
+      if (e.key === "2" && !isRegenerating) {
+        handleStyleChange("construction");
+        return;
+      }
+      if (e.key === "3" && !isRegenerating) {
+        handleStyleChange("simple");
+        return;
+      }
+
+      // ? - show shortcuts
+      if (e.key === "?") {
+        setShowShortcuts((prev) => !prev);
+        return;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [interviewId, topicId, isRegenerating, router]);
+
+  const handleCopyContent = useCallback(() => {
+    if (topic) {
+      navigator.clipboard.writeText(topic.content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  }, [topic]);
 
   // Load topic and interview data, and check for resumable streams
   useEffect(() => {
@@ -328,18 +404,82 @@ export default function TopicDetailPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Keyboard Shortcuts Modal */}
+      {showShortcuts && (
+        <div
+          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center"
+          onClick={() => setShowShortcuts(false)}
+        >
+          <Card className="w-80" onClick={(e) => e.stopPropagation()}>
+            <CardContent className="p-6">
+              <h3 className="font-mono text-foreground mb-4 flex items-center gap-2">
+                <Keyboard className="w-4 h-4" />
+                Keyboard Shortcuts
+              </h3>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Go back</span>
+                  <kbd className="px-2 py-1 bg-muted text-xs font-mono">Esc</kbd>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Open chat</span>
+                  <kbd className="px-2 py-1 bg-muted text-xs font-mono">C</kbd>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Professional style</span>
+                  <kbd className="px-2 py-1 bg-muted text-xs font-mono">1</kbd>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Construction style</span>
+                  <kbd className="px-2 py-1 bg-muted text-xs font-mono">2</kbd>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Simple style</span>
+                  <kbd className="px-2 py-1 bg-muted text-xs font-mono">3</kbd>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Toggle shortcuts</span>
+                  <kbd className="px-2 py-1 bg-muted text-xs font-mono">?</kbd>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full mt-4"
+                onClick={() => setShowShortcuts(false)}
+              >
+                Close
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Header */}
       <header className="border-b border-border bg-background sticky top-0 z-40">
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link href={`/interview/${interviewId}`}>
-                <Button variant="ghost" size="icon">
-                  <ArrowLeft className="w-4 h-4" />
-                </Button>
-              </Link>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link href={`/interview/${interviewId}`}>
+                      <Button variant="ghost" size="icon">
+                        <ArrowLeft className="w-4 h-4" />
+                      </Button>
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent>Back (Esc)</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <div>
-                <h1 className="font-mono text-foreground">{topic.title}</h1>
+                <div className="flex items-center gap-2">
+                  <h1 className="font-mono text-foreground">{topic.title}</h1>
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {getReadingTime(topic.content)}
+                  </span>
+                </div>
                 {interview && (
                   <p className="text-sm text-muted-foreground">
                     {interview.jobDetails.title} at{" "}
@@ -349,6 +489,37 @@ export default function TopicDetailPage() {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleCopyContent}
+                      disabled={isRegenerating}
+                    >
+                      {copied ? (
+                        <Check className="w-4 h-4 text-green-500" />
+                      ) : (
+                        <Copy className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Copy content</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setShowShortcuts(true)}
+                    >
+                      <Keyboard className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Keyboard shortcuts (?)</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <Select
                 value={selectedStyle}
                 onValueChange={(v) => handleStyleChange(v as AnalogyStyle)}
@@ -367,12 +538,19 @@ export default function TopicDetailPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Link href={`/interview/${interviewId}/topic/${topicId}/chat`}>
-                <Button variant="outline">
-                  <MessageSquare className="w-4 h-4 mr-2" />
-                  Ask AI
-                </Button>
-              </Link>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link href={`/interview/${interviewId}/topic/${topicId}/chat`}>
+                      <Button variant="outline">
+                        <MessageSquare className="w-4 h-4 mr-2" />
+                        Ask AI
+                      </Button>
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent>Open AI chat (C)</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </div>
         </div>

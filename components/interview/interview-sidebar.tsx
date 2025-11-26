@@ -1,7 +1,10 @@
 "use client";
 
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { CheckCircle, Circle, Loader2, BookOpen } from "lucide-react";
+import { CheckCircle, Circle, Loader2, BookOpen, Search, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import type { RevisionTopic } from "@/lib/db/schemas/interview";
 import type { StreamingCardStatus } from "@/components/streaming/streaming-card";
 import Link from "next/link";
@@ -54,15 +57,52 @@ export function InterviewSidebar({
   moduleStatus,
   activeTopicIndex,
 }: InterviewSidebarProps) {
+  const [searchQuery, setSearchQuery] = useState("");
   const isLoading = moduleStatus === "loading" || moduleStatus === "streaming";
-  const timelineItems = generateTimelineFromTopics(topics, activeTopicIndex);
+  
+  const timelineItems = useMemo(() => {
+    const items = generateTimelineFromTopics(topics, activeTopicIndex);
+    if (!searchQuery.trim()) return items;
+    
+    const query = searchQuery.toLowerCase();
+    return items.filter((item) => item.title.toLowerCase().includes(query));
+  }, [topics, activeTopicIndex, searchQuery]);
 
   return (
     <aside className="w-72 border-r border-border bg-sidebar/50 backdrop-blur-sm p-6 hidden lg:block sticky top-[73px] h-[calc(100vh-73px)] overflow-y-auto">
-      <div className="flex items-center gap-2 mb-6">
+      <div className="flex items-center gap-2 mb-4">
         <BookOpen className="w-4 h-4 text-muted-foreground" />
         <h2 className="font-mono text-sm text-foreground">Study Timeline</h2>
+        {topics.length > 0 && (
+          <span className="text-xs text-muted-foreground ml-auto">
+            {timelineItems.length}/{topics.length}
+          </span>
+        )}
       </div>
+
+      {/* Search/Filter */}
+      {topics.length > 3 && (
+        <div className="relative mb-4">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Filter topics..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-8 pr-8 h-8 text-sm"
+          />
+          {searchQuery && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6"
+              onClick={() => setSearchQuery("")}
+            >
+              <X className="w-3 h-3" />
+            </Button>
+          )}
+        </div>
+      )}
 
       {isLoading ? (
         <div className="space-y-3">
@@ -79,6 +119,23 @@ export function InterviewSidebar({
               className="h-12 bg-muted/50 animate-pulse"
             />
           ))}
+        </div>
+      ) : timelineItems.length === 0 && searchQuery ? (
+        <div className="text-center py-8">
+          <div className="w-12 h-12 bg-secondary mx-auto mb-3 flex items-center justify-center">
+            <Search className="w-5 h-5 text-muted-foreground" />
+          </div>
+          <p className="text-sm text-muted-foreground">
+            No topics match &quot;{searchQuery}&quot;
+          </p>
+          <Button
+            variant="link"
+            size="sm"
+            onClick={() => setSearchQuery("")}
+            className="mt-2"
+          >
+            Clear filter
+          </Button>
         </div>
       ) : timelineItems.length === 0 ? (
         <div className="text-center py-8">

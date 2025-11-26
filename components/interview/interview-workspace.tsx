@@ -11,12 +11,20 @@ import { type StreamingCardStatus } from "@/components/streaming/streaming-card"
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Target,
   BookOpen,
   HelpCircle,
   Zap,
   Sparkles,
   Brain,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { getInterview, getAIConcurrencyLimit } from "@/lib/actions/interview";
 import { runWithConcurrencyLimit } from "@/lib/utils/concurrency-limiter";
@@ -138,9 +146,41 @@ export function InterviewWorkspace({
   const [streamingTopics, setStreamingTopics] = useState<RevisionTopic[]>([]);
   const [streamingMcqs, setStreamingMcqs] = useState<MCQ[]>([]);
   const [streamingRapidFire, setStreamingRapidFire] = useState<RapidFire[]>([]);
+  
+  // QoL: Hide/show answers for practice mode
+  const [showMcqAnswers, setShowMcqAnswers] = useState(false);
+  const [showRapidFireAnswers, setShowRapidFireAnswers] = useState(false);
+  const [revealedMcqs, setRevealedMcqs] = useState<Set<string>>(new Set());
+  const [revealedRapidFire, setRevealedRapidFire] = useState<Set<string>>(new Set());
 
   const generationStartedRef = useRef(false);
   const resumeAttemptedRef = useRef(false);
+
+  // Toggle individual MCQ answer
+  const toggleMcqAnswer = useCallback((mcqId: string) => {
+    setRevealedMcqs((prev) => {
+      const next = new Set(prev);
+      if (next.has(mcqId)) {
+        next.delete(mcqId);
+      } else {
+        next.add(mcqId);
+      }
+      return next;
+    });
+  }, []);
+
+  // Toggle individual rapid fire answer
+  const toggleRapidFireAnswer = useCallback((rfId: string) => {
+    setRevealedRapidFire((prev) => {
+      const next = new Set(prev);
+      if (next.has(rfId)) {
+        next.delete(rfId);
+      } else {
+        next.add(rfId);
+      }
+      return next;
+    });
+  }, []);
 
   // Resume active streams
   useEffect(() => {
@@ -590,53 +630,114 @@ export function InterviewWorkspace({
             >
               {mcqs.length > 0 && (
                 <div className="space-y-4">
-                  {mcqs.map((mcq, index) => (
-                    <motion.div
-                      key={mcq.id || `mcq-${index}`}
-                      initial={
-                        moduleStatus.mcqs === "streaming"
-                          ? { opacity: 0, y: 10 }
-                          : false
-                      }
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                      className="p-4 border border-border bg-card/50 hover:border-muted-foreground/50 transition-colors"
-                    >
-                      <div className="flex items-start justify-between mb-3">
-                        <p className="font-mono text-foreground">
-                          <span className="text-muted-foreground mr-2">
-                            {index + 1}.
-                          </span>
-                          {mcq.question}
-                        </p>
-                        {mcq.source === "search" && (
-                          <Badge
+                  {/* Practice mode toggle */}
+                  <div className="flex items-center justify-between pb-3 border-b border-border">
+                    <span className="text-sm text-muted-foreground">
+                      Practice Mode
+                    </span>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
                             variant="outline"
-                            className="text-xs ml-2 flex-shrink-0"
+                            size="sm"
+                            onClick={() => {
+                              setShowMcqAnswers(!showMcqAnswers);
+                              if (showMcqAnswers) {
+                                setRevealedMcqs(new Set());
+                              }
+                            }}
                           >
-                            Web
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        {mcq.options?.map((option, optIndex) => (
-                          <div
-                            key={optIndex}
-                            className={`p-3 border text-sm ${
-                              option === mcq.answer
-                                ? "border-green-500/50 bg-green-500/10 text-foreground"
-                                : "border-border text-muted-foreground"
-                            }`}
-                          >
-                            <span className="font-mono mr-2">
-                              {String.fromCharCode(65 + optIndex)}.
+                            {showMcqAnswers ? (
+                              <>
+                                <Eye className="w-3.5 h-3.5 mr-1.5" />
+                                Show All
+                              </>
+                            ) : (
+                              <>
+                                <EyeOff className="w-3.5 h-3.5 mr-1.5" />
+                                Hide Answers
+                              </>
+                            )}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {showMcqAnswers
+                            ? "Click to hide answers for practice"
+                            : "Click to reveal all answers"}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+
+                  {mcqs.map((mcq, index) => {
+                    const mcqId = mcq.id || `mcq-${index}`;
+                    const isRevealed = showMcqAnswers || revealedMcqs.has(mcqId);
+
+                    return (
+                      <motion.div
+                        key={mcqId}
+                        initial={
+                          moduleStatus.mcqs === "streaming"
+                            ? { opacity: 0, y: 10 }
+                            : false
+                        }
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        className="p-4 border border-border bg-card/50 hover:border-muted-foreground/50 transition-colors"
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <p className="font-mono text-foreground">
+                            <span className="text-muted-foreground mr-2">
+                              {index + 1}.
                             </span>
-                            {option}
+                            {mcq.question}
+                          </p>
+                          <div className="flex items-center gap-2">
+                            {mcq.source === "search" && (
+                              <Badge
+                                variant="outline"
+                                className="text-xs flex-shrink-0"
+                              >
+                                Web
+                              </Badge>
+                            )}
+                            {!showMcqAnswers && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => toggleMcqAnswer(mcqId)}
+                                className="h-7 text-xs"
+                              >
+                                {isRevealed ? "Hide" : "Reveal"}
+                              </Button>
+                            )}
                           </div>
-                        ))}
-                      </div>
-                    </motion.div>
-                  ))}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          {mcq.options?.map((option, optIndex) => {
+                            const isCorrect = option === mcq.answer;
+                            return (
+                              <div
+                                key={optIndex}
+                                className={`p-3 border text-sm transition-colors cursor-pointer ${
+                                  isRevealed && isCorrect
+                                    ? "border-green-500/50 bg-green-500/10 text-foreground"
+                                    : "border-border text-muted-foreground hover:border-muted-foreground/50"
+                                }`}
+                                onClick={() => !showMcqAnswers && toggleMcqAnswer(mcqId)}
+                              >
+                                <span className="font-mono mr-2">
+                                  {String.fromCharCode(65 + optIndex)}.
+                                </span>
+                                {option}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
                 </div>
               )}
             </ModuleCard>
@@ -666,29 +767,83 @@ export function InterviewWorkspace({
               }
             >
               {rapidFire.length > 0 && (
-                <div className="grid gap-3 md:grid-cols-2">
-                  {rapidFire.map((q, index) => (
-                    <motion.div
-                      key={q.id || `rapid-${index}`}
-                      initial={
-                        moduleStatus.rapidFire === "streaming"
-                          ? { opacity: 0, scale: 0.95 }
-                          : false
-                      }
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: index * 0.03 }}
-                      className="p-4 border border-border bg-card/50 hover:border-muted-foreground/50 transition-colors"
-                    >
-                      <p className="font-mono text-foreground mb-2">
-                        <span className="text-primary mr-2">Q{index + 1}.</span>
-                        {q.question}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        <span className="text-green-500 mr-1">→</span>
-                        {q.answer}
-                      </p>
-                    </motion.div>
-                  ))}
+                <div className="space-y-4">
+                  {/* Practice mode toggle */}
+                  <div className="flex items-center justify-between pb-3 border-b border-border">
+                    <span className="text-sm text-muted-foreground">
+                      Practice Mode
+                    </span>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setShowRapidFireAnswers(!showRapidFireAnswers);
+                              if (showRapidFireAnswers) {
+                                setRevealedRapidFire(new Set());
+                              }
+                            }}
+                          >
+                            {showRapidFireAnswers ? (
+                              <>
+                                <Eye className="w-3.5 h-3.5 mr-1.5" />
+                                Show All
+                              </>
+                            ) : (
+                              <>
+                                <EyeOff className="w-3.5 h-3.5 mr-1.5" />
+                                Hide Answers
+                              </>
+                            )}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {showRapidFireAnswers
+                            ? "Click to hide answers for practice"
+                            : "Click to reveal all answers"}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {rapidFire.map((q, index) => {
+                      const rfId = q.id || `rapid-${index}`;
+                      const isRevealed = showRapidFireAnswers || revealedRapidFire.has(rfId);
+
+                      return (
+                        <motion.div
+                          key={rfId}
+                          initial={
+                            moduleStatus.rapidFire === "streaming"
+                              ? { opacity: 0, scale: 0.95 }
+                              : false
+                          }
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: index * 0.03 }}
+                          className="p-4 border border-border bg-card/50 hover:border-muted-foreground/50 transition-colors cursor-pointer"
+                          onClick={() => !showRapidFireAnswers && toggleRapidFireAnswer(rfId)}
+                        >
+                          <p className="font-mono text-foreground mb-2">
+                            <span className="text-primary mr-2">Q{index + 1}.</span>
+                            {q.question}
+                          </p>
+                          {isRevealed ? (
+                            <p className="text-sm text-muted-foreground">
+                              <span className="text-green-500 mr-1">→</span>
+                              {q.answer}
+                            </p>
+                          ) : (
+                            <p className="text-sm text-muted-foreground/50 italic">
+                              Click to reveal answer
+                            </p>
+                          )}
+                        </motion.div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </ModuleCard>
