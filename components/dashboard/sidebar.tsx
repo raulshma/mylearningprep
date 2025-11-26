@@ -1,5 +1,6 @@
 import { Suspense } from "react"
 import { Logo } from "@/components/ui/logo"
+import { ViewTransitionLink } from "@/components/transitions/view-transition-link"
 import { getIterationStatus } from "@/lib/actions/user"
 import { isAdmin } from "@/lib/auth/get-user"
 import { SidebarNav } from "./sidebar-nav"
@@ -80,7 +81,9 @@ export function Sidebar() {
   return (
     <aside className="w-64 border-r border-border bg-sidebar flex flex-col h-screen sticky top-0">
       <div className="p-6 border-b border-border">
-        <Logo />
+        <ViewTransitionLink href="/" viewTransitionName="logo">
+          <Logo />
+        </ViewTransitionLink>
       </div>
 
       <Suspense fallback={<NavSkeleton />}>

@@ -577,9 +577,14 @@ export async function getUsageTrends(
   const aiLogsCollection = await getAILogsCollection();
   const usersCollection = await getUsersCollection();
 
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - days);
-  startDate.setHours(0, 0, 0, 0);
+  // Use UTC dates consistently
+  const now = new Date();
+  const startDate = new Date(Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate() - days,
+    0, 0, 0, 0
+  ));
 
   // Get interviews per day
   const interviewsPipeline = [
@@ -587,7 +592,7 @@ export async function getUsageTrends(
     {
       $group: {
         _id: {
-          $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+          $dateToString: { format: "%Y-%m-%d", date: "$createdAt", timezone: "UTC" },
         },
         count: { $sum: 1 },
       },
@@ -601,7 +606,7 @@ export async function getUsageTrends(
     {
       $group: {
         _id: {
-          $dateToString: { format: "%Y-%m-%d", date: "$timestamp" },
+          $dateToString: { format: "%Y-%m-%d", date: "$timestamp", timezone: "UTC" },
         },
         count: { $sum: 1 },
       },
@@ -615,7 +620,7 @@ export async function getUsageTrends(
     {
       $group: {
         _id: {
-          $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+          $dateToString: { format: "%Y-%m-%d", date: "$createdAt", timezone: "UTC" },
         },
         count: { $sum: 1 },
       },
@@ -630,24 +635,35 @@ export async function getUsageTrends(
   ]);
 
   // Create a map for each data type
-  const interviewsMap = new Map(interviewsData.map((d) => [d._id, d.count]));
-  const aiRequestsMap = new Map(aiRequestsData.map((d) => [d._id, d.count]));
-  const usersMap = new Map(usersData.map((d) => [d._id, d.count]));
+  const interviewsMap = new Map(
+    interviewsData.map((d) => [String(d._id), (d.count as number) || 0])
+  );
+  const aiRequestsMap = new Map(
+    aiRequestsData.map((d) => [String(d._id), (d.count as number) || 0])
+  );
+  const usersMap = new Map(
+    usersData.map((d) => [String(d._id), (d.count as number) || 0])
+  );
 
-  // Generate all dates in range
+  // Generate all dates in range using UTC
   const result: UsageTrendData[] = [];
+  const endDate = new Date(Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+    23, 59, 59, 999
+  ));
+  
   const currentDate = new Date(startDate);
-  const today = new Date();
-
-  while (currentDate <= today) {
+  while (currentDate <= endDate) {
     const dateStr = currentDate.toISOString().split("T")[0];
     result.push({
       date: dateStr,
-      interviews: (interviewsMap.get(dateStr) as number) ?? 0,
-      aiRequests: (aiRequestsMap.get(dateStr) as number) ?? 0,
-      users: (usersMap.get(dateStr) as number) ?? 0,
+      interviews: interviewsMap.get(dateStr) ?? 0,
+      aiRequests: aiRequestsMap.get(dateStr) ?? 0,
+      users: usersMap.get(dateStr) ?? 0,
     });
-    currentDate.setDate(currentDate.getDate() + 1);
+    currentDate.setUTCDate(currentDate.getUTCDate() + 1);
   }
 
   return result;
@@ -716,16 +732,21 @@ export async function getDailyActiveUsers(
 ): Promise<DailyActiveUsers[]> {
   const usersCollection = await getUsersCollection();
 
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - days);
-  startDate.setHours(0, 0, 0, 0);
+  // Use UTC dates consistently
+  const now = new Date();
+  const startDate = new Date(Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate() - days,
+    0, 0, 0, 0
+  ));
 
   const pipeline = [
     { $match: { updatedAt: { $gte: startDate } } },
     {
       $group: {
         _id: {
-          $dateToString: { format: "%Y-%m-%d", date: "$updatedAt" },
+          $dateToString: { format: "%Y-%m-%d", date: "$updatedAt", timezone: "UTC" },
         },
         count: { $sum: 1 },
       },
@@ -734,20 +755,27 @@ export async function getDailyActiveUsers(
   ];
 
   const results = await usersCollection.aggregate(pipeline).toArray();
-  const dataMap = new Map(results.map((d) => [d._id, d.count]));
+  const dataMap = new Map(
+    results.map((d) => [String(d._id), (d.count as number) || 0])
+  );
 
-  // Generate all dates in range
+  // Generate all dates in range using UTC
   const result: DailyActiveUsers[] = [];
+  const endDate = new Date(Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+    23, 59, 59, 999
+  ));
+  
   const currentDate = new Date(startDate);
-  const today = new Date();
-
-  while (currentDate <= today) {
+  while (currentDate <= endDate) {
     const dateStr = currentDate.toISOString().split("T")[0];
     result.push({
       date: dateStr,
-      count: (dataMap.get(dateStr) as number) ?? 0,
+      count: dataMap.get(dateStr) ?? 0,
     });
-    currentDate.setDate(currentDate.getDate() + 1);
+    currentDate.setUTCDate(currentDate.getUTCDate() + 1);
   }
 
   return result;
@@ -761,19 +789,32 @@ export async function getTokenUsageTrends(
 ): Promise<TokenUsageTrend[]> {
   const aiLogsCollection = await getAILogsCollection();
 
-  const startDate = new Date();
-  startDate.setDate(startDate.getDate() - days);
-  startDate.setHours(0, 0, 0, 0);
+  // Use UTC dates consistently
+  const now = new Date();
+  const startDate = new Date(Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate() - days,
+    0, 0, 0, 0
+  ));
 
   const pipeline = [
     { $match: { timestamp: { $gte: startDate } } },
     {
       $group: {
         _id: {
-          $dateToString: { format: "%Y-%m-%d", date: "$timestamp" },
+          $dateToString: { format: "%Y-%m-%d", date: "$timestamp", timezone: "UTC" },
         },
-        inputTokens: { $sum: "$tokenUsage.input" },
-        outputTokens: { $sum: "$tokenUsage.output" },
+        inputTokens: { 
+          $sum: { 
+            $ifNull: ["$tokenUsage.input", 0]
+          } 
+        },
+        outputTokens: { 
+          $sum: { 
+            $ifNull: ["$tokenUsage.output", 0]
+          } 
+        },
       },
     },
     { $sort: { _id: 1 as const } },
@@ -782,17 +823,25 @@ export async function getTokenUsageTrends(
   const results = await aiLogsCollection.aggregate(pipeline).toArray();
   const dataMap = new Map(
     results.map((d) => [
-      d._id as string,
-      { input: d.inputTokens as number, output: d.outputTokens as number },
+      String(d._id),
+      { 
+        input: (d.inputTokens as number) || 0, 
+        output: (d.outputTokens as number) || 0 
+      },
     ])
   );
 
-  // Generate all dates in range
+  // Generate all dates in range using UTC
   const result: TokenUsageTrend[] = [];
+  const endDate = new Date(Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+    23, 59, 59, 999
+  ));
+  
   const currentDate = new Date(startDate);
-  const today = new Date();
-
-  while (currentDate <= today) {
+  while (currentDate <= endDate) {
     const dateStr = currentDate.toISOString().split("T")[0];
     const data = dataMap.get(dateStr);
     result.push({
@@ -800,7 +849,7 @@ export async function getTokenUsageTrends(
       inputTokens: data?.input ?? 0,
       outputTokens: data?.output ?? 0,
     });
-    currentDate.setDate(currentDate.getDate() + 1);
+    currentDate.setUTCDate(currentDate.getUTCDate() + 1);
   }
 
   return result;

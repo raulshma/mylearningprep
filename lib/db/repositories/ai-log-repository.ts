@@ -178,14 +178,14 @@ export const aiLogRepository: AILogRepository = {
         $group: {
           _id: null,
           totalRequests: { $sum: 1 },
-          totalInputTokens: { $sum: '$tokenUsage.input' },
-          totalOutputTokens: { $sum: '$tokenUsage.output' },
-          avgLatencyMs: { $avg: '$latencyMs' },
+          totalInputTokens: { $sum: { $ifNull: ['$tokenUsage.input', 0] } },
+          totalOutputTokens: { $sum: { $ifNull: ['$tokenUsage.output', 0] } },
+          avgLatencyMs: { $avg: { $ifNull: ['$latencyMs', 0] } },
           totalCost: { $sum: { $ifNull: ['$estimatedCost', 0] } },
           errorCount: {
             $sum: { $cond: [{ $eq: ['$status', 'error'] }, 1, 0] }
           },
-          avgTimeToFirstToken: { $avg: '$timeToFirstToken' },
+          avgTimeToFirstToken: { $avg: { $ifNull: ['$timeToFirstToken', 0] } },
         },
       },
     ];
@@ -205,9 +205,9 @@ export const aiLogRepository: AILogRepository = {
     }
     
     return {
-      totalRequests: results[0].totalRequests,
-      totalInputTokens: results[0].totalInputTokens,
-      totalOutputTokens: results[0].totalOutputTokens,
+      totalRequests: results[0].totalRequests || 0,
+      totalInputTokens: results[0].totalInputTokens || 0,
+      totalOutputTokens: results[0].totalOutputTokens || 0,
       avgLatencyMs: Math.round(results[0].avgLatencyMs || 0),
       totalCost: Math.round((results[0].totalCost || 0) * 1000000) / 1000000,
       errorCount: results[0].errorCount || 0,

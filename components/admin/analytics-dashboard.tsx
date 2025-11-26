@@ -100,21 +100,26 @@ export function AnalyticsDashboard({
   const aiRequestTrend = calculateTrend(usageTrends.map((d) => d.aiRequests));
   const userTrend = calculateTrend(usageTrends.map((d) => d.users));
 
-  // Format data for charts
+  // Format data for charts - ensure numeric values
   const formattedUsageTrends = usageTrends.map((d) => ({
     ...d,
+    interviews: Number(d.interviews) || 0,
+    aiRequests: Number(d.aiRequests) || 0,
+    users: Number(d.users) || 0,
     formattedDate: formatDate(d.date),
   }));
 
   const formattedTokenTrends = tokenUsageTrends.map((d) => ({
     ...d,
+    inputTokens: Number(d.inputTokens) || 0,
+    outputTokens: Number(d.outputTokens) || 0,
     formattedDate: formatDate(d.date),
   }));
 
-  // Calculate totals
-  const totalInterviews = usageTrends.reduce((sum, d) => sum + d.interviews, 0);
-  const totalAIRequests = usageTrends.reduce((sum, d) => sum + d.aiRequests, 0);
-  const totalNewUsers = usageTrends.reduce((sum, d) => sum + d.users, 0);
+  // Calculate totals - ensure numeric values
+  const totalInterviews = usageTrends.reduce((sum, d) => sum + (Number(d.interviews) || 0), 0);
+  const totalAIRequests = usageTrends.reduce((sum, d) => sum + (Number(d.aiRequests) || 0), 0);
+  const totalNewUsers = usageTrends.reduce((sum, d) => sum + (Number(d.users) || 0), 0);
 
   return (
     <div className="space-y-6">
