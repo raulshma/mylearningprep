@@ -9,6 +9,7 @@ if (!MONGODB_URI) {
 interface MongoClientCache {
   client: MongoClient | null;
   promise: Promise<MongoClient> | null;
+  indexesEnsured: boolean;
 }
 
 declare global {
@@ -19,6 +20,7 @@ declare global {
 const cached: MongoClientCache = global._mongoClientPromise ?? {
   client: null,
   promise: null,
+  indexesEnsured: false,
 };
 
 if (!global._mongoClientPromise) {
@@ -50,7 +52,17 @@ export async function getMongoClient(): Promise<MongoClient> {
 
 export async function getDb(): Promise<Db> {
   const client = await getMongoClient();
-  return client.db();
+  const db = client.db();
+  
+  // Ensure indexes on first connection (non-blocking)
+  if (!cached.indexesEnsured) {
+    cached.indexesEnsured = true;
+    import('./indexes').then(({ ensureIndexes }) => {
+      ensureIndexes().catch(console.error);
+    });
+  }
+  
+  return db;
 }
 
 export async function closeConnection(): Promise<void> {

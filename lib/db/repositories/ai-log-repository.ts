@@ -249,28 +249,32 @@ export const aiLogRepository: AILogRepository = {
   async getLatencyPercentiles() {
     const collection = await getAILogsCollection();
     
-    // Get all latencies for percentile calculation
-    const logs = await collection
-      .find({ status: 'success' })
-      .project({ latencyMs: 1 })
-      .toArray();
+    // Use MongoDB 7's $percentile aggregation for efficient calculation
+    const pipeline = [
+      { $match: { status: 'success', latencyMs: { $exists: true, $ne: null } } },
+      {
+        $group: {
+          _id: null,
+          p50: { $percentile: { input: '$latencyMs', p: [0.5], method: 'approximate' } },
+          p90: { $percentile: { input: '$latencyMs', p: [0.9], method: 'approximate' } },
+          p95: { $percentile: { input: '$latencyMs', p: [0.95], method: 'approximate' } },
+          p99: { $percentile: { input: '$latencyMs', p: [0.99], method: 'approximate' } },
+        },
+      },
+    ];
     
-    if (logs.length === 0) {
+    const results = await collection.aggregate(pipeline).toArray();
+    
+    if (results.length === 0) {
       return { p50: 0, p90: 0, p95: 0, p99: 0 };
     }
     
-    const latencies = logs.map(l => l.latencyMs as number).sort((a, b) => a - b);
-    
-    const percentile = (arr: number[], p: number) => {
-      const index = Math.ceil((p / 100) * arr.length) - 1;
-      return arr[Math.max(0, index)];
-    };
-    
+    const result = results[0];
     return {
-      p50: percentile(latencies, 50),
-      p90: percentile(latencies, 90),
-      p95: percentile(latencies, 95),
-      p99: percentile(latencies, 99),
+      p50: Math.round(result.p50?.[0] ?? 0),
+      p90: Math.round(result.p90?.[0] ?? 0),
+      p95: Math.round(result.p95?.[0] ?? 0),
+      p99: Math.round(result.p99?.[0] ?? 0),
     };
   },
 };
