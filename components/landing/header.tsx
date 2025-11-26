@@ -15,6 +15,7 @@ import {
 import { ViewTransitionLink } from '@/components/transitions';
 import { LayoutDashboard, LogOut, Menu, X } from 'lucide-react';
 import { useTransition, useState, useEffect } from 'react';
+import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export function Header() {
@@ -121,6 +122,7 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-3">
+          <ThemeToggle />
           <AnimatePresence mode="wait">
             {!isLoaded ? (
               // Skeleton placeholder while loading

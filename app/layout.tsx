@@ -7,6 +7,7 @@ import "./globals.css"
 
 import { Geist_Mono, Geist_Mono as V0_Font_Geist_Mono } from 'next/font/google'
 import { SidebarProvider } from "@/components/dashboard/sidebar-context"
+import { ThemeProvider } from "@/components/theme-provider"
 
 // Initialize fonts
 const _geistMono = V0_Font_Geist_Mono({ subsets: ['latin'], weight: ["100","200","300","400","500","600","700","800","900"] })
@@ -47,12 +48,18 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider>
-      {/* Added dark class for dark mode default */}
-      <html lang="en" className="dark">
+      <html lang="en" className="dark" suppressHydrationWarning>
         <body className={`font-sans antialiased`}>
-          <SidebarProvider>
-            {children}
-          </SidebarProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <SidebarProvider>
+              {children}
+            </SidebarProvider>
+          </ThemeProvider>
           <Analytics />
         </body>
       </html>

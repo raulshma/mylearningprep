@@ -8,6 +8,7 @@ import { SidebarUsage } from "./sidebar-usage";
 import { SidebarSignOut } from "./sidebar-signout";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSidebarContext, type SidebarData } from "./sidebar-context";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 interface SidebarClientProps {
   initialData: SidebarData;
@@ -90,7 +91,10 @@ export function SidebarClient({ initialData }: SidebarClientProps) {
           />
         )}
 
-        <SidebarSignOut />
+        <div className="flex items-center justify-between">
+          <SidebarSignOut />
+          <ThemeToggle />
+        </div>
       </div>
     </aside>
   );
