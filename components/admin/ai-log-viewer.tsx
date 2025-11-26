@@ -31,6 +31,7 @@ import { StaticMarkdown } from '@/components/streaming/markdown-renderer';
 import type { AILogWithDetails } from '@/lib/actions/admin';
 import { getAILogById } from '@/lib/actions/admin';
 import type { AILog } from '@/lib/db/schemas/ai-log';
+import { formatLatency } from '@/lib/utils';
 
 interface AILogViewerProps {
   logs: AILogWithDetails[];
@@ -248,9 +249,9 @@ function LogTableRows({ log, isExpanded, expandedData, isLoadingExpanded, onTogg
         </TableCell>
         <TableCell className="font-mono text-xs">
           <div className="flex flex-col">
-            <span>{log.latencyMs}ms</span>
+            <span>{formatLatency(log.latencyMs)}</span>
             {log.timeToFirstToken && (
-              <span className="text-[10px] text-muted-foreground">TTFT: {log.timeToFirstToken}ms</span>
+              <span className="text-[10px] text-muted-foreground">TTFT: {formatLatency(log.timeToFirstToken)}</span>
             )}
           </div>
         </TableCell>
@@ -332,8 +333,8 @@ function ExpandedLogContent({ log }: { log: AILogWithDetails }) {
             Performance
           </h4>
           <div className="space-y-1 text-xs">
-            <p><span className="text-muted-foreground">Latency:</span> {log.latencyMs}ms</p>
-            <p><span className="text-muted-foreground">Time to First Token:</span> {log.timeToFirstToken ?? '-'}ms</p>
+            <p><span className="text-muted-foreground">Latency:</span> {formatLatency(log.latencyMs)}</p>
+            <p><span className="text-muted-foreground">Time to First Token:</span> {log.timeToFirstToken ? formatLatency(log.timeToFirstToken) : '-'}</p>
             <p><span className="text-muted-foreground">Input Tokens:</span> {log.tokenUsage.input}</p>
             <p><span className="text-muted-foreground">Output Tokens:</span> {log.tokenUsage.output}</p>
           </div>
@@ -479,11 +480,11 @@ function LogDetailContent({ log, formattedTimestamp }: { log: AILog; formattedTi
         </div>
         <div className="space-y-1">
           <p className="text-xs text-muted-foreground">Latency</p>
-          <p className="font-mono text-sm">{log.latencyMs}ms</p>
+          <p className="font-mono text-sm">{formatLatency(log.latencyMs)}</p>
         </div>
         <div className="space-y-1">
           <p className="text-xs text-muted-foreground">Time to First Token</p>
-          <p className="font-mono text-sm">{log.timeToFirstToken ?? '-'}ms</p>
+          <p className="font-mono text-sm">{log.timeToFirstToken ? formatLatency(log.timeToFirstToken) : '-'}</p>
         </div>
         <div className="space-y-1">
           <p className="text-xs text-muted-foreground">Input Tokens</p>

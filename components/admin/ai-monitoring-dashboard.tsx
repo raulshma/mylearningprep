@@ -33,6 +33,7 @@ import {
   getPricingCacheStatus,
   forceRefreshPricingCache,
 } from '@/lib/actions/admin';
+import { formatLatency } from '@/lib/utils';
 
 const PAGE_SIZE = 10;
 
@@ -183,13 +184,13 @@ export function AIMonitoringDashboard({
         />
         <StatCard
           label="Avg Latency"
-          value={`${initialStats.avgLatencyMs}ms`}
+          value={formatLatency(initialStats.avgLatencyMs)}
           icon={Clock}
           color="text-blue-500"
         />
         <StatCard
           label="Time to First Token"
-          value={`${initialStats.avgTimeToFirstToken}ms`}
+          value={formatLatency(initialStats.avgTimeToFirstToken)}
           icon={Zap}
           color="text-purple-500"
         />
@@ -317,7 +318,7 @@ export function AIMonitoringDashboard({
                             <Badge variant="outline" className="font-mono text-xs min-w-[120px]">
                               {item.action.replace(/_/g, ' ')}
                             </Badge>
-                            <span className="text-xs text-muted-foreground">{item.avgLatency}ms</span>
+                            <span className="text-xs text-muted-foreground">{formatLatency(item.avgLatency)}</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <div className="w-24 h-2 bg-muted rounded">
@@ -350,7 +351,7 @@ export function AIMonitoringDashboard({
                         <div 
                           className="w-full bg-foreground/20 rounded-t hover:bg-foreground/40 transition-colors"
                           style={{ height: `${Math.max(height, 2)}%` }}
-                          title={`${h.hour}:00 - ${h.requests} requests, ${h.avgLatency}ms avg`}
+                          title={`${h.hour}:00 - ${h.requests} requests, ${formatLatency(h.avgLatency)} avg`}
                         />
                         {h.hour % 4 === 0 && (
                           <span className="text-[10px] text-muted-foreground">{h.hour}</span>
@@ -381,7 +382,7 @@ export function AIMonitoringDashboard({
                         </div>
                         <div className="flex items-center gap-3">
                           <span className="text-xs text-muted-foreground">{log.formattedTimestamp}</span>
-                          <Badge variant="secondary" className="text-yellow-500">{log.latencyMs}ms</Badge>
+                          <Badge variant="secondary" className="text-yellow-500">{formatLatency(log.latencyMs)}</Badge>
                         </div>
                       </div>
                     ))}
@@ -598,7 +599,7 @@ function PercentileBar({ label, value, max }: { label: string; value: number; ma
           style={{ width: `${percentage}%` }} 
         />
       </div>
-      <span className="text-xs font-mono w-16 text-right">{value}ms</span>
+      <span className="text-xs font-mono w-16 text-right">{formatLatency(value)}</span>
     </div>
   );
 }

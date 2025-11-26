@@ -15,6 +15,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import type { AdminStats } from "@/lib/actions/admin";
+import { formatLatency } from "@/lib/utils";
 
 interface AdminStatsGridProps {
   stats: AdminStats;
@@ -97,7 +98,7 @@ export function AdminStatsGrid({ stats }: AdminStatsGridProps) {
     },
     {
       label: "Avg Latency",
-      value: `${stats.avgLatencyMs}ms`,
+      value: formatLatency(stats.avgLatencyMs),
       icon: Clock,
       color: "text-yellow-500",
     },
@@ -115,7 +116,7 @@ export function AdminStatsGrid({ stats }: AdminStatsGridProps) {
     },
     {
       label: "Time to First Token",
-      value: `${stats.avgTimeToFirstToken}ms`,
+      value: formatLatency(stats.avgTimeToFirstToken),
       icon: TrendingUp,
       color: "text-purple-500",
     },
