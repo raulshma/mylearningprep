@@ -4,36 +4,7 @@ import Link from "next/link"
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Check, Sparkles } from "lucide-react"
-
-const tiers = [
-  {
-    name: "Free",
-    price: "$0",
-    description: "Perfect for trying it out",
-    features: ["3 interviews/month", "5 iterations/month", "Basic AI generation", "Community access"],
-    cta: "Get Started",
-    href: "/onboarding",
-  },
-  {
-    name: "Pro",
-    price: "$19",
-    period: "/month",
-    description: "For active job seekers",
-    features: ["25 interviews/month", "50 iterations/month", "Advanced analogies", "Export to PDF", "Priority support"],
-    cta: "Start Free Trial",
-    href: "/onboarding?plan=pro",
-    featured: true,
-  },
-  {
-    name: "Max",
-    price: "$39",
-    period: "/month",
-    description: "For power users",
-    features: ["100 interviews/month", "500 iterations/month", "BYOK option", "API access", "Custom integrations"],
-    cta: "Contact Us",
-    href: "/onboarding?plan=max",
-  },
-]
+import { PRICING_TIERS, formatPrice } from "@/lib/pricing-data"
 
 export function PricingPreview() {
   return (
@@ -55,9 +26,9 @@ export function PricingPreview() {
         </motion.div>
 
         <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          {tiers.map((tier, index) => (
+          {PRICING_TIERS.map((tier, index) => (
             <motion.div
-              key={tier.name}
+              key={tier.id}
               className={`relative bg-background border p-8 flex flex-col ${
                 tier.featured 
                   ? 'border-primary shadow-lg scale-105 z-10' 
@@ -79,15 +50,15 @@ export function PricingPreview() {
               
               <div className="mb-6">
                 <h3 className="font-mono text-foreground mb-1 text-lg">{tier.name}</h3>
-                <p className="text-sm text-muted-foreground mb-4">{tier.description}</p>
+                <p className="text-sm text-muted-foreground mb-4">{tier.shortDescription}</p>
                 <div className="flex items-baseline gap-1">
-                  <span className="text-4xl font-mono text-foreground">{tier.price}</span>
-                  {tier.period && <span className="text-muted-foreground text-sm">{tier.period}</span>}
+                  <span className="text-4xl font-mono text-foreground">{formatPrice(tier.price)}</span>
+                  <span className="text-muted-foreground text-sm">{tier.period}</span>
                 </div>
               </div>
               
               <ul className="space-y-3 mb-8 flex-1">
-                {tier.features.map((feature) => (
+                {tier.previewFeatures.map((feature) => (
                   <li key={feature} className="flex items-center gap-3 text-sm text-muted-foreground">
                     <div className="w-5 h-5 bg-secondary flex items-center justify-center flex-shrink-0">
                       <Check className="w-3 h-3 text-foreground" />
@@ -97,7 +68,7 @@ export function PricingPreview() {
                 ))}
               </ul>
               
-              <Link href={tier.href}>
+              <Link href={tier.href || `/pricing?plan=${tier.id}`}>
                 <Button 
                   variant={tier.featured ? "default" : "outline"} 
                   className={`w-full ${!tier.featured ? 'bg-transparent' : ''}`}
@@ -108,6 +79,21 @@ export function PricingPreview() {
             </motion.div>
           ))}
         </div>
+
+        <motion.div 
+          className="text-center mt-8"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.4 }}
+        >
+          <Link 
+            href="/pricing" 
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors underline underline-offset-4"
+          >
+            View full pricing comparison →
+          </Link>
+        </motion.div>
       </div>
     </section>
   )

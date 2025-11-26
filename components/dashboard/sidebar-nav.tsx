@@ -9,7 +9,7 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/new", label: "New Interview", icon: Plus },
   { href: "/settings", label: "Settings", icon: Settings },
-  { href: "/pricing", label: "Upgrade", icon: CreditCard },
+  { href: "/settings/upgrade", label: "Upgrade", icon: CreditCard },
 ];
 
 interface SidebarNavProps {

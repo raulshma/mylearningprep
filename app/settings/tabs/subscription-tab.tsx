@@ -48,7 +48,7 @@ export function SubscriptionTab({
 
   const handleManageSubscription = async () => {
     if (!profile.hasStripeSubscription) {
-      router.push("/pricing");
+      router.push("/settings/upgrade");
       return;
     }
 
@@ -125,7 +125,7 @@ export function SubscriptionTab({
             </div>
             <div className="flex gap-3">
               {plan !== "MAX" && (
-                <Button onClick={() => router.push("/pricing")}>
+                <Button onClick={() => router.push("/settings/upgrade")}>
                   {plan === "FREE" ? "Upgrade to Pro" : "Upgrade to Max"}
                 </Button>
               )}
@@ -186,7 +186,7 @@ export function SubscriptionTab({
               Upgrade to Pro or Max to unlock more interview preps and AI
               interactions.
             </p>
-            <Button onClick={() => router.push("/pricing")}>View Plans</Button>
+            <Button onClick={() => router.push("/settings/upgrade")}>View Plans</Button>
           </CardContent>
         </Card>
       )}

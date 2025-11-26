@@ -87,7 +87,7 @@ export function SidebarUsage({
       {!isByok && isAtLimit && (
         <p className="text-xs text-red-400">
           Limit reached -{" "}
-          <Link href="/pricing" className="underline hover:text-red-300">
+          <Link href="/settings/upgrade" className="underline hover:text-red-300">
             upgrade
           </Link>
         </p>
