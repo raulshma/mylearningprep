@@ -11,6 +11,29 @@ import {
 } from '../schemas/interview';
 
 /**
+ * Lightweight interview data for dashboard listing
+ */
+export interface InterviewSummary {
+  _id: string;
+  userId: string;
+  isPublic: boolean;
+  jobDetails: {
+    title: string;
+    company: string;
+    description: string;
+  };
+  createdAt: Date;
+  updatedAt: Date;
+  // Computed fields for dashboard
+  hasOpeningBrief: boolean;
+  topicCount: number;
+  mcqCount: number;
+  rapidFireCount: number;
+  topicTitles: string[];
+  keySkills: string[];
+}
+
+/**
  * Ensures interview modules have default empty arrays to prevent undefined errors
  */
 function normalizeInterview(interview: Interview): Interview {
@@ -29,6 +52,7 @@ export interface InterviewRepository {
   create(data: CreateInterview): Promise<Interview>;
   findById(id: string): Promise<Interview | null>;
   findByUserId(userId: string): Promise<Interview[]>;
+  findSummariesByUserId(userId: string): Promise<InterviewSummary[]>;
   updateModule(id: string, module: 'openingBrief', content: OpeningBrief): Promise<void>;
   updateModule(id: string, module: 'revisionTopics', content: RevisionTopic[]): Promise<void>;
   updateModule(id: string, module: 'mcqs', content: MCQ[]): Promise<void>;
@@ -81,6 +105,46 @@ export const interviewRepository: InterviewRepository = {
       .sort({ updatedAt: -1 })
       .toArray();
     return (interviews as Interview[]).map(normalizeInterview);
+  },
+
+  /**
+   * Optimized query for dashboard - uses aggregation to compute summary fields
+   * and avoids fetching full module content
+   */
+  async findSummariesByUserId(userId: string): Promise<InterviewSummary[]> {
+    const collection = await getInterviewsCollection();
+    
+    const summaries = await collection.aggregate<InterviewSummary>([
+      { $match: { userId } },
+      { $sort: { updatedAt: -1 } },
+      {
+        $project: {
+          _id: 1,
+          userId: 1,
+          isPublic: 1,
+          jobDetails: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          hasOpeningBrief: { $cond: [{ $ifNull: ['$modules.openingBrief', false] }, true, false] },
+          topicCount: { $size: { $ifNull: ['$modules.revisionTopics', []] } },
+          mcqCount: { $size: { $ifNull: ['$modules.mcqs', []] } },
+          rapidFireCount: { $size: { $ifNull: ['$modules.rapidFire', []] } },
+          // Get first 4 topic titles
+          topicTitles: {
+            $slice: [
+              { $map: { input: { $ifNull: ['$modules.revisionTopics', []] }, as: 't', in: '$$t.title' } },
+              4
+            ]
+          },
+          // Get key skills from opening brief (first 4)
+          keySkills: {
+            $slice: [{ $ifNull: ['$modules.openingBrief.keySkills', []] }, 4]
+          },
+        },
+      },
+    ]).toArray();
+
+    return summaries;
   },
 
   async updateModule(id: string, module: ModuleType, content: unknown) {

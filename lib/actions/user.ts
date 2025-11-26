@@ -6,6 +6,7 @@
  * Requirements: 1.2, 1.4, 1.5
  */
 
+import { cache } from 'react';
 import { getAuthUserId, getAuthUser, hasByokApiKey } from '@/lib/auth/get-user';
 import { userRepository } from '@/lib/db/repositories/user-repository';
 import { createAPIError, type APIError } from '@/lib/schemas/error';
@@ -177,7 +178,40 @@ export async function getCurrentUser(): Promise<ActionResult<User>> {
 }
 
 /**
+ * Internal cached function to fetch iteration status data
+ * Deduplicates calls within a single request
+ */
+const getIterationStatusInternal = cache(async () => {
+  const [authUser, isByok] = await Promise.all([
+    getAuthUser(),
+    hasByokApiKey(),
+  ]);
+  
+  if (!authUser) {
+    return null;
+  }
+
+  const user = await userRepository.findByClerkId(authUser.clerkId);
+  if (!user) {
+    return null;
+  }
+
+  const interviews = user.interviews ?? { count: 0, limit: 3, resetDate: getDefaultResetDate() };
+
+  return {
+    count: user.iterations.count,
+    limit: user.iterations.limit,
+    remaining: Math.max(0, user.iterations.limit - user.iterations.count),
+    resetDate: user.iterations.resetDate,
+    plan: user.plan,
+    isByok,
+    interviews,
+  };
+});
+
+/**
  * Get user's iteration and interview status
+ * Uses React cache() to deduplicate calls within a request
  */
 export async function getIterationStatus(): Promise<ActionResult<{
   count: number;
@@ -189,31 +223,16 @@ export async function getIterationStatus(): Promise<ActionResult<{
   interviews: { count: number; limit: number; resetDate: Date };
 }>> {
   try {
-    const clerkId = await getAuthUserId();
-    const user = await userRepository.findByClerkId(clerkId);
+    const data = await getIterationStatusInternal();
     
-    if (!user) {
+    if (!data) {
       return {
         success: false,
         error: createAPIError('NOT_FOUND', 'User not found'),
       };
     }
 
-    const isByok = await hasByokApiKey();
-    const interviews = user.interviews ?? { count: 0, limit: 3, resetDate: getDefaultResetDate() };
-
-    return {
-      success: true,
-      data: {
-        count: user.iterations.count,
-        limit: user.iterations.limit,
-        remaining: Math.max(0, user.iterations.limit - user.iterations.count),
-        resetDate: user.iterations.resetDate,
-        plan: user.plan,
-        isByok,
-        interviews,
-      },
-    };
+    return { success: true, data };
   } catch (error) {
     console.error('getIterationStatus error:', error);
     return {
@@ -236,7 +255,35 @@ function getDefaultResetDate(): Date {
 }
 
 /**
+ * Internal cached function to fetch user profile data
+ * Deduplicates calls within a single request
+ */
+const getUserProfileInternal = cache(async () => {
+  const authUser = await getAuthUser();
+  
+  if (!authUser) {
+    return null;
+  }
+
+  const dbUser = await userRepository.findByClerkId(authUser.clerkId);
+  
+  return {
+    clerkId: authUser.clerkId,
+    email: authUser.email,
+    firstName: authUser.firstName,
+    lastName: authUser.lastName,
+    imageUrl: authUser.imageUrl,
+    plan: dbUser?.plan ?? 'FREE',
+    iterations: dbUser?.iterations ?? { count: 0, limit: 20, resetDate: getDefaultResetDate() },
+    interviews: dbUser?.interviews ?? { count: 0, limit: 3, resetDate: getDefaultResetDate() },
+    hasStripeSubscription: !!dbUser?.stripeCustomerId,
+    hasByokKey: !!authUser.byokApiKey,
+  };
+});
+
+/**
  * Get user profile data including Clerk info
+ * Uses React cache() to deduplicate calls within a request
  */
 export async function getUserProfile(): Promise<ActionResult<{
   clerkId: string;
@@ -251,32 +298,16 @@ export async function getUserProfile(): Promise<ActionResult<{
   hasByokKey: boolean;
 }>> {
   try {
-    const authUser = await getAuthUser();
+    const data = await getUserProfileInternal();
     
-    if (!authUser) {
+    if (!data) {
       return {
         success: false,
         error: createAPIError('AUTH_ERROR', 'Not authenticated'),
       };
     }
 
-    const dbUser = await userRepository.findByClerkId(authUser.clerkId);
-    
-    return {
-      success: true,
-      data: {
-        clerkId: authUser.clerkId,
-        email: authUser.email,
-        firstName: authUser.firstName,
-        lastName: authUser.lastName,
-        imageUrl: authUser.imageUrl,
-        plan: dbUser?.plan ?? 'FREE',
-        iterations: dbUser?.iterations ?? { count: 0, limit: 20, resetDate: getDefaultResetDate() },
-        interviews: dbUser?.interviews ?? { count: 0, limit: 3, resetDate: getDefaultResetDate() },
-        hasStripeSubscription: !!dbUser?.stripeCustomerId,
-        hasByokKey: !!authUser.byokApiKey,
-      },
-    };
+    return { success: true, data };
   } catch (error) {
     console.error('getUserProfile error:', error);
     return {

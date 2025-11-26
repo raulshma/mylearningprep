@@ -7,10 +7,10 @@ import { Plus, Briefcase, CheckCircle2, Clock } from 'lucide-react';
 import { useSharedHeader } from './shared-header-context';
 import { DashboardContent } from './dashboard-content';
 import { ViewTransitionLink } from '@/components/transitions/view-transition-link';
-import type { InterviewWithMeta } from '@/app/(sidebar)/dashboard/page';
+import type { DashboardInterviewData } from '@/lib/actions/dashboard';
 
 interface DashboardPageContentProps {
-  interviews: InterviewWithMeta[];
+  interviews: DashboardInterviewData[];
   stats: {
     total: number;
     active: number;

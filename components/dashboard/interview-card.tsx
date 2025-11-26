@@ -22,10 +22,10 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { ViewTransitionLink } from "@/components/transitions/view-transition-link";
-import type { InterviewWithMeta } from "@/app/(sidebar)/dashboard/page";
+import type { DashboardInterviewData } from "@/lib/actions/dashboard";
 
 interface InterviewCardNewProps {
-  interview: InterviewWithMeta;
+  interview: DashboardInterviewData;
   viewMode: "grid" | "list";
   onDelete: () => void;
   isDeleting?: boolean;

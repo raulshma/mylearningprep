@@ -8,13 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { InterviewCardNew } from "./interview-card";
 import { deleteInterview } from "@/lib/actions/interview";
-import type { InterviewWithMeta } from "@/app/(sidebar)/dashboard/page";
+import type { DashboardInterviewData } from "@/lib/actions/dashboard";
 
 type FilterStatus = "all" | "active" | "completed";
 type ViewMode = "grid" | "list";
 
 interface DashboardContentProps {
-  interviews: InterviewWithMeta[];
+  interviews: DashboardInterviewData[];
 }
 
 export function DashboardContent({

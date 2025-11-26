@@ -1,4 +1,5 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
+import { cache } from "react";
 
 export interface AuthUser {
   clerkId: string;
@@ -11,11 +12,25 @@ export interface AuthUser {
 }
 
 /**
+ * Cached version of currentUser() - deduplicates calls within a single request
+ */
+const getCachedCurrentUser = cache(async () => {
+  return currentUser();
+});
+
+/**
+ * Cached version of auth() - deduplicates calls within a single request
+ */
+const getCachedAuth = cache(async () => {
+  return auth();
+});
+
+/**
  * Get the current authenticated user's Clerk ID
  * Throws if not authenticated
  */
 export async function getAuthUserId(): Promise<string> {
-  const { userId } = await auth();
+  const { userId } = await getCachedAuth();
 
   if (!userId) {
     throw new Error("Unauthorized: No user session found");
@@ -27,9 +42,10 @@ export async function getAuthUserId(): Promise<string> {
 /**
  * Get the current authenticated user with full details
  * Returns null if not authenticated
+ * Uses React cache() to deduplicate calls within a request
  */
-export async function getAuthUser(): Promise<AuthUser | null> {
-  const user = await currentUser();
+export const getAuthUser = cache(async (): Promise<AuthUser | null> => {
+  const user = await getCachedCurrentUser();
 
   if (!user) {
     return null;
@@ -51,7 +67,7 @@ export async function getAuthUser(): Promise<AuthUser | null> {
     byokApiKey,
     isAdmin,
   };
-}
+});
 
 /**
  * Check if the current user has a BYOK API key configured
@@ -82,7 +98,7 @@ export interface BYOKTierConfigData {
  * Get the current user's BYOK tier configuration if configured
  */
 export async function getByokTierConfig(): Promise<BYOKTierConfigData | null> {
-  const user = await currentUser();
+  const user = await getCachedCurrentUser();
   if (!user) return null;
   
   const tierConfig = user.privateMetadata?.byokTierConfig as BYOKTierConfigData | undefined;
@@ -91,22 +107,11 @@ export async function getByokTierConfig(): Promise<BYOKTierConfigData | null> {
 
 /**
  * Check if the current user has admin role
- * Uses publicMetadata.role from Clerk user
- *
- * To grant admin access:
- * 1. Go to Clerk Dashboard -> Users -> Select user
- * 2. Edit publicMetadata and set: { "role": "admin" }
- *
- * For middleware/session-based checks, also configure:
- * Clerk Dashboard -> Sessions -> Customize session token
- * Add claim: "metadata" = "{{user.public_metadata}}"
+ * Uses cached getAuthUser to avoid duplicate Clerk API calls
  */
 export async function isAdmin(): Promise<boolean> {
-  const user = await currentUser();
-  if (!user) {
-    return false;
-  }
-  return (user.publicMetadata?.role as string) === "admin";
+  const user = await getAuthUser();
+  return user?.isAdmin ?? false;
 }
 
 /**
@@ -114,7 +119,7 @@ export async function isAdmin(): Promise<boolean> {
  * Returns true if suspended, false otherwise
  */
 export async function isUserSuspended(): Promise<boolean> {
-  const { userId } = await auth();
+  const { userId } = await getCachedAuth();
   if (!userId) return false;
 
   // Dynamic import to avoid circular dependencies
@@ -137,16 +142,6 @@ export interface UnauthorizedResponse {
  * Require admin authorization for a server action
  * Returns { success: false, error: "Unauthorized" } if user is not an admin
  * Otherwise executes the provided function and returns its result
- *
- * Usage:
- * ```typescript
- * export async function sensitiveAdminAction() {
- *   return requireAdmin(async () => {
- *     // your admin-only logic here
- *     return { success: true, data: ... };
- *   });
- * }
- * ```
  */
 export async function requireAdmin<T>(
   fn: () => Promise<T>

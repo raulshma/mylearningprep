@@ -23,7 +23,15 @@ export interface SidebarData {
   };
 }
 
+/**
+ * Fetch sidebar data independently (used when not on dashboard page)
+ * For dashboard page, use getDashboardData() which includes sidebar data
+ * 
+ * Optimized: Uses parallel queries and cached functions to minimize latency
+ */
 export async function getSidebarData(): Promise<SidebarData> {
+  // All three calls use React cache() internally, so they deduplicate
+  // and share the same underlying auth/DB calls
   const [userIsAdmin, iterationResult, profileResult] = await Promise.all([
     isAdmin(),
     getIterationStatus(),
