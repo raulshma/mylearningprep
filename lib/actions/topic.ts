@@ -19,7 +19,6 @@ import {
   logAIRequest,
   createLoggerContext,
   extractTokenUsage,
-  extractModelId,
 } from "@/lib/services/ai-logger";
 import { createAPIError, type APIError } from "@/lib/schemas/error";
 import type { RevisionTopic } from "@/lib/db/schemas/interview";
@@ -143,7 +142,7 @@ export async function regenerateAnalogy(
 
       // Log the request with full metadata
       const usage = await result.usage;
-      const modelId = extractModelId(result, "tiered");
+      const modelId = result.modelId;
       await logAIRequest({
         interviewId,
         userId: user._id,
@@ -320,7 +319,7 @@ export async function regenerateAnalogyWithInstructions(
       );
 
       const usage = await result.usage;
-      const modelId = extractModelId(result, "tiered");
+      const modelId = result.modelId;
       await logAIRequest({
         interviewId,
         userId: user._id,

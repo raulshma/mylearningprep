@@ -272,6 +272,7 @@ async function getEffectiveConfig(
   fallbackModel: string | null;
   temperature: number;
   maxTokens: number;
+  tier: ModelTier;
 }> {
   const tier = TASK_TIER_MAPPING[task] || "high";
 
@@ -283,11 +284,19 @@ async function getEffectiveConfig(
       fallbackModel: byok.fallback || null,
       temperature: byok.temperature ?? 0.7,
       maxTokens: byok.maxTokens ?? 4096,
+      tier,
     };
   }
 
   // Fall back to system tier config
   return getConfigForTask(task);
+}
+
+/**
+ * Format model ID for logging: "tier - model"
+ */
+export function formatModelId(tier: ModelTier, model: string): string {
+  return `${tier} - ${model}`;
 }
 
 /**
@@ -305,6 +314,7 @@ export async function generateOpeningBrief(
     byokTierConfig
   );
   const openrouter = getOpenRouterClient(apiKey);
+  const modelToUse = config.model || tierConfig.model;
 
   const prompt = `Generate an opening brief for an interview preparation plan.
 
@@ -329,12 +339,16 @@ Format your response as a structured brief with clear sections.${
       : ""
   }`;
 
-  return streamObject({
-    model: openrouter(config.model || tierConfig.model),
+  const stream = streamObject({
+    model: openrouter(modelToUse),
     schema: OpeningBriefSchema,
     system: getSystemPrompt(),
     prompt,
     temperature: config.temperature ?? tierConfig.temperature,
+  });
+
+  return Object.assign(stream, {
+    modelId: formatModelId(tierConfig.tier, modelToUse),
   });
 }
 
@@ -354,6 +368,7 @@ export async function generateTopics(
     byokTierConfig
   );
   const openrouter = getOpenRouterClient(apiKey);
+  const modelToUse = config.model || tierConfig.model;
 
   const existingTopicsNote = ctx.existingContent?.length
     ? `\n\nExisting topics to avoid duplicating:\n${ctx.existingContent.join(
@@ -389,12 +404,16 @@ Focus on topics that bridge the gap between the candidate's experience and job r
       : ""
   }`;
 
-  return streamObject({
-    model: openrouter(config.model || tierConfig.model),
+  const stream = streamObject({
+    model: openrouter(modelToUse),
     schema: TopicsArraySchema,
     system: getSystemPrompt(),
     prompt,
     temperature: config.temperature ?? tierConfig.temperature,
+  });
+
+  return Object.assign(stream, {
+    modelId: formatModelId(tierConfig.tier, modelToUse),
   });
 }
 
@@ -411,6 +430,7 @@ export async function generateMCQs(
 ) {
   const tierConfig = await getEffectiveConfig("generate_mcqs", byokTierConfig);
   const openrouter = getOpenRouterClient(apiKey);
+  const modelToUse = config.model || tierConfig.model;
 
   const existingQuestionsNote = ctx.existingContent?.length
     ? `\n\nExisting question IDs to avoid duplicating (generate completely different questions):\n${ctx.existingContent.join(
@@ -444,12 +464,16 @@ Focus on practical knowledge that would be tested in a technical interview for t
       : ""
   }`;
 
-  return streamObject({
-    model: openrouter(config.model || tierConfig.model),
+  const stream = streamObject({
+    model: openrouter(modelToUse),
     schema: MCQsArraySchema,
     system: getSystemPrompt(),
     prompt,
     temperature: config.temperature ?? tierConfig.temperature,
+  });
+
+  return Object.assign(stream, {
+    modelId: formatModelId(tierConfig.tier, modelToUse),
   });
 }
 
@@ -469,6 +493,7 @@ export async function generateRapidFire(
     byokTierConfig
   );
   const openrouter = getOpenRouterClient(apiKey);
+  const modelToUse = config.model || tierConfig.model;
 
   const existingQuestionsNote = ctx.existingContent?.length
     ? `\n\nExisting questions to avoid duplicating:\n${ctx.existingContent.join(
@@ -499,12 +524,16 @@ These should be quick-fire questions that test fundamental knowledge relevant to
       : ""
   }`;
 
-  return streamObject({
-    model: openrouter(config.model || tierConfig.model),
+  const stream = streamObject({
+    model: openrouter(modelToUse),
     schema: RapidFireArraySchema,
     system: getSystemPrompt(),
     prompt,
     temperature: config.temperature ?? tierConfig.temperature,
+  });
+
+  return Object.assign(stream, {
+    modelId: formatModelId(tierConfig.tier, modelToUse),
   });
 }
 
@@ -523,6 +552,7 @@ export async function parseInterviewPrompt(
     byokTierConfig
   );
   const openrouter = getOpenRouterClient(apiKey);
+  const modelToUse = config.model || tierConfig.model;
 
   const systemPrompt = `You are an expert at understanding interview preparation requests. Your job is to extract structured information from a user's natural language prompt about their interview preparation needs.
 
@@ -544,13 +574,18 @@ Extract:
 3. Job Description - generate a comprehensive job description based on the role and any context provided. Include typical responsibilities, required skills, and qualifications for this type of role.
 4. Resume Context - any background, experience, or skills they mentioned about themselves (optional)`;
 
-  return generateObject({
-    model: openrouter(config.model || tierConfig.model),
+  const result = await generateObject({
+    model: openrouter(modelToUse),
     schema: ParsedInterviewDetailsSchema,
     system: systemPrompt,
     prompt: userPrompt,
     temperature: config.temperature ?? tierConfig.temperature,
   });
+
+  return {
+    ...result,
+    modelId: formatModelId(tierConfig.tier, modelToUse),
+  };
 }
 
 /**
@@ -570,6 +605,7 @@ export async function regenerateTopicAnalogy(
     byokTierConfig
   );
   const openrouter = getOpenRouterClient(apiKey);
+  const modelToUse = config.model || tierConfig.model;
 
   const styleDescriptions = {
     professional:
@@ -600,12 +636,16 @@ The explanation should be comprehensive but match the requested style throughout
       : ""
   }`;
 
-  return streamObject({
-    model: openrouter(config.model || tierConfig.model),
+  const stream = streamObject({
+    model: openrouter(modelToUse),
     schema: RevisionTopicSchema,
     system: getSystemPrompt(),
     prompt,
     temperature: config.temperature ?? tierConfig.temperature,
+  });
+
+  return Object.assign(stream, {
+    modelId: formatModelId(tierConfig.tier, modelToUse),
   });
 }
 

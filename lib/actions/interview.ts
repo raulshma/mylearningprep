@@ -20,7 +20,6 @@ import {
   logAIRequest,
   createLoggerContext,
   extractTokenUsage,
-  extractModelId,
 } from "@/lib/services/ai-logger";
 import {
   CreateInterviewInputSchema,
@@ -138,7 +137,7 @@ export async function createInterviewFromPrompt(
 
     // Log the parse prompt request
     const usage = result.usage;
-    const modelId = extractModelId(result, "tiered");
+    const modelId = result.modelId;
 
     // We'll log with a placeholder interview ID since we haven't created it yet
     // This will be updated after interview creation
@@ -414,7 +413,7 @@ export async function generateModule(interviewId: string, module: ModuleType) {
 
           // Log the request with full metadata
           const usage = await result.usage;
-          const modelId = extractModelId(result, "tiered");
+          const modelId = result.modelId;
           await logAIRequest({
             interviewId,
             userId: user._id,
@@ -461,7 +460,7 @@ export async function generateModule(interviewId: string, module: ModuleType) {
           responseText = JSON.stringify(finalObject.topics);
 
           const usage = await result.usage;
-          const modelId = extractModelId(result, "tiered");
+          const modelId = result.modelId;
           await logAIRequest({
             interviewId,
             userId: user._id,
@@ -508,7 +507,7 @@ export async function generateModule(interviewId: string, module: ModuleType) {
           responseText = JSON.stringify(finalObject.mcqs);
 
           const usage = await result.usage;
-          const modelId = extractModelId(result, "tiered");
+          const modelId = result.modelId;
           await logAIRequest({
             interviewId,
             userId: user._id,
@@ -555,7 +554,7 @@ export async function generateModule(interviewId: string, module: ModuleType) {
           responseText = JSON.stringify(finalObject.questions);
 
           const usage = await result.usage;
-          const modelId = extractModelId(result, "tiered");
+          const modelId = result.modelId;
           await logAIRequest({
             interviewId,
             userId: user._id,
@@ -703,7 +702,7 @@ export async function addMoreContent(input: {
           responseText = JSON.stringify(uniqueItems);
 
           const usage = await result.usage;
-          const modelId = extractModelId(result, "tiered");
+          const modelId = result.modelId;
           await logAIRequest({
             interviewId,
             userId: user._id,
@@ -756,7 +755,7 @@ export async function addMoreContent(input: {
           responseText = JSON.stringify(uniqueItems);
 
           const usage = await result.usage;
-          const modelId = extractModelId(result, "tiered");
+          const modelId = result.modelId;
           await logAIRequest({
             interviewId,
             userId: user._id,
@@ -809,7 +808,7 @@ export async function addMoreContent(input: {
           responseText = JSON.stringify(uniqueItems);
 
           const usage = await result.usage;
-          const modelId = extractModelId(result, "tiered");
+          const modelId = result.modelId;
           await logAIRequest({
             interviewId,
             userId: user._id,
