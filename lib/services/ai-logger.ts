@@ -190,9 +190,22 @@ export function extractStopReason(response?: Record<string, unknown>): string | 
 }
 
 /**
- * Type for AI SDK stream result with potential rawResponse
+ * Type for AI SDK stream result with potential model info
  */
-interface AIStreamResultWithRawResponse {
+interface AIStreamResult {
+  // Vercel AI SDK experimental_providerMetadata contains provider-specific info
+  experimental_providerMetadata?: {
+    openrouter?: {
+      model?: string;
+    };
+  };
+  // Some results have response with modelId
+  response?: {
+    modelId?: string;
+  };
+  // Direct modelId on result
+  modelId?: string;
+  // rawResponse for older SDK versions
   rawResponse?: {
     headers?: {
       get?: (name: string) => string | null;
@@ -202,15 +215,31 @@ interface AIStreamResultWithRawResponse {
 
 /**
  * Extract model ID from AI SDK result
- * OpenRouter returns the actual model used in x-model header
+ * Tries multiple locations where the model ID might be stored
  */
 export function extractModelId(
   result: unknown,
-  fallback: string = 'anthropic/claude-sonnet-4'
+  fallback: string = 'unknown'
 ): string {
-  const typedResult = result as AIStreamResultWithRawResponse;
+  const typedResult = result as AIStreamResult;
+  
+  // Try experimental_providerMetadata (OpenRouter specific)
+  const providerModel = typedResult?.experimental_providerMetadata?.openrouter?.model;
+  if (providerModel) return providerModel;
+  
+  // Try response.modelId (Vercel AI SDK standard)
+  const responseModelId = typedResult?.response?.modelId;
+  if (responseModelId) return responseModelId;
+  
+  // Try direct modelId
+  const directModelId = typedResult?.modelId;
+  if (directModelId) return directModelId;
+  
+  // Try rawResponse headers (older approach)
   const modelFromHeader = typedResult?.rawResponse?.headers?.get?.('x-model');
-  return modelFromHeader ?? fallback;
+  if (modelFromHeader) return modelFromHeader;
+  
+  return fallback;
 }
 
 /**

@@ -14,6 +14,21 @@ import { aiEngine, type GenerationContext } from '@/lib/services/ai-engine';
 import { logAIRequest, createLoggerContext, extractTokenUsage, extractModelId } from '@/lib/services/ai-logger';
 import { createAPIError, type APIError } from '@/lib/schemas/error';
 import type { RevisionTopic } from '@/lib/db/schemas/interview';
+import { getSettingsCollection } from '@/lib/db/collections';
+import { SETTINGS_KEYS } from '@/lib/db/schemas/settings';
+
+/**
+ * Get the configured default model from database
+ */
+async function getConfiguredModel(): Promise<string> {
+  try {
+    const collection = await getSettingsCollection();
+    const doc = await collection.findOne({ key: SETTINGS_KEYS.DEFAULT_MODEL });
+    return (doc?.value as string) || 'anthropic/claude-sonnet-4';
+  } catch {
+    return 'anthropic/claude-sonnet-4';
+  }
+}
 
 /**
  * Result type for server actions
@@ -83,6 +98,9 @@ export async function regenerateAnalogy(
       // Get BYOK API key if available
       const apiKey = await getByokApiKey();
 
+      // Get configured model for logging
+      const configuredModel = await getConfiguredModel();
+
       // Build generation context
       const ctx: GenerationContext = {
         resumeText: interview.resumeContext,
@@ -132,7 +150,7 @@ export async function regenerateAnalogy(
 
       // Log the request with full metadata
       const usage = await result.usage;
-      const modelId = extractModelId(result);
+      const modelId = extractModelId(result, configuredModel);
       await logAIRequest({
         interviewId,
         userId: user._id,

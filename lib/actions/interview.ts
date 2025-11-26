@@ -28,6 +28,21 @@ import {
   AddMoreInputSchema,
 } from "@/lib/schemas/input";
 import { createAPIError, type APIError } from "@/lib/schemas/error";
+import { getSettingsCollection } from "@/lib/db/collections";
+import { SETTINGS_KEYS } from "@/lib/db/schemas/settings";
+
+/**
+ * Get the configured default model from database
+ */
+async function getConfiguredModel(): Promise<string> {
+  try {
+    const collection = await getSettingsCollection();
+    const doc = await collection.findOne({ key: SETTINGS_KEYS.DEFAULT_MODEL });
+    return (doc?.value as string) || "unknown";
+  } catch {
+    return "unknown";
+  }
+}
 import type {
   Interview,
   ModuleType,
@@ -122,6 +137,9 @@ export async function createInterviewFromPrompt(
     // Get BYOK API key if available
     const apiKey = await getByokApiKey();
 
+    // Get configured model for logging
+    const configuredModel = await getConfiguredModel();
+
     // Create logger context for prompt parsing
     const loggerCtx = createLoggerContext({
       streaming: false,
@@ -138,7 +156,7 @@ export async function createInterviewFromPrompt(
 
     // Log the parse prompt request
     const usage = result.usage;
-    const modelId = extractModelId(result);
+    const modelId = extractModelId(result, configuredModel);
 
     // We'll log with a placeholder interview ID since we haven't created it yet
     // This will be updated after interview creation
@@ -368,6 +386,9 @@ export async function generateModule(interviewId: string, module: ModuleType) {
       // Get BYOK API key if available
       const apiKey = await getByokApiKey();
 
+      // Get configured model for logging
+      const configuredModel = await getConfiguredModel();
+
       // Build generation context
       const ctx: GenerationContext = {
         resumeText: interview.resumeContext,
@@ -414,7 +435,7 @@ export async function generateModule(interviewId: string, module: ModuleType) {
 
           // Log the request with full metadata
           const usage = await result.usage;
-          const modelId = extractModelId(result);
+          const modelId = extractModelId(result, configuredModel);
           await logAIRequest({
             interviewId,
             userId: user._id,
@@ -461,7 +482,7 @@ export async function generateModule(interviewId: string, module: ModuleType) {
           responseText = JSON.stringify(finalObject.topics);
 
           const usage = await result.usage;
-          const modelId = extractModelId(result);
+          const modelId = extractModelId(result, configuredModel);
           await logAIRequest({
             interviewId,
             userId: user._id,
@@ -508,7 +529,7 @@ export async function generateModule(interviewId: string, module: ModuleType) {
           responseText = JSON.stringify(finalObject.mcqs);
 
           const usage = await result.usage;
-          const modelId = extractModelId(result);
+          const modelId = extractModelId(result, configuredModel);
           await logAIRequest({
             interviewId,
             userId: user._id,
@@ -555,7 +576,7 @@ export async function generateModule(interviewId: string, module: ModuleType) {
           responseText = JSON.stringify(finalObject.questions);
 
           const usage = await result.usage;
-          const modelId = extractModelId(result);
+          const modelId = extractModelId(result, configuredModel);
           await logAIRequest({
             interviewId,
             userId: user._id,
@@ -647,6 +668,9 @@ export async function addMoreContent(input: {
       // Get BYOK API key if available
       const apiKey = await getByokApiKey();
 
+      // Get configured model for logging
+      const configuredModel = await getConfiguredModel();
+
       // Build generation context with existing content IDs for duplicate prevention
       const existingContent = getExistingContentIds(interview, module);
 
@@ -703,7 +727,7 @@ export async function addMoreContent(input: {
           responseText = JSON.stringify(uniqueItems);
 
           const usage = await result.usage;
-          const modelId = extractModelId(result);
+          const modelId = extractModelId(result, configuredModel);
           await logAIRequest({
             interviewId,
             userId: user._id,
@@ -756,7 +780,7 @@ export async function addMoreContent(input: {
           responseText = JSON.stringify(uniqueItems);
 
           const usage = await result.usage;
-          const modelId = extractModelId(result);
+          const modelId = extractModelId(result, configuredModel);
           await logAIRequest({
             interviewId,
             userId: user._id,
@@ -809,7 +833,7 @@ export async function addMoreContent(input: {
           responseText = JSON.stringify(uniqueItems);
 
           const usage = await result.usage;
-          const modelId = extractModelId(result);
+          const modelId = extractModelId(result, configuredModel);
           await logAIRequest({
             interviewId,
             userId: user._id,
