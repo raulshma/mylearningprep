@@ -450,9 +450,9 @@ export default function ChatRefinementPage() {
           </div>
         </header>
 
-        {/* Messages - Mobile: full-width with px-4, Desktop: max-w-2xl centered */}
-        <div className="flex-1 overflow-auto p-4 md:p-6 pb-[200px] md:pb-6">
-          <div className="w-full px-0 md:max-w-2xl md:mx-auto space-y-4 md:space-y-6">
+        {/* Messages - Mobile: minimal padding for max space, Desktop: max-w-2xl centered */}
+        <div className="flex-1 overflow-auto px-2 py-3 md:p-6 pb-[180px] lg:pb-6">
+          <div className="w-full md:max-w-2xl md:mx-auto space-y-3 md:space-y-6">
             {messages.map((message, index) => {
               const isLastAssistant =
                 message.role === "assistant" && index === messages.length - 1
@@ -464,7 +464,7 @@ export default function ChatRefinementPage() {
                   key={message.id}
                   className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
                 >
-                  <div className={`w-full md:max-w-[85%] group relative`}>
+                  <div className={`max-w-[95%] md:max-w-[85%] group relative`}>
                     <div
                       className={`${
                         message.role === "user"
@@ -531,13 +531,13 @@ export default function ChatRefinementPage() {
           </div>
         </div>
 
-        {/* Quick Actions and Input - Fixed at bottom on mobile */}
-        <div className="fixed bottom-0 left-0 right-0 md:relative md:bottom-auto md:left-auto md:right-auto bg-background border-t border-border flex-shrink-0 pb-safe">
+        {/* Quick Actions and Input - Fixed at bottom on mobile/tablet, static on desktop */}
+        <div className="fixed bottom-0 left-0 right-0 lg:static bg-background border-t border-border flex-shrink-0 pb-safe">
           {/* Quick Actions */}
-          <div className="p-3 md:p-4 border-b border-border md:border-b-0">
-            <div className="w-full px-1 md:max-w-2xl md:mx-auto">
-              <p className="text-xs text-muted-foreground mb-2 md:mb-3">Quick actions:</p>
-              <div className="flex flex-wrap gap-2 mb-2 md:mb-4">
+          <div className="px-2 py-2 md:p-4 border-b border-border md:border-b-0">
+            <div className="w-full md:max-w-2xl md:mx-auto">
+              <p className="text-xs text-muted-foreground mb-1.5 md:mb-3">Quick actions:</p>
+              <div className="flex flex-wrap gap-1.5 md:gap-2 mb-1 md:mb-4">
                 {quickActions.map((action) => (
                   <Button
                     key={action.label}
@@ -545,7 +545,7 @@ export default function ChatRefinementPage() {
                     size="sm"
                     onClick={() => handleQuickAction(action.prompt)}
                     disabled={isStreaming}
-                    className="text-xs min-h-[44px] md:min-h-0"
+                    className="text-xs min-h-[40px] md:min-h-0 px-2 md:px-3"
                   >
                     <action.icon className="w-3 h-3 mr-1" />
                     {action.label}
@@ -556,8 +556,8 @@ export default function ChatRefinementPage() {
           </div>
 
           {/* Input */}
-          <div className="p-3 md:p-4">
-            <form onSubmit={handleSubmit} className="w-full px-1 md:max-w-2xl md:mx-auto">
+          <div className="px-2 py-2 md:p-4">
+            <form onSubmit={handleSubmit} className="w-full md:max-w-2xl md:mx-auto">
               <div className="flex gap-2 md:gap-3">
                 <div className="flex-1 relative">
                   <Textarea
