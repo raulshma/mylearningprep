@@ -288,15 +288,14 @@ Be conversational but professional. Use markdown formatting for better readabili
         };
         await chatRepository.addMessage(interviewId, topicId, assistantMessage);
 
-        // Log the AI request (without response content for privacy)
+        // Log the AI request (metadata only - no prompt/response for chat privacy)
         const tokenUsage = usage as { promptTokens?: number; completionTokens?: number } | undefined;
         await logAIRequest({
           interviewId,
           userId: user._id,
           action: "TOPIC_CHAT",
           model: modelConfig.model,
-          prompt: userMessage.content,
-          systemPrompt,
+          prompt: "[redacted]", // Don't store user messages for privacy
           response: "", // Don't store response for chat privacy
           tokenUsage: {
             input: tokenUsage?.promptTokens ?? 0,

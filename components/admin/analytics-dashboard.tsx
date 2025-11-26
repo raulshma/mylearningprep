@@ -13,8 +13,8 @@ import {
 import {
   Area,
   AreaChart,
-  Line,
-  LineChart,
+  Bar,
+  BarChart,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -43,33 +43,33 @@ interface AnalyticsDashboardProps {
 const usageChartConfig: ChartConfig = {
   interviews: {
     label: 'Interviews',
-    color: 'hsl(var(--chart-1))',
+    color: '#8b5cf6', // Bright violet
   },
   aiRequests: {
     label: 'AI Requests',
-    color: 'hsl(var(--chart-2))',
+    color: '#f97316', // Bright orange
   },
   users: {
     label: 'New Users',
-    color: 'hsl(var(--chart-3))',
+    color: '#22c55e', // Bright green
   },
 };
 
 const tokenChartConfig: ChartConfig = {
   inputTokens: {
     label: 'Input Tokens',
-    color: 'hsl(var(--chart-1))',
+    color: '#22d3ee', // Bright cyan - visible on both light/dark
   },
   outputTokens: {
     label: 'Output Tokens',
-    color: 'hsl(var(--chart-2))',
+    color: '#f472b6', // Bright pink - visible on both light/dark
   },
 };
 
 const PLAN_COLORS: Record<string, string> = {
-  FREE: 'hsl(var(--muted-foreground))',
-  PRO: 'hsl(var(--chart-2))',
-  MAX: 'hsl(var(--chart-1))',
+  FREE: '#94a3b8', // Slate gray - visible on both themes
+  PRO: '#3b82f6', // Bright blue
+  MAX: '#eab308', // Bright yellow/gold
 };
 
 
@@ -438,8 +438,8 @@ export function AnalyticsDashboard({
         <CardContent>
           {formattedTokenTrends.some((d) => d.inputTokens > 0 || d.outputTokens > 0) ? (
             <ChartContainer config={tokenChartConfig} className="h-64 w-full">
-              <LineChart data={formattedTokenTrends} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+              <BarChart data={formattedTokenTrends} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" vertical={false} />
                 <XAxis
                   dataKey="formattedDate"
                   tickLine={false}
@@ -459,23 +459,24 @@ export function AnalyticsDashboard({
                     return value;
                   }}
                 />
-                <ChartTooltip content={<ChartTooltipContent />} />
+                <ChartTooltip 
+                  content={<ChartTooltipContent />}
+                  cursor={{ fill: 'hsl(var(--muted))', opacity: 0.3 }}
+                />
                 <ChartLegend content={<ChartLegendContent />} />
-                <Line
-                  type="monotone"
+                <Bar
                   dataKey="inputTokens"
-                  stroke="var(--color-inputTokens)"
-                  strokeWidth={2}
-                  dot={false}
+                  stackId="tokens"
+                  fill="#22d3ee"
+                  radius={[0, 0, 0, 0]}
                 />
-                <Line
-                  type="monotone"
+                <Bar
                   dataKey="outputTokens"
-                  stroke="var(--color-outputTokens)"
-                  strokeWidth={2}
-                  dot={false}
+                  stackId="tokens"
+                  fill="#f472b6"
+                  radius={[4, 4, 0, 0]}
                 />
-              </LineChart>
+              </BarChart>
             </ChartContainer>
           ) : (
             <div className="h-64 flex items-center justify-center border border-dashed border-border rounded-lg">
