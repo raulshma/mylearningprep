@@ -247,3 +247,124 @@
     opacity: 0.7;
   }
 }
+
+/* View Transitions for shared header - smooth morph effect */
+/* Using cubic-bezier(0.22, 1, 0.36, 1) - smooth ease-out with slight overshoot */
+::view-transition-old(page-badge),
+::view-transition-new(page-badge),
+::view-transition-old(page-title),
+::view-transition-new(page-title),
+::view-transition-old(page-description),
+::view-transition-new(page-description) {
+  animation-duration: 400ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  mix-blend-mode: normal;
+}
+
+/* Badge - crossfade with blur */
+::view-transition-old(page-badge) {
+  animation: vt-badge-out 400ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+::view-transition-new(page-badge) {
+  animation: vt-badge-in 400ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Title - slide morph */
+::view-transition-old(page-title) {
+  animation: vt-title-out 400ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+::view-transition-new(page-title) {
+  animation: vt-title-in 400ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* Description - fade with delay */
+::view-transition-old(page-description) {
+  animation: vt-desc-out 350ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+::view-transition-new(page-description) {
+  animation: vt-desc-in 350ms cubic-bezier(0.22, 1, 0.36, 1) 80ms forwards;
+  opacity: 0;
+}
+
+@keyframes vt-badge-out {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.95);
+    filter: blur(3px);
+  }
+}
+
+@keyframes vt-badge-in {
+  0% {
+    opacity: 0;
+    transform: scale(1.05);
+    filter: blur(3px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes vt-title-out {
+  0% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-30px) scale(0.97);
+    filter: blur(3px);
+  }
+}
+
+@keyframes vt-title-in {
+  0% {
+    opacity: 0;
+    transform: translateX(30px) scale(0.97);
+    filter: blur(3px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes vt-desc-out {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-5px);
+    filter: blur(2px);
+  }
+}
+
+@keyframes vt-desc-in {
+  0% {
+    opacity: 0;
+    transform: translateY(5px);
+    filter: blur(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+

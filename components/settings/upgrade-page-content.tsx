@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
 import { motion } from 'framer-motion';
@@ -10,12 +10,8 @@ import { Check, X, HelpCircle, Loader2, Sparkles, CreditCard } from 'lucide-reac
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { createCheckout } from '@/lib/actions/stripe';
 import { toast } from 'sonner';
-import { 
-  PRICING_TIERS, 
-  COMPARISON_FEATURES, 
-  formatPrice,
-  type PricingTier 
-} from '@/lib/pricing-data';
+import { PRICING_TIERS, COMPARISON_FEATURES, formatPrice, type PricingTier } from '@/lib/pricing-data';
+import { useSharedHeader } from '@/components/dashboard/shared-header-context';
 
 function UpgradeCard({ tier, index }: { tier: PricingTier; index: number }) {
   const [isLoading, setIsLoading] = useState(false);
@@ -27,23 +23,19 @@ function UpgradeCard({ tier, index }: { tier: PricingTier; index: number }) {
       toast.info("You're already on the Free plan");
       return;
     }
-
     if (!isSignedIn) {
       router.push(`/login?redirect_url=/settings/upgrade`);
       return;
     }
-
     setIsLoading(true);
     try {
       const result = await createCheckout(tier.plan);
-      
       if (result.success && result.url) {
         window.location.href = result.url;
       } else {
         toast.error(result.error || 'Failed to create checkout session');
       }
-    } catch (error) {
-      console.error('Checkout error:', error);
+    } catch {
       toast.error('Something went wrong. Please try again.');
     } finally {
       setIsLoading(false);
@@ -54,9 +46,7 @@ function UpgradeCard({ tier, index }: { tier: PricingTier; index: number }) {
 
   return (
     <motion.div
-      className={`bg-card p-6 flex flex-col relative border ${
-        tier.featured ? 'border-primary ring-1 ring-primary' : 'border-border'
-      }`}
+      className={`bg-card p-6 flex flex-col relative border ${tier.featured ? 'border-primary ring-1 ring-primary' : 'border-border'}`}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.1 }}
@@ -67,7 +57,6 @@ function UpgradeCard({ tier, index }: { tier: PricingTier; index: number }) {
           {tier.badge}
         </Badge>
       )}
-
       <div className="mb-4">
         <h3 className="font-mono text-lg text-foreground mb-1">{tier.name}</h3>
         <p className="text-sm text-muted-foreground mb-3">{tier.shortDescription}</p>
@@ -76,15 +65,10 @@ function UpgradeCard({ tier, index }: { tier: PricingTier; index: number }) {
           <span className="text-muted-foreground text-sm">{tier.period}</span>
         </div>
       </div>
-
       <ul className="space-y-2 mb-6 flex-1">
         {tier.features.slice(0, 6).map((feature) => (
           <li key={feature.name} className="flex items-start gap-2">
-            {feature.included ? (
-              <Check className="w-4 h-4 text-foreground mt-0.5 flex-shrink-0" />
-            ) : (
-              <X className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-            )}
+            {feature.included ? <Check className="w-4 h-4 text-foreground mt-0.5 flex-shrink-0" /> : <X className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />}
             <span className={`text-sm ${feature.included ? 'text-foreground' : 'text-muted-foreground'}`}>
               {feature.name}
               {feature.tooltip && (
@@ -101,13 +85,7 @@ function UpgradeCard({ tier, index }: { tier: PricingTier; index: number }) {
           </li>
         ))}
       </ul>
-
-      <Button
-        variant={tier.featured ? 'default' : 'outline'}
-        className="w-full"
-        onClick={handleSubscribe}
-        disabled={isLoading || isFreeTier}
-      >
+      <Button variant={tier.featured ? 'default' : 'outline'} className="w-full" onClick={handleSubscribe} disabled={isLoading || isFreeTier}>
         {isLoading ? (
           <>
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -146,11 +124,7 @@ function ComparisonTable() {
                 return (
                   <td key={plan} className="py-3 px-4 text-center">
                     {typeof value === 'boolean' ? (
-                      value ? (
-                        <Check className="w-4 h-4 mx-auto text-foreground" />
-                      ) : (
-                        <X className="w-4 h-4 mx-auto text-muted-foreground" />
-                      )
+                      value ? <Check className="w-4 h-4 mx-auto text-foreground" /> : <X className="w-4 h-4 mx-auto text-muted-foreground" />
                     ) : (
                       <span className="text-foreground">{value}</span>
                     )}
@@ -165,57 +139,32 @@ function ComparisonTable() {
   );
 }
 
-export default function UpgradePage() {
+export function UpgradePageContent() {
+  const { setHeader } = useSharedHeader();
+
+  useEffect(() => {
+    setHeader({
+      badge: 'Upgrade',
+      badgeIcon: CreditCard,
+      title: 'Upgrade Your Plan',
+      description: 'Get more interviews, iterations, and features to supercharge your prep.',
+    });
+  }, [setHeader]);
+
   return (
-    <main className="flex-1 overflow-auto relative">
-      {/* Background effects */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-secondary/20" />
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] bg-[size:4rem_4rem] opacity-30 [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_110%)]" />
-        <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/3 left-1/3 w-64 h-64 bg-primary/3 rounded-full blur-3xl" />
-      </div>
-
-      <div className="relative z-10 p-4 md:p-6 lg:p-8">
-        <div className="max-w-full">
-          {/* Header */}
-          <motion.div 
-            className="mb-8"
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-          >
-            <div className="inline-flex items-center gap-2 border border-primary/20 bg-primary/5 px-3 py-1.5 mb-3 text-xs text-foreground">
-              <CreditCard className="w-3 h-3 text-primary" />
-              <span>Upgrade</span>
-            </div>
-            <h1 className="text-2xl md:text-3xl font-mono text-foreground mb-1">Upgrade Your Plan</h1>
-            <p className="text-muted-foreground text-sm">
-              Get more interviews, iterations, and features to supercharge your prep.
-            </p>
-          </motion.div>
-
-          {/* Pricing Cards */}
-          <TooltipProvider>
-            <div className="grid md:grid-cols-3 gap-4 mb-12">
-              {PRICING_TIERS.map((tier, index) => (
-                <UpgradeCard key={tier.id} tier={tier} index={index} />
-              ))}
-            </div>
-          </TooltipProvider>
-
-          {/* Comparison Table */}
-          <motion.div
-            className="bg-card border border-border p-6"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-          >
-            <h2 className="text-lg font-mono text-foreground mb-4">Plan Comparison</h2>
-            <ComparisonTable />
-          </motion.div>
+    <>
+      <TooltipProvider>
+        <div className="grid md:grid-cols-3 gap-4 mb-12">
+          {PRICING_TIERS.map((tier, index) => (
+            <UpgradeCard key={tier.id} tier={tier} index={index} />
+          ))}
         </div>
-      </div>
-    </main>
+      </TooltipProvider>
+
+      <motion.div className="bg-card border border-border p-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
+        <h2 className="text-lg font-mono text-foreground mb-4">Plan Comparison</h2>
+        <ComparisonTable />
+      </motion.div>
+    </>
   );
 }

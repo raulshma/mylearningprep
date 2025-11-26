@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -11,6 +10,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ViewTransitionLink } from "@/components/transitions/view-transition-link";
 
 const navItems = [
   {
@@ -77,7 +77,7 @@ export function SidebarNav({ isAdmin = false }: SidebarNavProps) {
 
           return (
             <li key={item.href}>
-              <Link
+              <ViewTransitionLink
                 href={item.href}
                 className={cn(
                   "group relative flex items-center gap-3 px-3 py-2.5 text-sm transition-all duration-200",
@@ -119,7 +119,7 @@ export function SidebarNav({ isAdmin = false }: SidebarNavProps) {
                       : "opacity-0 group-hover:opacity-50 text-muted-foreground"
                   )}
                 />
-              </Link>
+              </ViewTransitionLink>
             </li>
           );
         })}
