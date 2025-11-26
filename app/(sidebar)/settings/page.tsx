@@ -1,5 +1,4 @@
-import { getUserProfile } from '@/lib/actions/user';
-import { getUserSubscriptionStatus } from '@/lib/actions/stripe';
+import { getSettingsPageData } from '@/lib/actions/user';
 import { redirect } from 'next/navigation';
 import { SettingsPageContent } from '@/components/settings/settings-page-content';
 import { ProfileSection } from '@/app/settings/components/profile-section';
@@ -11,17 +10,14 @@ import { BYOKUsageStatsSection } from '@/app/settings/components/byok-usage-stat
 import { CustomThemeSection } from '@/app/settings/components/custom-theme-section';
 
 export default async function SettingsPage() {
-  const [profileResult, subscriptionResult] = await Promise.all([
-    getUserProfile(),
-    getUserSubscriptionStatus(),
-  ]);
+  // Single optimized call fetches all settings data
+  const result = await getSettingsPageData();
 
-  if (!profileResult.success) {
+  if (!result.success) {
     redirect('/login');
   }
 
-  const profile = profileResult.data;
-  const subscription = subscriptionResult;
+  const { profile, subscription } = result.data;
 
   return (
     <SettingsPageContent profile={profile}>

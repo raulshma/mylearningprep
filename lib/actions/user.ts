@@ -20,6 +20,14 @@ export type ActionResult<T> =
   | { success: false; error: APIError };
 
 /**
+ * Cached DB user lookup - shared across all user actions within a request
+ * This eliminates duplicate findByClerkId calls
+ */
+const getCachedDbUser = cache(async (clerkId: string) => {
+  return userRepository.findByClerkId(clerkId);
+});
+
+/**
  * Get or create a user record
  * Creates a new user with default FREE plan if not exists
  * Requirements: 1.2
@@ -191,7 +199,7 @@ const getIterationStatusInternal = cache(async () => {
     return null;
   }
 
-  const user = await userRepository.findByClerkId(authUser.clerkId);
+  const user = await getCachedDbUser(authUser.clerkId);
   if (!user) {
     return null;
   }
@@ -265,7 +273,7 @@ const getUserProfileInternal = cache(async () => {
     return null;
   }
 
-  const dbUser = await userRepository.findByClerkId(authUser.clerkId);
+  const dbUser = await getCachedDbUser(authUser.clerkId);
   
   return {
     clerkId: authUser.clerkId,
@@ -363,6 +371,87 @@ export async function removeByokApiKey(): Promise<ActionResult<{ removed: boolea
     return {
       success: false,
       error: createAPIError('DATABASE_ERROR', 'Failed to remove API key'),
+    };
+  }
+}
+
+/**
+ * Combined settings page data - fetches all required data in a single optimized call
+ * Eliminates duplicate DB/Clerk calls between layout and page
+ */
+export interface SettingsPageData {
+  profile: {
+    clerkId: string;
+    email: string | null;
+    firstName: string | null;
+    lastName: string | null;
+    imageUrl: string | null;
+    plan: string;
+    iterations: { count: number; limit: number; resetDate: Date };
+    interviews: { count: number; limit: number; resetDate: Date };
+    hasStripeSubscription: boolean;
+    hasByokKey: boolean;
+  };
+  subscription: {
+    plan: string;
+    hasSubscription: boolean;
+  };
+}
+
+const getSettingsPageDataInternal = cache(async (): Promise<SettingsPageData | null> => {
+  const authUser = await getAuthUser();
+  
+  if (!authUser) {
+    return null;
+  }
+
+  const dbUser = await getCachedDbUser(authUser.clerkId);
+  
+  const defaultIterations = { count: 0, limit: 20, resetDate: getDefaultResetDate() };
+  const defaultInterviews = { count: 0, limit: 3, resetDate: getDefaultResetDate() };
+  
+  const profile = {
+    clerkId: authUser.clerkId,
+    email: authUser.email,
+    firstName: authUser.firstName,
+    lastName: authUser.lastName,
+    imageUrl: authUser.imageUrl,
+    plan: dbUser?.plan ?? 'FREE',
+    iterations: dbUser?.iterations ?? defaultIterations,
+    interviews: dbUser?.interviews ?? defaultInterviews,
+    hasStripeSubscription: !!dbUser?.stripeCustomerId,
+    hasByokKey: !!authUser.byokApiKey,
+  };
+
+  const subscription = {
+    plan: dbUser?.plan ?? 'FREE',
+    hasSubscription: !!dbUser?.stripeCustomerId,
+  };
+
+  return { profile, subscription };
+});
+
+/**
+ * Get all settings page data in one call
+ * Uses React cache() to deduplicate within a request
+ */
+export async function getSettingsPageData(): Promise<ActionResult<SettingsPageData>> {
+  try {
+    const data = await getSettingsPageDataInternal();
+    
+    if (!data) {
+      return {
+        success: false,
+        error: createAPIError('AUTH_ERROR', 'Not authenticated'),
+      };
+    }
+
+    return { success: true, data };
+  } catch (error) {
+    console.error('getSettingsPageData error:', error);
+    return {
+      success: false,
+      error: createAPIError('DATABASE_ERROR', 'Failed to get settings data'),
     };
   }
 }

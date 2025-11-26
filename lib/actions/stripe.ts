@@ -3,6 +3,7 @@
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { createCheckoutSession, createCustomerPortalSession } from '@/lib/services/stripe';
 import { userRepository } from '@/lib/db/repositories/user-repository';
+import { getAuthUserId } from '@/lib/auth/get-user';
 
 export type SubscriptionPlan = 'PRO' | 'MAX';
 
@@ -61,13 +62,9 @@ export async function createCheckout(plan: SubscriptionPlan): Promise<CheckoutRe
 
 export async function createPortalSession(): Promise<CheckoutResult> {
   try {
-    const { userId: clerkId } = await auth();
-
-    if (!clerkId) {
-      return { success: false, error: 'Not authenticated' };
-    }
-
+    const clerkId = await getAuthUserId();
     const dbUser = await userRepository.findByClerkId(clerkId);
+    
     if (!dbUser?.stripeCustomerId) {
       return { success: false, error: 'No subscription found' };
     }
@@ -87,15 +84,15 @@ export async function createPortalSession(): Promise<CheckoutResult> {
   }
 }
 
+/**
+ * @deprecated Use getSettingsPageData() from user.ts for settings page
+ * Kept for backward compatibility with other pages
+ */
 export async function getUserSubscriptionStatus() {
   try {
-    const { userId: clerkId } = await auth();
-
-    if (!clerkId) {
-      return { plan: 'FREE' as const, hasSubscription: false };
-    }
-
+    const clerkId = await getAuthUserId();
     const dbUser = await userRepository.findByClerkId(clerkId);
+    
     if (!dbUser) {
       return { plan: 'FREE' as const, hasSubscription: false };
     }
@@ -103,7 +100,6 @@ export async function getUserSubscriptionStatus() {
     return {
       plan: dbUser.plan,
       hasSubscription: !!dbUser.stripeCustomerId,
-      iterations: dbUser.iterations,
     };
   } catch (error) {
     console.error('Error getting subscription status:', error);
