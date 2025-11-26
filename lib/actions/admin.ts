@@ -17,6 +17,12 @@ import {
 import { AILog, AIAction, AIStatus } from "@/lib/db/schemas/ai-log";
 import { SETTINGS_KEYS } from "@/lib/db/schemas/settings";
 import { clerkClient } from "@clerk/nextjs/server";
+import {
+  requireAdmin,
+  UnauthorizedResponse,
+  getAuthUser,
+} from "@/lib/auth/get-user";
+import { logAdminAction } from "@/lib/services/audit-log";
 
 export interface AdminUser {
   id: string;
@@ -76,44 +82,48 @@ export interface AILogFilters {
  * Get aggregated admin statistics
  * Requirements: 9.1
  */
-export async function getAdminStats(): Promise<AdminStats> {
-  const usersCollection = await getUsersCollection();
-  const interviewsCollection = await getInterviewsCollection();
+export async function getAdminStats(): Promise<
+  AdminStats | UnauthorizedResponse
+> {
+  return requireAdmin(async () => {
+    const usersCollection = await getUsersCollection();
+    const interviewsCollection = await getInterviewsCollection();
 
-  // Get total users
-  const totalUsers = await usersCollection.countDocuments();
+    // Get total users
+    const totalUsers = await usersCollection.countDocuments();
 
-  // Get users active this week
-  const oneWeekAgo = new Date();
-  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-  const activeThisWeek = await usersCollection.countDocuments({
-    updatedAt: { $gte: oneWeekAgo },
+    // Get users active this week
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    const activeThisWeek = await usersCollection.countDocuments({
+      updatedAt: { $gte: oneWeekAgo },
+    });
+
+    // Get total interviews
+    const totalInterviews = await interviewsCollection.countDocuments();
+
+    // Get AI stats with full observability
+    const aiStats = await aiLogRepository.getAggregatedStats();
+
+    const errorRate =
+      aiStats.totalRequests > 0
+        ? Math.round((aiStats.errorCount / aiStats.totalRequests) * 10000) / 100
+        : 0;
+
+    return {
+      totalUsers,
+      activeThisWeek,
+      totalInterviews,
+      totalAIRequests: aiStats.totalRequests,
+      totalInputTokens: aiStats.totalInputTokens,
+      totalOutputTokens: aiStats.totalOutputTokens,
+      avgLatencyMs: aiStats.avgLatencyMs,
+      totalCost: aiStats.totalCost,
+      errorCount: aiStats.errorCount,
+      errorRate,
+      avgTimeToFirstToken: aiStats.avgTimeToFirstToken,
+    };
   });
-
-  // Get total interviews
-  const totalInterviews = await interviewsCollection.countDocuments();
-
-  // Get AI stats with full observability
-  const aiStats = await aiLogRepository.getAggregatedStats();
-
-  const errorRate =
-    aiStats.totalRequests > 0
-      ? Math.round((aiStats.errorCount / aiStats.totalRequests) * 10000) / 100
-      : 0;
-
-  return {
-    totalUsers,
-    activeThisWeek,
-    totalInterviews,
-    totalAIRequests: aiStats.totalRequests,
-    totalInputTokens: aiStats.totalInputTokens,
-    totalOutputTokens: aiStats.totalOutputTokens,
-    avgLatencyMs: aiStats.avgLatencyMs,
-    totalCost: aiStats.totalCost,
-    errorCount: aiStats.errorCount,
-    errorRate,
-    avgTimeToFirstToken: aiStats.avgTimeToFirstToken,
-  };
 }
 
 /**
@@ -122,31 +132,33 @@ export async function getAdminStats(): Promise<AdminStats> {
  */
 export async function getAILogs(
   filters: AILogFilters = {}
-): Promise<AILogWithDetails[]> {
-  const queryOptions: AILogQueryOptions = {
-    action: filters.action,
-    status: filters.status,
-    model: filters.model,
-    hasError: filters.hasError,
-    startDate: filters.startDate ? new Date(filters.startDate) : undefined,
-    endDate: filters.endDate ? new Date(filters.endDate) : undefined,
-    limit: filters.limit ?? 50,
-    skip: filters.skip ?? 0,
-  };
+): Promise<AILogWithDetails[] | UnauthorizedResponse> {
+  return requireAdmin(async () => {
+    const queryOptions: AILogQueryOptions = {
+      action: filters.action,
+      status: filters.status,
+      model: filters.model,
+      hasError: filters.hasError,
+      startDate: filters.startDate ? new Date(filters.startDate) : undefined,
+      endDate: filters.endDate ? new Date(filters.endDate) : undefined,
+      limit: filters.limit ?? 50,
+      skip: filters.skip ?? 0,
+    };
 
-  const logs = await aiLogRepository.query(queryOptions);
+    const logs = await aiLogRepository.query(queryOptions);
 
-  return logs.map((log) => ({
-    ...log,
-    formattedTimestamp: new Date(log.timestamp).toLocaleString("en-US", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    }),
-  }));
+    return logs.map((log) => ({
+      ...log,
+      formattedTimestamp: new Date(log.timestamp).toLocaleString("en-US", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      }),
+    }));
+  });
 }
 
 /**
@@ -154,25 +166,31 @@ export async function getAILogs(
  */
 export async function getAILogsCount(
   filters: AILogFilters = {}
-): Promise<number> {
-  const queryOptions: AILogQueryOptions = {
-    action: filters.action,
-    status: filters.status,
-    model: filters.model,
-    hasError: filters.hasError,
-    startDate: filters.startDate ? new Date(filters.startDate) : undefined,
-    endDate: filters.endDate ? new Date(filters.endDate) : undefined,
-  };
+): Promise<number | UnauthorizedResponse> {
+  return requireAdmin(async () => {
+    const queryOptions: AILogQueryOptions = {
+      action: filters.action,
+      status: filters.status,
+      model: filters.model,
+      hasError: filters.hasError,
+      startDate: filters.startDate ? new Date(filters.startDate) : undefined,
+      endDate: filters.endDate ? new Date(filters.endDate) : undefined,
+    };
 
-  return aiLogRepository.count(queryOptions);
+    return aiLogRepository.count(queryOptions);
+  });
 }
 
 /**
  * Get a single AI log by ID with full trace
  * Requirements: 9.4
  */
-export async function getAILogById(id: string): Promise<AILog | null> {
-  return aiLogRepository.findById(id);
+export async function getAILogById(
+  id: string
+): Promise<AILog | null | UnauthorizedResponse> {
+  return requireAdmin(async () => {
+    return aiLogRepository.findById(id);
+  });
 }
 
 /**
@@ -181,22 +199,28 @@ export async function getAILogById(id: string): Promise<AILog | null> {
  */
 export async function toggleSearchTool(
   enabled: boolean
-): Promise<{ success: boolean; enabled: boolean }> {
-  setSearchEnabled(enabled);
-  return {
-    success: true,
-    enabled: isSearchEnabled(),
-  };
+): Promise<{ success: boolean; enabled: boolean } | UnauthorizedResponse> {
+  return requireAdmin(async () => {
+    setSearchEnabled(enabled);
+    return {
+      success: true,
+      enabled: isSearchEnabled(),
+    };
+  });
 }
 
 /**
  * Get current search tool status
  * Requirements: 9.3
  */
-export async function getSearchToolStatus(): Promise<{ enabled: boolean }> {
-  return {
-    enabled: isSearchEnabled(),
-  };
+export async function getSearchToolStatus(): Promise<
+  { enabled: boolean } | UnauthorizedResponse
+> {
+  return requireAdmin(async () => {
+    return {
+      enabled: isSearchEnabled(),
+    };
+  });
 }
 
 /**
@@ -204,33 +228,36 @@ export async function getSearchToolStatus(): Promise<{ enabled: boolean }> {
  * Requirements: 9.1
  */
 export async function getAIUsageByAction(): Promise<
-  Array<{ action: string; count: number; avgLatency: number }>
+  | Array<{ action: string; count: number; avgLatency: number }>
+  | UnauthorizedResponse
 > {
-  const collection = await getAILogsCollection();
+  return requireAdmin(async () => {
+    const collection = await getAILogsCollection();
 
-  const pipeline = [
-    {
-      $group: {
-        _id: "$action",
-        count: { $sum: 1 },
-        avgLatency: { $avg: "$latencyMs" },
-        totalTokens: {
-          $sum: { $add: ["$tokenUsage.input", "$tokenUsage.output"] },
+    const pipeline = [
+      {
+        $group: {
+          _id: "$action",
+          count: { $sum: 1 },
+          avgLatency: { $avg: "$latencyMs" },
+          totalTokens: {
+            $sum: { $add: ["$tokenUsage.input", "$tokenUsage.output"] },
+          },
         },
       },
-    },
-    {
-      $sort: { count: -1 as const },
-    },
-  ];
+      {
+        $sort: { count: -1 as const },
+      },
+    ];
 
-  const results = await collection.aggregate(pipeline).toArray();
+    const results = await collection.aggregate(pipeline).toArray();
 
-  return results.map((r) => ({
-    action: r._id as string,
-    count: r.count as number,
-    avgLatency: Math.round(r.avgLatency as number),
-  }));
+    return results.map((r) => ({
+      action: r._id as string,
+      count: r.count as number,
+      avgLatency: Math.round(r.avgLatency as number),
+    }));
+  });
 }
 
 /**
@@ -239,20 +266,22 @@ export async function getAIUsageByAction(): Promise<
  */
 export async function getRecentAIActivity(
   limit: number = 10
-): Promise<AILogWithDetails[]> {
-  const logs = await aiLogRepository.query({ limit });
+): Promise<AILogWithDetails[] | UnauthorizedResponse> {
+  return requireAdmin(async () => {
+    const logs = await aiLogRepository.query({ limit });
 
-  return logs.map((log) => ({
-    ...log,
-    formattedTimestamp: new Date(log.timestamp).toLocaleString("en-US", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    }),
-  }));
+    return logs.map((log) => ({
+      ...log,
+      formattedTimestamp: new Date(log.timestamp).toLocaleString("en-US", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      }),
+    }));
+  });
 }
 
 /**
@@ -280,71 +309,75 @@ async function setSetting<T>(key: string, value: T): Promise<void> {
  * Get all users for admin management
  * Fetches users from MongoDB and enriches with Clerk data
  */
-export async function getAdminUsers(): Promise<AdminUser[]> {
-  const usersCollection = await getUsersCollection();
-  const interviewsCollection = await getInterviewsCollection();
+export async function getAdminUsers(): Promise<
+  AdminUser[] | UnauthorizedResponse
+> {
+  return requireAdmin(async () => {
+    const usersCollection = await getUsersCollection();
+    const interviewsCollection = await getInterviewsCollection();
 
-  // Get all users from MongoDB, sorted by most recently active
-  const dbUsers = await usersCollection
-    .find({})
-    .sort({ updatedAt: -1 })
-    .toArray();
+    // Get all users from MongoDB, sorted by most recently active
+    const dbUsers = await usersCollection
+      .find({})
+      .sort({ updatedAt: -1 })
+      .toArray();
 
-  if (dbUsers.length === 0) {
-    return [];
-  }
+    if (dbUsers.length === 0) {
+      return [];
+    }
 
-  // Get interview counts per user
-  const interviewCounts = await interviewsCollection
-    .aggregate([{ $group: { _id: "$userId", count: { $sum: 1 } } }])
-    .toArray();
+    // Get interview counts per user
+    const interviewCounts = await interviewsCollection
+      .aggregate([{ $group: { _id: "$userId", count: { $sum: 1 } } }])
+      .toArray();
 
-  const interviewCountMap = new Map(
-    interviewCounts.map((item) => [item._id as string, item.count as number])
-  );
+    const interviewCountMap = new Map(
+      interviewCounts.map((item) => [item._id as string, item.count as number])
+    );
 
-  // Fetch Clerk user data for all users
-  const client = await clerkClient();
-  const clerkUserIds = dbUsers.map((u) => u.clerkId);
+    // Fetch Clerk user data for all users
+    const client = await clerkClient();
+    const clerkUserIds = dbUsers.map((u) => u.clerkId);
 
-  // Clerk getUserList supports filtering by userId array
-  const clerkUsersResponse = await client.users.getUserList({
-    userId: clerkUserIds,
-    limit: 100,
-  });
+    // Clerk getUserList supports filtering by userId array
+    const clerkUsersResponse = await client.users.getUserList({
+      userId: clerkUserIds,
+      limit: 100,
+    });
 
-  const clerkUserMap = new Map(clerkUsersResponse.data.map((u) => [u.id, u]));
+    const clerkUserMap = new Map(clerkUsersResponse.data.map((u) => [u.id, u]));
 
-  // Combine data (preserving the sort order from MongoDB)
-  return dbUsers.map((dbUser) => {
-    const clerkUser = clerkUserMap.get(dbUser.clerkId);
-    const interviewCount = interviewCountMap.get(dbUser._id) ?? 0;
+    // Combine data (preserving the sort order from MongoDB)
+    return dbUsers.map((dbUser) => {
+      const clerkUser = clerkUserMap.get(dbUser.clerkId);
+      const interviewCount = interviewCountMap.get(dbUser._id) ?? 0;
 
-    // Calculate last active time
-    const lastActiveDate = dbUser.updatedAt;
-    const lastActive = formatRelativeTime(lastActiveDate);
+      // Calculate last active time
+      const lastActiveDate = dbUser.updatedAt;
+      const lastActive = formatRelativeTime(lastActiveDate);
 
-    // Build name from Clerk data
-    const firstName = clerkUser?.firstName ?? "";
-    const lastName = clerkUser?.lastName ?? "";
-    const name =
-      [firstName, lastName].filter(Boolean).join(" ") || "Unknown User";
-    const email = clerkUser?.emailAddresses[0]?.emailAddress ?? "No email";
+      // Build name from Clerk data
+      const firstName = clerkUser?.firstName ?? "";
+      const lastName = clerkUser?.lastName ?? "";
+      const name =
+        [firstName, lastName].filter(Boolean).join(" ") || "Unknown User";
+      const email = clerkUser?.emailAddresses[0]?.emailAddress ?? "No email";
 
-    return {
-      id: dbUser._id,
-      clerkId: dbUser.clerkId,
-      name,
-      email,
-      plan: dbUser.plan,
-      interviewCount,
-      lastActive,
-      suspended: dbUser.suspended ?? false,
-      createdAt: dbUser.createdAt.toISOString(),
-      iterationCount: dbUser.iterations.count,
-      iterationLimit: dbUser.iterations.limit,
-      interviewLimit: dbUser.interviews?.limit ?? 3,
-    };
+      return {
+        id: dbUser._id,
+        clerkId: dbUser.clerkId,
+        name,
+        email,
+        plan: dbUser.plan,
+        interviewCount,
+        lastActive,
+        suspended: dbUser.suspended ?? false,
+        createdAt: dbUser.createdAt.toISOString(),
+        iterationCount: dbUser.iterations.count,
+        iterationLimit: dbUser.iterations.limit,
+        interviewLimit: dbUser.interviews?.limit ?? 3,
+      };
+    });
   });
 }
 
@@ -370,56 +403,58 @@ function formatRelativeTime(date: Date): string {
  */
 export async function getAdminUserDetails(
   userId: string
-): Promise<AdminUserDetails | null> {
-  const usersCollection = await getUsersCollection();
-  const interviewsCollection = await getInterviewsCollection();
+): Promise<AdminUserDetails | null | UnauthorizedResponse> {
+  return requireAdmin(async () => {
+    const usersCollection = await getUsersCollection();
+    const interviewsCollection = await getInterviewsCollection();
 
-  const dbUser = await usersCollection.findOne({ _id: userId });
-  if (!dbUser) return null;
+    const dbUser = await usersCollection.findOne({ _id: userId });
+    if (!dbUser) return null;
 
-  // Get user's interviews
-  const interviews = await interviewsCollection
-    .find({ userId })
-    .sort({ createdAt: -1 })
-    .limit(10)
-    .toArray();
+    // Get user's interviews
+    const interviews = await interviewsCollection
+      .find({ userId })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .toArray();
 
-  // Get Clerk user data
-  const client = await clerkClient();
-  let clerkUser;
-  try {
-    clerkUser = await client.users.getUser(dbUser.clerkId);
-  } catch {
-    clerkUser = null;
-  }
+    // Get Clerk user data
+    const client = await clerkClient();
+    let clerkUser;
+    try {
+      clerkUser = await client.users.getUser(dbUser.clerkId);
+    } catch {
+      clerkUser = null;
+    }
 
-  const firstName = clerkUser?.firstName ?? "";
-  const lastName = clerkUser?.lastName ?? "";
-  const name =
-    [firstName, lastName].filter(Boolean).join(" ") || "Unknown User";
-  const email = clerkUser?.emailAddresses[0]?.emailAddress ?? "No email";
+    const firstName = clerkUser?.firstName ?? "";
+    const lastName = clerkUser?.lastName ?? "";
+    const name =
+      [firstName, lastName].filter(Boolean).join(" ") || "Unknown User";
+    const email = clerkUser?.emailAddresses[0]?.emailAddress ?? "No email";
 
-  return {
-    id: dbUser._id,
-    clerkId: dbUser.clerkId,
-    name,
-    email,
-    plan: dbUser.plan,
-    interviewCount: interviews.length,
-    lastActive: formatRelativeTime(dbUser.updatedAt),
-    suspended: dbUser.suspended ?? false,
-    createdAt: dbUser.createdAt.toISOString(),
-    iterationCount: dbUser.iterations.count,
-    iterationLimit: dbUser.iterations.limit,
-    interviewLimit: dbUser.interviews?.limit ?? 3,
-    stripeCustomerId: dbUser.stripeCustomerId,
-    interviews: interviews.map((i) => ({
-      id: i._id,
-      jobTitle: i.jobDetails.title,
-      company: i.jobDetails.company,
-      createdAt: i.createdAt.toISOString(),
-    })),
-  };
+    return {
+      id: dbUser._id,
+      clerkId: dbUser.clerkId,
+      name,
+      email,
+      plan: dbUser.plan,
+      interviewCount: interviews.length,
+      lastActive: formatRelativeTime(dbUser.updatedAt),
+      suspended: dbUser.suspended ?? false,
+      createdAt: dbUser.createdAt.toISOString(),
+      iterationCount: dbUser.iterations.count,
+      iterationLimit: dbUser.iterations.limit,
+      interviewLimit: dbUser.interviews?.limit ?? 3,
+      stripeCustomerId: dbUser.stripeCustomerId,
+      interviews: interviews.map((i) => ({
+        id: i._id,
+        jobTitle: i.jobDetails.title,
+        company: i.jobDetails.company,
+        createdAt: i.createdAt.toISOString(),
+      })),
+    };
+  });
 }
 
 /**
@@ -428,40 +463,55 @@ export async function getAdminUserDetails(
 export async function updateUserPlan(
   userId: string,
   plan: "FREE" | "PRO" | "MAX"
-): Promise<{ success: boolean; error?: string }> {
-  const usersCollection = await getUsersCollection();
+): Promise<{ success: boolean; error?: string } | UnauthorizedResponse> {
+  return requireAdmin(async () => {
+    const usersCollection = await getUsersCollection();
 
-  // Set iteration limits based on plan
-  const iterationLimits: Record<string, number> = {
-    FREE: 5,
-    PRO: 50,
-    MAX: 999999, // Unlimited
-  };
+    // Get current user data for audit log
+    const currentUser = await usersCollection.findOne({ _id: userId });
+    const oldPlan = currentUser?.plan;
 
-  // Set interview limits based on plan
-  const interviewLimits: Record<string, number> = {
-    FREE: 3,
-    PRO: 25,
-    MAX: 100,
-  };
+    // Set iteration limits based on plan
+    const iterationLimits: Record<string, number> = {
+      FREE: 5,
+      PRO: 50,
+      MAX: 999999, // Unlimited
+    };
 
-  const result = await usersCollection.updateOne(
-    { _id: userId },
-    {
-      $set: {
-        plan,
-        "iterations.limit": iterationLimits[plan],
-        "interviews.limit": interviewLimits[plan],
-        updatedAt: new Date(),
-      },
+    // Set interview limits based on plan
+    const interviewLimits: Record<string, number> = {
+      FREE: 3,
+      PRO: 25,
+      MAX: 100,
+    };
+
+    const result = await usersCollection.updateOne(
+      { _id: userId },
+      {
+        $set: {
+          plan,
+          "iterations.limit": iterationLimits[plan],
+          "interviews.limit": interviewLimits[plan],
+          updatedAt: new Date(),
+        },
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return { success: false, error: "User not found" };
     }
-  );
 
-  if (result.matchedCount === 0) {
-    return { success: false, error: "User not found" };
-  }
+    // Audit log
+    const adminUser = await getAuthUser();
+    if (adminUser) {
+      await logAdminAction("updateUserPlan", adminUser.clerkId, userId, {
+        oldPlan,
+        newPlan: plan,
+      });
+    }
 
-  return { success: true };
+    return { success: true };
+  });
 }
 
 /**
@@ -470,24 +520,34 @@ export async function updateUserPlan(
 export async function toggleUserSuspension(
   userId: string,
   suspended: boolean
-): Promise<{ success: boolean; error?: string }> {
-  const usersCollection = await getUsersCollection();
+): Promise<{ success: boolean; error?: string } | UnauthorizedResponse> {
+  return requireAdmin(async () => {
+    const usersCollection = await getUsersCollection();
 
-  const result = await usersCollection.updateOne(
-    { _id: userId },
-    {
-      $set: {
-        suspended,
-        updatedAt: new Date(),
-      },
+    const result = await usersCollection.updateOne(
+      { _id: userId },
+      {
+        $set: {
+          suspended,
+          updatedAt: new Date(),
+        },
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return { success: false, error: "User not found" };
     }
-  );
 
-  if (result.matchedCount === 0) {
-    return { success: false, error: "User not found" };
-  }
+    // Audit log
+    const adminUser = await getAuthUser();
+    if (adminUser) {
+      await logAdminAction("toggleUserSuspension", adminUser.clerkId, userId, {
+        suspended,
+      });
+    }
 
-  return { success: true };
+    return { success: true };
+  });
 }
 
 /**
@@ -495,24 +555,39 @@ export async function toggleUserSuspension(
  */
 export async function resetUserIterations(
   userId: string
-): Promise<{ success: boolean; error?: string }> {
-  const usersCollection = await getUsersCollection();
+): Promise<{ success: boolean; error?: string } | UnauthorizedResponse> {
+  return requireAdmin(async () => {
+    const usersCollection = await getUsersCollection();
 
-  const result = await usersCollection.updateOne(
-    { _id: userId },
-    {
-      $set: {
-        "iterations.count": 0,
-        updatedAt: new Date(),
-      },
+    // Get current iteration count for audit log
+    const currentUser = await usersCollection.findOne({ _id: userId });
+    const oldIterationCount = currentUser?.iterations?.count;
+
+    const result = await usersCollection.updateOne(
+      { _id: userId },
+      {
+        $set: {
+          "iterations.count": 0,
+          updatedAt: new Date(),
+        },
+      }
+    );
+
+    if (result.matchedCount === 0) {
+      return { success: false, error: "User not found" };
     }
-  );
 
-  if (result.matchedCount === 0) {
-    return { success: false, error: "User not found" };
-  }
+    // Audit log
+    const adminUser = await getAuthUser();
+    if (adminUser) {
+      await logAdminAction("resetUserIterations", adminUser.clerkId, userId, {
+        oldIterationCount,
+        newIterationCount: 0,
+      });
+    }
 
-  return { success: true };
+    return { success: true };
+  });
 }
 
 /**
@@ -521,16 +596,33 @@ export async function resetUserIterations(
  */
 export async function generateImpersonationToken(
   userId: string
-): Promise<{ success: boolean; clerkId?: string; error?: string }> {
-  const usersCollection = await getUsersCollection();
+): Promise<
+  { success: boolean; clerkId?: string; error?: string } | UnauthorizedResponse
+> {
+  return requireAdmin(async () => {
+    const usersCollection = await getUsersCollection();
 
-  const user = await usersCollection.findOne({ _id: userId });
-  if (!user) {
-    return { success: false, error: "User not found" };
-  }
+    const user = await usersCollection.findOne({ _id: userId });
+    if (!user) {
+      return { success: false, error: "User not found" };
+    }
 
-  // Return the clerkId for Clerk's impersonation feature
-  return { success: true, clerkId: user.clerkId };
+    // Audit log
+    const adminUser = await getAuthUser();
+    if (adminUser) {
+      await logAdminAction(
+        "generateImpersonationToken",
+        adminUser.clerkId,
+        userId,
+        {
+          targetClerkId: user.clerkId,
+        }
+      );
+    }
+
+    // Return the clerkId for Clerk's impersonation feature
+    return { success: true, clerkId: user.clerkId };
+  });
 }
 
 // ============================================
@@ -572,101 +664,91 @@ export interface TokenUsageTrend {
  */
 export async function getUsageTrends(
   days: number = 30
-): Promise<UsageTrendData[]> {
-  const interviewsCollection = await getInterviewsCollection();
-  const aiLogsCollection = await getAILogsCollection();
-  const usersCollection = await getUsersCollection();
+): Promise<UsageTrendData[] | UnauthorizedResponse> {
+  return requireAdmin(async () => {
+    const interviewsCollection = await getInterviewsCollection();
+    const aiLogsCollection = await getAILogsCollection();
+    const usersCollection = await getUsersCollection();
 
-  // Use UTC dates consistently
-  const now = new Date();
-  const startDate = new Date(Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate() - days,
-    0, 0, 0, 0
-  ));
+    // Calculate start date
+    const now = new Date();
+    const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+    startDate.setUTCHours(0, 0, 0, 0);
 
-  // Get interviews per day
-  const interviewsPipeline = [
-    { $match: { createdAt: { $gte: startDate } } },
-    {
-      $group: {
-        _id: {
-          $dateToString: { format: "%Y-%m-%d", date: "$createdAt", timezone: "UTC" },
+    // Get interviews per day
+    const interviewsPipeline = [
+      { $match: { createdAt: { $gte: startDate } } },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: "%Y-%m-%d", date: "$createdAt", timezone: "UTC" },
+          },
+          count: { $sum: 1 },
         },
-        count: { $sum: 1 },
       },
-    },
-    { $sort: { _id: 1 as const } },
-  ];
+      { $sort: { _id: 1 as const } },
+    ];
 
-  // Get AI requests per day
-  const aiRequestsPipeline = [
-    { $match: { timestamp: { $gte: startDate } } },
-    {
-      $group: {
-        _id: {
-          $dateToString: { format: "%Y-%m-%d", date: "$timestamp", timezone: "UTC" },
+    // Get AI requests per day
+    const aiRequestsPipeline = [
+      { $match: { timestamp: { $gte: startDate } } },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: "%Y-%m-%d", date: "$timestamp", timezone: "UTC" },
+          },
+          count: { $sum: 1 },
         },
-        count: { $sum: 1 },
       },
-    },
-    { $sort: { _id: 1 as const } },
-  ];
+      { $sort: { _id: 1 as const } },
+    ];
 
-  // Get new users per day
-  const usersPipeline = [
-    { $match: { createdAt: { $gte: startDate } } },
-    {
-      $group: {
-        _id: {
-          $dateToString: { format: "%Y-%m-%d", date: "$createdAt", timezone: "UTC" },
+    // Get new users per day
+    const usersPipeline = [
+      { $match: { createdAt: { $gte: startDate } } },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: "%Y-%m-%d", date: "$createdAt", timezone: "UTC" },
+          },
+          count: { $sum: 1 },
         },
-        count: { $sum: 1 },
       },
-    },
-    { $sort: { _id: 1 as const } },
-  ];
+      { $sort: { _id: 1 as const } },
+    ];
 
-  const [interviewsData, aiRequestsData, usersData] = await Promise.all([
-    interviewsCollection.aggregate(interviewsPipeline).toArray(),
-    aiLogsCollection.aggregate(aiRequestsPipeline).toArray(),
-    usersCollection.aggregate(usersPipeline).toArray(),
-  ]);
+    const [interviewsData, aiRequestsData, usersData] = await Promise.all([
+      interviewsCollection.aggregate(interviewsPipeline).toArray(),
+      aiLogsCollection.aggregate(aiRequestsPipeline).toArray(),
+      usersCollection.aggregate(usersPipeline).toArray(),
+    ]);
 
-  // Create a map for each data type
-  const interviewsMap = new Map(
-    interviewsData.map((d) => [String(d._id), (d.count as number) || 0])
-  );
-  const aiRequestsMap = new Map(
-    aiRequestsData.map((d) => [String(d._id), (d.count as number) || 0])
-  );
-  const usersMap = new Map(
-    usersData.map((d) => [String(d._id), (d.count as number) || 0])
-  );
+    // Create a map for each data type
+    const interviewsMap = new Map(
+      interviewsData.map((d) => [String(d._id), (d.count as number) || 0])
+    );
+    const aiRequestsMap = new Map(
+      aiRequestsData.map((d) => [String(d._id), (d.count as number) || 0])
+    );
+    const usersMap = new Map(
+      usersData.map((d) => [String(d._id), (d.count as number) || 0])
+    );
 
-  // Generate all dates in range using UTC
-  const result: UsageTrendData[] = [];
-  const endDate = new Date(Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate(),
-    23, 59, 59, 999
-  ));
-  
-  const currentDate = new Date(startDate);
-  while (currentDate <= endDate) {
-    const dateStr = currentDate.toISOString().split("T")[0];
-    result.push({
-      date: dateStr,
-      interviews: interviewsMap.get(dateStr) ?? 0,
-      aiRequests: aiRequestsMap.get(dateStr) ?? 0,
-      users: usersMap.get(dateStr) ?? 0,
-    });
-    currentDate.setUTCDate(currentDate.getUTCDate() + 1);
-  }
+    // Generate all dates in range
+    const result: UsageTrendData[] = [];
+    for (let i = 0; i <= days; i++) {
+      const date = new Date(now.getTime() - (days - i) * 24 * 60 * 60 * 1000);
+      const dateStr = date.toISOString().split("T")[0];
+      result.push({
+        date: dateStr,
+        interviews: interviewsMap.get(dateStr) ?? 0,
+        aiRequests: aiRequestsMap.get(dateStr) ?? 0,
+        users: usersMap.get(dateStr) ?? 0,
+      });
+    }
 
-  return result;
+    return result;
+  });
 }
 
 /**
@@ -674,54 +756,62 @@ export async function getUsageTrends(
  */
 export async function getPopularTopics(
   limit: number = 10
-): Promise<PopularTopicData[]> {
-  const interviewsCollection = await getInterviewsCollection();
+): Promise<PopularTopicData[] | UnauthorizedResponse> {
+  return requireAdmin(async () => {
+    const interviewsCollection = await getInterviewsCollection();
 
-  const pipeline = [
-    {
-      $group: {
-        _id: "$jobDetails.title",
-        count: { $sum: 1 },
+    const pipeline = [
+      {
+        $group: {
+          _id: "$jobDetails.title",
+          count: { $sum: 1 },
+        },
       },
-    },
-    { $sort: { count: -1 as const } },
-    { $limit: limit },
-  ];
+      { $sort: { count: -1 as const } },
+      { $limit: limit },
+    ];
 
-  const results = await interviewsCollection.aggregate(pipeline).toArray();
-  const total = results.reduce((sum, r) => sum + (r.count as number), 0);
+    const results = await interviewsCollection.aggregate(pipeline).toArray();
+    const total = results.reduce((sum, r) => sum + (r.count as number), 0);
 
-  return results.map((r) => ({
-    topic: r._id as string,
-    count: r.count as number,
-    percentage: total > 0 ? Math.round(((r.count as number) / total) * 100) : 0,
-  }));
+    return results.map((r) => ({
+      topic: r._id as string,
+      count: r.count as number,
+      percentage:
+        total > 0 ? Math.round(((r.count as number) / total) * 100) : 0,
+    }));
+  });
 }
 
 /**
  * Get user plan distribution
  */
-export async function getPlanDistribution(): Promise<PlanDistribution[]> {
-  const usersCollection = await getUsersCollection();
+export async function getPlanDistribution(): Promise<
+  PlanDistribution[] | UnauthorizedResponse
+> {
+  return requireAdmin(async () => {
+    const usersCollection = await getUsersCollection();
 
-  const pipeline = [
-    {
-      $group: {
-        _id: "$plan",
-        count: { $sum: 1 },
+    const pipeline = [
+      {
+        $group: {
+          _id: "$plan",
+          count: { $sum: 1 },
+        },
       },
-    },
-    { $sort: { count: -1 as const } },
-  ];
+      { $sort: { count: -1 as const } },
+    ];
 
-  const results = await usersCollection.aggregate(pipeline).toArray();
-  const total = results.reduce((sum, r) => sum + (r.count as number), 0);
+    const results = await usersCollection.aggregate(pipeline).toArray();
+    const total = results.reduce((sum, r) => sum + (r.count as number), 0);
 
-  return results.map((r) => ({
-    plan: r._id as string,
-    count: r.count as number,
-    percentage: total > 0 ? Math.round(((r.count as number) / total) * 100) : 0,
-  }));
+    return results.map((r) => ({
+      plan: r._id as string,
+      count: r.count as number,
+      percentage:
+        total > 0 ? Math.round(((r.count as number) / total) * 100) : 0,
+    }));
+  });
 }
 
 /**
@@ -729,56 +819,46 @@ export async function getPlanDistribution(): Promise<PlanDistribution[]> {
  */
 export async function getDailyActiveUsers(
   days: number = 30
-): Promise<DailyActiveUsers[]> {
-  const usersCollection = await getUsersCollection();
+): Promise<DailyActiveUsers[] | UnauthorizedResponse> {
+  return requireAdmin(async () => {
+    const usersCollection = await getUsersCollection();
 
-  // Use UTC dates consistently
-  const now = new Date();
-  const startDate = new Date(Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate() - days,
-    0, 0, 0, 0
-  ));
+    // Calculate start date
+    const now = new Date();
+    const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+    startDate.setUTCHours(0, 0, 0, 0);
 
-  const pipeline = [
-    { $match: { updatedAt: { $gte: startDate } } },
-    {
-      $group: {
-        _id: {
-          $dateToString: { format: "%Y-%m-%d", date: "$updatedAt", timezone: "UTC" },
+    const pipeline = [
+      { $match: { updatedAt: { $gte: startDate } } },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: "%Y-%m-%d", date: "$updatedAt", timezone: "UTC" },
+          },
+          count: { $sum: 1 },
         },
-        count: { $sum: 1 },
       },
-    },
-    { $sort: { _id: 1 as const } },
-  ];
+      { $sort: { _id: 1 as const } },
+    ];
 
-  const results = await usersCollection.aggregate(pipeline).toArray();
-  const dataMap = new Map(
-    results.map((d) => [String(d._id), (d.count as number) || 0])
-  );
+    const results = await usersCollection.aggregate(pipeline).toArray();
+    const dataMap = new Map(
+      results.map((d) => [String(d._id), (d.count as number) || 0])
+    );
 
-  // Generate all dates in range using UTC
-  const result: DailyActiveUsers[] = [];
-  const endDate = new Date(Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate(),
-    23, 59, 59, 999
-  ));
-  
-  const currentDate = new Date(startDate);
-  while (currentDate <= endDate) {
-    const dateStr = currentDate.toISOString().split("T")[0];
-    result.push({
-      date: dateStr,
-      count: dataMap.get(dateStr) ?? 0,
-    });
-    currentDate.setUTCDate(currentDate.getUTCDate() + 1);
-  }
+    // Generate all dates in range
+    const result: DailyActiveUsers[] = [];
+    for (let i = 0; i <= days; i++) {
+      const date = new Date(now.getTime() - (days - i) * 24 * 60 * 60 * 1000);
+      const dateStr = date.toISOString().split("T")[0];
+      result.push({
+        date: dateStr,
+        count: dataMap.get(dateStr) ?? 0,
+      });
+    }
 
-  return result;
+    return result;
+  });
 }
 
 /**
@@ -786,73 +866,59 @@ export async function getDailyActiveUsers(
  */
 export async function getTokenUsageTrends(
   days: number = 30
-): Promise<TokenUsageTrend[]> {
-  const aiLogsCollection = await getAILogsCollection();
+): Promise<TokenUsageTrend[] | UnauthorizedResponse> {
+  return requireAdmin(async () => {
+    const aiLogsCollection = await getAILogsCollection();
 
-  // Use UTC dates consistently
-  const now = new Date();
-  const startDate = new Date(Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate() - days,
-    0, 0, 0, 0
-  ));
+    // Calculate start date (days ago from now)
+    const now = new Date();
+    const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+    startDate.setUTCHours(0, 0, 0, 0);
 
-  const pipeline = [
-    { $match: { timestamp: { $gte: startDate } } },
-    {
-      $group: {
-        _id: {
-          $dateToString: { format: "%Y-%m-%d", date: "$timestamp", timezone: "UTC" },
-        },
-        inputTokens: { 
-          $sum: { 
-            $ifNull: ["$tokenUsage.input", 0]
-          } 
-        },
-        outputTokens: { 
-          $sum: { 
-            $ifNull: ["$tokenUsage.output", 0]
-          } 
+    const pipeline = [
+      { $match: { timestamp: { $gte: startDate } } },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: "%Y-%m-%d", date: "$timestamp", timezone: "UTC" },
+          },
+          inputTokens: {
+            $sum: "$tokenUsage.input",
+          },
+          outputTokens: {
+            $sum: "$tokenUsage.output",
+          },
         },
       },
-    },
-    { $sort: { _id: 1 as const } },
-  ];
+      { $sort: { _id: 1 as const } },
+    ];
 
-  const results = await aiLogsCollection.aggregate(pipeline).toArray();
-  const dataMap = new Map(
-    results.map((d) => [
-      String(d._id),
-      { 
-        input: (d.inputTokens as number) || 0, 
-        output: (d.outputTokens as number) || 0 
-      },
-    ])
-  );
+    const results = await aiLogsCollection.aggregate(pipeline).toArray();
+    const dataMap = new Map(
+      results.map((d) => [
+        String(d._id),
+        {
+          input: (d.inputTokens as number) || 0,
+          output: (d.outputTokens as number) || 0,
+        },
+      ])
+    );
 
-  // Generate all dates in range using UTC
-  const result: TokenUsageTrend[] = [];
-  const endDate = new Date(Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate(),
-    23, 59, 59, 999
-  ));
-  
-  const currentDate = new Date(startDate);
-  while (currentDate <= endDate) {
-    const dateStr = currentDate.toISOString().split("T")[0];
-    const data = dataMap.get(dateStr);
-    result.push({
-      date: dateStr,
-      inputTokens: data?.input ?? 0,
-      outputTokens: data?.output ?? 0,
-    });
-    currentDate.setUTCDate(currentDate.getUTCDate() + 1);
-  }
+    // Generate all dates in range
+    const result: TokenUsageTrend[] = [];
+    for (let i = 0; i <= days; i++) {
+      const date = new Date(now.getTime() - (days - i) * 24 * 60 * 60 * 1000);
+      const dateStr = date.toISOString().split("T")[0];
+      const data = dataMap.get(dateStr);
+      result.push({
+        date: dateStr,
+        inputTokens: data?.input ?? 0,
+        outputTokens: data?.output ?? 0,
+      });
+    }
 
-  return result;
+    return result;
+  });
 }
 
 /**
@@ -860,57 +926,64 @@ export async function getTokenUsageTrends(
  */
 export async function getTopCompanies(
   limit: number = 10
-): Promise<PopularTopicData[]> {
-  const interviewsCollection = await getInterviewsCollection();
+): Promise<PopularTopicData[] | UnauthorizedResponse> {
+  return requireAdmin(async () => {
+    const interviewsCollection = await getInterviewsCollection();
 
-  const pipeline = [
-    { $match: { "jobDetails.company": { $ne: "", $exists: true } } },
-    {
-      $group: {
-        _id: "$jobDetails.company",
-        count: { $sum: 1 },
+    const pipeline = [
+      { $match: { "jobDetails.company": { $ne: "", $exists: true } } },
+      {
+        $group: {
+          _id: "$jobDetails.company",
+          count: { $sum: 1 },
+        },
       },
-    },
-    { $sort: { count: -1 as const } },
-    { $limit: limit },
-  ];
+      { $sort: { count: -1 as const } },
+      { $limit: limit },
+    ];
 
-  const results = await interviewsCollection.aggregate(pipeline).toArray();
-  const total = results.reduce((sum, r) => sum + (r.count as number), 0);
+    const results = await interviewsCollection.aggregate(pipeline).toArray();
+    const total = results.reduce((sum, r) => sum + (r.count as number), 0);
 
-  return results.map((r) => ({
-    topic: r._id as string,
-    count: r.count as number,
-    percentage: total > 0 ? Math.round(((r.count as number) / total) * 100) : 0,
-  }));
+    return results.map((r) => ({
+      topic: r._id as string,
+      count: r.count as number,
+      percentage:
+        total > 0 ? Math.round(((r.count as number) / total) * 100) : 0,
+    }));
+  });
 }
 
 /**
  * Get model usage distribution
  */
 export async function getModelUsageDistribution(): Promise<
-  Array<{ model: string; count: number; percentage: number }>
+  | Array<{ model: string; count: number; percentage: number }>
+  | UnauthorizedResponse
 > {
-  const aiLogsCollection = await getAILogsCollection();
+  return requireAdmin(async () => {
+    const aiLogsCollection = await getAILogsCollection();
 
-  const pipeline = [
-    {
-      $group: {
-        _id: "$model",
-        count: { $sum: 1 },
+    const pipeline = [
+      {
+        $group: {
+          _id: "$model",
+          count: { $sum: 1 },
+        },
       },
-    },
-    { $sort: { count: -1 as const } },
-  ];
+      { $sort: { count: -1 as const } },
+    ];
 
-  const results = await aiLogsCollection.aggregate(pipeline).toArray();
-  const total = results.reduce((sum, r) => sum + (r.count as number), 0);
+    const results = await aiLogsCollection.aggregate(pipeline).toArray();
+    const total = results.reduce((sum, r) => sum + (r.count as number), 0);
 
-  return results.map((r) => ({
-    model: r._id as string,
-    count: r.count as number,
-    percentage: total > 0 ? Math.round(((r.count as number) / total) * 100) : 0,
-  }));
+    return results.map((r) => ({
+      model: r._id as string,
+      count: r.count as number,
+      percentage:
+        total > 0 ? Math.round(((r.count as number) / total) * 100) : 0,
+    }));
+  });
 }
 
 // ============================================
@@ -948,85 +1021,99 @@ export interface CostBreakdown {
  */
 export async function getErrorStats(
   days: number = 7
-): Promise<ErrorStatsData[]> {
-  const stats = await aiLogRepository.getErrorStats(days);
-  return stats.map((s) => ({
-    errorCode: s.errorCode,
-    count: s.count,
-    lastOccurred: s.lastOccurred.toISOString(),
-  }));
+): Promise<ErrorStatsData[] | UnauthorizedResponse> {
+  return requireAdmin(async () => {
+    const stats = await aiLogRepository.getErrorStats(days);
+    return stats.map((s) => ({
+      errorCode: s.errorCode,
+      count: s.count,
+      lastOccurred: s.lastOccurred.toISOString(),
+    }));
+  });
 }
 
 /**
  * Get latency percentiles for performance monitoring
  */
-export async function getLatencyPercentiles(): Promise<LatencyPercentiles> {
-  return aiLogRepository.getLatencyPercentiles();
+export async function getLatencyPercentiles(): Promise<
+  LatencyPercentiles | UnauthorizedResponse
+> {
+  return requireAdmin(async () => {
+    return aiLogRepository.getLatencyPercentiles();
+  });
 }
 
 /**
  * Get hourly usage distribution (for identifying peak hours)
  */
-export async function getHourlyUsage(): Promise<HourlyUsageData[]> {
-  const aiLogsCollection = await getAILogsCollection();
+export async function getHourlyUsage(): Promise<
+  HourlyUsageData[] | UnauthorizedResponse
+> {
+  return requireAdmin(async () => {
+    const aiLogsCollection = await getAILogsCollection();
 
-  const pipeline = [
-    {
-      $group: {
-        _id: { $hour: "$timestamp" },
-        requests: { $sum: 1 },
-        avgLatency: { $avg: "$latencyMs" },
+    const pipeline = [
+      {
+        $group: {
+          _id: { $hour: "$timestamp" },
+          requests: { $sum: 1 },
+          avgLatency: { $avg: "$latencyMs" },
+        },
       },
-    },
-    { $sort: { _id: 1 as const } },
-  ];
+      { $sort: { _id: 1 as const } },
+    ];
 
-  const results = await aiLogsCollection.aggregate(pipeline).toArray();
+    const results = await aiLogsCollection.aggregate(pipeline).toArray();
 
-  // Fill in missing hours with zeros
-  const hourlyData: HourlyUsageData[] = [];
-  for (let hour = 0; hour < 24; hour++) {
-    const found = results.find((r) => r._id === hour);
-    hourlyData.push({
-      hour,
-      requests: found ? (found.requests as number) : 0,
-      avgLatency: found ? Math.round(found.avgLatency as number) : 0,
-    });
-  }
+    // Fill in missing hours with zeros
+    const hourlyData: HourlyUsageData[] = [];
+    for (let hour = 0; hour < 24; hour++) {
+      const found = results.find((r) => r._id === hour);
+      hourlyData.push({
+        hour,
+        requests: found ? (found.requests as number) : 0,
+        avgLatency: found ? Math.round(found.avgLatency as number) : 0,
+      });
+    }
 
-  return hourlyData;
+    return hourlyData;
+  });
 }
 
 /**
  * Get cost breakdown by model
  */
-export async function getCostBreakdown(): Promise<CostBreakdown[]> {
-  const aiLogsCollection = await getAILogsCollection();
+export async function getCostBreakdown(): Promise<
+  CostBreakdown[] | UnauthorizedResponse
+> {
+  return requireAdmin(async () => {
+    const aiLogsCollection = await getAILogsCollection();
 
-  const pipeline = [
-    {
-      $group: {
-        _id: "$model",
-        totalCost: { $sum: { $ifNull: ["$estimatedCost", 0] } },
-        requestCount: { $sum: 1 },
+    const pipeline = [
+      {
+        $group: {
+          _id: "$model",
+          totalCost: { $sum: { $ifNull: ["$estimatedCost", 0] } },
+          requestCount: { $sum: 1 },
+        },
       },
-    },
-    { $sort: { totalCost: -1 as const } },
-  ];
+      { $sort: { totalCost: -1 as const } },
+    ];
 
-  const results = await aiLogsCollection.aggregate(pipeline).toArray();
+    const results = await aiLogsCollection.aggregate(pipeline).toArray();
 
-  return results.map((r) => ({
-    model: r._id as string,
-    totalCost: Math.round((r.totalCost as number) * 1000000) / 1000000,
-    requestCount: r.requestCount as number,
-    avgCostPerRequest:
-      r.requestCount > 0
-        ? Math.round(
-            ((r.totalCost as number) / (r.requestCount as number)) * 1000000
-          ) / 1000000
-        : 0,
-  }));
+    return results.map((r) => ({
+      model: r._id as string,
+      totalCost: Math.round((r.totalCost as number) * 1000000) / 1000000,
+      requestCount: r.requestCount as number,
+      avgCostPerRequest:
+        r.requestCount > 0
+          ? Math.round(
+              ((r.totalCost as number) / (r.requestCount as number)) * 1000000
+            ) / 1000000
+          : 0,
+    }));
+  });
 }
 
 /**
@@ -1034,23 +1121,25 @@ export async function getCostBreakdown(): Promise<CostBreakdown[]> {
  */
 export async function getRecentErrors(
   limit: number = 10
-): Promise<AILogWithDetails[]> {
-  const logs = await aiLogRepository.query({
-    hasError: true,
-    limit,
-  });
+): Promise<AILogWithDetails[] | UnauthorizedResponse> {
+  return requireAdmin(async () => {
+    const logs = await aiLogRepository.query({
+      hasError: true,
+      limit,
+    });
 
-  return logs.map((log) => ({
-    ...log,
-    formattedTimestamp: new Date(log.timestamp).toLocaleString("en-US", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    }),
-  }));
+    return logs.map((log) => ({
+      ...log,
+      formattedTimestamp: new Date(log.timestamp).toLocaleString("en-US", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      }),
+    }));
+  });
 }
 
 /**
@@ -1059,35 +1148,41 @@ export async function getRecentErrors(
 export async function getSlowRequests(
   thresholdMs: number = 5000,
   limit: number = 10
-): Promise<AILogWithDetails[]> {
-  const aiLogsCollection = await getAILogsCollection();
+): Promise<AILogWithDetails[] | UnauthorizedResponse> {
+  return requireAdmin(async () => {
+    const aiLogsCollection = await getAILogsCollection();
 
-  const logs = await aiLogsCollection
-    .find({ latencyMs: { $gte: thresholdMs }, status: "success" })
-    .sort({ latencyMs: -1 })
-    .limit(limit)
-    .toArray();
+    const logs = await aiLogsCollection
+      .find({ latencyMs: { $gte: thresholdMs }, status: "success" })
+      .sort({ latencyMs: -1 })
+      .limit(limit)
+      .toArray();
 
-  return (logs as AILog[]).map((log) => ({
-    ...log,
-    formattedTimestamp: new Date(log.timestamp).toLocaleString("en-US", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    }),
-  }));
+    return (logs as AILog[]).map((log) => ({
+      ...log,
+      formattedTimestamp: new Date(log.timestamp).toLocaleString("en-US", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      }),
+    }));
+  });
 }
 
 /**
  * Get unique models used in logs
  */
-export async function getUniqueModels(): Promise<string[]> {
-  const aiLogsCollection = await getAILogsCollection();
-  const models = await aiLogsCollection.distinct("model");
-  return models as string[];
+export async function getUniqueModels(): Promise<
+  string[] | UnauthorizedResponse
+> {
+  return requireAdmin(async () => {
+    const aiLogsCollection = await getAILogsCollection();
+    const models = await aiLogsCollection.distinct("model");
+    return models as string[];
+  });
 }
 
 // ============================================
@@ -1113,46 +1208,58 @@ export interface PricingCacheStatus {
 /**
  * Get OpenRouter pricing cache status
  */
-export async function getPricingCacheStatus(): Promise<PricingCacheStatus> {
-  const info = getPricingCacheInfo();
+export async function getPricingCacheStatus(): Promise<
+  PricingCacheStatus | UnauthorizedResponse
+> {
+  return requireAdmin(async () => {
+    const info = getPricingCacheInfo();
 
-  const formatMs = (ms: number): string => {
-    if (ms < 1000) return `${ms}ms`;
-    if (ms < 60000) return `${Math.round(ms / 1000)}s`;
-    return `${Math.round(ms / 60000)}m`;
-  };
+    const formatMs = (ms: number): string => {
+      if (ms < 1000) return `${ms}ms`;
+      if (ms < 60000) return `${Math.round(ms / 1000)}s`;
+      return `${Math.round(ms / 60000)}m`;
+    };
 
-  return {
-    ...info,
-    ageFormatted: formatMs(info.ageMs),
-    expiresFormatted: formatMs(info.expiresInMs),
-  };
+    return {
+      ...info,
+      ageFormatted: formatMs(info.ageMs),
+      expiresFormatted: formatMs(info.expiresInMs),
+    };
+  });
 }
 
 /**
  * Force refresh the OpenRouter pricing cache
  */
-export async function forceRefreshPricingCache(): Promise<{
-  success: boolean;
-  modelCount: number;
-}> {
-  await refreshPricingCache();
-  const info = getPricingCacheInfo();
-  return { success: true, modelCount: info.modelCount };
+export async function forceRefreshPricingCache(): Promise<
+  | {
+      success: boolean;
+      modelCount: number;
+    }
+  | UnauthorizedResponse
+> {
+  return requireAdmin(async () => {
+    await refreshPricingCache();
+    const info = getPricingCacheInfo();
+    return { success: true, modelCount: info.modelCount };
+  });
 }
 
 /**
  * Get all model pricing data
  */
 export async function getModelPricingList(): Promise<
-  Array<{ model: string; inputPrice: number; outputPrice: number }>
+  | Array<{ model: string; inputPrice: number; outputPrice: number }>
+  | UnauthorizedResponse
 > {
-  const pricing = await getAllModelPricing();
-  return Array.from(pricing.entries()).map(([model, prices]) => ({
-    model,
-    inputPrice: prices.input,
-    outputPrice: prices.output,
-  }));
+  return requireAdmin(async () => {
+    const pricing = await getAllModelPricing();
+    return Array.from(pricing.entries()).map(([model, prices]) => ({
+      model,
+      inputPrice: prices.input,
+      outputPrice: prices.output,
+    }));
+  });
 }
 
 // ============================================
@@ -1162,11 +1269,15 @@ export async function getModelPricingList(): Promise<
 /**
  * Get the current AI concurrency limit
  */
-export async function getAIConcurrencyLimit(): Promise<number> {
-  return getSetting(
-    SETTINGS_KEYS.AI_CONCURRENCY_LIMIT,
-    DEFAULT_AI_CONCURRENCY_LIMIT
-  );
+export async function getAIConcurrencyLimit(): Promise<
+  number | UnauthorizedResponse
+> {
+  return requireAdmin(async () => {
+    return getSetting(
+      SETTINGS_KEYS.AI_CONCURRENCY_LIMIT,
+      DEFAULT_AI_CONCURRENCY_LIMIT
+    );
+  });
 }
 
 /**
@@ -1174,11 +1285,13 @@ export async function getAIConcurrencyLimit(): Promise<number> {
  */
 export async function setAIConcurrencyLimit(
   limit: number
-): Promise<{ success: boolean; limit: number }> {
-  // Validate limit is between 1 and 10
-  const validLimit = Math.max(1, Math.min(10, Math.floor(limit)));
-  await setSetting(SETTINGS_KEYS.AI_CONCURRENCY_LIMIT, validLimit);
-  return { success: true, limit: validLimit };
+): Promise<{ success: boolean; limit: number } | UnauthorizedResponse> {
+  return requireAdmin(async () => {
+    // Validate limit is between 1 and 10
+    const validLimit = Math.max(1, Math.min(10, Math.floor(limit)));
+    await setSetting(SETTINGS_KEYS.AI_CONCURRENCY_LIMIT, validLimit);
+    return { success: true, limit: validLimit };
+  });
 }
 
 // ============================================
@@ -1193,7 +1306,7 @@ import {
   type AITask,
   type TierModelConfig,
   type FullTieredModelConfig,
-} from '@/lib/db/schemas/settings';
+} from "@/lib/db/schemas/settings";
 
 /**
  * Task tier information for display
@@ -1208,12 +1321,16 @@ export interface TaskTierInfo {
  * Get all task-to-tier mappings with descriptions
  * Made async to comply with Server Actions requirement
  */
-export async function getTaskTierMappings(): Promise<TaskTierInfo[]> {
-  return Object.entries(TASK_TIER_MAPPING).map(([task, tier]) => ({
-    task: task as AITask,
-    tier,
-    description: TASK_DESCRIPTIONS[task] || task,
-  }));
+export async function getTaskTierMappings(): Promise<
+  TaskTierInfo[] | UnauthorizedResponse
+> {
+  return requireAdmin(async () => {
+    return Object.entries(TASK_TIER_MAPPING).map(([task, tier]) => ({
+      task: task as AITask,
+      tier,
+      description: TASK_DESCRIPTIONS[task] || task,
+    }));
+  });
 }
 
 /**
@@ -1233,11 +1350,11 @@ function getTierKey(tier: ModelTier): string {
 async function getTierConfig(tier: ModelTier): Promise<TierModelConfig> {
   const collection = await getSettingsCollection();
   const doc = await collection.findOne({ key: getTierKey(tier) });
-  
+
   if (!doc?.value) {
     return { ...DEFAULT_TIER_CONFIG };
   }
-  
+
   const value = doc.value as Partial<TierModelConfig>;
   return {
     primaryModel: value.primaryModel ?? null,
@@ -1251,34 +1368,48 @@ async function getTierConfig(tier: ModelTier): Promise<TierModelConfig> {
  * Get the full tiered model configuration
  * Returns null for models that haven't been configured
  */
-export async function getTieredModelConfig(): Promise<FullTieredModelConfig> {
-  const [high, medium, low] = await Promise.all([
-    getTierConfig('high'),
-    getTierConfig('medium'),
-    getTierConfig('low'),
-  ]);
+export async function getTieredModelConfig(): Promise<
+  FullTieredModelConfig | UnauthorizedResponse
+> {
+  return requireAdmin(async () => {
+    const [high, medium, low] = await Promise.all([
+      getTierConfig("high"),
+      getTierConfig("medium"),
+      getTierConfig("low"),
+    ]);
 
-  return { high, medium, low };
+    return { high, medium, low };
+  });
 }
 
 /**
  * Check if all tiers are properly configured (have at least primary model set)
  */
-export async function areTieredModelsConfigured(): Promise<{
-  configured: boolean;
-  missingTiers: ModelTier[];
-}> {
-  const config = await getTieredModelConfig();
-  const missingTiers: ModelTier[] = [];
+export async function areTieredModelsConfigured(): Promise<
+  | {
+      configured: boolean;
+      missingTiers: ModelTier[];
+    }
+  | UnauthorizedResponse
+> {
+  return requireAdmin(async () => {
+    const [high, medium, low] = await Promise.all([
+      getTierConfig("high"),
+      getTierConfig("medium"),
+      getTierConfig("low"),
+    ]);
+    const config = { high, medium, low };
+    const missingTiers: ModelTier[] = [];
 
-  if (!config.high.primaryModel) missingTiers.push('high');
-  if (!config.medium.primaryModel) missingTiers.push('medium');
-  if (!config.low.primaryModel) missingTiers.push('low');
+    if (!config.high.primaryModel) missingTiers.push("high");
+    if (!config.medium.primaryModel) missingTiers.push("medium");
+    if (!config.low.primaryModel) missingTiers.push("low");
 
-  return {
-    configured: missingTiers.length === 0,
-    missingTiers,
-  };
+    return {
+      configured: missingTiers.length === 0,
+      missingTiers,
+    };
+  });
 }
 
 /**
@@ -1287,28 +1418,40 @@ export async function areTieredModelsConfigured(): Promise<{
 export async function updateTierConfig(
   tier: ModelTier,
   config: Partial<TierModelConfig>
-): Promise<{ success: boolean }> {
-  const collection = await getSettingsCollection();
-  const key = getTierKey(tier);
-  
-  // Get existing config
-  const existing = await getTierConfig(tier);
-  
-  // Merge with new values
-  const newConfig: TierModelConfig = {
-    primaryModel: config.primaryModel !== undefined ? config.primaryModel : existing.primaryModel,
-    fallbackModel: config.fallbackModel !== undefined ? config.fallbackModel : existing.fallbackModel,
-    temperature: config.temperature !== undefined ? config.temperature : existing.temperature,
-    maxTokens: config.maxTokens !== undefined ? config.maxTokens : existing.maxTokens,
-  };
+): Promise<{ success: boolean } | UnauthorizedResponse> {
+  return requireAdmin(async () => {
+    const collection = await getSettingsCollection();
+    const key = getTierKey(tier);
 
-  await collection.updateOne(
-    { key },
-    { $set: { key, value: newConfig, updatedAt: new Date() } },
-    { upsert: true }
-  );
+    // Get existing config
+    const existing = await getTierConfig(tier);
 
-  return { success: true };
+    // Merge with new values
+    const newConfig: TierModelConfig = {
+      primaryModel:
+        config.primaryModel !== undefined
+          ? config.primaryModel
+          : existing.primaryModel,
+      fallbackModel:
+        config.fallbackModel !== undefined
+          ? config.fallbackModel
+          : existing.fallbackModel,
+      temperature:
+        config.temperature !== undefined
+          ? config.temperature
+          : existing.temperature,
+      maxTokens:
+        config.maxTokens !== undefined ? config.maxTokens : existing.maxTokens,
+    };
+
+    await collection.updateOne(
+      { key },
+      { $set: { key, value: newConfig, updatedAt: new Date() } },
+      { upsert: true }
+    );
+
+    return { success: true };
+  });
 }
 
 /**
@@ -1316,40 +1459,46 @@ export async function updateTierConfig(
  */
 export async function updateFullTieredModelConfig(
   config: Partial<FullTieredModelConfig>
-): Promise<{ success: boolean }> {
-  const updates: Promise<{ success: boolean }>[] = [];
+): Promise<{ success: boolean } | UnauthorizedResponse> {
+  return requireAdmin(async () => {
+    const updates: Promise<{ success: boolean } | UnauthorizedResponse>[] = [];
 
-  if (config.high) {
-    updates.push(updateTierConfig('high', config.high));
-  }
-  if (config.medium) {
-    updates.push(updateTierConfig('medium', config.medium));
-  }
-  if (config.low) {
-    updates.push(updateTierConfig('low', config.low));
-  }
+    if (config.high) {
+      updates.push(updateTierConfig("high", config.high));
+    }
+    if (config.medium) {
+      updates.push(updateTierConfig("medium", config.medium));
+    }
+    if (config.low) {
+      updates.push(updateTierConfig("low", config.low));
+    }
 
-  await Promise.all(updates);
-  return { success: true };
+    await Promise.all(updates);
+    return { success: true };
+  });
 }
 
 /**
  * Clear all tier configurations (for reset)
  */
-export async function clearTieredModelConfig(): Promise<{ success: boolean }> {
-  const collection = await getSettingsCollection();
+export async function clearTieredModelConfig(): Promise<
+  { success: boolean } | UnauthorizedResponse
+> {
+  return requireAdmin(async () => {
+    const collection = await getSettingsCollection();
 
-  await collection.deleteMany({
-    key: {
-      $in: [
-        SETTINGS_KEYS.MODEL_TIER_HIGH,
-        SETTINGS_KEYS.MODEL_TIER_MEDIUM,
-        SETTINGS_KEYS.MODEL_TIER_LOW,
-      ],
-    },
+    await collection.deleteMany({
+      key: {
+        $in: [
+          SETTINGS_KEYS.MODEL_TIER_HIGH,
+          SETTINGS_KEYS.MODEL_TIER_MEDIUM,
+          SETTINGS_KEYS.MODEL_TIER_LOW,
+        ],
+      },
+    });
+
+    return { success: true };
   });
-
-  return { success: true };
 }
 
 // Re-export types for external use

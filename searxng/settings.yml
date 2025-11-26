@@ -23,7 +23,9 @@ search:
 server:
   port: 8080
   bind_address: "0.0.0.0"
-  secret_key: "test_0f8a5cfaaea8194290429a7214bb9539"
+  # IMPORTANT: Set SEARXNG_SECRET_KEY environment variable in production
+  # Generate with: openssl rand -hex 32
+  secret_key: "${SEARXNG_SECRET_KEY:-changeme_in_production}"
   limiter: false
   image_proxy: false
   http_protocol_version: "1.0"

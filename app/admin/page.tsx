@@ -68,6 +68,11 @@ function formatNumber(num: number): string {
   return num.toString();
 }
 
+// Type guard to check if response is valid data (not UnauthorizedResponse)
+function isValidData<T>(data: T | { success: false; error: string }): data is T {
+  return !data || typeof data !== 'object' || !('success' in data && data.success === false);
+}
+
 export default async function AdminPage() {
   // Server-side admin check as fallback
   const userIsAdmin = await isAdmin();
@@ -77,20 +82,20 @@ export default async function AdminPage() {
 
   // Fetch real data from the database
   const [
-    stats,
-    aiLogs,
-    aiLogsCount,
-    searchStatus,
-    usageByAction,
-    users,
-    usageTrends,
-    popularTopics,
-    planDistribution,
-    tokenUsageTrends,
-    topCompanies,
-    modelUsage,
-    concurrencyLimit,
-    tieredModelConfig,
+    statsRaw,
+    aiLogsRaw,
+    aiLogsCountRaw,
+    searchStatusRaw,
+    usageByActionRaw,
+    usersRaw,
+    usageTrendsRaw,
+    popularTopicsRaw,
+    planDistributionRaw,
+    tokenUsageTrendsRaw,
+    topCompaniesRaw,
+    modelUsageRaw,
+    concurrencyLimitRaw,
+    tieredModelConfigRaw,
   ] = await Promise.all([
     getAdminStats(),
     getAILogs({ limit: 10 }),
@@ -107,6 +112,22 @@ export default async function AdminPage() {
     getAIConcurrencyLimit(),
     getTieredModelConfig(),
   ]);
+
+  // Apply type guards with defaults for unauthorized responses
+  const stats = isValidData(statsRaw) ? statsRaw : { totalUsers: 0, activeThisWeek: 0, totalInterviews: 0, totalAIRequests: 0, totalInputTokens: 0, totalOutputTokens: 0, avgLatencyMs: 0, totalCost: 0, errorCount: 0, errorRate: 0, avgTimeToFirstToken: 0 };
+  const aiLogs = isValidData(aiLogsRaw) ? aiLogsRaw : [];
+  const aiLogsCount = isValidData(aiLogsCountRaw) ? aiLogsCountRaw : 0;
+  const searchStatus = isValidData(searchStatusRaw) ? searchStatusRaw : { enabled: false };
+  const usageByAction = isValidData(usageByActionRaw) ? usageByActionRaw : [];
+  const users = isValidData(usersRaw) ? usersRaw : [];
+  const usageTrends = isValidData(usageTrendsRaw) ? usageTrendsRaw : [];
+  const popularTopics = isValidData(popularTopicsRaw) ? popularTopicsRaw : [];
+  const planDistribution = isValidData(planDistributionRaw) ? planDistributionRaw : [];
+  const tokenUsageTrends = isValidData(tokenUsageTrendsRaw) ? tokenUsageTrendsRaw : [];
+  const topCompanies = isValidData(topCompaniesRaw) ? topCompaniesRaw : [];
+  const modelUsage = isValidData(modelUsageRaw) ? modelUsageRaw : [];
+  const concurrencyLimit = isValidData(concurrencyLimitRaw) ? concurrencyLimitRaw : 3;
+  const tieredModelConfig = isValidData(tieredModelConfigRaw) ? tieredModelConfigRaw : { high: { primaryModel: null, fallbackModel: null, temperature: 0.7, maxTokens: 4096 }, medium: { primaryModel: null, fallbackModel: null, temperature: 0.7, maxTokens: 4096 }, low: { primaryModel: null, fallbackModel: null, temperature: 0.7, maxTokens: 4096 } };
 
   const statsCards = [
     {

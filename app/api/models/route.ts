@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { rateLimit, getClientIp } from '@/lib/utils/rate-limit';
 
 export interface OpenRouterModel {
   id: string;
@@ -29,7 +30,27 @@ export interface GroupedModels {
   paid: OpenRouterModel[];
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  // Rate limit by client IP
+  const clientIp = getClientIp(request);
+  const rateLimitResult = await rateLimit(`api:models:${clientIp}`, {
+    maxRequests: 30,
+    windowSeconds: 60,
+  });
+
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please try again later.' },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': String(rateLimitResult.resetInSeconds),
+          'X-RateLimit-Remaining': '0',
+          'X-RateLimit-Reset': String(rateLimitResult.resetInSeconds),
+        },
+      }
+    );
+  }
   try {
     const response = await fetch('https://openrouter.ai/api/v1/models', {
       headers: {
