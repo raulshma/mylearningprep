@@ -18,12 +18,16 @@ async function getInterviewData(
     redirect("/login");
   }
 
-  const user = await userRepository.findByClerkId(clerkId);
+  // Parallel fetch: user and interview at the same time
+  const [user, interview] = await Promise.all([
+    userRepository.findByClerkId(clerkId),
+    interviewRepository.findById(interviewId),
+  ]);
+
   if (!user) {
     redirect("/onboarding");
   }
 
-  const interview = await interviewRepository.findById(interviewId);
   if (!interview) {
     return null;
   }

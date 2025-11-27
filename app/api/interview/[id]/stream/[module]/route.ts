@@ -29,14 +29,17 @@ export async function GET(
   try {
     // Get authenticated user
     const clerkId = await getAuthUserId();
-    const user = await userRepository.findByClerkId(clerkId);
+    
+    // Parallel fetch: user and interview at the same time
+    const [user, interview] = await Promise.all([
+      userRepository.findByClerkId(clerkId),
+      interviewRepository.findById(interviewId),
+    ]);
 
     if (!user) {
       return new Response(null, { status: 401 });
     }
 
-    // Get interview to verify ownership
-    const interview = await interviewRepository.findById(interviewId);
     if (!interview) {
       return new Response(null, { status: 404 });
     }

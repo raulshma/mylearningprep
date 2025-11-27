@@ -1,4 +1,5 @@
 import { ObjectId } from 'mongodb';
+import { cache } from 'react';
 import { getUsersCollection } from '../collections';
 import { User, UserPlan, CreateUser, UserPreferences } from '../schemas/user';
 
@@ -60,6 +61,15 @@ function getPlanInterviewLimit(plan: UserPlan): number {
   }
 }
 
+/**
+ * Cached findByClerkId - deduplicates DB calls within a single request
+ */
+const findByClerkIdCached = cache(async (clerkId: string): Promise<User | null> => {
+  const collection = await getUsersCollection();
+  const user = await collection.findOne({ clerkId });
+  return user as User | null;
+});
+
 export const userRepository: UserRepository = {
   async create(data) {
     const collection = await getUsersCollection();
@@ -99,9 +109,7 @@ export const userRepository: UserRepository = {
   },
 
   async findByClerkId(clerkId: string) {
-    const collection = await getUsersCollection();
-    const user = await collection.findOne({ clerkId });
-    return user as User | null;
+    return findByClerkIdCached(clerkId);
   },
 
   async findById(id: string) {

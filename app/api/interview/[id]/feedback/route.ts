@@ -19,7 +19,12 @@ export async function POST(
   try {
     // Get authenticated user
     const clerkId = await getAuthUserId();
-    const user = await userRepository.findByClerkId(clerkId);
+    
+    // Parallel fetch: user and interview at the same time
+    const [user, interview] = await Promise.all([
+      userRepository.findByClerkId(clerkId),
+      interviewRepository.findById(interviewId),
+    ]);
 
     if (!user) {
       return NextResponse.json(
@@ -28,8 +33,6 @@ export async function POST(
       );
     }
 
-    // Verify interview exists and user owns it
-    const interview = await interviewRepository.findById(interviewId);
     if (!interview) {
       return NextResponse.json(
         { error: "Interview not found" },
@@ -99,7 +102,12 @@ export async function GET(
   try {
     // Get authenticated user
     const clerkId = await getAuthUserId();
-    const user = await userRepository.findByClerkId(clerkId);
+    
+    // Parallel fetch: user and interview at the same time
+    const [user, interview] = await Promise.all([
+      userRepository.findByClerkId(clerkId),
+      interviewRepository.findById(interviewId),
+    ]);
 
     if (!user) {
       return NextResponse.json(
@@ -108,8 +116,6 @@ export async function GET(
       );
     }
 
-    // Verify interview exists and user has access
-    const interview = await interviewRepository.findById(interviewId);
     if (!interview) {
       return NextResponse.json(
         { error: "Interview not found" },

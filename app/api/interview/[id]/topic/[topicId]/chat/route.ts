@@ -103,7 +103,12 @@ export async function GET(
 
   try {
     const clerkId = await getAuthUserId();
-    const user = await userRepository.findByClerkId(clerkId);
+    
+    // Parallel fetch: user and interview at the same time
+    const [user, interview] = await Promise.all([
+      userRepository.findByClerkId(clerkId),
+      interviewRepository.findById(interviewId),
+    ]);
 
     if (!user) {
       return new Response(JSON.stringify({ error: "User not found" }), {
@@ -112,8 +117,6 @@ export async function GET(
       });
     }
 
-    // Verify interview access
-    const interview = await interviewRepository.findById(interviewId);
     if (!interview) {
       return new Response(JSON.stringify({ error: "Interview not found" }), {
         status: 404,
@@ -157,7 +160,12 @@ export async function POST(
   try {
     // Get authenticated user
     const clerkId = await getAuthUserId();
-    const user = await userRepository.findByClerkId(clerkId);
+    
+    // Parallel fetch: user and interview at the same time
+    const [user, interview] = await Promise.all([
+      userRepository.findByClerkId(clerkId),
+      interviewRepository.findById(interviewId),
+    ]);
 
     if (!user) {
       return new Response(JSON.stringify({ error: "User not found" }), {
@@ -166,8 +174,6 @@ export async function POST(
       });
     }
 
-    // Get interview and verify ownership
-    const interview = await interviewRepository.findById(interviewId);
     if (!interview) {
       return new Response(JSON.stringify({ error: "Interview not found" }), {
         status: 404,

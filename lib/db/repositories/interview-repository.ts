@@ -1,4 +1,5 @@
 import { ObjectId } from 'mongodb';
+import { cache } from 'react';
 import { getInterviewsCollection } from '../collections';
 import { 
   Interview, 
@@ -69,6 +70,16 @@ export interface InterviewRepository {
   delete(id: string): Promise<void>;
 }
 
+/**
+ * Cached findById - deduplicates DB calls within a single request
+ */
+const findByIdCached = cache(async (id: string): Promise<Interview | null> => {
+  const collection = await getInterviewsCollection();
+  const interview = await collection.findOne({ _id: id });
+  if (!interview) return null;
+  return normalizeInterview(interview as Interview);
+});
+
 export const interviewRepository: InterviewRepository = {
   async create(data) {
     const collection = await getInterviewsCollection();
@@ -97,10 +108,7 @@ export const interviewRepository: InterviewRepository = {
   },
 
   async findById(id: string) {
-    const collection = await getInterviewsCollection();
-    const interview = await collection.findOne({ _id: id });
-    if (!interview) return null;
-    return normalizeInterview(interview as Interview);
+    return findByIdCached(id);
   },
 
   async findByUserId(userId: string) {

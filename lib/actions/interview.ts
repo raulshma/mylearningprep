@@ -334,7 +334,12 @@ export async function deleteInterview(
   try {
     // Get authenticated user
     const clerkId = await getAuthUserId();
-    const user = await userRepository.findByClerkId(clerkId);
+    
+    // Parallel fetch: user and interview at the same time
+    const [user, interview] = await Promise.all([
+      userRepository.findByClerkId(clerkId),
+      interviewRepository.findById(interviewId),
+    ]);
 
     if (!user) {
       return {
@@ -343,8 +348,6 @@ export async function deleteInterview(
       };
     }
 
-    // Get interview
-    const interview = await interviewRepository.findById(interviewId);
     if (!interview) {
       return {
         success: false,
@@ -385,7 +388,12 @@ export async function getInterview(
 ): Promise<ActionResult<Interview>> {
   try {
     const clerkId = await getAuthUserId();
-    const user = await userRepository.findByClerkId(clerkId);
+    
+    // Parallel fetch: user and interview at the same time
+    const [user, interview] = await Promise.all([
+      userRepository.findByClerkId(clerkId),
+      interviewRepository.findById(interviewId),
+    ]);
 
     if (!user) {
       return {
@@ -394,7 +402,6 @@ export async function getInterview(
       };
     }
 
-    const interview = await interviewRepository.findById(interviewId);
     if (!interview) {
       return {
         success: false,
