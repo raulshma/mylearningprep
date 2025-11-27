@@ -78,10 +78,11 @@ export function DashboardContent({
               key={status}
               variant={filterStatus === status ? "secondary" : "ghost"}
               size="sm"
-              className={`rounded-full px-4 text-xs capitalize transition-all duration-300 ${filterStatus === status
+              className={`rounded-full px-4 text-xs capitalize transition-all duration-300 ${
+                filterStatus === status
                   ? "bg-background shadow-sm text-foreground"
                   : "text-muted-foreground hover:text-foreground"
-                }`}
+              }`}
               onClick={() => setFilterStatus(status)}
             >
               {status}
@@ -93,8 +94,9 @@ export function DashboardContent({
           <Button
             variant={viewMode === "grid" ? "secondary" : "ghost"}
             size="icon"
-            className={`w-8 h-8 rounded-full transition-all duration-300 ${viewMode === "grid" ? "bg-background shadow-sm" : ""
-              }`}
+            className={`w-8 h-8 rounded-full transition-all duration-300 ${
+              viewMode === "grid" ? "bg-background shadow-sm" : ""
+            }`}
             onClick={() => setViewMode("grid")}
           >
             <LayoutGrid className="w-4 h-4" />
@@ -102,8 +104,9 @@ export function DashboardContent({
           <Button
             variant={viewMode === "list" ? "secondary" : "ghost"}
             size="icon"
-            className={`w-8 h-8 rounded-full transition-all duration-300 ${viewMode === "list" ? "bg-background shadow-sm" : ""
-              }`}
+            className={`w-8 h-8 rounded-full transition-all duration-300 ${
+              viewMode === "list" ? "bg-background shadow-sm" : ""
+            }`}
             onClick={() => setViewMode("list")}
           >
             <List className="w-4 h-4" />
@@ -116,7 +119,7 @@ export function DashboardContent({
         <motion.div
           className={
             viewMode === "grid"
-              ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+              ? "grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6"
               : "flex flex-col gap-4 min-w-0"
           }
           layout
@@ -130,13 +133,20 @@ export function DashboardContent({
           >
             <Link href="/dashboard/new">
               <div
-                className={`group relative overflow-hidden rounded-3xl border border-dashed border-border/60 hover:border-primary/50 transition-all duration-500 flex flex-col items-center justify-center cursor-pointer bg-card/30 hover:bg-card/80 ${viewMode === "grid" ? "h-full min-h-[280px]" : "h-24 flex-row gap-4"
-                  }`}
+                className={`group relative overflow-hidden rounded-3xl border border-dashed border-border/60 hover:border-primary/50 transition-all duration-500 flex flex-col items-center justify-center cursor-pointer bg-card/30 hover:bg-card/80 ${
+                  viewMode === "grid"
+                    ? "h-full min-h-[280px]"
+                    : "h-24 flex-row gap-4"
+                }`}
               >
                 <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500/10 to-purple-500/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
                   <Plus className="w-6 h-6 text-primary" />
                 </div>
-                <div className={viewMode === "grid" ? "mt-4 text-center" : "text-left"}>
+                <div
+                  className={
+                    viewMode === "grid" ? "mt-4 text-center" : "text-left"
+                  }
+                >
                   <p className="font-medium text-foreground group-hover:text-primary transition-colors">
                     New Interview
                   </p>

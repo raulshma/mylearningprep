@@ -26,7 +26,7 @@ export interface SidebarData {
 /**
  * Fetch sidebar data independently (used when not on dashboard page)
  * For dashboard page, use getDashboardData() which includes sidebar data
- * 
+ *
  * Optimized: Uses parallel queries and cached functions to minimize latency
  */
 export async function getSidebarData(): Promise<SidebarData> {
@@ -41,23 +41,23 @@ export async function getSidebarData(): Promise<SidebarData> {
   const iterationData = iterationResult.success
     ? iterationResult.data
     : {
-      count: 0,
-      limit: 20,
-      remaining: 20,
-      resetDate: new Date(),
-      plan: "FREE",
-      isByok: false,
-      interviews: { count: 0, limit: 3, resetDate: new Date() },
-    };
+        count: 0,
+        limit: 20,
+        remaining: 20,
+        resetDate: new Date(),
+        plan: "FREE",
+        isByok: false,
+        interviews: { count: 0, limit: 3, resetDate: new Date() },
+      };
 
   const profile = profileResult.success
     ? profileResult.data
     : {
-      firstName: null,
-      lastName: null,
-      email: null,
-      imageUrl: null,
-    };
+        firstName: null,
+        lastName: null,
+        email: null,
+        imageUrl: null,
+      };
 
   return {
     isAdmin: userIsAdmin,
@@ -83,9 +83,9 @@ export async function Sidebar() {
   const data = await getSidebarData();
 
   return (
-    <aside className="w-72 bg-black/20 backdrop-blur-md border-r border-white/10 flex flex-col h-screen sticky top-0 z-50">
+    <aside className="w-72 bg-white dark:bg-black/20 backdrop-blur-md border-r border-border dark:border-white/10 flex flex-col h-screen sticky top-0 z-50">
       {/* Subtle tint overlay */}
-      <div className="absolute inset-0 bg-gradient-to-b from-white/5 via-transparent to-white/5 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-transparent dark:from-white/5 dark:via-transparent dark:to-white/5 pointer-events-none" />
 
       {/* Logo Section */}
       <div className="relative p-8 pb-6">
@@ -112,16 +112,17 @@ export async function Sidebar() {
         </div>
 
         {/* Plan Badge */}
-        <div className="px-4 py-3 bg-white/5 rounded-2xl border border-white/5 backdrop-blur-sm">
+        <div className="px-4 py-3 bg-muted dark:bg-white/5 rounded-2xl border border-border dark:border-white/5 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div
-                className={`w-2 h-2 rounded-full ${data.usage.plan === "FREE"
+                className={`w-2 h-2 rounded-full ${
+                  data.usage.plan === "FREE"
                     ? "bg-muted-foreground"
                     : data.usage.plan === "PRO"
-                      ? "bg-blue-500"
-                      : "bg-amber-500"
-                  }`}
+                    ? "bg-blue-500"
+                    : "bg-amber-500"
+                }`}
               />
               <span className="text-xs font-medium text-foreground">
                 {data.usage.isByok ? "BYOK" : data.usage.plan} Plan
