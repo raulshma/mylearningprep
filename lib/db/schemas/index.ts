@@ -3,3 +3,4 @@ export * from './interview';
 export * from './ai-log';
 export * from './settings';
 export * from './byok';
+export * from './learning-path';

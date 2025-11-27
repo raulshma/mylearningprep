@@ -52,4 +52,14 @@ export async function ensureIndexes(): Promise<void> {
     topicChats.createIndex({ interviewId: 1, topicId: 1 }),
     topicChats.createIndex({ userId: 1 }),
   ]);
+
+  // Learning paths collection indexes
+  const learningPaths = db.collection(COLLECTIONS.LEARNING_PATHS);
+  await Promise.all([
+    learningPaths.createIndex({ userId: 1 }),
+    learningPaths.createIndex({ isActive: 1 }),
+    learningPaths.createIndex({ createdAt: -1 }),
+    // Compound index for finding active path by user
+    learningPaths.createIndex({ userId: 1, isActive: 1 }),
+  ]);
 }

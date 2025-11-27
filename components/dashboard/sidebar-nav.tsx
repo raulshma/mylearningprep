@@ -8,6 +8,7 @@ import {
   CreditCard,
   Shield,
   ChevronRight,
+  GraduationCap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ViewTransitionLink } from "@/components/transitions/view-transition-link";
@@ -24,6 +25,12 @@ const navItems = [
     label: "New Interview",
     icon: Plus,
     description: "Start preparing",
+  },
+  {
+    href: "/learning/new",
+    label: "Learning Path",
+    icon: GraduationCap,
+    description: "Learn topics",
   },
   {
     href: "/settings",

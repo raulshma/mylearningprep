@@ -8,6 +8,8 @@ import { getRedisClient } from "@/lib/db/redis";
 
 const STREAM_PREFIX = "stream:";
 const STREAM_CONTENT_PREFIX = "stream-content:";
+const LP_STREAM_PREFIX = "lp-stream:";
+const LP_STREAM_CONTENT_PREFIX = "lp-stream-content:";
 const STREAM_TTL = 60 * 5; // 5 minutes - streams expire after this time
 
 export interface StreamRecord {
@@ -153,4 +155,122 @@ export async function hasActiveStream(
 ): Promise<boolean> {
   const stream = await getActiveStream(interviewId, module);
   return stream !== null && stream.status === "active";
+}
+
+
+// ============================================
+// Learning Path Stream Functions
+// ============================================
+
+export interface LearningPathStreamRecord {
+  streamId: string;
+  learningPathId: string;
+  activityType: string;
+  userId: string;
+  createdAt: number;
+  status: "active" | "completed" | "error";
+}
+
+/**
+ * Save a learning path stream record
+ */
+export async function saveLearningPathStream(
+  record: Omit<LearningPathStreamRecord, "status">
+): Promise<void> {
+  const redis = getRedisClient();
+  const key = `${LP_STREAM_PREFIX}${record.learningPathId}`;
+  await redis.setex(key, STREAM_TTL, JSON.stringify({ ...record, status: "active" }));
+}
+
+/**
+ * Get a learning path stream record
+ */
+export async function getLearningPathStream(
+  learningPathId: string
+): Promise<LearningPathStreamRecord | null> {
+  const redis = getRedisClient();
+  const key = `${LP_STREAM_PREFIX}${learningPathId}`;
+  const data = await redis.get(key);
+  if (!data) return null;
+  try {
+    return JSON.parse(data) as LearningPathStreamRecord;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Update learning path stream status
+ */
+export async function updateLearningPathStreamStatus(
+  learningPathId: string,
+  status: "completed" | "error"
+): Promise<void> {
+  const redis = getRedisClient();
+  const key = `${LP_STREAM_PREFIX}${learningPathId}`;
+  const data = await redis.get(key);
+  if (data) {
+    const record = JSON.parse(data) as LearningPathStreamRecord;
+    record.status = status;
+    // Keep for a short time after completion so client can detect it finished
+    await redis.setex(key, 30, JSON.stringify(record));
+  }
+}
+
+/**
+ * Clear a learning path stream record
+ */
+export async function clearLearningPathStream(
+  learningPathId: string
+): Promise<void> {
+  const redis = getRedisClient();
+  const key = `${LP_STREAM_PREFIX}${learningPathId}`;
+  await redis.del(key);
+  // Also clear content buffer
+  await clearLearningPathStreamContent(learningPathId);
+}
+
+/**
+ * Check if there's an active learning path stream
+ */
+export async function hasActiveLearningPathStream(
+  learningPathId: string
+): Promise<boolean> {
+  const stream = await getLearningPathStream(learningPathId);
+  return stream !== null && stream.status === "active";
+}
+
+/**
+ * Append content to learning path stream buffer (for resumption)
+ */
+export async function appendLearningPathStreamContent(
+  learningPathId: string,
+  content: string
+): Promise<void> {
+  const redis = getRedisClient();
+  const key = `${LP_STREAM_CONTENT_PREFIX}${learningPathId}`;
+  await redis.append(key, content);
+  await redis.expire(key, STREAM_TTL);
+}
+
+/**
+ * Get buffered learning path stream content
+ */
+export async function getLearningPathStreamContent(
+  learningPathId: string
+): Promise<string | null> {
+  const redis = getRedisClient();
+  const key = `${LP_STREAM_CONTENT_PREFIX}${learningPathId}`;
+  return redis.get(key);
+}
+
+/**
+ * Clear learning path stream content buffer
+ */
+export async function clearLearningPathStreamContent(
+  learningPathId: string
+): Promise<void> {
+  const redis = getRedisClient();
+  const key = `${LP_STREAM_CONTENT_PREFIX}${learningPathId}`;
+  await redis.del(key);
 }

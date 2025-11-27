@@ -8,6 +8,7 @@ export const COLLECTIONS = {
   AI_LOGS: 'ai_logs',
   SETTINGS: 'settings',
   TOPIC_CHATS: 'topic_chats',
+  LEARNING_PATHS: 'learning_paths',
 } as const;
 
 // Type definitions for documents (will be replaced with Zod inferred types later)
@@ -160,4 +161,66 @@ export interface TopicChatDocument extends Document {
 export async function getTopicChatsCollection(): Promise<Collection<TopicChatDocument>> {
   const db = await getDb();
   return db.collection<TopicChatDocument>(COLLECTIONS.TOPIC_CHATS);
+}
+
+export interface LearningPathDocument extends Document {
+  _id: string;
+  userId: string;
+  goal: string;
+  skillClusters: Array<
+    | 'dsa'
+    | 'oop'
+    | 'system-design'
+    | 'debugging'
+    | 'databases'
+    | 'api-design'
+    | 'testing'
+    | 'devops'
+    | 'frontend'
+    | 'backend'
+    | 'security'
+    | 'performance'
+  >;
+  currentTopicId: string | null;
+  baselineDifficulty: number;
+  currentDifficulty: number;
+  overallElo: number;
+  skillScores: Record<string, number>;
+  topics: Array<{
+    id: string;
+    title: string;
+    description: string;
+    skillCluster: string;
+    difficulty: number;
+    prerequisites: string[];
+  }>;
+  timeline: Array<{
+    id: string;
+    activityId: string;
+    topicId: string;
+    topicTitle: string;
+    activityType: string;
+    success: boolean;
+    eloChange: number;
+    eloBefore: number;
+    eloAfter: number;
+    timeTakenSeconds: number;
+    reflection?: {
+      completed: boolean;
+      difficultyRating: number;
+      userAnswer?: string;
+      strugglePoints?: string;
+      timeTakenSeconds: number;
+    };
+    userNotes?: string;
+    timestamp: Date;
+  }>;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export async function getLearningPathsCollection(): Promise<Collection<LearningPathDocument>> {
+  const db = await getDb();
+  return db.collection<LearningPathDocument>(COLLECTIONS.LEARNING_PATHS);
 }

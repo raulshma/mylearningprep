@@ -146,6 +146,12 @@ export async function POST(
 
     const encoder = new TextEncoder();
     let responseText = "";
+    
+    // Track if client disconnected
+    let clientDisconnected = false;
+    request.signal.addEventListener("abort", () => {
+      clientDisconnected = true;
+    });
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -171,7 +177,7 @@ export async function POST(
         
         // Flush any pending data
         const flushPending = () => {
-          if (pendingData !== null) {
+          if (pendingData !== null && !clientDisconnected) {
             const jsonData = JSON.stringify({
               type: "content",
               data: pendingData,
@@ -179,6 +185,17 @@ export async function POST(
             });
             controller.enqueue(encoder.encode(`data: ${jsonData}\n\n`));
             pendingData = null;
+          }
+        };
+        
+        // Helper to safely enqueue data
+        const safeEnqueue = (data: string) => {
+          if (!clientDisconnected) {
+            try {
+              controller.enqueue(encoder.encode(data));
+            } catch {
+              clientDisconnected = true;
+            }
           }
         };
 
@@ -346,10 +363,14 @@ export async function POST(
             }
           }
 
+          // If client disconnected, clean up and exit early
+          if (clientDisconnected) {
+            controller.close();
+            return;
+          }
+
           // Send done event
-          controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ type: "done", module })}\n\n`)
-          );
+          safeEnqueue(`data: ${JSON.stringify({ type: "done", module })}\n\n`);
           controller.close();
 
           // Mark stream as completed
@@ -357,13 +378,19 @@ export async function POST(
             await updateStreamStatus(interviewId, `addMore_${module}`, "completed");
           });
         } catch (error) {
+          // Ignore abort errors from client disconnect
+          if (clientDisconnected || (error instanceof Error && error.name === "AbortError")) {
+            controller.close();
+            return;
+          }
+          
           console.error("Stream error:", error);
           const errorData = JSON.stringify({
             type: "error",
             error: "Failed to add more content",
             module,
           });
-          controller.enqueue(encoder.encode(`data: ${errorData}\n\n`));
+          safeEnqueue(`data: ${errorData}\n\n`);
           controller.close();
 
           // Mark stream as error

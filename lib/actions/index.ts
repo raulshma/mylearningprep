@@ -74,3 +74,16 @@ export {
   type DailyActiveUsers,
   type TokenUsageTrend,
 } from "./admin";
+
+// Learning path actions
+export {
+  createLearningPath,
+  getActiveLearningPath,
+  getLearningPath,
+  submitReflection,
+  getNextActivity,
+  getLearningInsights,
+  addTimelineNotes,
+  deactivateLearningPath,
+  getUserLearningPaths,
+} from "./learning-path";
