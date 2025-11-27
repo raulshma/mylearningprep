@@ -522,7 +522,7 @@ export function ImprovementWorkspace({
           )}
         </div>
 
-        {/* Completed Activities Summary */}
+        {/* Previous Activities */}
         {existingActivities.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -534,31 +534,61 @@ export function ImprovementWorkspace({
               Previous Activities
             </h3>
             <div className="space-y-2">
-              {existingActivities.map((activity) => (
-                <div
-                  key={activity.id}
-                  className="flex items-center justify-between p-3 rounded-xl bg-secondary/30"
-                >
-                  <div className="flex items-center gap-3">
-                    {activity.status === "completed" ? (
-                      <CheckCircle2 className="w-5 h-5 text-green-500" />
-                    ) : (
-                      <div className="w-5 h-5 rounded-full border-2 border-muted-foreground/30" />
-                    )}
-                    <span className="text-sm text-foreground capitalize">
-                      {activity.activityType.replace(/-/g, " ")}
-                    </span>
-                  </div>
-                  <Badge
-                    variant={
-                      activity.status === "completed" ? "default" : "secondary"
-                    }
-                    className="text-xs"
+              {existingActivities.map((activity) => {
+                const isViewable = activity.content !== null;
+                const isCompletable = activity.status !== "completed" && isViewable;
+                const isCurrentlyViewing = currentActivity?.id === activity.id;
+
+                return (
+                  <button
+                    key={activity.id}
+                    onClick={() => {
+                      if (isViewable) {
+                        setCurrentActivity(activity);
+                        setStreamState("complete");
+                        setError(null);
+                        setStreamingContent(null);
+                      }
+                    }}
+                    disabled={!isViewable}
+                    className={`w-full flex items-center justify-between p-3 rounded-xl transition-all duration-200 ${
+                      isCurrentlyViewing
+                        ? "bg-primary/10 border border-primary/30"
+                        : isViewable
+                        ? "bg-secondary/30 hover:bg-secondary/50 cursor-pointer"
+                        : "bg-secondary/20 cursor-not-allowed opacity-60"
+                    }`}
                   >
-                    {activity.status}
-                  </Badge>
-                </div>
-              ))}
+                    <div className="flex items-center gap-3">
+                      {activity.status === "completed" ? (
+                        <CheckCircle2 className="w-5 h-5 text-green-500" />
+                      ) : isCompletable ? (
+                        <div className="w-5 h-5 rounded-full border-2 border-primary/50 bg-primary/10" />
+                      ) : (
+                        <div className="w-5 h-5 rounded-full border-2 border-muted-foreground/30" />
+                      )}
+                      <span className="text-sm text-foreground capitalize">
+                        {activity.activityType.replace(/-/g, " ")}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant={
+                          activity.status === "completed" ? "default" : "secondary"
+                        }
+                        className="text-xs"
+                      >
+                        {activity.status}
+                      </Badge>
+                      {isViewable && (
+                        <ChevronRight className={`w-4 h-4 text-muted-foreground transition-transform ${
+                          isCurrentlyViewing ? "rotate-90" : ""
+                        }`} />
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </motion.div>
         )}
