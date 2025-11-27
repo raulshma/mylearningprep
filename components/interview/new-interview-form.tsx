@@ -24,8 +24,11 @@ import {
   CheckCircle2,
   Info,
   ArrowRight,
+  Settings2,
 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { createInterview, createInterviewFromPrompt } from '@/lib/actions/interview';
+import { MODULE_LABELS, type ModuleType } from '@/lib/db/schemas/interview';
 import { useSharedHeader } from '@/components/dashboard/shared-header-context';
 
 interface UsageData {
@@ -84,6 +87,25 @@ export function NewInterviewForm({ usageData }: NewInterviewFormProps) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [generalError, setGeneralError] = useState<string | null>(null);
   const [showManualResume, setShowManualResume] = useState(false);
+  const [showSectionSettings, setShowSectionSettings] = useState(false);
+  const [excludedModules, setExcludedModules] = useState<Set<ModuleType>>(new Set());
+
+  const allModules: ModuleType[] = ['openingBrief', 'revisionTopics', 'mcqs', 'rapidFire'];
+
+  const toggleModule = (module: ModuleType) => {
+    setExcludedModules(prev => {
+      const next = new Set(prev);
+      if (next.has(module)) {
+        next.delete(module);
+      } else {
+        // Don't allow excluding all modules
+        if (next.size < allModules.length - 1) {
+          next.add(module);
+        }
+      }
+      return next;
+    });
+  };
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -151,7 +173,10 @@ export function NewInterviewForm({ usageData }: NewInterviewFormProps) {
     }
     setIsPromptSubmitting(true);
     try {
-      const result = await createInterviewFromPrompt({ prompt: prompt.trim() });
+      const result = await createInterviewFromPrompt({ 
+        prompt: prompt.trim(),
+        excludedModules: Array.from(excludedModules),
+      });
       if (result.success) {
         router.push(`/interview/${result.data._id}`);
       } else {
@@ -176,6 +201,7 @@ export function NewInterviewForm({ usageData }: NewInterviewFormProps) {
         jobDescription: jobDescription.trim(),
         resumeFile: resumeFile ?? undefined,
         resumeText: showManualResume ? resumeText.trim() : undefined,
+        excludedModules: Array.from(excludedModules),
       });
       if (result.success) {
         router.push(`/interview/${result.data._id}`);
@@ -293,6 +319,74 @@ export function NewInterviewForm({ usageData }: NewInterviewFormProps) {
                 </div>
               </div>
             </form>
+          </motion.div>
+
+          {/* Section Settings */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.05 }}>
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full justify-between h-12 rounded-2xl text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-all duration-300"
+              onClick={() => setShowSectionSettings(!showSectionSettings)}
+              disabled={isLoading}
+            >
+              <div className="flex items-center gap-3">
+                <Settings2 className="w-4 h-4" />
+                <span className="text-sm font-medium">
+                  Customize sections
+                  {excludedModules.size > 0 && (
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      ({allModules.length - excludedModules.size} of {allModules.length} selected)
+                    </span>
+                  )}
+                </span>
+              </div>
+              <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${showSectionSettings ? 'rotate-180' : ''}`} />
+            </Button>
+
+            <AnimatePresence>
+              {showSectionSettings && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="pt-3 pb-1 px-1">
+                    <p className="text-xs text-muted-foreground mb-3">
+                      Select which sections to generate. At least one must be selected.
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {allModules.map((module) => {
+                        const isExcluded = excludedModules.has(module);
+                        const isLastEnabled = !isExcluded && excludedModules.size === allModules.length - 1;
+                        return (
+                          <label
+                            key={module}
+                            className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
+                              isExcluded
+                                ? 'border-border/30 bg-secondary/20 opacity-60'
+                                : 'border-border/50 bg-secondary/30 hover:border-primary/30'
+                            } ${isLastEnabled ? 'cursor-not-allowed' : ''}`}
+                          >
+                            <Checkbox
+                              checked={!isExcluded}
+                              onCheckedChange={() => toggleModule(module)}
+                              disabled={isLoading || isLastEnabled}
+                              className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                            />
+                            <span className={`text-sm font-medium ${isExcluded ? 'text-muted-foreground' : 'text-foreground'}`}>
+                              {MODULE_LABELS[module]}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
 
           {/* Divider */}
@@ -512,17 +606,20 @@ export function NewInterviewForm({ usageData }: NewInterviewFormProps) {
                 <h3 className="font-bold text-sm text-foreground">What you'll get</h3>
               </div>
               <ul className="space-y-3">
-                {[
-                  'Personalized opening brief',
-                  'Key revision topics',
-                  'Practice MCQs',
-                  'Rapid-fire questions'
-                ].map((item, i) => (
-                  <li key={i} className="flex items-center gap-3 text-sm text-muted-foreground">
-                    <div className="w-1.5 h-1.5 rounded-full bg-primary/40" />
-                    {item}
-                  </li>
-                ))}
+                {([
+                  { module: 'openingBrief' as ModuleType, label: 'Personalized opening brief' },
+                  { module: 'revisionTopics' as ModuleType, label: 'Key revision topics' },
+                  { module: 'mcqs' as ModuleType, label: 'Practice MCQs' },
+                  { module: 'rapidFire' as ModuleType, label: 'Rapid-fire questions' },
+                ]).map(({ module, label }) => {
+                  const isExcluded = excludedModules.has(module);
+                  return (
+                    <li key={module} className={`flex items-center gap-3 text-sm transition-opacity ${isExcluded ? 'opacity-40 line-through' : 'text-muted-foreground'}`}>
+                      <div className={`w-1.5 h-1.5 rounded-full ${isExcluded ? 'bg-muted-foreground/40' : 'bg-primary/40'}`} />
+                      {label}
+                    </li>
+                  );
+                })}
               </ul>
 
               <div className="mt-6 pt-6 border-t border-border/50">

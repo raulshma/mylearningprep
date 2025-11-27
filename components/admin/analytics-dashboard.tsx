@@ -1,7 +1,6 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import {
   ChartContainer,
   ChartTooltip,
@@ -53,6 +52,10 @@ const usageChartConfig: ChartConfig = {
     label: 'New Users',
     color: '#22c55e', // Bright green
   },
+  tokens: {
+    label: 'Tokens (K)',
+    color: '#06b6d4', // Bright cyan
+  },
 };
 
 const tokenChartConfig: ChartConfig = {
@@ -101,11 +104,13 @@ export function AnalyticsDashboard({
   const userTrend = calculateTrend(usageTrends.map((d) => d.users));
 
   // Format data for charts - ensure numeric values
+  // Tokens are scaled to thousands (K) for better chart readability
   const formattedUsageTrends = usageTrends.map((d) => ({
     ...d,
     interviews: Number(d.interviews) || 0,
     aiRequests: Number(d.aiRequests) || 0,
     users: Number(d.users) || 0,
+    tokens: Math.round((Number(d.tokens) || 0) / 1000), // Convert to K
     formattedDate: formatDate(d.date),
   }));
 
@@ -223,6 +228,10 @@ export function AnalyticsDashboard({
                     <stop offset="5%" stopColor="var(--color-users)" stopOpacity={0.3} />
                     <stop offset="95%" stopColor="var(--color-users)" stopOpacity={0} />
                   </linearGradient>
+                  <linearGradient id="colorTokens" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--color-tokens)" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="var(--color-tokens)" stopOpacity={0} />
+                  </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" vertical={false} />
                 <XAxis
@@ -263,6 +272,14 @@ export function AnalyticsDashboard({
                   stackId="3"
                   stroke="var(--color-users)"
                   fill="url(#colorUsers)"
+                  strokeWidth={2}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="tokens"
+                  stackId="4"
+                  stroke="var(--color-tokens)"
+                  fill="url(#colorTokens)"
                   strokeWidth={2}
                 />
               </AreaChart>

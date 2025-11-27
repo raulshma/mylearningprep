@@ -27,6 +27,8 @@ import {
   Feather,
   AlertTriangle,
   Trash2,
+  Maximize,
+  Thermometer,
 } from "lucide-react";
 import {
   getTieredModelConfig,
@@ -151,6 +153,8 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
         [type === "primary" ? "primaryModel" : "fallbackModel"]: modelId,
         // Auto-populate maxTokens from model data when selecting primary model
         ...(type === "primary" && maxTokens ? { maxTokens } : {}),
+        // Auto-populate temperature from model data when selecting primary model
+        ...(type === "primary" && model?.default_parameters?.temperature ? { temperature: model.default_parameters.temperature } : {}),
       },
     }));
     setSaved(false);
@@ -263,6 +267,18 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
           <DollarSign className="w-3 h-3 mr-1 opacity-70" />
           {formatPrice(model.pricing.prompt)}
         </Badge>
+        {model.top_provider?.max_completion_tokens && (
+          <Badge variant="secondary" className="text-[10px] h-5 px-1.5 font-normal bg-secondary/50" title="Max Output Tokens">
+            <Maximize className="w-3 h-3 mr-1 opacity-70" />
+            {((model.top_provider?.max_completion_tokens || 0) / 1000).toFixed(0)}K
+          </Badge>
+        )}
+        {model.default_parameters?.temperature !== undefined && (
+          <Badge variant="secondary" className="text-[10px] h-5 px-1.5 font-normal bg-secondary/50" title="Default Temperature">
+            <Thermometer className="w-3 h-3 mr-1 opacity-70" />
+            {model.default_parameters.temperature}
+          </Badge>
+        )}
       </div>
     </div>
   );

@@ -634,6 +634,7 @@ export interface UsageTrendData {
   interviews: number;
   aiRequests: number;
   users: number;
+  tokens: number;
 }
 
 export interface PopularTopicData {
@@ -689,7 +690,7 @@ export async function getUsageTrends(
       { $sort: { _id: 1 as const } },
     ];
 
-    // Get AI requests per day
+    // Get AI requests per day with token counts
     const aiRequestsPipeline = [
       { $match: { timestamp: { $gte: startDate } } },
       {
@@ -698,6 +699,7 @@ export async function getUsageTrends(
             $dateToString: { format: "%Y-%m-%d", date: "$timestamp", timezone: "UTC" },
           },
           count: { $sum: 1 },
+          tokens: { $sum: { $add: [{ $ifNull: ["$tokenUsage.input", 0] }, { $ifNull: ["$tokenUsage.output", 0] }] } },
         },
       },
       { $sort: { _id: 1 as const } },
@@ -728,7 +730,7 @@ export async function getUsageTrends(
       interviewsData.map((d) => [String(d._id), (d.count as number) || 0])
     );
     const aiRequestsMap = new Map(
-      aiRequestsData.map((d) => [String(d._id), (d.count as number) || 0])
+      aiRequestsData.map((d) => [String(d._id), { count: (d.count as number) || 0, tokens: (d.tokens as number) || 0 }])
     );
     const usersMap = new Map(
       usersData.map((d) => [String(d._id), (d.count as number) || 0])
@@ -739,11 +741,13 @@ export async function getUsageTrends(
     for (let i = 0; i <= days; i++) {
       const date = new Date(now.getTime() - (days - i) * 24 * 60 * 60 * 1000);
       const dateStr = date.toISOString().split("T")[0];
+      const aiData = aiRequestsMap.get(dateStr);
       result.push({
         date: dateStr,
         interviews: interviewsMap.get(dateStr) ?? 0,
-        aiRequests: aiRequestsMap.get(dateStr) ?? 0,
+        aiRequests: aiData?.count ?? 0,
         users: usersMap.get(dateStr) ?? 0,
+        tokens: aiData?.tokens ?? 0,
       });
     }
 

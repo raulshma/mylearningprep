@@ -46,6 +46,7 @@ function normalizeInterview(interview: Interview): Interview {
       mcqs: interview.modules?.mcqs ?? [],
       rapidFire: interview.modules?.rapidFire ?? [],
     },
+    excludedModules: interview.excludedModules ?? [],
   };
 }
 
@@ -85,6 +86,7 @@ export const interviewRepository: InterviewRepository = {
         mcqs: data.modules.mcqs ?? [],
         rapidFire: data.modules.rapidFire ?? [],
       },
+      excludedModules: data.excludedModules ?? [],
       createdAt: now,
       updatedAt: now,
     };

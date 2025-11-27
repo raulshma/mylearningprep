@@ -50,6 +50,16 @@ export const JobDetailsSchema = z.object({
   description: z.string(),
 });
 
+export const ModuleTypeSchema = z.enum(['openingBrief', 'revisionTopics', 'mcqs', 'rapidFire']);
+export type ModuleType = z.infer<typeof ModuleTypeSchema>;
+
+export const MODULE_LABELS: Record<ModuleType, string> = {
+  openingBrief: 'Opening Brief',
+  revisionTopics: 'Revision Topics',
+  mcqs: 'Multiple Choice Questions',
+  rapidFire: 'Rapid-Fire Questions',
+};
+
 export const InterviewSchema = z.object({
   _id: z.string(),
   userId: z.string(),
@@ -57,6 +67,7 @@ export const InterviewSchema = z.object({
   jobDetails: JobDetailsSchema,
   resumeContext: z.string(),
   modules: InterviewModulesSchema,
+  excludedModules: z.array(ModuleTypeSchema).default([]),
   createdAt: z.date(),
   updatedAt: z.date(),
 });
@@ -68,8 +79,6 @@ export const CreateInterviewSchema = InterviewSchema.omit({
   updatedAt: true 
 });
 
-export const ModuleTypeSchema = z.enum(['openingBrief', 'revisionTopics', 'mcqs', 'rapidFire']);
-
 export type MCQ = z.infer<typeof MCQSchema>;
 export type RevisionTopic = z.infer<typeof RevisionTopicSchema>;
 export type RapidFire = z.infer<typeof RapidFireSchema>;
@@ -78,4 +87,3 @@ export type InterviewModules = z.infer<typeof InterviewModulesSchema>;
 export type JobDetails = z.infer<typeof JobDetailsSchema>;
 export type Interview = z.infer<typeof InterviewSchema>;
 export type CreateInterview = z.infer<typeof CreateInterviewSchema>;
-export type ModuleType = z.infer<typeof ModuleTypeSchema>;

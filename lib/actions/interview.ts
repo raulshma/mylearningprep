@@ -46,6 +46,7 @@ export interface CreateInterviewActionInput {
   jobDescription: string;
   resumeFile?: File;
   resumeText?: string;
+  excludedModules?: string[];
 }
 
 /**
@@ -53,6 +54,7 @@ export interface CreateInterviewActionInput {
  */
 export interface CreateInterviewFromPromptInput {
   prompt: string;
+  excludedModules?: string[];
 }
 
 /**
@@ -149,6 +151,12 @@ export async function createInterviewFromPrompt(
       metadata: loggerCtx.metadata,
     });
 
+    // Validate excluded modules
+    const validModules = ['openingBrief', 'revisionTopics', 'mcqs', 'rapidFire'] as const;
+    const excludedModules = (input.excludedModules ?? []).filter(
+      (m): m is typeof validModules[number] => validModules.includes(m as typeof validModules[number])
+    );
+
     // Create interview record
     const interview = await interviewRepository.create({
       userId: user._id,
@@ -164,6 +172,7 @@ export async function createInterviewFromPrompt(
         mcqs: [],
         rapidFire: [],
       },
+      excludedModules,
     });
 
     // Increment interview count (unless BYOK)
@@ -273,6 +282,12 @@ export async function createInterview(
       };
     }
 
+    // Validate excluded modules
+    const validModulesDetailed = ['openingBrief', 'revisionTopics', 'mcqs', 'rapidFire'] as const;
+    const excludedModules = (input.excludedModules ?? []).filter(
+      (m): m is typeof validModulesDetailed[number] => validModulesDetailed.includes(m as typeof validModulesDetailed[number])
+    );
+
     // Create interview record
     const interview = await interviewRepository.create({
       userId: user._id,
@@ -288,6 +303,7 @@ export async function createInterview(
         mcqs: [],
         rapidFire: [],
       },
+      excludedModules,
     });
 
     // Increment interview count (unless BYOK)

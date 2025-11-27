@@ -26,6 +26,7 @@ interface ModuleCardProps {
   onRegenerate?: () => void;
   onRegenerateWithInstructions?: (instructions: string) => void;
   regenerateLabel?: string;
+  id?: string;
 }
 
 export function ModuleCard({
@@ -39,6 +40,7 @@ export function ModuleCard({
   onRegenerate,
   onRegenerateWithInstructions,
   regenerateLabel = "Add More",
+  id,
 }: ModuleCardProps) {
   const isLoading = status === "loading";
   const isStreaming = status === "streaming";
@@ -48,16 +50,17 @@ export function ModuleCard({
 
   return (
     <motion.div
+      id={id}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="relative"
     >
       <div
         className={`rounded-3xl border bg-background/60 backdrop-blur-xl shadow-lg overflow-hidden transition-all duration-300 ${isError
-            ? "border-destructive/30 shadow-destructive/5"
-            : isLoading || isStreaming
-              ? "border-primary/30 shadow-primary/5"
-              : "border-border/50 hover:shadow-xl hover:border-border"
+          ? "border-destructive/30 shadow-destructive/5"
+          : isLoading || isStreaming
+            ? "border-primary/30 shadow-primary/5"
+            : "border-border/50 hover:shadow-xl hover:border-border"
           }`}
       >
         {/* Header */}
@@ -65,10 +68,10 @@ export function ModuleCard({
           <div className="flex items-start gap-4 md:gap-5">
             <div
               className={`w-12 h-12 rounded-2xl flex-shrink-0 flex items-center justify-center transition-colors shadow-inner ${isLoading || isStreaming
-                  ? "bg-primary/10"
-                  : isError
-                    ? "bg-destructive/10"
-                    : "bg-secondary"
+                ? "bg-primary/10"
+                : isError
+                  ? "bg-destructive/10"
+                  : "bg-secondary"
                 }`}
             >
               {isLoading || isStreaming ? (

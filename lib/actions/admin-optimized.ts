@@ -337,6 +337,14 @@ async function fetchAllAdminData() {
     };
   });
 
+  // Process token trends first (needed for both usageTrends and tokenUsageTrends)
+  const tokenTrendsMap = new Map(
+    tokenTrendsResult.map((d) => [
+      String(d._id),
+      { input: (d.inputTokens as number) || 0, output: (d.outputTokens as number) || 0 },
+    ])
+  );
+
   // Process usage trends
   const [interviewsData, aiRequestsData, newUsersData] = usageTrendsData;
   const interviewsMap = new Map(interviewsData.map((d) => [String(d._id), d.count as number]));
@@ -347,21 +355,15 @@ async function fetchAllAdminData() {
   for (let i = 0; i <= 30; i++) {
     const date = new Date(now.getTime() - (30 - i) * 24 * 60 * 60 * 1000);
     const dateStr = date.toISOString().split("T")[0];
+    const tokenData = tokenTrendsMap.get(dateStr);
     usageTrends.push({
       date: dateStr,
       interviews: interviewsMap.get(dateStr) ?? 0,
       aiRequests: aiRequestsMap.get(dateStr) ?? 0,
       users: usersMap.get(dateStr) ?? 0,
+      tokens: (tokenData?.input ?? 0) + (tokenData?.output ?? 0),
     });
   }
-
-  // Process token trends
-  const tokenTrendsMap = new Map(
-    tokenTrendsResult.map((d) => [
-      String(d._id),
-      { input: (d.inputTokens as number) || 0, output: (d.outputTokens as number) || 0 },
-    ])
-  );
 
   const tokenUsageTrends: TokenUsageTrend[] = [];
   for (let i = 0; i <= 30; i++) {

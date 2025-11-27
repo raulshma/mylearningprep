@@ -26,6 +26,8 @@ import {
   Brain,
   Eye,
   EyeOff,
+  ArrowDown,
+  MousePointer2,
 } from "lucide-react";
 import { getInterview, getAIConcurrencyLimit } from "@/lib/actions/interview";
 import { runWithConcurrencyLimit } from "@/lib/utils/concurrency-limiter";
@@ -116,22 +118,22 @@ async function tryResumeStream(
         credentials: "include",
       }
     );
-    
+
     // 204 means no active stream
     if (response.status === 204) {
       return { hasActiveStream: false };
     }
-    
+
     if (!response.ok) {
       return { hasActiveStream: false };
     }
-    
+
     // Check if this is a resumed stream (SSE response)
     const contentType = response.headers.get("content-type");
     if (contentType?.includes("text/event-stream")) {
       return { hasActiveStream: true, response };
     }
-    
+
     return { hasActiveStream: false };
   } catch {
     return { hasActiveStream: false };
@@ -148,13 +150,18 @@ export function InterviewWorkspace({
   const interviewId = initialInterview._id;
   const [interview, setInterview] = useState<Interview>(initialInterview);
 
+  const excludedModules = initialInterview.excludedModules ?? [];
+  
+  const getInitialStatus = (module: ModuleKey, hasContent: boolean): StreamingCardStatus => {
+    if (excludedModules.includes(module)) return "complete"; // Treat excluded as complete (won't render)
+    return hasContent ? "complete" : "idle";
+  };
+
   const [moduleStatus, setModuleStatus] = useState<ModuleStatus>({
-    openingBrief: initialInterview.modules.openingBrief ? "complete" : "idle",
-    revisionTopics:
-      initialInterview.modules.revisionTopics.length > 0 ? "complete" : "idle",
-    mcqs: initialInterview.modules.mcqs.length > 0 ? "complete" : "idle",
-    rapidFire:
-      initialInterview.modules.rapidFire.length > 0 ? "complete" : "idle",
+    openingBrief: getInitialStatus("openingBrief", !!initialInterview.modules.openingBrief),
+    revisionTopics: getInitialStatus("revisionTopics", initialInterview.modules.revisionTopics.length > 0),
+    mcqs: getInitialStatus("mcqs", initialInterview.modules.mcqs.length > 0),
+    rapidFire: getInitialStatus("rapidFire", initialInterview.modules.rapidFire.length > 0),
   });
 
   const [streamingBrief, setStreamingBrief] = useState<string>("");
@@ -166,7 +173,10 @@ export function InterviewWorkspace({
   const [showMcqAnswers, setShowMcqAnswers] = useState(false);
   const [showRapidFireAnswers, setShowRapidFireAnswers] = useState(false);
   const [revealedMcqs, setRevealedMcqs] = useState<Set<string>>(new Set());
-  const [revealedRapidFire, setRevealedRapidFire] = useState<Set<string>>(new Set());
+  const [revealedRapidFire, setRevealedRapidFire] = useState<Set<string>>(
+    new Set()
+  );
+  const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
 
   const generationStartedRef = useRef(false);
   const resumeAttemptedRef = useRef(false);
@@ -197,14 +207,66 @@ export function InterviewWorkspace({
     });
   }, []);
 
+  const isGenerating = Object.values(moduleStatus).some(
+    (s) => s === "loading" || s === "streaming"
+  );
+
+  // Auto-scroll effect
+  useEffect(() => {
+    if (!isGenerating || !autoScrollEnabled) return;
+
+    const scrollToActiveModule = () => {
+      // Find the active streaming module
+      const activeModule = Object.entries(moduleStatus).find(
+        ([_, status]) => status === "streaming"
+      );
+
+      if (activeModule) {
+        const [moduleKey] = activeModule;
+        const element = document.getElementById(`module-${moduleKey}`);
+        if (element) {
+          // Scroll to the bottom of the element
+          const rect = element.getBoundingClientRect();
+          const isBelowViewport = rect.bottom > window.innerHeight;
+
+          if (isBelowViewport) {
+            window.scrollTo({
+              top: window.scrollY + rect.bottom - window.innerHeight,
+              behavior: "smooth",
+            });
+          }
+        }
+      } else {
+        // Fallback to bottom of page if no specific module found (e.g. just loading)
+        window.scrollTo({
+          top: document.body.scrollHeight,
+          behavior: "smooth",
+        });
+      }
+    };
+
+    scrollToActiveModule();
+  }, [
+    isGenerating,
+    autoScrollEnabled,
+    streamingBrief,
+    streamingTopics,
+    streamingMcqs,
+    streamingRapidFire,
+    moduleStatus,
+  ]);
+
   // Resume active streams
   useEffect(() => {
     if (resumeAttemptedRef.current) return;
     resumeAttemptedRef.current = true;
 
     const resumeModuleStream = async (module: ModuleKey) => {
-      const { hasActiveStream, response } = await tryResumeStream(interviewId, module);
-      
+      const { hasActiveStream, response } = await tryResumeStream(
+        interviewId,
+        module
+      );
+
       if (!hasActiveStream || !response) {
         return false;
       }
@@ -258,10 +320,11 @@ export function InterviewWorkspace({
       // Try to resume each module that doesn't have content
       for (const module of modules) {
         // Only try to resume if module appears incomplete
-        const hasContent = module === "openingBrief" 
-          ? !!initialInterview.modules.openingBrief
-          : initialInterview.modules[module].length > 0;
-        
+        const hasContent =
+          module === "openingBrief"
+            ? !!initialInterview.modules.openingBrief
+            : initialInterview.modules[module].length > 0;
+
         if (!hasContent) {
           await resumeModuleStream(module);
         }
@@ -271,17 +334,25 @@ export function InterviewWorkspace({
     checkAndResumeModules();
   }, [interviewId, initialInterview]);
 
-  // Auto-generate on first load if empty
+  // Auto-generate on first load if empty (excluding excluded modules)
   useEffect(() => {
     if (generationStartedRef.current) return;
 
+    const excluded = interview.excludedModules ?? [];
     const hasNoContent =
-      !interview.modules.openingBrief &&
-      interview.modules.revisionTopics.length === 0 &&
-      interview.modules.mcqs.length === 0 &&
-      interview.modules.rapidFire.length === 0;
+      (excluded.includes("openingBrief") || !interview.modules.openingBrief) &&
+      (excluded.includes("revisionTopics") || interview.modules.revisionTopics.length === 0) &&
+      (excluded.includes("mcqs") || interview.modules.mcqs.length === 0) &&
+      (excluded.includes("rapidFire") || interview.modules.rapidFire.length === 0);
 
-    if (hasNoContent) {
+    // Check if there's at least one non-excluded module without content
+    const needsGeneration =
+      (!excluded.includes("openingBrief") && !interview.modules.openingBrief) ||
+      (!excluded.includes("revisionTopics") && interview.modules.revisionTopics.length === 0) ||
+      (!excluded.includes("mcqs") && interview.modules.mcqs.length === 0) ||
+      (!excluded.includes("rapidFire") && interview.modules.rapidFire.length === 0);
+
+    if (needsGeneration) {
       generationStartedRef.current = true;
       generateAllModules();
     }
@@ -289,12 +360,12 @@ export function InterviewWorkspace({
 
   const generateAllModules = async () => {
     const concurrencyLimit = await getAIConcurrencyLimit();
-    const moduleTasks = [
-      () => handleGenerateModule("openingBrief"),
-      () => handleGenerateModule("revisionTopics"),
-      () => handleGenerateModule("mcqs"),
-      () => handleGenerateModule("rapidFire"),
-    ];
+    const excludedModules = interview.excludedModules ?? [];
+    
+    const allModules: ModuleKey[] = ["openingBrief", "revisionTopics", "mcqs", "rapidFire"];
+    const modulesToGenerate = allModules.filter(m => !excludedModules.includes(m));
+    
+    const moduleTasks = modulesToGenerate.map(module => () => handleGenerateModule(module));
     await runWithConcurrencyLimit(moduleTasks, concurrencyLimit);
   };
 
@@ -419,9 +490,7 @@ export function InterviewWorkspace({
     return Math.round((modules.filter(Boolean).length / 4) * 100);
   }, [interview]);
 
-  const isGenerating = Object.values(moduleStatus).some(
-    (s) => s === "loading" || s === "streaming"
-  );
+
 
   const openingBrief = interview.modules.openingBrief;
   const revisionTopics =
@@ -500,6 +569,7 @@ export function InterviewWorkspace({
 
             {/* Opening Brief */}
             <ModuleCard
+              id="module-openingBrief"
               title="Opening Brief"
               description="Your personalized interview strategy"
               icon={Target}
@@ -562,7 +632,9 @@ export function InterviewWorkspace({
                       </div>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Prep Time</p>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        Prep Time
+                      </p>
                       <p className="text-lg font-bold text-foreground">
                         {openingBrief.prepTime}
                       </p>
@@ -574,6 +646,7 @@ export function InterviewWorkspace({
 
             {/* Revision Topics */}
             <ModuleCard
+              id="module-revisionTopics"
               title="Revision Topics"
               description="Key concepts to master"
               icon={BookOpen}
@@ -619,10 +692,10 @@ export function InterviewWorkspace({
                           <div className="flex items-center gap-4">
                             <div
                               className={`w-2.5 h-2.5 rounded-full ${topic.confidence === "low"
-                                  ? "bg-red-500"
-                                  : topic.confidence === "medium"
-                                    ? "bg-yellow-500"
-                                    : "bg-green-500"
+                                ? "bg-red-500"
+                                : topic.confidence === "medium"
+                                  ? "bg-yellow-500"
+                                  : "bg-green-500"
                                 }`}
                             />
                             <div>
@@ -634,7 +707,10 @@ export function InterviewWorkspace({
                               </p>
                             </div>
                           </div>
-                          <Badge variant="outline" className="capitalize rounded-full px-3">
+                          <Badge
+                            variant="outline"
+                            className="capitalize rounded-full px-3"
+                          >
                             {topic.confidence}
                           </Badge>
                         </div>
@@ -647,6 +723,7 @@ export function InterviewWorkspace({
 
             {/* MCQs */}
             <ModuleCard
+              id="module-mcqs"
               title="Multiple Choice Questions"
               description="Test your knowledge"
               icon={HelpCircle}
@@ -714,7 +791,8 @@ export function InterviewWorkspace({
 
                   {mcqs.map((mcq, index) => {
                     const mcqId = mcq.id || `mcq-${index}`;
-                    const isRevealed = showMcqAnswers || revealedMcqs.has(mcqId);
+                    const isRevealed =
+                      showMcqAnswers || revealedMcqs.has(mcqId);
 
                     return (
                       <motion.div
@@ -763,10 +841,12 @@ export function InterviewWorkspace({
                               <div
                                 key={optIndex}
                                 className={`p-3 rounded-xl border text-sm transition-all cursor-pointer flex items-center ${isRevealed && isCorrect
-                                    ? "border-green-500/30 bg-green-500/10 text-foreground font-medium"
-                                    : "border-border/50 text-muted-foreground hover:border-primary/30 hover:bg-secondary/30"
+                                  ? "border-green-500/30 bg-green-500/10 text-foreground font-medium"
+                                  : "border-border/50 text-muted-foreground hover:border-primary/30 hover:bg-secondary/30"
                                   }`}
-                                onClick={() => !showMcqAnswers && toggleMcqAnswer(mcqId)}
+                                onClick={() =>
+                                  !showMcqAnswers && toggleMcqAnswer(mcqId)
+                                }
                               >
                                 <span className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center text-xs font-mono mr-3 flex-shrink-0">
                                   {String.fromCharCode(65 + optIndex)}
@@ -785,6 +865,7 @@ export function InterviewWorkspace({
 
             {/* Rapid Fire */}
             <ModuleCard
+              id="module-rapidFire"
               title="Rapid Fire Questions"
               description="Quick recall practice"
               icon={Zap}
@@ -881,8 +962,8 @@ export function InterviewWorkspace({
                               </p>
                               <div
                                 className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors flex-shrink-0 ${isRevealed
-                                    ? "bg-primary/10 text-primary"
-                                    : "bg-secondary text-muted-foreground group-hover:bg-primary/5"
+                                  ? "bg-primary/10 text-primary"
+                                  : "bg-secondary text-muted-foreground group-hover:bg-primary/5"
                                   }`}
                               >
                                 {isRevealed ? (
@@ -920,6 +1001,39 @@ export function InterviewWorkspace({
               )}
             </ModuleCard>
           </main>
+
+          {/* Floating Auto-scroll Control */}
+          <AnimatePresence>
+            {isGenerating && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.8, y: 20 }}
+                className="fixed bottom-8 right-8 z-50"
+              >
+                <Button
+                  onClick={() => setAutoScrollEnabled(!autoScrollEnabled)}
+                  size="lg"
+                  className={`rounded-full shadow-lg transition-all duration-300 ${autoScrollEnabled
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                    : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                    }`}
+                >
+                  {autoScrollEnabled ? (
+                    <>
+                      <ArrowDown className="w-4 h-4 mr-2 animate-bounce" />
+                      Following
+                    </>
+                  ) : (
+                    <>
+                      <MousePointer2 className="w-4 h-4 mr-2" />
+                      Manual Scroll
+                    </>
+                  )}
+                </Button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </div>

@@ -19,6 +19,11 @@ export interface OpenRouterModel {
     max_completion_tokens?: number;
     is_moderated?: boolean;
   };
+  default_parameters?: {
+    temperature?: number;
+    top_p?: number;
+    frequency_penalty?: number;
+  };
   per_request_limits?: {
     prompt_tokens?: string;
     completion_tokens?: string;
@@ -75,7 +80,7 @@ export async function GET(request: Request) {
     models.forEach((model) => {
       const promptPrice = parseFloat(model.pricing.prompt);
       const completionPrice = parseFloat(model.pricing.completion);
-      
+
       if (promptPrice === 0 && completionPrice === 0) {
         grouped.free.push(model);
       } else {
