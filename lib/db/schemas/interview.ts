@@ -9,6 +9,8 @@ export const MCQSchema = z.object({
   source: z.enum(['ai', 'search']).default('ai'),
 });
 
+export const TopicStatusSchema = z.enum(['not_started', 'in_progress', 'completed']);
+
 export const RevisionTopicSchema = z.object({
   id: z.string(),
   title: z.string(),
@@ -16,7 +18,10 @@ export const RevisionTopicSchema = z.object({
   style: z.enum(['professional', 'construction', 'simple']).default('professional'),
   reason: z.string(),
   confidence: z.enum(['low', 'medium', 'high']),
+  status: TopicStatusSchema.default('not_started'),
 });
+
+export type TopicStatus = z.infer<typeof TopicStatusSchema>;
 
 export const RapidFireSchema = z.object({
   id: z.string(),

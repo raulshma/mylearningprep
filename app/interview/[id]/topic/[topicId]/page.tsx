@@ -3,7 +3,12 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Tooltip,
@@ -15,7 +20,6 @@ import {
   ArrowLeft,
   BookOpen,
   MessageSquare,
-  Lightbulb,
   Loader2,
   AlertCircle,
   Copy,
@@ -24,10 +28,14 @@ import {
   Keyboard,
   ChevronRight,
   Sparkles,
+  Circle,
+  PlayCircle,
+  CheckCircle2,
 } from "lucide-react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { getTopic, type AnalogyStyle } from "@/lib/actions/topic";
+import { getTopic, updateTopicStatus, type AnalogyStyle } from "@/lib/actions/topic";
+import type { TopicStatus } from "@/lib/db/schemas/interview";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -152,6 +160,12 @@ const styleDescriptions: Record<AnalogyStyle, string> = {
   simple: "Simplified explanation for easy understanding",
 };
 
+const statusConfig: Record<TopicStatus, { label: string; icon: typeof Circle; color: string }> = {
+  not_started: { label: "Not Started", icon: Circle, color: "text-muted-foreground" },
+  in_progress: { label: "In Progress", icon: PlayCircle, color: "text-yellow-500" },
+  completed: { label: "Completed", icon: CheckCircle2, color: "text-green-500" },
+};
+
 export default function TopicDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -171,6 +185,8 @@ export default function TopicDetailPage() {
   const [copied, setCopied] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [topicStatus, setTopicStatus] = useState<TopicStatus>("not_started");
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   const resumeAttemptedRef = useRef(false);
 
@@ -243,6 +259,30 @@ export default function TopicDetailPage() {
     }
   }, [topic]);
 
+  const handleStatusChange = useCallback(async (newStatus: TopicStatus) => {
+    if (newStatus === topicStatus || isUpdatingStatus) return;
+    
+    setIsUpdatingStatus(true);
+    const previousStatus = topicStatus;
+    setTopicStatus(newStatus); // Optimistic update
+    
+    try {
+      const result = await updateTopicStatus(interviewId, topicId, newStatus);
+      if (!result.success) {
+        setTopicStatus(previousStatus); // Revert on error
+        console.error("Failed to update status:", result.error);
+      } else {
+        // Invalidate cache so interview page shows updated status
+        router.refresh();
+      }
+    } catch (err) {
+      setTopicStatus(previousStatus); // Revert on error
+      console.error("Failed to update status:", err);
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  }, [interviewId, topicId, topicStatus, isUpdatingStatus, router]);
+
   // Load topic and interview data, and check for resumable streams
   useEffect(() => {
     async function loadData() {
@@ -255,6 +295,7 @@ export default function TopicDetailPage() {
         if (topicResult.success) {
           setTopic(topicResult.data);
           setSelectedStyle(topicResult.data.style);
+          setTopicStatus(topicResult.data.status ?? "not_started");
         } else {
           setError(topicResult.error.message);
         }
@@ -528,7 +569,7 @@ export default function TopicDetailPage() {
           <div className="absolute -top-20 -left-20 w-96 h-96 bg-primary/5 rounded-full blur-3xl -z-10 opacity-50 pointer-events-none" />
 
           <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-3 text-sm text-muted-foreground font-medium">
+            <div className="flex items-center gap-3 text-sm text-muted-foreground font-medium flex-wrap">
               <span className="flex items-center gap-1.5 bg-secondary/50 px-3 py-1 rounded-full backdrop-blur-md border border-border/50">
                 <Clock className="w-3.5 h-3.5" />
                 {getReadingTime(topic.content)}
@@ -537,6 +578,47 @@ export default function TopicDetailPage() {
                 <Sparkles className="w-3.5 h-3.5 text-yellow-500/70" />
                 {topic.confidence} Confidence
               </span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button 
+                    className={cn(
+                      "flex items-center gap-1.5 bg-secondary/50 px-3 py-1 rounded-full backdrop-blur-md border border-border/50 hover:bg-secondary/80 transition-colors cursor-pointer",
+                      isUpdatingStatus && "opacity-50 pointer-events-none"
+                    )}
+                    disabled={isUpdatingStatus}
+                  >
+                    {(() => {
+                      const config = statusConfig[topicStatus];
+                      const StatusIcon = config.icon;
+                      return (
+                        <>
+                          <StatusIcon className={cn("w-3.5 h-3.5", config.color)} />
+                          <span className={config.color}>{config.label}</span>
+                        </>
+                      );
+                    })()}
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  {(Object.keys(statusConfig) as TopicStatus[]).map((status) => {
+                    const config = statusConfig[status];
+                    const StatusIcon = config.icon;
+                    return (
+                      <DropdownMenuItem
+                        key={status}
+                        onClick={() => handleStatusChange(status)}
+                        className={cn(
+                          "flex items-center gap-2 cursor-pointer",
+                          topicStatus === status && "bg-secondary"
+                        )}
+                      >
+                        <StatusIcon className={cn("w-4 h-4", config.color)} />
+                        {config.label}
+                      </DropdownMenuItem>
+                    );
+                  })}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-foreground leading-[1.1]">

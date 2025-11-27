@@ -8,6 +8,7 @@ import {
   MCQ,
   RevisionTopic,
   RapidFire,
+  TopicStatus,
 } from '../schemas/interview';
 
 /**
@@ -61,6 +62,7 @@ export interface InterviewRepository {
   appendToModule(id: string, module: 'revisionTopics', items: RevisionTopic[]): Promise<void>;
   appendToModule(id: string, module: 'rapidFire', items: RapidFire[]): Promise<void>;
   updateTopicStyle(id: string, topicId: string, content: string, style: RevisionTopic['style']): Promise<void>;
+  updateTopicStatus(id: string, topicId: string, status: TopicStatus): Promise<void>;
   setPublic(id: string, isPublic: boolean): Promise<void>;
   delete(id: string): Promise<void>;
 }
@@ -190,6 +192,21 @@ export const interviewRepository: InterviewRepository = {
         $set: {
           'modules.revisionTopics.$.content': content,
           'modules.revisionTopics.$.style': style,
+          updatedAt: now,
+        },
+      }
+    );
+  },
+
+  async updateTopicStatus(id: string, topicId: string, status: TopicStatus) {
+    const collection = await getInterviewsCollection();
+    const now = new Date();
+    
+    await collection.updateOne(
+      { _id: id, 'modules.revisionTopics.id': topicId },
+      {
+        $set: {
+          'modules.revisionTopics.$.status': status,
           updatedAt: now,
         },
       }

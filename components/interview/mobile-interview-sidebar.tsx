@@ -33,30 +33,23 @@ interface MobileInterviewSidebarProps {
 }
 
 function generateTimelineFromTopics(
-  topics: RevisionTopic[],
-  activeTopicIndex?: number
+  topics: RevisionTopic[]
 ): TimelineItem[] {
-  return topics.map((topic, index) => {
-    let status: TimelineItem["status"] = "upcoming";
-
-    if (activeTopicIndex !== undefined) {
-      if (index < activeTopicIndex) {
-        status = "completed";
-      } else if (index === activeTopicIndex) {
-        status = "current";
-      }
-    } else {
-      if (topic.confidence === "high") {
-        status = "completed";
-      } else if (topic.confidence === "medium") {
-        status = "current";
-      }
+  return topics.map((topic) => {
+    // Map topic.status to timeline status
+    let timelineStatus: TimelineItem["status"] = "upcoming";
+    
+    const topicStatus = topic.status ?? "not_started";
+    if (topicStatus === "completed") {
+      timelineStatus = "completed";
+    } else if (topicStatus === "in_progress") {
+      timelineStatus = "current";
     }
 
     return {
       id: topic.id,
       title: topic.title,
-      status,
+      status: timelineStatus,
     };
   });
 }
@@ -79,12 +72,12 @@ export function MobileInterviewSidebar({
   }, [pathname]);
 
   const timelineItems = useMemo(() => {
-    const items = generateTimelineFromTopics(topics, activeTopicIndex);
+    const items = generateTimelineFromTopics(topics);
     if (!searchQuery.trim()) return items;
 
     const query = searchQuery.toLowerCase();
     return items.filter((item) => item.title.toLowerCase().includes(query));
-  }, [topics, activeTopicIndex, searchQuery]);
+  }, [topics, searchQuery]);
 
   return (
     <>
@@ -234,10 +227,10 @@ export function MobileInterviewSidebar({
                             </p>
                             <p className="text-xs text-muted-foreground/70 capitalize">
                               {item.status === "completed"
-                                ? "Reviewed"
+                                ? "Completed"
                                 : item.status === "current"
                                 ? "In Progress"
-                                : "Upcoming"}
+                                : "Not Started"}
                             </p>
                           </div>
                         </Link>
