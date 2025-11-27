@@ -48,6 +48,7 @@ export const JobDetailsSchema = z.object({
   title: z.string(),
   company: z.string(),
   description: z.string(),
+  programmingLanguage: z.string().optional(),
 });
 
 export const ModuleTypeSchema = z.enum(['openingBrief', 'revisionTopics', 'mcqs', 'rapidFire']);

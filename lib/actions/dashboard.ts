@@ -16,6 +16,7 @@ export interface DashboardInterviewData {
     title: string;
     company: string;
     description: string;
+    programmingLanguage?: string;
   };
   isPublic: boolean;
   createdAt: Date;

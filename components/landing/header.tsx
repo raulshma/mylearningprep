@@ -184,17 +184,20 @@ export function Header() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
                     align="end"
-                    className="w-56 p-2 rounded-2xl"
+                    className="w-64 p-2 rounded-2xl bg-white/80 dark:bg-black/80 backdrop-blur-xl border border-black/5 dark:border-white/10 shadow-2xl"
+                    sideOffset={8}
                   >
-                    <div className="px-2 py-2">
-                      <p className="text-sm font-medium">
+                    <div className="px-3 py-3 mb-1">
+                      <p className="text-sm font-semibold text-foreground">
                         {user?.fullName || "User"}
                       </p>
-                      <p className="text-xs text-muted-foreground truncate">
+                      <p className="text-xs text-muted-foreground truncate mt-0.5 font-medium opacity-80">
                         {user?.emailAddresses[0]?.emailAddress}
                       </p>
                     </div>
-                    <DropdownMenuSeparator />
+
+                    <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent my-1" />
+
                     <DropdownMenuItem
                       onClick={() => {
                         if (
@@ -214,18 +217,28 @@ export function Header() {
                           router.push("/dashboard");
                         }
                       }}
-                      className="cursor-pointer rounded-xl"
+                      className="rounded-xl px-3 py-2.5 text-sm font-medium cursor-pointer transition-colors hover:bg-black/5 dark:hover:bg-white/10"
                     >
-                      <LayoutDashboard className="mr-2 h-4 w-4" />
-                      Dashboard
+                      <div className="flex items-center gap-3">
+                        <div className="p-1.5 rounded-lg bg-primary/10 text-primary">
+                          <LayoutDashboard className="h-4 w-4" />
+                        </div>
+                        Dashboard
+                      </div>
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator />
+
+                    <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent my-1" />
+
                     <DropdownMenuItem
                       onClick={handleSignOut}
-                      className="cursor-pointer text-destructive focus:text-destructive rounded-xl"
+                      className="rounded-xl px-3 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/20 cursor-pointer transition-colors"
                     >
-                      <LogOut className="mr-2 h-4 w-4" />
-                      Sign Out
+                      <div className="flex items-center gap-3">
+                        <div className="p-1.5 rounded-lg bg-red-500/10">
+                          <LogOut className="h-4 w-4" />
+                        </div>
+                        Sign Out
+                      </div>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

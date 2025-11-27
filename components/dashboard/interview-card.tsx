@@ -93,9 +93,13 @@ export function InterviewCardNew({
                 {status.label}
               </Badge>
             </div>
-            <p className="text-sm text-muted-foreground truncate">
-              {interview.jobDetails.company}
-            </p>
+            {(interview.jobDetails.company || interview.jobDetails.programmingLanguage) && (
+              <p className="text-sm text-muted-foreground truncate">
+                {[interview.jobDetails.company, interview.jobDetails.programmingLanguage]
+                  .filter(Boolean)
+                  .join(' • ')}
+              </p>
+            )}
           </div>
 
           {/* Progress */}
@@ -217,9 +221,13 @@ export function InterviewCardNew({
           <h3 className="text-xl font-bold text-foreground mb-1 truncate group-hover:text-primary transition-colors">
             {interview.jobDetails.title}
           </h3>
-          <p className="text-sm text-muted-foreground truncate">
-            {interview.jobDetails.company}
-          </p>
+          {(interview.jobDetails.company || interview.jobDetails.programmingLanguage) && (
+            <p className="text-sm text-muted-foreground truncate">
+              {[interview.jobDetails.company, interview.jobDetails.programmingLanguage]
+                .filter(Boolean)
+                .join(' • ')}
+            </p>
+          )}
         </div>
 
         {/* Content */}

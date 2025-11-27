@@ -22,6 +22,7 @@ export interface InterviewSummary {
     title: string;
     company: string;
     description: string;
+    programmingLanguage?: string;
   };
   createdAt: Date;
   updatedAt: Date;
