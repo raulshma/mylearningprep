@@ -46,21 +46,7 @@ export async function createFeedback(
   input: CreateFeedbackInput
 ): Promise<ActionResult<FeedbackEntry>> {
   try {
-    // Get authenticated user
-    const clerkId = await getAuthUserId();
-    const user = await userRepository.findByClerkId(clerkId);
-
-    if (!user) {
-      return {
-        success: false,
-        error: createAPIError(
-          "AUTH_ERROR",
-          "User not found. Please complete onboarding."
-        ),
-      };
-    }
-
-    // Validate input
+    // Validate input first (no async needed)
     const validationResult = CreateFeedbackInputSchema.safeParse(input);
     if (!validationResult.success) {
       const fieldErrors = validationResult.error.flatten().fieldErrors;
@@ -82,10 +68,25 @@ export async function createFeedback(
       };
     }
 
-    // Verify interview exists and user owns it
-    const interview = await interviewRepository.findById(
-      validationResult.data.interviewId
-    );
+    // Get authenticated user
+    const clerkId = await getAuthUserId();
+    
+    // Parallel fetch: user and interview at the same time
+    const [user, interview] = await Promise.all([
+      userRepository.findByClerkId(clerkId),
+      interviewRepository.findById(validationResult.data.interviewId),
+    ]);
+
+    if (!user) {
+      return {
+        success: false,
+        error: createAPIError(
+          "AUTH_ERROR",
+          "User not found. Please complete onboarding."
+        ),
+      };
+    }
+
     if (!interview) {
       return {
         success: false,
@@ -136,7 +137,13 @@ export async function getInterviewFeedback(
   try {
     // Get authenticated user
     const clerkId = await getAuthUserId();
-    const user = await userRepository.findByClerkId(clerkId);
+    
+    // Parallel fetch: user, interview, and feedback at the same time
+    const [user, interview, feedbackEntries] = await Promise.all([
+      userRepository.findByClerkId(clerkId),
+      interviewRepository.findById(interviewId),
+      feedbackRepository.findByInterviewId(interviewId),
+    ]);
 
     if (!user) {
       return {
@@ -145,8 +152,6 @@ export async function getInterviewFeedback(
       };
     }
 
-    // Verify interview exists and user owns it
-    const interview = await interviewRepository.findById(interviewId);
     if (!interview) {
       return {
         success: false,
@@ -163,10 +168,6 @@ export async function getInterviewFeedback(
         ),
       };
     }
-
-    // Get feedback entries (already sorted chronologically by repository)
-    const feedbackEntries =
-      await feedbackRepository.findByInterviewId(interviewId);
 
     return { success: true, data: feedbackEntries };
   } catch (error) {
