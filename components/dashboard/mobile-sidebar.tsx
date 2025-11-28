@@ -70,7 +70,7 @@ export function MobileSidebar({ isAdmin, usage, user }: MobileSidebarProps) {
 
         {/* Navigation */}
         <div className="relative flex-1 overflow-y-auto">
-          <SidebarNav isAdmin={isAdmin} />
+          <SidebarNav isAdmin={isAdmin} isProPlan={usage.plan === 'PRO'} isMaxPlan={usage.plan === 'MAX'} />
         </div>
 
         {/* Bottom Section */}

@@ -9,6 +9,7 @@ import {
   Shield,
   ChevronRight,
   BarChart3,
+  Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ViewTransitionLink } from "@/components/transitions/view-transition-link";
@@ -47,6 +48,13 @@ const analyticsItem = {
   description: "Your insights",
 };
 
+const usageItem = {
+  href: "/settings/usage",
+  label: "AI Usage",
+  icon: Activity,
+  description: "Request logs",
+};
+
 const adminItem = {
   href: "/admin",
   label: "Admin",
@@ -57,18 +65,25 @@ const adminItem = {
 interface SidebarNavProps {
   isAdmin?: boolean;
   isMaxPlan?: boolean;
+  isProPlan?: boolean;
 }
 
 export function SidebarNav({
   isAdmin = false,
   isMaxPlan = false,
+  isProPlan = false,
   isCollapsed = false,
 }: SidebarNavProps & { isCollapsed?: boolean }) {
   const pathname = usePathname();
 
   let items = [...navItems];
-  if (isMaxPlan) {
+  // Analytics is available for PRO+ users
+  if (isProPlan || isMaxPlan) {
     items = [...items, analyticsItem];
+  }
+  // Usage is MAX exclusive
+  if (isMaxPlan) {
+    items = [...items, usageItem];
   }
   if (isAdmin) {
     items = [...items, adminItem];
