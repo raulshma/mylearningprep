@@ -10,6 +10,8 @@ export interface UserRepository {
   findByStripeCustomerId(stripeCustomerId: string): Promise<User | null>;
   updatePlan(clerkId: string, plan: UserPlan, newIterationLimit: number, newInterviewLimit: number): Promise<User | null>;
   updateStripeCustomerId(clerkId: string, stripeCustomerId: string): Promise<User | null>;
+  updateStripeSubscriptionId(clerkId: string, stripeSubscriptionId: string): Promise<User | null>;
+  clearStripeSubscriptionId(clerkId: string): Promise<User | null>;
   incrementIteration(clerkId: string, amount?: number): Promise<User | null>;
   incrementInterview(clerkId: string): Promise<User | null>;
   resetIterations(clerkId: string): Promise<User | null>;
@@ -169,6 +171,40 @@ export const userRepository: UserRepository = {
           stripeCustomerId,
           updatedAt: now,
         },
+      },
+      { returnDocument: 'after' }
+    );
+
+    return result as User | null;
+  },
+
+  async updateStripeSubscriptionId(clerkId: string, stripeSubscriptionId: string) {
+    const collection = await getUsersCollection();
+    const now = new Date();
+
+    const result = await collection.findOneAndUpdate(
+      { clerkId },
+      {
+        $set: {
+          stripeSubscriptionId,
+          updatedAt: now,
+        },
+      },
+      { returnDocument: 'after' }
+    );
+
+    return result as User | null;
+  },
+
+  async clearStripeSubscriptionId(clerkId: string) {
+    const collection = await getUsersCollection();
+    const now = new Date();
+
+    const result = await collection.findOneAndUpdate(
+      { clerkId },
+      {
+        $unset: { stripeSubscriptionId: '' },
+        $set: { updatedAt: now },
       },
       { returnDocument: 'after' }
     );

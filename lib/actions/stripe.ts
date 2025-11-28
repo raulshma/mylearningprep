@@ -1,15 +1,17 @@
 'use server';
 
 import { auth, currentUser } from '@clerk/nextjs/server';
-import { createCheckoutSession, createCustomerPortalSession } from '@/lib/services/stripe';
+import { createCheckoutSession, createCustomerPortalSession, upgradeSubscription, getSubscription } from '@/lib/services/stripe';
 import { userRepository } from '@/lib/db/repositories/user-repository';
 import { getAuthUserId } from '@/lib/auth/get-user';
+import { MAX_ITERATION_LIMIT, MAX_INTERVIEW_LIMIT } from '@/lib/pricing-data';
 
 export type SubscriptionPlan = 'PRO' | 'MAX';
 
 export interface CheckoutResult {
   success: boolean;
   url?: string;
+  upgraded?: boolean;
   error?: string;
 }
 
@@ -33,6 +35,25 @@ export async function createCheckout(plan: SubscriptionPlan): Promise<CheckoutRe
           defaultAnalogy: 'professional',
         },
       });
+    }
+
+    // Check if user has an active subscription and wants to upgrade
+    if (dbUser.stripeSubscriptionId && dbUser.plan === 'PRO' && plan === 'MAX') {
+      // Verify the subscription is still active
+      const subscription = await getSubscription(dbUser.stripeSubscriptionId);
+      if (subscription && subscription.status === 'active' && !subscription.cancel_at_period_end) {
+        // Upgrade with proration instead of creating new checkout
+        await upgradeSubscription({
+          subscriptionId: dbUser.stripeSubscriptionId,
+          newPlan: plan,
+          clerkId,
+        });
+        
+        // Update the plan in database immediately (don't wait for webhook)
+        await userRepository.updatePlan(clerkId, 'MAX', MAX_ITERATION_LIMIT, MAX_INTERVIEW_LIMIT);
+        
+        return { success: true, upgraded: true };
+      }
     }
 
     const email = user.emailAddresses[0]?.emailAddress;

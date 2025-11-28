@@ -66,6 +66,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const clerkId = session.metadata?.clerkId;
   const plan = session.metadata?.plan as UserPlan | undefined;
   const customerId = session.customer as string;
+  const subscriptionId = session.subscription as string;
 
   if (!clerkId || !plan) {
     console.error('Missing metadata in checkout session:', session.id);
@@ -84,15 +85,35 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     if (!user.stripeCustomerId && customerId) {
       await userRepository.updateStripeCustomerId(clerkId, customerId);
     }
+    
+    // Store subscription ID for future upgrades with proration
+    if (subscriptionId) {
+      await userRepository.updateStripeSubscriptionId(clerkId, subscriptionId);
+    }
+    
     console.log(`User ${clerkId} upgraded to ${plan} plan`);
   }
 }
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
-  const clerkId = subscription.metadata?.clerkId;
+  let clerkId = subscription.metadata?.clerkId;
+  
+  // Fallback: look up user by Stripe customer ID if clerkId not in metadata
+  if (!clerkId) {
+    const customerId = typeof subscription.customer === 'string' 
+      ? subscription.customer 
+      : subscription.customer?.id;
+    
+    if (customerId) {
+      const user = await userRepository.findByStripeCustomerId(customerId);
+      if (user) {
+        clerkId = user.clerkId;
+      }
+    }
+  }
   
   if (!clerkId) {
-    console.error('Missing clerkId in subscription metadata:', subscription.id);
+    console.error('Could not find user for subscription:', subscription.id);
     return;
   }
 
@@ -115,22 +136,38 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
     return;
   }
 
-  // Update user plan
+  // Update user plan and ensure subscription ID is stored
   await userRepository.updatePlan(clerkId, planConfig.plan, planConfig.iterationLimit, planConfig.interviewLimit);
+  await userRepository.updateStripeSubscriptionId(clerkId, subscription.id);
   console.log(`User ${clerkId} subscription updated to ${planConfig.plan}`);
 }
 
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
-  const clerkId = subscription.metadata?.clerkId;
+  let clerkId = subscription.metadata?.clerkId;
+  
+  // Fallback: look up user by Stripe customer ID if clerkId not in metadata
+  if (!clerkId) {
+    const customerId = typeof subscription.customer === 'string' 
+      ? subscription.customer 
+      : subscription.customer?.id;
+    
+    if (customerId) {
+      const user = await userRepository.findByStripeCustomerId(customerId);
+      if (user) {
+        clerkId = user.clerkId;
+      }
+    }
+  }
   
   if (!clerkId) {
-    console.error('Missing clerkId in subscription metadata:', subscription.id);
+    console.error('Could not find user for deleted subscription:', subscription.id);
     return;
   }
 
-  // Downgrade user to FREE plan
+  // Downgrade user to FREE plan and clear subscription ID
   await userRepository.updatePlan(clerkId, 'FREE', 5, 3);
+  await userRepository.clearStripeSubscriptionId(clerkId);
   console.log(`User ${clerkId} downgraded to FREE plan after subscription cancellation`);
 }
 

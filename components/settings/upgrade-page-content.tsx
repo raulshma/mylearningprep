@@ -38,8 +38,13 @@ export function UpgradePageContent({ profile }: UpgradePageContentProps) {
       // Map pricing tier ID to subscription plan enum
       const planEnum = planId === 'pro' ? 'PRO' : 'MAX';
       const result = await createCheckout(planEnum);
-      if (result.success && result.url) {
-        window.location.href = result.url;
+      if (result.success) {
+        if (result.upgraded) {
+          // Prorated upgrade completed - redirect to dashboard with success
+          window.location.href = '/dashboard?checkout=success&upgraded=true';
+        } else if (result.url) {
+          window.location.href = result.url;
+        }
       }
     } catch (error) {
       console.error('Failed to start checkout:', error);

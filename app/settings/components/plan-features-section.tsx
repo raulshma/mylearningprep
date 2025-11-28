@@ -13,6 +13,7 @@ import {
   Settings,
   Wand2,
   Palette,
+  BarChart3,
 } from 'lucide-react';
 import Link from 'next/link';
 import { getAvailableFeatures, type PlanFeature } from '@/lib/utils/feature-gate';
@@ -59,6 +60,12 @@ const FEATURE_INFO: Record<PlanFeature, { label: string; description: string; ic
     icon: <Palette className="w-5 h-5" />,
     minPlan: 'PRO',
   },
+  analytics: {
+    label: 'Analytics & Insights',
+    description: 'Track your preparation progress with visualizations',
+    icon: <BarChart3 className="w-5 h-5" />,
+    minPlan: 'MAX',
+  },
 };
 
 const ALL_FEATURES: PlanFeature[] = [
@@ -66,6 +73,7 @@ const ALL_FEATURES: PlanFeature[] = [
   'pdf_export',
   'advanced_ai',
   'custom_theme',
+  'analytics',
   'custom_prompts',
   'byok',
 ];

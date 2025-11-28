@@ -61,7 +61,7 @@ export function SidebarUi({ data }: SidebarUiProps) {
 
       {/* Navigation */}
       <div className="relative flex-1 overflow-y-auto px-4 scrollbar-hide">
-        <SidebarNav isAdmin={data.isAdmin} isCollapsed={isCollapsed} />
+        <SidebarNav isAdmin={data.isAdmin} isMaxPlan={data.usage.plan === 'MAX'} isCollapsed={isCollapsed} />
       </div>
 
       {/* Bottom Section */}

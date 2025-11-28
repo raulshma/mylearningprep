@@ -8,6 +8,7 @@ import {
   CreditCard,
   Shield,
   ChevronRight,
+  BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ViewTransitionLink } from "@/components/transitions/view-transition-link";
@@ -39,6 +40,13 @@ const navItems = [
   },
 ];
 
+const analyticsItem = {
+  href: "/settings/analytics",
+  label: "Analytics",
+  icon: BarChart3,
+  description: "Your insights",
+};
+
 const adminItem = {
   href: "/admin",
   label: "Admin",
@@ -48,15 +56,23 @@ const adminItem = {
 
 interface SidebarNavProps {
   isAdmin?: boolean;
+  isMaxPlan?: boolean;
 }
 
 export function SidebarNav({
   isAdmin = false,
+  isMaxPlan = false,
   isCollapsed = false,
 }: SidebarNavProps & { isCollapsed?: boolean }) {
   const pathname = usePathname();
 
-  const items = isAdmin ? [...navItems, adminItem] : navItems;
+  let items = [...navItems];
+  if (isMaxPlan) {
+    items = [...items, analyticsItem];
+  }
+  if (isAdmin) {
+    items = [...items, adminItem];
+  }
 
   const isActiveRoute = (href: string) => {
     // Exact match for specific routes

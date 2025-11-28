@@ -146,6 +146,49 @@ export async function cancelSubscription(subscriptionId: string): Promise<Stripe
   });
 }
 
+export interface UpgradeSubscriptionParams {
+  subscriptionId: string;
+  newPlan: 'PRO' | 'MAX';
+  clerkId: string;
+}
+
+export async function upgradeSubscription(params: UpgradeSubscriptionParams): Promise<Stripe.Subscription> {
+  const { subscriptionId, newPlan, clerkId } = params;
+
+  const planConfig = PLAN_CONFIGS[newPlan];
+  if (!planConfig || !planConfig.priceId) {
+    throw new Error(`Invalid plan or missing price ID for plan: ${newPlan}`);
+  }
+
+  // Get the current subscription to find the item ID
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  const subscriptionItemId = subscription.items.data[0]?.id;
+
+  if (!subscriptionItemId) {
+    throw new Error('No subscription item found');
+  }
+
+  // Update the subscription with proration
+  // Using 'always_invoice' to immediately charge the prorated difference
+  // This creates and pays an invoice right away for the upgrade cost
+  const updatedSubscription = await stripe.subscriptions.update(subscriptionId, {
+    items: [
+      {
+        id: subscriptionItemId,
+        price: planConfig.priceId,
+      },
+    ],
+    proration_behavior: 'always_invoice',
+    payment_behavior: 'pending_if_incomplete',
+    metadata: {
+      clerkId,
+      plan: newPlan,
+    },
+  });
+
+  return updatedSubscription;
+}
+
 export async function getSubscription(subscriptionId: string): Promise<Stripe.Subscription | null> {
   try {
     return await stripe.subscriptions.retrieve(subscriptionId);

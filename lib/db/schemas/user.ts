@@ -23,6 +23,7 @@ export const UserSchema = z.object({
   _id: z.string(),
   clerkId: z.string(),
   stripeCustomerId: z.string().optional(),
+  stripeSubscriptionId: z.string().optional(),
   plan: UserPlanSchema.default('FREE'),
   iterations: UserIterationsSchema,
   interviews: UserInterviewsSchema.optional(),

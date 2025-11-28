@@ -59,8 +59,13 @@ function ApplePricingCard({ tier, index }: { tier: PricingTier; index: number })
     try {
       const result = await createCheckout(tier.plan);
       
-      if (result.success && result.url) {
-        window.location.href = result.url;
+      if (result.success) {
+        if (result.upgraded) {
+          // Prorated upgrade completed - redirect to dashboard with success
+          window.location.href = '/dashboard?checkout=success&upgraded=true';
+        } else if (result.url) {
+          window.location.href = result.url;
+        }
       } else {
         toast.error(result.error || 'Failed to create checkout session');
       }
