@@ -1,7 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { after } from "next/server";
-import { generateId } from "ai";
-import { getAuthUserId, getByokApiKey, hasByokApiKey, getByokTierConfig } from "@/lib/auth/get-user";
+import {
+  generateId,
+  createUIMessageStream,
+  createUIMessageStreamResponse,
+} from "ai";
+import { createResumableStreamContext } from "resumable-stream";
+import {
+  getAuthUserId,
+  getByokApiKey,
+  hasByokApiKey,
+  getByokTierConfig,
+} from "@/lib/auth/get-user";
 import { interviewRepository } from "@/lib/db/repositories/interview-repository";
 import { userRepository } from "@/lib/db/repositories/user-repository";
 import { aiEngine, type GenerationContext } from "@/lib/services/ai-engine";
@@ -13,21 +23,10 @@ import {
 import {
   saveActiveStream,
   updateStreamStatus,
-  appendStreamContent,
   clearStreamContent,
+  updateResumableStreamId,
 } from "@/lib/services/stream-store";
 import type { RevisionTopic } from "@/lib/db/schemas/interview";
-
-// Custom streaming headers
-const STREAM_HEADERS = {
-  "Content-Type": "text/event-stream",
-  "Cache-Control": "no-cache, no-transform",
-  Connection: "keep-alive",
-  "X-Accel-Buffering": "no",
-};
-
-// Throttle interval in ms - only send updates this often
-const STREAM_THROTTLE_MS = 100;
 
 // Infer style type from schema
 type AnalogyStyle = RevisionTopic["style"];
@@ -35,6 +34,7 @@ type AnalogyStyle = RevisionTopic["style"];
 /**
  * POST /api/interview/[id]/topic/[topicId]/regenerate
  * Regenerate a topic's explanation with a different analogy style
+ * Uses Vercel AI SDK's createUIMessageStream for proper streaming
  */
 export async function POST(
   request: NextRequest,
@@ -52,14 +52,16 @@ export async function POST(
 
     if (!style || !["professional", "construction", "simple"].includes(style)) {
       return NextResponse.json(
-        { error: "Valid style is required (professional, construction, simple)" },
+        {
+          error: "Valid style is required (professional, construction, simple)",
+        },
         { status: 400 }
       );
     }
 
     // Get authenticated user
     const clerkId = await getAuthUserId();
-    
+
     // Parallel fetch: user and interview at the same time
     const [user, interview] = await Promise.all([
       userRepository.findByClerkId(clerkId),
@@ -83,7 +85,9 @@ export async function POST(
     }
 
     // Find the topic
-    const topic = interview.modules.revisionTopics.find((t) => t.id === topicId);
+    const topic = interview.modules.revisionTopics.find(
+      (t) => t.id === topicId
+    );
     if (!topic) {
       return NextResponse.json({ error: "Topic not found" }, { status: 404 });
     }
@@ -108,7 +112,7 @@ export async function POST(
     // Build generation context
     // Use interview's stored custom instructions if available, otherwise use request body instructions
     const customInstructions = interview.customInstructions || instructions;
-    
+
     const ctx: GenerationContext = {
       resumeText: interview.resumeContext,
       jobDescription: interview.jobDetails.description,
@@ -140,64 +144,54 @@ export async function POST(
       createdAt: Date.now(),
     });
 
-    const encoder = new TextEncoder();
-    let responseText = "";
-    
-    // Track if client disconnected
-    let clientDisconnected = false;
-    request.signal.addEventListener("abort", () => {
-      clientDisconnected = true;
-    });
+    // Throttle interval to prevent excessive network usage
+    const THROTTLE_MS = 150;
 
-    const stream = new ReadableStream({
-      async start(controller) {
-        // Throttle helper - only sends if enough time has passed
+    // Use createUIMessageStream for proper AI SDK v5 streaming
+    const stream = createUIMessageStream({
+      execute: async ({ writer }) => {
+        let responseText = "";
+        let firstTokenMarked = false;
         let lastSentTime = 0;
-        let pendingData: unknown = null;
-        
-        const sendThrottled = async (data: unknown, force = false) => {
+        let lastSentData: string | null = null;
+        let pendingData: string | null = null;
+
+        // Helper to send data with throttling
+        const sendThrottled = (data: string, force = false) => {
           const now = Date.now();
+          
+          // Skip if data hasn't changed
+          if (data === lastSentData && !force) return;
+          
           pendingData = data;
           
-          if (force || now - lastSentTime >= STREAM_THROTTLE_MS) {
-            const jsonData = JSON.stringify({
-              type: "content",
-              data: pendingData,
-              topicId,
+          if (force || now - lastSentTime >= THROTTLE_MS) {
+            writer.write({
+              type: "data-partial",
+              data: {
+                type: "partial",
+                topicId,
+                data: pendingData,
+              },
             });
-            const sseMessage = `data: ${jsonData}\n\n`;
-            controller.enqueue(encoder.encode(sseMessage));
-            // Store content for resumption
-            await appendStreamContent(interviewId, moduleKey, sseMessage);
             lastSentTime = now;
+            lastSentData = data;
             pendingData = null;
           }
         };
-        
+
         // Flush any pending data
-        const flushPending = async () => {
-          if (pendingData !== null && !clientDisconnected) {
-            const jsonData = JSON.stringify({
-              type: "content",
-              data: pendingData,
-              topicId,
+        const flushPending = () => {
+          if (pendingData !== null) {
+            writer.write({
+              type: "data-partial",
+              data: {
+                type: "partial",
+                topicId,
+                data: pendingData,
+              },
             });
-            const sseMessage = `data: ${jsonData}\n\n`;
-            controller.enqueue(encoder.encode(sseMessage));
-            // Store content for resumption
-            await appendStreamContent(interviewId, moduleKey, sseMessage);
             pendingData = null;
-          }
-        };
-        
-        // Helper to safely enqueue data
-        const safeEnqueue = (data: string) => {
-          if (!clientDisconnected) {
-            try {
-              controller.enqueue(encoder.encode(data));
-            } catch {
-              clientDisconnected = true;
-            }
           }
         };
 
@@ -211,19 +205,24 @@ export async function POST(
             byokTierConfig ?? undefined
           );
 
-          let firstTokenMarked = false;
+          // Stream partial content with throttling
           for await (const partialObject of result.partialObjectStream) {
             if (partialObject.content) {
               if (!firstTokenMarked) {
                 loggerCtx.markFirstToken();
                 firstTokenMarked = true;
               }
-              await sendThrottled(partialObject.content);
+
+              // Write partial content with throttling
+              sendThrottled(partialObject.content);
               responseText = partialObject.content;
             }
           }
-          await flushPending();
 
+          // Flush any remaining pending data
+          flushPending();
+
+          // Get the final object
           const finalObject = await result.object;
 
           // Update only content and style, preserving ID, title, and reason
@@ -242,7 +241,23 @@ export async function POST(
             finalObject.content
           );
 
-          // Log the request with full metadata
+          // Write the final complete content
+          writer.write({
+            type: "data-complete",
+            data: {
+              type: "complete",
+              topicId,
+              style,
+              data: finalObject.content,
+            },
+          });
+
+          // Update stream status to completed
+          after(async () => {
+            await updateStreamStatus(interviewId, moduleKey, "completed");
+          });
+
+          // Log the AI request
           const usage = await result.usage;
           const modelId = result.modelId;
           await logAIRequest({
@@ -260,53 +275,50 @@ export async function POST(
             timeToFirstToken: loggerCtx.getTimeToFirstToken(),
             metadata: loggerCtx.metadata,
           });
-
-          // Mark stream as completed (do this before checking disconnect so resumption works)
-          after(async () => {
-            await updateStreamStatus(interviewId, moduleKey, "completed");
-          });
-
-          // If client disconnected, close stream but generation is complete
-          if (clientDisconnected) {
-            controller.close();
-            return;
-          }
-
-          // Send done event
-          safeEnqueue(`data: ${JSON.stringify({ type: "done", topicId, style })}\n\n`);
-          controller.close();
         } catch (error) {
-          // Ignore abort errors from client disconnect
-          if (clientDisconnected || (error instanceof Error && error.name === "AbortError")) {
-            // Still mark as completed if we got this far
-            after(async () => {
-              await updateStreamStatus(interviewId, moduleKey, "completed");
-            });
-            controller.close();
-            return;
-          }
-          
           console.error("Stream error:", error);
-          const errorData = JSON.stringify({
-            type: "error",
-            error: "Failed to regenerate analogy",
-            topicId,
-          });
-          safeEnqueue(`data: ${errorData}\n\n`);
-          controller.close();
 
-          // Mark stream as error
+          // Write error as custom data part
+          writer.write({
+            type: "data-error",
+            data: {
+              type: "error",
+              topicId,
+              error:
+                error instanceof Error
+                  ? error.message
+                  : "Failed to regenerate analogy",
+            },
+          });
+
+          // Update stream status to error
           after(async () => {
             await updateStreamStatus(interviewId, moduleKey, "error");
           });
         }
       },
+      onError: (error: unknown) => {
+        console.error("UI stream error:", error);
+        return error instanceof Error ? error.message : "Stream error occurred";
+      },
     });
 
-    return new Response(stream, {
+    // Create resumable stream ID for this generation
+    const resumableStreamId = generateId();
+
+    // Use createUIMessageStreamResponse with consumeSseStream callback for resumable streams
+    return createUIMessageStreamResponse({
+      stream,
       headers: {
-        ...STREAM_HEADERS,
         "X-Stream-Id": streamId,
+        "X-Resumable-Stream-Id": resumableStreamId,
+        "X-Interview-Id": interviewId,
+        "X-Topic-Id": topicId,
+      },
+      async consumeSseStream({ stream: sseStream }) {
+        const streamContext = createResumableStreamContext({ waitUntil: after });
+        await streamContext.createNewResumableStream(resumableStreamId, () => sseStream);
+        await updateResumableStreamId(interviewId, moduleKey, resumableStreamId);
       },
     });
   } catch (error) {

@@ -1,6 +1,6 @@
 /**
  * Stream Store Service
- * Manages active stream tracking for resumable streaming
+ * Manages active stream tracking for resumable streaming using Vercel AI SDK's resumable-stream
  * Uses Redis for stream ID persistence and tracking
  */
 
@@ -19,6 +19,8 @@ export interface StreamRecord {
   userId: string;
   createdAt: number;
   status: "active" | "completed" | "error";
+  // The actual resumable stream ID from resumable-stream package
+  resumableStreamId?: string;
 }
 
 /**
@@ -28,6 +30,24 @@ export async function saveActiveStream(record: Omit<StreamRecord, "status">): Pr
   const redis = getRedisClient();
   const key = `${STREAM_PREFIX}${record.interviewId}:${record.module}`;
   await redis.setex(key, STREAM_TTL, JSON.stringify({ ...record, status: "active" }));
+}
+
+/**
+ * Update stream with the resumable stream ID from resumable-stream package
+ */
+export async function updateResumableStreamId(
+  interviewId: string,
+  module: string,
+  resumableStreamId: string
+): Promise<void> {
+  const redis = getRedisClient();
+  const key = `${STREAM_PREFIX}${interviewId}:${module}`;
+  const data = await redis.get(key);
+  if (data) {
+    const record = JSON.parse(data) as StreamRecord;
+    record.resumableStreamId = resumableStreamId;
+    await redis.setex(key, STREAM_TTL, JSON.stringify(record));
+  }
 }
 
 /**

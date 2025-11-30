@@ -56,18 +56,35 @@ type ModuleStatus = {
 
 type ModuleKey = keyof ModuleStatus;
 
-interface StreamEvent<T = unknown> {
-  type: "content" | "done" | "error";
-  data?: T;
-  module?: string;
+// Data part interface for AI SDK data stream protocol
+interface DataStreamPart {
+  type: "partial" | "complete" | "error";
+  module: string;
+  data?: unknown;
   error?: string;
 }
 
-async function processSSEStream<T>(
+// UI Message Stream event interface (from createUIMessageStream)
+interface UIMessageStreamEvent {
+  type: string;
+  data?: {
+    type?: "partial" | "complete" | "error";
+    module?: string;
+    data?: unknown;
+    error?: string;
+  };
+}
+
+/**
+ * Process AI SDK data stream response
+ * Handles both UI message stream (JSON lines) and data stream protocol (prefix-based)
+ */
+async function processDataStream<T>(
   response: Response,
-  onContent: (data: T) => void,
-  onDone: () => void,
-  onError: (error: string) => void
+  onData: (data: T) => void,
+  onComplete: () => void,
+  onError: (error: string) => void,
+  module: ModuleKey
 ) {
   const reader = response.body?.getReader();
   if (!reader) throw new Error("No response body");
@@ -85,17 +102,102 @@ async function processSSEStream<T>(
       buffer = lines.pop() || "";
 
       for (const line of lines) {
-        if (line.startsWith("data: ")) {
+        const trimmedLine = line.trim();
+        if (!trimmedLine) continue;
+
+        // AI SDK v5 uses SSE format: "data: {...}" - strip the prefix
+        let jsonContent = trimmedLine;
+        if (trimmedLine.startsWith("data: ")) {
+          jsonContent = trimmedLine.slice(6); // Remove "data: " prefix
+        }
+
+        // Try UI message stream format (JSON from createUIMessageStream SSE)
+        if (jsonContent.startsWith("{")) {
           try {
-            const event: StreamEvent<T> = JSON.parse(line.slice(6));
-            if (event.type === "content" && event.data !== undefined) {
-              onContent(event.data);
-            } else if (event.type === "done") {
-              onDone();
-            } else if (event.type === "error") {
-              onError(event.error || "Unknown error");
+            const event: UIMessageStreamEvent = JSON.parse(jsonContent);
+
+            // Check if this event is for our module
+            if (event.data?.module && event.data.module !== module) continue;
+
+            if (
+              event.type === "data-partial" &&
+              event.data?.data !== undefined
+            ) {
+              onData(event.data.data as T);
+              continue;
             }
-          } catch {}
+            if (
+              event.type === "data-complete" &&
+              event.data?.data !== undefined
+            ) {
+              onData(event.data.data as T);
+              onComplete();
+              continue;
+            }
+            if (event.type === "data-error") {
+              onError(event.data?.error || "Unknown error");
+              continue;
+            }
+            // Continue to next line if parsed but not a relevant event type
+            continue;
+          } catch {
+            // Not valid JSON, try prefix-based parsing below
+          }
+        }
+
+        // Fall back to AI SDK data stream protocol (prefix:content format)
+        const colonIndex = trimmedLine.indexOf(":");
+        if (colonIndex === -1) continue;
+
+        const prefix = trimmedLine.substring(0, colonIndex);
+        const content = trimmedLine.substring(colonIndex + 1);
+
+        try {
+          switch (prefix) {
+            case "2": {
+              // Data part - custom structured data from writeData()
+              const dataParts = JSON.parse(content);
+              const parts = Array.isArray(dataParts) ? dataParts : [dataParts];
+
+              for (const part of parts as DataStreamPart[]) {
+                if (part.module !== module) continue;
+
+                if (part.type === "partial" && part.data !== undefined) {
+                  onData(part.data as T);
+                } else if (
+                  part.type === "complete" &&
+                  part.data !== undefined
+                ) {
+                  onData(part.data as T);
+                  onComplete();
+                } else if (part.type === "error") {
+                  onError(part.error || "Unknown error");
+                }
+              }
+              break;
+            }
+            case "3": {
+              // Error part
+              const errorData = JSON.parse(content);
+              onError(errorData.message || errorData || "Stream error");
+              break;
+            }
+            case "d": {
+              // Finish event
+              const finishData = JSON.parse(content);
+              if (
+                finishData.finishReason === "stop" ||
+                finishData.finishReason === "complete"
+              ) {
+                onComplete();
+              }
+              break;
+            }
+            // Prefix "0" is for text deltas (not used for object streaming)
+            // Prefix "e" is for annotations
+          }
+        } catch {
+          // Ignore parse errors for individual lines
         }
       }
     }
@@ -130,9 +232,9 @@ async function tryResumeStream(
       return { hasActiveStream: false };
     }
 
-    // Check if this is a resumed stream (SSE response)
-    const contentType = response.headers.get("content-type");
-    if (contentType?.includes("text/event-stream")) {
+    // Check if this is a resumed stream
+    const isResumed = response.headers.get("X-Stream-Resumed") === "true";
+    if (isResumed) {
       return { hasActiveStream: true, response };
     }
 
@@ -194,6 +296,12 @@ export function InterviewWorkspace({
   );
   const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
 
+  // Track which modules have been resumed (to skip generation for them)
+  const [resumedModules, setResumedModules] = useState<Set<ModuleKey>>(
+    new Set()
+  );
+  const [resumeCheckComplete, setResumeCheckComplete] = useState(false);
+
   const generationStartedRef = useRef(false);
   const resumeAttemptedRef = useRef(false);
 
@@ -227,50 +335,113 @@ export function InterviewWorkspace({
     (s) => s === "loading" || s === "streaming"
   );
 
-  // Auto-scroll effect
+  // Refs for auto-scroll behavior - use refs to avoid re-renders
+  const lastScrollTopRef = useRef(0);
+  const userScrolledUpRef = useRef(false);
+  const scrollRafRef = useRef<number | null>(null);
+  const lastActiveModuleRef = useRef<string | null>(null);
+  const isScrollingRef = useRef(false);
+
+  // Find the currently active streaming module
+  const activeStreamingModule = Object.entries(moduleStatus).find(
+    ([_, status]) => status === "streaming"
+  )?.[0] as ModuleKey | undefined;
+
+  // Memoize scroll handler to prevent recreating on every render
+  const scrollToActiveContent = useCallback(() => {
+    if (!autoScrollEnabled || !activeStreamingModule || isScrollingRef.current) return;
+
+    const element = document.getElementById(`module-${activeStreamingModule}`);
+    if (!element) return;
+
+    const rect = element.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    const padding = 100;
+
+    // Only scroll if content bottom is below viewport
+    if (rect.bottom > viewportHeight - padding) {
+      isScrollingRef.current = true;
+      const scrollTarget = window.scrollY + rect.bottom - viewportHeight + padding;
+      
+      window.scrollTo({
+        top: scrollTarget,
+        behavior: "instant", // Use instant to avoid lag
+      });
+      
+      // Reset scrolling flag after a short delay
+      setTimeout(() => {
+        isScrollingRef.current = false;
+      }, 50);
+    }
+  }, [autoScrollEnabled, activeStreamingModule]);
+
+  // Throttled scroll listener - only detect user scroll up
   useEffect(() => {
-    if (!isGenerating || !autoScrollEnabled) return;
+    let ticking = false;
+    
+    const handleScroll = () => {
+      if (!isGenerating || isScrollingRef.current) return;
+      
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          const currentScrollTop = window.scrollY;
 
-    const scrollToActiveModule = () => {
-      // Find the active streaming module
-      const activeModule = Object.entries(moduleStatus).find(
-        ([_, status]) => status === "streaming"
-      );
-
-      if (activeModule) {
-        const [moduleKey] = activeModule;
-        const element = document.getElementById(`module-${moduleKey}`);
-        if (element) {
-          // Scroll to the bottom of the element
-          const rect = element.getBoundingClientRect();
-          const isBelowViewport = rect.bottom > window.innerHeight;
-
-          if (isBelowViewport) {
-            window.scrollTo({
-              top: window.scrollY + rect.bottom - window.innerHeight,
-              behavior: "smooth",
-            });
+          // If user scrolled up significantly, disable auto-scroll
+          if (currentScrollTop < lastScrollTopRef.current - 80) {
+            userScrolledUpRef.current = true;
+            setAutoScrollEnabled(false);
           }
-        }
-      } else {
-        // Fallback to bottom of page if no specific module found (e.g. just loading)
-        window.scrollTo({
-          top: document.body.scrollHeight,
-          behavior: "smooth",
+
+          lastScrollTopRef.current = currentScrollTop;
+          ticking = false;
         });
+        ticking = true;
       }
     };
 
-    scrollToActiveModule();
-  }, [
-    isGenerating,
-    autoScrollEnabled,
-    streamingBrief,
-    streamingTopics,
-    streamingMcqs,
-    streamingRapidFire,
-    moduleStatus,
-  ]);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [isGenerating]);
+
+  // Use interval-based scrolling instead of effect-based for better performance
+  useEffect(() => {
+    if (!isGenerating || !autoScrollEnabled) return;
+
+    // Scroll immediately on mount
+    scrollToActiveContent();
+
+    // Set up interval for continuous following (more efficient than effect deps)
+    const intervalId = setInterval(() => {
+      if (autoScrollEnabled && !userScrolledUpRef.current) {
+        scrollToActiveContent();
+      }
+    }, 150); // Check every 150ms
+
+    return () => clearInterval(intervalId);
+  }, [isGenerating, autoScrollEnabled, scrollToActiveContent]);
+
+  // When switching to a new module, scroll to bring it into view
+  useEffect(() => {
+    if (!activeStreamingModule || !autoScrollEnabled) return;
+    
+    if (lastActiveModuleRef.current !== activeStreamingModule) {
+      lastActiveModuleRef.current = activeStreamingModule;
+      
+      // Small delay to let the DOM update
+      setTimeout(() => {
+        scrollToActiveContent();
+      }, 100);
+    }
+  }, [activeStreamingModule, autoScrollEnabled, scrollToActiveContent]);
+
+  // Reset auto-scroll state when generation completes
+  useEffect(() => {
+    if (!isGenerating) {
+      userScrolledUpRef.current = false;
+      lastActiveModuleRef.current = null;
+      isScrollingRef.current = false;
+    }
+  }, [isGenerating]);
 
   // Resume active streams
   useEffect(() => {
@@ -291,12 +462,18 @@ export function InterviewWorkspace({
       setModuleStatus((prev) => ({ ...prev, [module]: "streaming" }));
 
       try {
-        await processSSEStream(
+        await processDataStream(
           response,
           (data: unknown) => {
             switch (module) {
               case "openingBrief":
-                setStreamingBrief(data as string);
+                // For opening brief, data can be the full object or just content string
+                const briefData = data as { content?: string } | string;
+                if (typeof briefData === "string") {
+                  setStreamingBrief(briefData);
+                } else if (briefData?.content) {
+                  setStreamingBrief(briefData.content);
+                }
                 break;
               case "revisionTopics":
                 setStreamingTopics(data as RevisionTopic[]);
@@ -316,7 +493,8 @@ export function InterviewWorkspace({
           },
           () => {
             setModuleStatus((prev) => ({ ...prev, [module]: "error" }));
-          }
+          },
+          module
         );
         return true;
       } catch {
@@ -333,6 +511,8 @@ export function InterviewWorkspace({
         "rapidFire",
       ];
 
+      const successfullyResumed: ModuleKey[] = [];
+
       // Try to resume each module that doesn't have content
       for (const module of modules) {
         // Only try to resume if module appears incomplete
@@ -342,43 +522,61 @@ export function InterviewWorkspace({
             : initialInterview.modules[module].length > 0;
 
         if (!hasContent) {
-          await resumeModuleStream(module);
+          const resumed = await resumeModuleStream(module);
+          if (resumed) {
+            successfullyResumed.push(module);
+          }
         }
       }
+
+      // Track which modules were successfully resumed
+      if (successfullyResumed.length > 0) {
+        setResumedModules(new Set(successfullyResumed));
+      }
+
+      // Mark resume check as complete so auto-generation can proceed
+      setResumeCheckComplete(true);
     };
 
     checkAndResumeModules();
   }, [interviewId, initialInterview]);
 
   // Auto-generate on first load if empty (excluding excluded modules)
+  // Wait for resume check to complete first to avoid duplicate generations
   useEffect(() => {
+    // Don't start generation until resume check is complete
+    if (!resumeCheckComplete) return;
     if (generationStartedRef.current) return;
 
     const excluded = interview.excludedModules ?? [];
-    const hasNoContent =
-      (excluded.includes("openingBrief") || !interview.modules.openingBrief) &&
-      (excluded.includes("revisionTopics") ||
-        interview.modules.revisionTopics.length === 0) &&
-      (excluded.includes("mcqs") || interview.modules.mcqs.length === 0) &&
-      (excluded.includes("rapidFire") ||
-        interview.modules.rapidFire.length === 0);
 
     // Check if there's at least one non-excluded module without content
+    // Also skip modules that are currently streaming (resumed)
     const needsGeneration =
-      (!excluded.includes("openingBrief") && !interview.modules.openingBrief) ||
+      (!excluded.includes("openingBrief") &&
+        !interview.modules.openingBrief &&
+        !resumedModules.has("openingBrief") &&
+        moduleStatus.openingBrief !== "streaming") ||
       (!excluded.includes("revisionTopics") &&
-        interview.modules.revisionTopics.length === 0) ||
-      (!excluded.includes("mcqs") && interview.modules.mcqs.length === 0) ||
+        interview.modules.revisionTopics.length === 0 &&
+        !resumedModules.has("revisionTopics") &&
+        moduleStatus.revisionTopics !== "streaming") ||
+      (!excluded.includes("mcqs") &&
+        interview.modules.mcqs.length === 0 &&
+        !resumedModules.has("mcqs") &&
+        moduleStatus.mcqs !== "streaming") ||
       (!excluded.includes("rapidFire") &&
-        interview.modules.rapidFire.length === 0);
+        interview.modules.rapidFire.length === 0 &&
+        !resumedModules.has("rapidFire") &&
+        moduleStatus.rapidFire !== "streaming");
 
     if (needsGeneration) {
       generationStartedRef.current = true;
-      generateAllModules();
+      generateAllModulesExcludingResumed();
     }
-  }, [interview]);
+  }, [interview, resumeCheckComplete, resumedModules, moduleStatus]);
 
-  const generateAllModules = async () => {
+  const generateAllModulesExcludingResumed = async () => {
     const concurrencyLimit = await getAIConcurrencyLimit();
     const excludedModules = interview.excludedModules ?? [];
 
@@ -388,8 +586,13 @@ export function InterviewWorkspace({
       "mcqs",
       "rapidFire",
     ];
+
+    // Filter out excluded modules and modules that are already streaming (resumed)
     const modulesToGenerate = allModules.filter(
-      (m) => !excludedModules.includes(m)
+      (m) =>
+        !excludedModules.includes(m) &&
+        !resumedModules.has(m) &&
+        moduleStatus[m] !== "streaming"
     );
 
     const moduleTasks = modulesToGenerate.map(
@@ -419,12 +622,18 @@ export function InterviewWorkspace({
 
       setModuleStatus((prev) => ({ ...prev, [module]: "streaming" }));
 
-      await processSSEStream(
+      await processDataStream(
         response,
         (data: unknown) => {
           switch (module) {
             case "openingBrief":
-              setStreamingBrief(data as string);
+              // For opening brief, data can be the full object or just content string
+              const briefData = data as { content?: string } | string;
+              if (typeof briefData === "string") {
+                setStreamingBrief(briefData);
+              } else if (briefData?.content) {
+                setStreamingBrief(briefData.content);
+              }
               break;
             case "revisionTopics":
               setStreamingTopics(data as RevisionTopic[]);
@@ -444,7 +653,8 @@ export function InterviewWorkspace({
         },
         () => {
           setModuleStatus((prev) => ({ ...prev, [module]: "error" }));
-        }
+        },
+        module
       );
     } catch (err) {
       console.error(`Failed to generate ${module}:`, err);
@@ -473,7 +683,7 @@ export function InterviewWorkspace({
 
       setModuleStatus((prev) => ({ ...prev, [module]: "streaming" }));
 
-      await processSSEStream(
+      await processDataStream(
         response,
         (data: unknown) => {
           switch (module) {
@@ -501,7 +711,8 @@ export function InterviewWorkspace({
         },
         () => {
           setModuleStatus((prev) => ({ ...prev, [module]: "error" }));
-        }
+        },
+        module
       );
     } catch (err) {
       console.error(`Failed to add more ${module}:`, err);
@@ -534,7 +745,7 @@ export function InterviewWorkspace({
   return (
     <div className="min-h-screen bg-background relative">
       {/* Background effects */}
-      <div className="fixed inset-0 bg-gradient-to-br from-background via-background to-secondary/20 pointer-events-none" />
+      <div className="fixed inset-0 bg-linear-to-br from-background via-background to-secondary/20 pointer-events-none" />
 
       <div className="relative z-10">
         <InterviewHeader
@@ -702,18 +913,68 @@ export function InterviewWorkspace({
             >
               {revisionTopics.length > 0 && (
                 <div className="space-y-3">
-                  {revisionTopics.map((topic, index) => (
-                    <motion.div
-                      key={topic.id || `topic-${index}`}
-                      initial={
-                        moduleStatus.revisionTopics === "streaming"
-                          ? { opacity: 0, x: -10 }
-                          : false
-                      }
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                    >
+                  {revisionTopics.map((topic, index) => {
+                    const isStreaming = moduleStatus.revisionTopics === "streaming";
+                    const isLastTopic = index === revisionTopics.length - 1;
+                    const isCurrentlyStreaming = isStreaming && isLastTopic;
+                    const hasContent = topic.content && topic.content.length > 0;
+                    
+                    // Expanded view for the currently streaming topic
+                    if (isCurrentlyStreaming && hasContent) {
+                      return (
+                        <div
+                          key={topic.id || `topic-${index}`}
+                          className="rounded-2xl border border-primary/30 bg-primary/5 overflow-hidden"
+                        >
+                          <div className="flex items-center justify-between p-4 border-b border-border/50">
+                            <div className="flex items-center gap-4">
+                              <div className="relative">
+                                <div
+                                  className={`w-2.5 h-2.5 rounded-full ${
+                                    topic.confidence === "low"
+                                      ? "bg-red-500"
+                                      : topic.confidence === "medium"
+                                      ? "bg-yellow-500"
+                                      : "bg-green-500"
+                                  }`}
+                                />
+                                <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-primary/50 animate-ping" />
+                              </div>
+                              <div>
+                                <p className="font-semibold text-foreground">
+                                  {topic.title || "Generating..."}
+                                </p>
+                                {topic.reason && (
+                                  <p className="text-sm text-muted-foreground">
+                                    {topic.reason}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            {topic.confidence && (
+                              <Badge
+                                variant="outline"
+                                className="capitalize rounded-full px-3"
+                              >
+                                {topic.confidence}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="p-4">
+                            <MarkdownRenderer
+                              content={topic.content}
+                              isStreaming={true}
+                              className="text-sm text-muted-foreground leading-relaxed"
+                            />
+                          </div>
+                        </div>
+                      );
+                    }
+                    
+                    // Collapsed view for completed topics
+                    return (
                       <Link
+                        key={topic.id || `topic-${index}`}
                         href={`/interview/${interviewId}/topic/${topic.id}`}
                         className="group block"
                       >
@@ -745,8 +1006,8 @@ export function InterviewWorkspace({
                           </Badge>
                         </div>
                       </Link>
-                    </motion.div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </ModuleCard>
@@ -879,7 +1140,7 @@ export function InterviewWorkspace({
                                   !showMcqAnswers && toggleMcqAnswer(mcqId)
                                 }
                               >
-                                <span className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center text-xs font-mono mr-3 flex-shrink-0">
+                                <span className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center text-xs font-mono mr-3 shrink-0">
                                   {String.fromCharCode(65 + optIndex)}
                                 </span>
                                 {option}
@@ -992,7 +1253,7 @@ export function InterviewWorkspace({
                                 {rf.question}
                               </p>
                               <div
-                                className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors flex-shrink-0 ${
+                                className={`w-6 h-6 rounded-full flex items-center justify-center transition-colors shrink-0 ${
                                   isRevealed
                                     ? "bg-primary/10 text-primary"
                                     : "bg-secondary text-muted-foreground group-hover:bg-primary/5"
@@ -1047,23 +1308,35 @@ export function InterviewWorkspace({
                 className="fixed bottom-8 right-8 z-50"
               >
                 <Button
-                  onClick={() => setAutoScrollEnabled(!autoScrollEnabled)}
+                  onClick={() => {
+                    if (!autoScrollEnabled) {
+                      // Re-enable and scroll to active content
+                      userScrolledUpRef.current = false;
+                      setAutoScrollEnabled(true);
+                      // Trigger immediate scroll
+                      setTimeout(() => scrollToActiveContent(), 50);
+                    } else {
+                      // Disable auto-scroll
+                      userScrolledUpRef.current = true;
+                      setAutoScrollEnabled(false);
+                    }
+                  }}
                   size="lg"
-                  className={`rounded-full shadow-lg transition-all duration-300 ${
+                  className={`rounded-full shadow-lg transition-all duration-300 gap-2 ${
                     autoScrollEnabled
                       ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                      : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                      : "bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border"
                   }`}
                 >
                   {autoScrollEnabled ? (
                     <>
-                      <ArrowDown className="w-4 h-4 mr-2 animate-bounce" />
-                      Following
+                      <ArrowDown className="w-4 h-4 animate-bounce" />
+                      <span>Following</span>
                     </>
                   ) : (
                     <>
-                      <MousePointer2 className="w-4 h-4 mr-2" />
-                      Manual Scroll
+                      <ArrowDown className="w-4 h-4" />
+                      <span>Resume</span>
                     </>
                   )}
                 </Button>

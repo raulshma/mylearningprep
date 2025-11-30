@@ -1,10 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { after } from "next/server";
 import { generateId } from "ai";
-import { getAuthUserId, getByokApiKey, hasByokApiKey, getByokTierConfig } from "@/lib/auth/get-user";
+import {
+  createUIMessageStream,
+  createUIMessageStreamResponse,
+} from "ai";
+import { createResumableStreamContext } from "resumable-stream";
+import {
+  getAuthUserId,
+  getByokApiKey,
+  hasByokApiKey,
+  getByokTierConfig,
+} from "@/lib/auth/get-user";
 import { interviewRepository } from "@/lib/db/repositories/interview-repository";
 import { userRepository } from "@/lib/db/repositories/user-repository";
-import { aiEngine, type GenerationContext } from "@/lib/services/ai-engine";
+import {
+  aiEngine,
+  type GenerationContext,
+  type BYOKTierConfig,
+} from "@/lib/services/ai-engine";
 import {
   logAIRequest,
   createLoggerContext,
@@ -13,25 +27,21 @@ import {
 import {
   saveActiveStream,
   updateStreamStatus,
-  appendStreamContent,
   clearStreamContent,
+  updateResumableStreamId,
 } from "@/lib/services/stream-store";
-import type { ModuleType } from "@/lib/db/schemas/interview";
-
-// Custom streaming headers
-const STREAM_HEADERS = {
-  "Content-Type": "text/event-stream",
-  "Cache-Control": "no-cache, no-transform",
-  Connection: "keep-alive",
-  "X-Accel-Buffering": "no",
-};
-
-// Throttle interval in ms - only send updates this often
-const STREAM_THROTTLE_MS = 100;
+import type {
+  ModuleType,
+  OpeningBrief,
+  RevisionTopic,
+  MCQ,
+  RapidFire,
+} from "@/lib/db/schemas/interview";
 
 /**
  * POST /api/interview/[id]/generate
  * Generate a module for an interview with streaming + resumable support
+ * Uses Vercel AI SDK's data stream protocol for proper client integration
  */
 export async function POST(
   request: NextRequest,
@@ -56,7 +66,7 @@ export async function POST(
 
     // Get authenticated user
     const clerkId = await getAuthUserId();
-    
+
     // Parallel fetch: user and interview at the same time
     const [user, interview] = await Promise.all([
       userRepository.findByClerkId(clerkId),
@@ -97,9 +107,8 @@ export async function POST(
     const byokTierConfig = await getByokTierConfig();
 
     // Build generation context
-    // Use interview's stored custom instructions if available, otherwise use request body instructions
     const customInstructions = interview.customInstructions || instructions;
-    
+
     const ctx: GenerationContext = {
       resumeText: interview.resumeContext,
       jobDescription: interview.jobDetails.description,
@@ -130,314 +139,175 @@ export async function POST(
       createdAt: Date.now(),
     });
 
-    // Create the stream based on module type
-    let responseText = "";
+    // Throttle interval to prevent excessive network usage
+    const THROTTLE_MS = 150;
 
-    const encoder = new TextEncoder();
-    
-    // Track if client disconnected
-    let clientDisconnected = false;
-    request.signal.addEventListener("abort", () => {
-      clientDisconnected = true;
-    });
-
-    const stream = new ReadableStream({
-      async start(controller) {
-        // Throttle helper - only sends if enough time has passed
+    // Use createUIMessageStream for proper AI SDK streaming with custom data parts
+    const uiStream = createUIMessageStream({
+      execute: async ({ writer }) => {
+        let responseText = "";
+        let firstTokenMarked = false;
         let lastSentTime = 0;
+        let lastSentData: string | null = null;
         let pendingData: unknown = null;
-        
-        const sendThrottled = async (data: unknown, force = false) => {
+
+        // Helper to send data with throttling
+        const sendThrottled = (data: unknown, force = false) => {
           const now = Date.now();
+          const dataStr = JSON.stringify(data);
+          
+          // Skip if data hasn't changed
+          if (dataStr === lastSentData && !force) return;
+          
           pendingData = data;
           
-          if (force || now - lastSentTime >= STREAM_THROTTLE_MS) {
-            const jsonData = JSON.stringify({
-              type: "content",
-              data: pendingData,
-              module,
+          if (force || now - lastSentTime >= THROTTLE_MS) {
+            writer.write({
+              type: "data-partial",
+              data: {
+                type: "partial",
+                module,
+                data: pendingData,
+              },
             });
-            const sseMessage = `data: ${jsonData}\n\n`;
-            controller.enqueue(encoder.encode(sseMessage));
-            // Store content for resumption
-            await appendStreamContent(interviewId, module, sseMessage);
             lastSentTime = now;
+            lastSentData = dataStr;
             pendingData = null;
           }
         };
-        
+
         // Flush any pending data
-        const flushPending = async () => {
-          if (pendingData !== null && !clientDisconnected) {
-            const jsonData = JSON.stringify({
-              type: "content",
-              data: pendingData,
-              module,
+        const flushPending = () => {
+          if (pendingData !== null) {
+            writer.write({
+              type: "data-partial",
+              data: {
+                type: "partial",
+                module,
+                data: pendingData,
+              },
             });
-            const sseMessage = `data: ${jsonData}\n\n`;
-            controller.enqueue(encoder.encode(sseMessage));
-            // Store content for resumption
-            await appendStreamContent(interviewId, module, sseMessage);
             pendingData = null;
-          }
-        };
-        
-        // Helper to safely enqueue data
-        const safeEnqueue = (data: string) => {
-          if (!clientDisconnected) {
-            try {
-              controller.enqueue(encoder.encode(data));
-            } catch {
-              clientDisconnected = true;
-            }
           }
         };
 
         try {
-          switch (module) {
-            case "openingBrief": {
-              const result = await aiEngine.generateOpeningBrief(
-                ctx,
-                {},
-                apiKey ?? undefined,
-                byokTierConfig ?? undefined
-              );
+          // Get the appropriate streamObject result based on module type
+          const result = await getModuleStream(
+            module,
+            ctx,
+            apiKey ?? undefined,
+            byokTierConfig ?? undefined
+          );
 
-              let firstTokenMarked = false;
-              for await (const partialObject of result.partialObjectStream) {
-                if (partialObject.content) {
-                  if (!firstTokenMarked) {
-                    loggerCtx.markFirstToken();
-                    firstTokenMarked = true;
-                  }
-                  await sendThrottled(partialObject.content);
-                  responseText = partialObject.content;
-                }
-              }
-              await flushPending();
-
-              const finalObject = await result.object;
-              await interviewRepository.updateModule(
-                interviewId,
-                "openingBrief",
-                finalObject
-              );
-
-              // Log the request
-              const usage = await result.usage;
-              const modelId = result.modelId;
-              await logAIRequest({
-                interviewId,
-                userId: user._id,
-                action: "GENERATE_BRIEF",
-                model: modelId,
-                prompt: `Generate opening brief for ${interview.jobDetails.title} at ${interview.jobDetails.company}`,
-                response: responseText,
-                toolsUsed: loggerCtx.toolsUsed,
-                searchQueries: loggerCtx.searchQueries,
-                searchResults: loggerCtx.searchResults,
-                tokenUsage: extractTokenUsage(usage),
-                latencyMs: loggerCtx.getLatencyMs(),
-                timeToFirstToken: loggerCtx.getTimeToFirstToken(),
-                metadata: loggerCtx.metadata,
-              });
-              break;
+          // Stream partial objects as custom data parts with throttling
+          for await (const partialObject of result.partialObjectStream) {
+            if (!firstTokenMarked) {
+              loggerCtx.markFirstToken();
+              firstTokenMarked = true;
             }
 
-            case "revisionTopics": {
-              const result = await aiEngine.generateTopics(
-                ctx,
-                8,
-                {},
-                apiKey ?? undefined,
-                byokTierConfig ?? undefined
-              );
-
-              let firstTokenMarked = false;
-              for await (const partialObject of result.partialObjectStream) {
-                if (partialObject.topics) {
-                  if (!firstTokenMarked) {
-                    loggerCtx.markFirstToken();
-                    firstTokenMarked = true;
-                  }
-                  await sendThrottled(partialObject.topics);
-                }
-              }
-              await flushPending();
-
-              const finalObject = await result.object;
-              await interviewRepository.updateModule(
-                interviewId,
-                "revisionTopics",
-                finalObject.topics
-              );
-              responseText = JSON.stringify(finalObject.topics);
-
-              const usage = await result.usage;
-              const modelId = result.modelId;
-              await logAIRequest({
-                interviewId,
-                userId: user._id,
-                action: "GENERATE_TOPICS",
-                model: modelId,
-                prompt: `Generate revision topics for ${interview.jobDetails.title}`,
-                response: responseText,
-                toolsUsed: loggerCtx.toolsUsed,
-                searchQueries: loggerCtx.searchQueries,
-                searchResults: loggerCtx.searchResults,
-                tokenUsage: extractTokenUsage(usage),
-                latencyMs: loggerCtx.getLatencyMs(),
-                timeToFirstToken: loggerCtx.getTimeToFirstToken(),
-                metadata: loggerCtx.metadata,
-              });
-              break;
-            }
-
-            case "mcqs": {
-              const result = await aiEngine.generateMCQs(
-                ctx,
-                10,
-                {},
-                apiKey ?? undefined,
-                byokTierConfig ?? undefined
-              );
-
-              let firstTokenMarked = false;
-              for await (const partialObject of result.partialObjectStream) {
-                if (partialObject.mcqs) {
-                  if (!firstTokenMarked) {
-                    loggerCtx.markFirstToken();
-                    firstTokenMarked = true;
-                  }
-                  await sendThrottled(partialObject.mcqs);
-                }
-              }
-              await flushPending();
-
-              const finalObject = await result.object;
-              await interviewRepository.updateModule(
-                interviewId,
-                "mcqs",
-                finalObject.mcqs
-              );
-              responseText = JSON.stringify(finalObject.mcqs);
-
-              const usage = await result.usage;
-              const modelId = result.modelId;
-              await logAIRequest({
-                interviewId,
-                userId: user._id,
-                action: "GENERATE_MCQ",
-                model: modelId,
-                prompt: `Generate MCQs for ${interview.jobDetails.title}`,
-                response: responseText,
-                toolsUsed: loggerCtx.toolsUsed,
-                searchQueries: loggerCtx.searchQueries,
-                searchResults: loggerCtx.searchResults,
-                tokenUsage: extractTokenUsage(usage),
-                latencyMs: loggerCtx.getLatencyMs(),
-                timeToFirstToken: loggerCtx.getTimeToFirstToken(),
-                metadata: loggerCtx.metadata,
-              });
-              break;
-            }
-
-            case "rapidFire": {
-              const result = await aiEngine.generateRapidFire(
-                ctx,
-                20,
-                {},
-                apiKey ?? undefined,
-                byokTierConfig ?? undefined
-              );
-
-              let firstTokenMarked = false;
-              for await (const partialObject of result.partialObjectStream) {
-                if (partialObject.questions) {
-                  if (!firstTokenMarked) {
-                    loggerCtx.markFirstToken();
-                    firstTokenMarked = true;
-                  }
-                  await sendThrottled(partialObject.questions);
-                }
-              }
-              await flushPending();
-
-              const finalObject = await result.object;
-              await interviewRepository.updateModule(
-                interviewId,
-                "rapidFire",
-                finalObject.questions
-              );
-              responseText = JSON.stringify(finalObject.questions);
-
-              const usage = await result.usage;
-              const modelId = result.modelId;
-              await logAIRequest({
-                interviewId,
-                userId: user._id,
-                action: "GENERATE_RAPID_FIRE",
-                model: modelId,
-                prompt: `Generate rapid fire questions for ${interview.jobDetails.title}`,
-                response: responseText,
-                toolsUsed: loggerCtx.toolsUsed,
-                searchQueries: loggerCtx.searchQueries,
-                searchResults: loggerCtx.searchResults,
-                tokenUsage: extractTokenUsage(usage),
-                latencyMs: loggerCtx.getLatencyMs(),
-                timeToFirstToken: loggerCtx.getTimeToFirstToken(),
-                metadata: loggerCtx.metadata,
-              });
-              break;
+            // Write partial object with throttling
+            const partialData = extractPartialData(module, partialObject);
+            if (partialData !== undefined) {
+              sendThrottled(partialData);
             }
           }
 
-          // Mark stream as completed (do this before checking disconnect so resumption works)
+          // Flush any remaining pending data
+          flushPending();
+
+          // Get the final object
+          const finalObject = await result.object;
+          responseText = JSON.stringify(finalObject);
+
+          // Save to database
+          await saveModuleContent(interviewId, module, finalObject);
+
+          // Write the final complete object as custom data part
+          writer.write({
+            type: "data-complete",
+            data: {
+              type: "complete",
+              module,
+              data: extractFinalData(module, finalObject),
+            },
+          });
+
+          // Update stream status to completed
           after(async () => {
             await updateStreamStatus(interviewId, module, "completed");
           });
 
-          // If client disconnected, close stream but generation is complete
-          if (clientDisconnected) {
-            controller.close();
-            return;
-          }
-
-          // Send done event
-          safeEnqueue(`data: ${JSON.stringify({ type: "done", module })}\n\n`);
-          controller.close();
-        } catch (error) {
-          // Ignore abort errors from client disconnect
-          if (clientDisconnected || (error instanceof Error && error.name === "AbortError")) {
-            // Mark as error since generation didn't complete
-            after(async () => {
-              await updateStreamStatus(interviewId, module, "error");
-            });
-            controller.close();
-            return;
-          }
-          
-          console.error("Stream error:", error);
-          const errorData = JSON.stringify({
-            type: "error",
-            error: "Failed to generate content",
-            module,
+          // Log the AI request
+          const usage = await result.usage;
+          await logAIRequest({
+            interviewId,
+            userId: user._id,
+            action: getActionForModule(module),
+            model: result.modelId,
+            prompt: `Generate ${module} for ${interview.jobDetails.title} at ${interview.jobDetails.company}`,
+            response: responseText,
+            toolsUsed: loggerCtx.toolsUsed,
+            searchQueries: loggerCtx.searchQueries,
+            searchResults: loggerCtx.searchResults,
+            tokenUsage: extractTokenUsage(usage),
+            latencyMs: loggerCtx.getLatencyMs(),
+            timeToFirstToken: loggerCtx.getTimeToFirstToken(),
+            metadata: loggerCtx.metadata,
           });
-          safeEnqueue(`data: ${errorData}\n\n`);
-          controller.close();
+        } catch (error) {
+          console.error("Stream error:", error);
 
-          // Mark stream as error and clean up
+          // Write error as custom data part
+          writer.write({
+            type: "data-error",
+            data: {
+              type: "error",
+              module,
+              error:
+                error instanceof Error
+                  ? error.message
+                  : "Failed to generate content",
+            },
+          });
+
+          // Update stream status to error
           after(async () => {
             await updateStreamStatus(interviewId, module, "error");
           });
         }
       },
+      onError: (error: unknown) => {
+        console.error("UI stream error:", error);
+        return error instanceof Error ? error.message : "Stream error occurred";
+      },
     });
 
-    return new Response(stream, {
+    // Create resumable stream ID for this generation
+    const resumableStreamId = generateId();
+
+    // Use createUIMessageStreamResponse with consumeSseStream callback for resumable streams
+    // This is the official pattern from Vercel AI SDK docs
+    return createUIMessageStreamResponse({
+      stream: uiStream,
       headers: {
-        ...STREAM_HEADERS,
         "X-Stream-Id": streamId,
+        "X-Resumable-Stream-Id": resumableStreamId,
+        "X-Interview-Id": interviewId,
+        "X-Module": module,
+      },
+      // consumeSseStream receives the SSE stream as a ReadableStream<string>
+      // which is exactly what resumable-stream expects
+      async consumeSseStream({ stream: sseStream }) {
+        // Create a resumable stream context with waitUntil for background work
+        const streamContext = createResumableStreamContext({ waitUntil: after });
+        
+        // Create the resumable stream from the SSE stream
+        await streamContext.createNewResumableStream(resumableStreamId, () => sseStream);
+        
+        // Store the resumable stream ID for later resumption
+        await updateResumableStreamId(interviewId, module, resumableStreamId);
       },
     });
   } catch (error) {
@@ -447,4 +317,122 @@ export async function POST(
       { status: 500 }
     );
   }
+}
+
+/**
+ * Get the appropriate stream result for the module type
+ */
+async function getModuleStream(
+  module: ModuleType,
+  ctx: GenerationContext,
+  apiKey?: string,
+  byokTierConfig?: BYOKTierConfig
+) {
+  switch (module) {
+    case "openingBrief":
+      return aiEngine.generateOpeningBrief(ctx, {}, apiKey, byokTierConfig);
+    case "revisionTopics":
+      return aiEngine.generateTopics(ctx, 8, {}, apiKey, byokTierConfig);
+    case "mcqs":
+      return aiEngine.generateMCQs(ctx, 10, {}, apiKey, byokTierConfig);
+    case "rapidFire":
+      return aiEngine.generateRapidFire(ctx, 20, {}, apiKey, byokTierConfig);
+    default:
+      throw new Error(`Unknown module type: ${module}`);
+  }
+}
+
+/**
+ * Extract partial data from the streaming object based on module type
+ */
+function extractPartialData(
+  module: ModuleType,
+  partialObject: Record<string, unknown>
+): unknown {
+  switch (module) {
+    case "openingBrief":
+      return partialObject.content ?? partialObject;
+    case "revisionTopics":
+      return partialObject.topics;
+    case "mcqs":
+      return partialObject.mcqs;
+    case "rapidFire":
+      return partialObject.questions;
+    default:
+      return partialObject;
+  }
+}
+
+/**
+ * Extract final data from the complete object based on module type
+ */
+function extractFinalData(
+  module: ModuleType,
+  finalObject: Record<string, unknown>
+): unknown {
+  switch (module) {
+    case "openingBrief":
+      return finalObject;
+    case "revisionTopics":
+      return finalObject.topics;
+    case "mcqs":
+      return finalObject.mcqs;
+    case "rapidFire":
+      return finalObject.questions;
+    default:
+      return finalObject;
+  }
+}
+
+/**
+ * Save the generated content to the database
+ */
+async function saveModuleContent(
+  interviewId: string,
+  module: ModuleType,
+  object: Record<string, unknown>
+) {
+  switch (module) {
+    case "openingBrief":
+      await interviewRepository.updateModule(
+        interviewId,
+        "openingBrief",
+        object as unknown as OpeningBrief
+      );
+      break;
+    case "revisionTopics":
+      await interviewRepository.updateModule(
+        interviewId,
+        "revisionTopics",
+        object.topics as RevisionTopic[]
+      );
+      break;
+    case "mcqs":
+      await interviewRepository.updateModule(
+        interviewId,
+        "mcqs",
+        object.mcqs as MCQ[]
+      );
+      break;
+    case "rapidFire":
+      await interviewRepository.updateModule(
+        interviewId,
+        "rapidFire",
+        object.questions as RapidFire[]
+      );
+      break;
+  }
+}
+
+/**
+ * Get the action name for logging
+ */
+function getActionForModule(module: ModuleType) {
+  const actionMap = {
+    openingBrief: "GENERATE_BRIEF" as const,
+    revisionTopics: "GENERATE_TOPICS" as const,
+    mcqs: "GENERATE_MCQ" as const,
+    rapidFire: "GENERATE_RAPID_FIRE" as const,
+  };
+  return actionMap[module];
 }
