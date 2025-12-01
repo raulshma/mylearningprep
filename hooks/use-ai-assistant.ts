@@ -237,11 +237,27 @@ export function useAIAssistant(
               };
             }
             // Regular user/assistant messages
-            // Build parts array with reasoning (if present) and text
-            const parts: Array<{ type: "text"; text: string } | { type: "reasoning"; text: string }> = [];
+            // Build parts array with reasoning (if present), tool calls, and text
+            const parts: unknown[] = [];
+
             if (msg.reasoning) {
               parts.push({ type: "reasoning" as const, text: msg.reasoning });
             }
+
+            // Add tool call parts for assistant messages
+            if (msg.role === "assistant" && msg.toolCalls && msg.toolCalls.length > 0) {
+              for (const toolCall of msg.toolCalls) {
+                parts.push({
+                  type: `tool-${toolCall.name}`,
+                  toolCallId: toolCall.id,
+                  state: toolCall.state,
+                  input: toolCall.input,
+                  output: toolCall.output,
+                  errorText: toolCall.errorText,
+                });
+              }
+            }
+
             parts.push({ type: "text" as const, text: msg.content });
 
             // Extract metadata for assistant messages
@@ -261,7 +277,7 @@ export function useAIAssistant(
             };
           });
 
-          setMessages(uiMessages);
+          setMessages(uiMessages as UIMessage[]);
           messageMetadataRef.current = metadataMap;
           setMetadataVersion((v) => v + 1);
         } else {
