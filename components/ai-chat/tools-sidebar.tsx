@@ -15,8 +15,6 @@ import {
   Globe,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
 interface Tool {
@@ -156,7 +154,7 @@ export function ToolsSidebar({
       </div>
 
       {/* Tools List */}
-      <ScrollArea className="flex-1">
+      <div className="flex-1 overflow-y-auto">
         <div className="p-3 space-y-2">
           {tools.map((tool, index) => {
             const Icon = tool.icon;
@@ -196,10 +194,10 @@ export function ToolsSidebar({
             );
           })}
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Pro Features Notice */}
-      <div className="p-4 border-t border-border/40 bg-transparent">
+      <div className="p-4 border-t border-border/40 bg-transparent shrink-0">
         <div className="p-4 rounded-2xl bg-gradient-to-br from-primary/5 to-violet-600/5 border border-primary/10 relative overflow-hidden">
           <div className="absolute top-0 right-0 -mt-4 -mr-4 w-16 h-16 bg-primary/10 blur-2xl rounded-full pointer-events-none" />
 
