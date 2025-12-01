@@ -15,6 +15,9 @@ import {
   Image as ImageIcon,
   X,
   MessageSquarePlus,
+  Copy,
+  RefreshCw,
+  Pencil,
 } from "lucide-react";
 import { ThinkingIndicator } from "./thinking-indicator";
 import { ModelSelector } from "./model-selector";
@@ -382,6 +385,8 @@ export function AIChatMain({
     sendMessage,
     stop,
     reset,
+    reload,
+    setMessages,
   } = useAIAssistant({
     interviewId,
     learningPathId,
@@ -601,6 +606,29 @@ export function AIChatMain({
     await sendMessage(suggestion, undefined);
   };
 
+  const handleCopy = async (content: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      // Optional: Add toast notification here
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  };
+
+  const handleEdit = (index: number, content: string) => {
+    if (isLoading) return;
+    setInput(content);
+    // Remove this message and all subsequent messages
+    const newMessages = messages.slice(0, index);
+    setMessages(newMessages);
+    inputRef.current?.focus();
+  };
+
+  const handleRegenerate = () => {
+    if (isLoading) return;
+    reload();
+  };
+
   return (
     <div className="flex flex-col h-full bg-transparent">
 
@@ -684,7 +712,7 @@ export function AIChatMain({
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     className={cn(
-                      "flex gap-4",
+                      "flex gap-4 group",
                       message.role === "user" && "flex-row-reverse"
                     )}
                   >
@@ -780,12 +808,54 @@ export function AIChatMain({
                           />
                         )
                       )}
+
+                      {/* Message Actions */}
+                      <div className={cn(
+                        "flex items-center gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity",
+                        message.role === "user" ? "justify-end" : "justify-start"
+                      )}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 rounded-full text-muted-foreground hover:text-foreground"
+                          onClick={() => handleCopy(getMessageTextContent(message))}
+                          title="Copy message"
+                        >
+                          <Copy className="h-3 w-3" />
+                        </Button>
+
+                        {message.role === "user" && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 rounded-full text-muted-foreground hover:text-foreground"
+                            onClick={() => handleEdit(messages.indexOf(message), getMessageTextContent(message))}
+                            title="Edit message"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        )}
+
+                        {message.role === "assistant" &&
+                          message.id === messages[messages.length - 1]?.id &&
+                          !isLoading && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 rounded-full text-muted-foreground hover:text-foreground"
+                              onClick={handleRegenerate}
+                              title="Regenerate response"
+                            >
+                              <RefreshCw className="h-3 w-3" />
+                            </Button>
+                          )}
+                      </div>
                     </div>
                   </motion.div>
                 );
               })}
 
-              {/* Active tools indicator */}
+              {/* Active Tools Indicator */}
               {activeTools.length > 0 && (
                 <div className="flex gap-4">
                   <div className="shrink-0 h-10 w-10 rounded-full flex items-center justify-center bg-muted border border-border/50">

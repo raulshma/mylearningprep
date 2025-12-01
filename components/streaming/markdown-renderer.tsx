@@ -9,7 +9,7 @@
  * to prevent page slowdown during streaming
  */
 
-import { memo, useMemo } from "react";
+import { memo, useMemo, useState, useCallback } from "react";
 import type { CodeToHtmlOptions } from "@llm-ui/code";
 import {
   codeBlockLookBack,
@@ -26,6 +26,7 @@ import remarkGfm from "remark-gfm";
 import { getHighlighterCore } from "shiki/core";
 import getWasm from "shiki/wasm";
 import { cn } from "@/lib/utils";
+import { Check, Copy } from "lucide-react";
 
 // Import only required themes (2 vs 40+)
 import githubDark from "shiki/themes/github-dark.mjs";
@@ -125,18 +126,48 @@ const CodeBlock: LLMOutputComponent = memo(function CodeBlock({ blockMatch }) {
     codeToHtmlOptions,
   });
 
+  const [isCopied, setIsCopied] = useState(false);
+
+  const handleCopy = useCallback(async () => {
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(code);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy code:", err);
+    }
+  }, [code]);
+
   if (!html) {
     // Fallback while Shiki is loading
     return (
-      <pre className="shiki bg-muted p-4 rounded-lg overflow-x-auto my-4 max-w-full scrollbar-thin scrollbar-track-muted scrollbar-thumb-muted-foreground/30">
-        <code className="text-sm font-mono">{code}</code>
-      </pre>
+      <div className="relative group my-4">
+        <pre className="shiki bg-muted p-4 rounded-lg overflow-x-auto max-w-full scrollbar-thin scrollbar-track-muted scrollbar-thumb-muted-foreground/30">
+          <code className="text-sm font-mono">{code}</code>
+        </pre>
+      </div>
     );
   }
 
   return (
-    <div className="my-4 rounded-lg overflow-hidden max-w-full [&_pre]:p-4 [&_pre]:overflow-x-auto [&_pre]:max-w-full [&_pre]:-webkit-overflow-scrolling-touch [&_code]:text-sm [&_pre]:scrollbar-thin [&_pre]:scrollbar-track-muted [&_pre]:scrollbar-thumb-muted-foreground/30">
-      {parseHtml(html)}
+    <div className="relative group my-4 rounded-lg overflow-hidden border border-border/50">
+      <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+        <button
+          onClick={handleCopy}
+          className="p-1.5 rounded-md bg-background/80 hover:bg-background border border-border/50 shadow-sm backdrop-blur-sm transition-all"
+          title="Copy code"
+        >
+          {isCopied ? (
+            <Check className="h-4 w-4 text-green-500" />
+          ) : (
+            <Copy className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+          )}
+        </button>
+      </div>
+      <div className="max-w-full [&_pre]:p-4 [&_pre]:overflow-x-auto [&_pre]:max-w-full [&_pre]:-webkit-overflow-scrolling-touch [&_code]:text-sm [&_pre]:scrollbar-thin [&_pre]:scrollbar-track-muted [&_pre]:scrollbar-thumb-muted-foreground/30">
+        {parseHtml(html)}
+      </div>
     </div>
   );
 });

@@ -502,9 +502,8 @@ function createOrchestratorTools(
         // Search for resources
         let resourceInfo = "";
         if (isSearchEnabled()) {
-          const query = `${enrichedTopic} ${level} tutorial course documentation ${
-            preferFree ? "free" : ""
-          } ${preferVideo ? "video" : ""}`;
+          const query = `${enrichedTopic} ${level} tutorial course documentation ${preferFree ? "free" : ""
+            } ${preferVideo ? "video" : ""}`;
           const results = await searchService.query(query, 8);
           resourceInfo = results.results
             .map((r) => `${r.title} (${r.url}): ${r.snippet}`)
@@ -537,7 +536,26 @@ function createOrchestratorTools(
 // ============================================================================
 
 function buildSystemPrompt(ctx: OrchestratorContext): string {
+  // Get current date and time
+  const now = new Date();
+  const formattedDate = now.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+  const formattedTime = now.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZoneName: 'short'
+  });
+
   let prompt = `You are SyntaxState's AI Interview Assistant, an expert at helping software engineers prepare for technical interviews.
+
+Current Context:
+- Date: ${formattedDate}
+- Time: ${formattedTime}
+- ISO Date: ${now.toISOString()}
 
 Your capabilities include:
 - Analyzing technology trends and job market demand
@@ -561,11 +579,10 @@ Guidelines:
 Current Interview Context:
 - Job Title: ${ctx.interviewContext.jobTitle}
 - Company: ${ctx.interviewContext.company}
-${
-  ctx.interviewContext.resumeText
-    ? "- Resume context is available for personalized advice"
-    : ""
-}`;
+${ctx.interviewContext.resumeText
+        ? "- Resume context is available for personalized advice"
+        : ""
+      }`;
   }
 
   // Add learning context if available

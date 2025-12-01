@@ -48,6 +48,7 @@ export interface UseAIAssistantReturn {
   stop: () => void;
   reload: () => void;
   reset: () => void;
+  setMessages: (messages: UIMessage[]) => void;
 }
 
 // Store refs outside component to avoid lint issues with ref access during render
@@ -76,7 +77,7 @@ function getOrCreateTransport(): DefaultChatTransport<UIMessage> {
       }),
       fetch: async (url, init) => {
         const response = await fetch(url, init);
-        
+
         // Check for new conversation in headers
         const newConversationId = response.headers.get("X-Conversation-Id");
         const isNewConversation = response.headers.get("X-New-Conversation") === "true";
@@ -162,21 +163,21 @@ export function useAIAssistant(
       // Clear active tools after completion
       setActiveTools([]);
       activeToolsRef.current = [];
-      
+
       // Update last model ID from context refs
       if (contextRefs.lastModelId && result.message) {
         const messageId = result.message.id;
-        
+
         // Only process if we haven't already
         if (!messageMetadataRef.current.has(messageId)) {
           // Create metadata for this message
           const metadata: MessageMetadata = {
             model: contextRefs.lastModelId,
           };
-          
+
           // Store in ref immediately (no re-render)
           messageMetadataRef.current.set(messageId, metadata);
-          
+
           // Use queueMicrotask to defer state updates completely outside React's update cycle
           // This prevents "Maximum update depth exceeded" errors
           queueMicrotask(() => {
@@ -215,7 +216,7 @@ export function useAIAssistant(
           // Convert AIMessage[] to UIMessage[] format
           // Include text parts and error messages (using data-error part type)
           const metadataMap = new Map<string, MessageMetadata>();
-          
+
           const uiMessages = result.data.messages.map((msg) => {
             // Handle error messages - convert to assistant role with data-error part
             if (msg.role === "error") {
@@ -242,15 +243,15 @@ export function useAIAssistant(
               parts.push({ type: "reasoning" as const, text: msg.reasoning });
             }
             parts.push({ type: "text" as const, text: msg.content });
-            
+
             // Extract metadata for assistant messages
             if (msg.role === "assistant" && msg.metadata) {
               metadataMap.set(msg.id, msg.metadata as MessageMetadata);
             }
-            
+
             // At this point, role is either "user" or "assistant" (error handled above)
             const role = msg.role === "user" ? "user" as const : "assistant" as const;
-            
+
             return {
               id: msg.id,
               role,
@@ -259,7 +260,7 @@ export function useAIAssistant(
               createdAt: msg.createdAt,
             };
           });
-          
+
           setMessages(uiMessages);
           messageMetadataRef.current = metadataMap;
           setMetadataVersion((v) => v + 1);
@@ -329,7 +330,7 @@ export function useAIAssistant(
   // metadataVersion is used to trigger re-renders when metadata changes
   // We access it here to ensure the component re-renders
   void metadataVersion;
-  
+
   return {
     messages,
     input,
@@ -343,6 +344,7 @@ export function useAIAssistant(
     stop,
     reload: regenerate,
     reset,
+    setMessages,
   };
 }
 
