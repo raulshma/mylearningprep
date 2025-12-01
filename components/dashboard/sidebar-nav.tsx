@@ -85,10 +85,8 @@ export function SidebarNav({
   const pathname = usePathname();
 
   let items = [...navItems];
-  // AI Chat is available for PRO+ users
-  if (isProPlan || isMaxPlan) {
-    items = [...items, aiChatItem];
-  }
+  // AI Chat is available for all users (with different limits per plan)
+  items = [...items, aiChatItem];
   // Analytics is available for PRO+ users
   if (isProPlan || isMaxPlan) {
     items = [...items, analyticsItem];
