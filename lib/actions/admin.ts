@@ -1484,3 +1484,89 @@ export async function clearTieredModelConfig(): Promise<
 
 // Re-export types for external use
 export type { TierModelConfig, FullTieredModelConfig };
+
+// ============================================================================
+// AI Tools Configuration
+// ============================================================================
+
+import {
+  type AIToolId,
+  type AIToolConfig,
+  DEFAULT_AI_TOOLS,
+} from "@/lib/db/schemas/settings";
+
+export type { AIToolId, AIToolConfig };
+
+/**
+ * Get AI tools configuration from database
+ */
+export async function getAIToolsConfig(): Promise<
+  AIToolConfig[] | UnauthorizedResponse
+> {
+  return requireAdmin(async () => {
+    const collection = await getSettingsCollection();
+    const doc = await collection.findOne({ key: SETTINGS_KEYS.AI_TOOLS_CONFIG });
+
+    if (!doc?.value) {
+      return DEFAULT_AI_TOOLS;
+    }
+
+    // Merge with defaults to ensure new tools are included
+    const savedConfig = doc.value as Record<AIToolId, boolean>;
+    return DEFAULT_AI_TOOLS.map((tool) => ({
+      ...tool,
+      enabled: savedConfig[tool.id] ?? tool.enabled,
+    }));
+  });
+}
+
+/**
+ * Update a single AI tool's enabled status
+ */
+export async function updateAIToolStatus(
+  toolId: AIToolId,
+  enabled: boolean
+): Promise<{ success: boolean } | UnauthorizedResponse> {
+  return requireAdmin(async () => {
+    const collection = await getSettingsCollection();
+
+    // Get current config
+    const doc = await collection.findOne({ key: SETTINGS_KEYS.AI_TOOLS_CONFIG });
+    const currentConfig = (doc?.value as Record<AIToolId, boolean>) || {};
+
+    // Update the specific tool
+    const newConfig = {
+      ...currentConfig,
+      [toolId]: enabled,
+    };
+
+    await collection.updateOne(
+      { key: SETTINGS_KEYS.AI_TOOLS_CONFIG },
+      { $set: { key: SETTINGS_KEYS.AI_TOOLS_CONFIG, value: newConfig, updatedAt: new Date() } },
+      { upsert: true }
+    );
+
+    return { success: true };
+  });
+}
+
+/**
+ * Get enabled tool IDs (for use in AI orchestrator)
+ * This is a non-admin function that can be called from services
+ */
+export async function getEnabledToolIds(): Promise<Set<AIToolId>> {
+  const collection = await getSettingsCollection();
+  const doc = await collection.findOne({ key: SETTINGS_KEYS.AI_TOOLS_CONFIG });
+
+  if (!doc?.value) {
+    // All tools enabled by default
+    return new Set(DEFAULT_AI_TOOLS.map((t) => t.id));
+  }
+
+  const savedConfig = doc.value as Record<AIToolId, boolean>;
+  const enabledTools = DEFAULT_AI_TOOLS.filter(
+    (tool) => savedConfig[tool.id] ?? tool.enabled
+  ).map((t) => t.id);
+
+  return new Set(enabledTools);
+}

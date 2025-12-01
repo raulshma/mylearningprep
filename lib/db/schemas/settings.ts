@@ -23,6 +23,9 @@ export const SETTINGS_KEYS = {
   MODEL_TIER_MEDIUM: "model_tier_medium",
   MODEL_TIER_LOW: "model_tier_low",
 
+  // AI Tools configuration
+  AI_TOOLS_CONFIG: "ai_tools_config",
+
   // Crawl4ai service settings
   CRAWL4AI_URL: "crawl4ai.url",
   CRAWL4AI_ENABLED: "crawl4ai.enabled",
@@ -137,3 +140,97 @@ export const TASK_DESCRIPTIONS: Record<string, string> = {
   generate_debugging_task: "Generate debugging task activity",
   generate_concept_explanation: "Generate concept explanation activity",
 };
+
+/**
+ * AI Tool names that can be enabled/disabled
+ */
+export type AIToolId =
+  | "searchWeb"
+  | "crawlWeb"
+  | "searchAndCrawl"
+  | "analyzeTechTrends"
+  | "generateInterviewQuestions"
+  | "analyzeGitHubRepo"
+  | "generateSystemDesign"
+  | "structureSTARResponse"
+  | "findLearningResources";
+
+/**
+ * AI Tool configuration
+ */
+export interface AIToolConfig {
+  id: AIToolId;
+  name: string;
+  description: string;
+  enabled: boolean;
+  requiredPlan: "FREE" | "PRO" | "MAX";
+}
+
+/**
+ * Default AI tools configuration
+ */
+export const DEFAULT_AI_TOOLS: AIToolConfig[] = [
+  {
+    id: "searchWeb",
+    name: "Web Search",
+    description: "Search the web for current information via SearXNG",
+    enabled: true,
+    requiredPlan: "PRO",
+  },
+  {
+    id: "crawlWeb",
+    name: "Web Crawl",
+    description: "Crawl and extract full content from web pages",
+    enabled: true,
+    requiredPlan: "PRO",
+  },
+  {
+    id: "searchAndCrawl",
+    name: "Search & Crawl",
+    description: "Search the web and crawl top results for full content",
+    enabled: true,
+    requiredPlan: "PRO",
+  },
+  {
+    id: "analyzeTechTrends",
+    name: "Tech Trends Analysis",
+    description: "Analyze technology trends, job market demand, and career prospects",
+    enabled: true,
+    requiredPlan: "PRO",
+  },
+  {
+    id: "generateInterviewQuestions",
+    name: "Interview Questions",
+    description: "Generate tailored mock interview questions",
+    enabled: true,
+    requiredPlan: "PRO",
+  },
+  {
+    id: "analyzeGitHubRepo",
+    name: "GitHub Analysis",
+    description: "Analyze GitHub repositories for learning insights",
+    enabled: true,
+    requiredPlan: "PRO",
+  },
+  {
+    id: "generateSystemDesign",
+    name: "System Design",
+    description: "Generate comprehensive system design templates",
+    enabled: true,
+    requiredPlan: "MAX",
+  },
+  {
+    id: "structureSTARResponse",
+    name: "STAR Framework",
+    description: "Structure behavioral answers using STAR method",
+    enabled: true,
+    requiredPlan: "PRO",
+  },
+  {
+    id: "findLearningResources",
+    name: "Learning Resources",
+    description: "Find curated learning resources for topics",
+    enabled: true,
+    requiredPlan: "MAX",
+  },
+];

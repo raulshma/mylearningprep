@@ -7,7 +7,7 @@ import {
   getSettingsCollection,
 } from "@/lib/db/collections";
 import { isSearchEnabled } from "@/lib/services/search-service";
-import { SETTINGS_KEYS } from "@/lib/db/schemas/settings";
+import { SETTINGS_KEYS, DEFAULT_AI_TOOLS, type AIToolConfig, type AIToolId } from "@/lib/db/schemas/settings";
 import { parseTierConfig } from "@/lib/db/tier-config";
 import { clerkClient } from "@clerk/nextjs/server";
 import { requireAdmin, UnauthorizedResponse } from "@/lib/auth/get-user";
@@ -59,6 +59,7 @@ export async function getAdminDashboardData(): Promise<
       modelUsage: Array<{ model: string; count: number; percentage: number }>;
       concurrencyLimit: number;
       tieredModelConfig: FullTieredModelConfig;
+      aiToolsConfig: AIToolConfig[];
     }
   | UnauthorizedResponse
 > {
@@ -120,6 +121,7 @@ async function fetchAllAdminData() {
     tierHighDoc,
     tierMediumDoc,
     tierLowDoc,
+    aiToolsConfigDoc,
   ] = await Promise.all([
     // Basic counts
     usersCollection.countDocuments(),
@@ -279,6 +281,7 @@ async function fetchAllAdminData() {
     settingsCollection.findOne({ key: SETTINGS_KEYS.MODEL_TIER_HIGH }),
     settingsCollection.findOne({ key: SETTINGS_KEYS.MODEL_TIER_MEDIUM }),
     settingsCollection.findOne({ key: SETTINGS_KEYS.MODEL_TIER_LOW }),
+    settingsCollection.findOne({ key: SETTINGS_KEYS.AI_TOOLS_CONFIG }),
   ]);
 
   // Process AI stats
@@ -449,6 +452,13 @@ async function fetchAllAdminData() {
     low: parseTierConfig(tierLowDoc?.value),
   };
 
+  // Parse AI tools config
+  const savedToolsConfig = aiToolsConfigDoc?.value as Record<AIToolId, boolean> | undefined;
+  const aiToolsConfig: AIToolConfig[] = DEFAULT_AI_TOOLS.map((tool) => ({
+    ...tool,
+    enabled: savedToolsConfig?.[tool.id] ?? tool.enabled,
+  }));
+
   return {
     stats: {
       totalUsers,
@@ -480,6 +490,7 @@ async function fetchAllAdminData() {
     modelUsage,
     concurrencyLimit: (concurrencyDoc?.value as number) ?? 3,
     tieredModelConfig,
+    aiToolsConfig,
   };
 }
 

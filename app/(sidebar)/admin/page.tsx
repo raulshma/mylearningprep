@@ -24,10 +24,11 @@ const defaultData = {
   modelUsage: [],
   concurrencyLimit: 3,
   tieredModelConfig: {
-    high: { primaryModel: null, fallbackModel: null, temperature: 0.7, maxTokens: 4096 },
-    medium: { primaryModel: null, fallbackModel: null, temperature: 0.7, maxTokens: 4096 },
-    low: { primaryModel: null, fallbackModel: null, temperature: 0.7, maxTokens: 4096 },
+    high: { primaryModel: null, fallbackModel: null, temperature: 0.7, maxTokens: 4096, fallbackMaxTokens: 4096, toolsEnabled: true },
+    medium: { primaryModel: null, fallbackModel: null, temperature: 0.7, maxTokens: 4096, fallbackMaxTokens: 4096, toolsEnabled: true },
+    low: { primaryModel: null, fallbackModel: null, temperature: 0.7, maxTokens: 4096, fallbackMaxTokens: 4096, toolsEnabled: true },
   },
+  aiToolsConfig: [],
 };
 
 export default async function AdminPage() {
@@ -59,6 +60,7 @@ export default async function AdminPage() {
           modelUsage={data.modelUsage}
           concurrencyLimit={data.concurrencyLimit}
           tieredModelConfig={data.tieredModelConfig}
+          aiToolsConfig={data.aiToolsConfig}
         />
       </div>
     </AdminPageContent>

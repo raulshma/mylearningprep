@@ -23,21 +23,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  Settings,
   Users,
-  Activity,
   Terminal,
   Search,
   Cpu,
   BarChart3,
   Layers,
-  Wrench,
-  MoreHorizontal,
 } from "lucide-react";
-import { SearchToolToggle } from "@/components/admin/search-tool-toggle";
 import { AIMonitoringDashboard } from "@/components/admin/ai-monitoring-dashboard";
 import { TieredModelConfig } from "@/components/admin/tiered-model-config";
 import { ConcurrencyConfig } from "@/components/admin/concurrency-config";
+import { AIToolsConfig } from "@/components/admin/ai-tools-config";
 import { UserActions } from "@/components/admin/user-management";
 import { AnalyticsDashboard } from "@/components/admin/analytics-dashboard";
 import type {
@@ -49,6 +45,7 @@ import type {
   PopularTopicData,
   PlanDistribution,
   TokenUsageTrend,
+  AIToolConfig,
 } from "@/lib/actions/admin";
 
 interface AdminTabsProps {
@@ -66,6 +63,7 @@ interface AdminTabsProps {
   modelUsage: Array<{ model: string; count: number; percentage: number }>;
   concurrencyLimit: number;
   tieredModelConfig: FullTieredModelConfig;
+  aiToolsConfig: AIToolConfig[];
 }
 
 export function AdminTabs({
@@ -83,6 +81,7 @@ export function AdminTabs({
   modelUsage,
   concurrencyLimit,
   tieredModelConfig,
+  aiToolsConfig,
 }: AdminTabsProps) {
   return (
     <motion.div
@@ -164,7 +163,7 @@ export function AdminTabs({
           <ModelsTab
             tieredModelConfig={tieredModelConfig}
             concurrencyLimit={concurrencyLimit}
-            searchStatus={searchStatus}
+            aiToolsConfig={aiToolsConfig}
           />
         </TabsContent>
 
@@ -307,11 +306,11 @@ function UsersTab({ users }: { users: AdminUser[] }) {
 function ModelsTab({
   tieredModelConfig,
   concurrencyLimit,
-  searchStatus,
+  aiToolsConfig,
 }: {
   tieredModelConfig: FullTieredModelConfig;
   concurrencyLimit: number;
-  searchStatus: { enabled: boolean };
+  aiToolsConfig: AIToolConfig[];
 }) {
   return (
     <div className="space-y-8">
@@ -322,74 +321,7 @@ function ModelsTab({
       <ConcurrencyConfig initialLimit={concurrencyLimit} />
 
       {/* Tool Configuration */}
-      <Card className="border-0 shadow-xl shadow-black/5 dark:shadow-black/20 bg-card/80 backdrop-blur-xl rounded-3xl overflow-hidden">
-        <CardHeader className="border-b border-border/50 p-6 md:p-8">
-          <div className="flex items-center gap-3 mb-1">
-            <div className="p-2 rounded-xl bg-primary/10">
-              <Wrench className="w-5 h-5 text-primary" />
-            </div>
-            <CardTitle className="text-xl font-bold">Tool Configuration</CardTitle>
-          </div>
-          <CardDescription>
-            Enable or disable AI tools and capabilities
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-6 md:p-8">
-          <div className="grid gap-4">
-            <ToolConfigItem
-              title="Web Search Tool"
-              description="Enable AI to search the web for up-to-date information via SearXNG"
-              enabled={searchStatus.enabled}
-              toggle={
-                <SearchToolToggle initialEnabled={searchStatus.enabled} />
-              }
-            />
-            <ToolConfigItem
-              title="Code Execution"
-              description="Allow AI to run code snippets in sandbox"
-              comingSoon
-            />
-            <ToolConfigItem
-              title="Citation Generation"
-              description="Automatically cite sources in responses"
-              comingSoon
-            />
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-function ToolConfigItem({
-  title,
-  description,
-  enabled,
-  toggle,
-  comingSoon,
-}: {
-  title: string;
-  description: string;
-  enabled?: boolean;
-  toggle?: React.ReactNode;
-  comingSoon?: boolean;
-}) {
-  return (
-    <div
-      className={`flex items-center justify-between p-5 rounded-2xl border border-border/40 bg-secondary/20 hover:bg-secondary/40 transition-all duration-200 ${comingSoon ? "opacity-60" : ""
-        }`}
-    >
-      <div className="space-y-1">
-        <p className="font-semibold text-foreground">{title}</p>
-        <p className="text-sm text-muted-foreground">{description}</p>
-      </div>
-      {comingSoon ? (
-        <Badge variant="outline" className="rounded-full px-3 font-medium bg-background/50">
-          Coming Soon
-        </Badge>
-      ) : (
-        toggle
-      )}
+      <AIToolsConfig initialConfig={aiToolsConfig} />
     </div>
   );
 }

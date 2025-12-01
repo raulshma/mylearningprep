@@ -22,8 +22,9 @@ import {
 } from "ai";
 import { z } from "zod";
 import { searchService, isSearchEnabled } from "./search-service";
-import { type ModelTier } from "@/lib/db/schemas/settings";
+import { type ModelTier, type AIToolId } from "@/lib/db/schemas/settings";
 import { getTierConfigFromDB } from "@/lib/db/tier-config";
+import { getEnabledToolIds } from "@/lib/actions/admin";
 import type { BYOKTierConfig } from "./ai-engine";
 import type { AIToolName, ToolInvocation } from "./ai-tools";
 
@@ -132,11 +133,15 @@ function getOpenRouterClient(apiKey?: string) {
 function createOrchestratorTools(
   ctx: OrchestratorContext,
   onToolStatus: (status: ToolStatus) => void,
+  enabledTools: Set<AIToolId>,
 ): ToolSet {
   const tools: ToolSet = {};
 
+  // Helper to check if a tool is enabled
+  const isToolEnabled = (toolId: AIToolId) => enabledTools.has(toolId);
+
   // Web search tool (available for all paid plans)
-  if (ctx.plan !== "FREE" && isSearchEnabled()) {
+  if (ctx.plan !== "FREE" && isSearchEnabled() && isToolEnabled("searchWeb")) {
     tools.searchWeb = tool({
       description:
         "Search the web for current information about technologies, interview topics, companies, or job market trends.",
@@ -177,7 +182,7 @@ function createOrchestratorTools(
   }
 
   // Web crawl tool (available for all paid plans)
-  if (ctx.plan !== "FREE") {
+  if (ctx.plan !== "FREE" && isToolEnabled("crawlWeb")) {
     tools.crawlWeb = tool({
       description:
         "Crawl and extract full content from web pages. Use this when you need the complete article/page content, not just search snippets. Returns markdown, metadata, links, and images.",
@@ -325,7 +330,7 @@ function createOrchestratorTools(
   }
 
   // Combined search and crawl tool (available for all paid plans)
-  if (ctx.plan !== "FREE" && isSearchEnabled()) {
+  if (ctx.plan !== "FREE" && isSearchEnabled() && isToolEnabled("searchAndCrawl")) {
     tools.searchAndCrawl = tool({
       description:
         "Search the web for information and optionally crawl top results for full content. This is the recommended tool for comprehensive research - it searches and can automatically crawl the most relevant results to get complete article content.",
@@ -518,7 +523,7 @@ function createOrchestratorTools(
   }
 
   // Tech trends analysis tool
-  if (ctx.plan !== "FREE") {
+  if (ctx.plan !== "FREE" && isToolEnabled("analyzeTechTrends")) {
     tools.analyzeTechTrends = tool({
       description:
         'Analyze technology trends, job market demand, and career prospects for specific technologies. IMPORTANT: You MUST provide a \'technologies\' array with 1-5 technology names. Example: { "technologies": ["React", "TypeScript"] }',
@@ -574,7 +579,7 @@ function createOrchestratorTools(
   }
 
   // Mock interview question generator
-  if (ctx.plan !== "FREE") {
+  if (ctx.plan !== "FREE" && isToolEnabled("generateInterviewQuestions")) {
     tools.generateInterviewQuestions = tool({
       description:
         "Generate tailored interview questions based on role, company, and interview type.",
@@ -633,7 +638,7 @@ function createOrchestratorTools(
   }
 
   // GitHub repository analysis
-  if (ctx.plan !== "FREE") {
+  if (ctx.plan !== "FREE" && isToolEnabled("analyzeGitHubRepo")) {
     tools.analyzeGitHubRepo = tool({
       description:
         "Analyze a GitHub repository to understand its architecture, technologies, and generate learning insights.",
@@ -688,7 +693,7 @@ function createOrchestratorTools(
   }
 
   // System design template generator
-  if (ctx.plan === "MAX") {
+  if (ctx.plan === "MAX" && isToolEnabled("generateSystemDesign")) {
     tools.generateSystemDesign = tool({
       description:
         "Generate a comprehensive system design template for interview preparation.",
@@ -733,7 +738,7 @@ function createOrchestratorTools(
   }
 
   // STAR framework helper
-  if (ctx.plan !== "FREE") {
+  if (ctx.plan !== "FREE" && isToolEnabled("structureSTARResponse")) {
     tools.structureSTARResponse = tool({
       description:
         "Help structure a behavioral interview answer using the STAR framework (Situation, Task, Action, Result).",
@@ -773,7 +778,7 @@ function createOrchestratorTools(
   }
 
   // Learning resource finder
-  if (ctx.plan === "MAX") {
+  if (ctx.plan === "MAX" && isToolEnabled("findLearningResources")) {
     tools.findLearningResources = tool({
       description:
         "Find curated learning resources for a topic including documentation, tutorials, videos, and courses.",
@@ -929,8 +934,11 @@ export async function runOrchestrator(
     onToolStatus?.(status);
   };
 
-  // Get model configuration
-  const config = await getOrchestratorConfig(byokConfig);
+  // Get model configuration and enabled tools in parallel
+  const [config, enabledTools] = await Promise.all([
+    getOrchestratorConfig(byokConfig),
+    getEnabledToolIds(),
+  ]);
   const openrouter = getOpenRouterClient(apiKey);
 
   // For MAX plan users with a selected model, use their choice
@@ -939,8 +947,8 @@ export async function runOrchestrator(
       ? ctx.selectedModelId
       : config.model;
 
-  // Create tools based on user's plan
-  const tools = createOrchestratorTools(ctx, handleToolStatus);
+  // Create tools based on user's plan and enabled tools
+  const tools = createOrchestratorTools(ctx, handleToolStatus, enabledTools);
 
   // Build the system prompt with context
   const systemPrompt = buildSystemPrompt(ctx);

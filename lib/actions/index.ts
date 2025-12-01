@@ -66,6 +66,9 @@ export {
   getTokenUsageTrends,
   getTopCompanies,
   getModelUsageDistribution,
+  getAIToolsConfig,
+  updateAIToolStatus,
+  getEnabledToolIds,
   type AdminStats,
   type AILogWithDetails,
   type UsageTrendData,
@@ -73,6 +76,8 @@ export {
   type PlanDistribution,
   type DailyActiveUsers,
   type TokenUsageTrend,
+  type AIToolId,
+  type AIToolConfig,
 } from "./admin";
 
 // Learning path actions
@@ -98,9 +103,13 @@ export {
   checkAIOperationAllowed,
   getFeedbackById,
   getUserFeedback,
-  type CreateFeedbackInput,
-  type RecordActivityCompletionInput,
 } from "./feedback";
+
+// Feedback input types (from schemas)
+export type {
+  CreateFeedbackInput,
+  RecordActivityCompletionInput,
+} from "@/lib/schemas/feedback-input";
 
 // AI Chat actions
 export {
