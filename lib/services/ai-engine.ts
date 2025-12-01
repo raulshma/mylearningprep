@@ -19,14 +19,12 @@ import {
 } from "@/lib/db/schemas/interview";
 import { searchService, isSearchEnabled } from "./search-service";
 import { crawlService, isCrawlEnabled } from "./crawl-service";
-import { getSettingsCollection } from "@/lib/db/collections";
 import {
-  SETTINGS_KEYS,
   TASK_TIER_MAPPING,
   type ModelTier,
   type AITask,
-  type TierModelConfig,
 } from "@/lib/db/schemas/settings";
+import { getTierConfigFromDB } from "@/lib/db/tier-config";
 
 // AI Engine Configuration
 export interface AIEngineConfig {
@@ -63,41 +61,7 @@ export class TierNotConfiguredError extends Error {
   }
 }
 
-/**
- * Get tier setting key
- */
-function getTierKey(tier: ModelTier): string {
-  return {
-    high: SETTINGS_KEYS.MODEL_TIER_HIGH,
-    medium: SETTINGS_KEYS.MODEL_TIER_MEDIUM,
-    low: SETTINGS_KEYS.MODEL_TIER_LOW,
-  }[tier];
-}
 
-/**
- * Get a single tier's configuration from database (single document per tier)
- */
-async function getTierConfigFromDB(tier: ModelTier): Promise<TierModelConfig> {
-  const collection = await getSettingsCollection();
-  const doc = await collection.findOne({ key: getTierKey(tier) });
-
-  if (!doc?.value) {
-    return {
-      primaryModel: null,
-      fallbackModel: null,
-      temperature: 0.7,
-      maxTokens: 4096,
-    };
-  }
-
-  const value = doc.value as Partial<TierModelConfig>;
-  return {
-    primaryModel: value.primaryModel ?? null,
-    fallbackModel: value.fallbackModel ?? null,
-    temperature: value.temperature ?? 0.7,
-    maxTokens: value.maxTokens ?? 4096,
-  };
-}
 
 /**
  * Get the configuration for a specific AI task

@@ -7,7 +7,8 @@ import {
   getSettingsCollection,
 } from "@/lib/db/collections";
 import { isSearchEnabled } from "@/lib/services/search-service";
-import { SETTINGS_KEYS, DEFAULT_TIER_CONFIG, type TierModelConfig } from "@/lib/db/schemas/settings";
+import { SETTINGS_KEYS } from "@/lib/db/schemas/settings";
+import { parseTierConfig } from "@/lib/db/tier-config";
 import { clerkClient } from "@clerk/nextjs/server";
 import { requireAdmin, UnauthorizedResponse } from "@/lib/auth/get-user";
 import type {
@@ -442,21 +443,10 @@ async function fetchAllAdminData() {
   }));
 
   // Parse tiered model config from individual tier documents
-  const parseTierConfig = (doc: { value?: unknown } | null): TierModelConfig => {
-    if (!doc?.value) return { ...DEFAULT_TIER_CONFIG };
-    const value = doc.value as Partial<TierModelConfig>;
-    return {
-      primaryModel: value.primaryModel ?? null,
-      fallbackModel: value.fallbackModel ?? null,
-      temperature: value.temperature ?? 0.7,
-      maxTokens: value.maxTokens ?? 4096,
-    };
-  };
-
   const tieredModelConfig: FullTieredModelConfig = {
-    high: parseTierConfig(tierHighDoc),
-    medium: parseTierConfig(tierMediumDoc),
-    low: parseTierConfig(tierLowDoc),
+    high: parseTierConfig(tierHighDoc?.value),
+    medium: parseTierConfig(tierMediumDoc?.value),
+    low: parseTierConfig(tierLowDoc?.value),
   };
 
   return {

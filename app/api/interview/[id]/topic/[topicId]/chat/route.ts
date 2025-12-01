@@ -11,48 +11,12 @@ import {
 import { userRepository } from "@/lib/db/repositories/user-repository";
 import { interviewRepository } from "@/lib/db/repositories/interview-repository";
 import { chatRepository } from "@/lib/db/repositories/chat-repository";
-import { getSettingsCollection } from "@/lib/db/collections";
-import {
-  SETTINGS_KEYS,
-  type TierModelConfig,
-  type ModelTier,
-} from "@/lib/db/schemas/settings";
+import { getTierConfigFromDB } from "@/lib/db/tier-config";
 import { logAIRequest, createLoggerContext } from "@/lib/services/ai-logger";
 import type { ChatMessage } from "@/lib/db/schemas/chat";
 
 // Chat costs 0.33 iterations per message
 const CHAT_ITERATION_COST = 0.33;
-
-/**
- * Get tier configuration from database
- */
-async function getTierConfigFromDB(tier: ModelTier): Promise<TierModelConfig> {
-  const collection = await getSettingsCollection();
-  const tierKey = {
-    high: SETTINGS_KEYS.MODEL_TIER_HIGH,
-    medium: SETTINGS_KEYS.MODEL_TIER_MEDIUM,
-    low: SETTINGS_KEYS.MODEL_TIER_LOW,
-  }[tier];
-
-  const doc = await collection.findOne({ key: tierKey });
-
-  if (!doc?.value) {
-    return {
-      primaryModel: null,
-      fallbackModel: null,
-      temperature: 0.7,
-      maxTokens: 4096,
-    };
-  }
-
-  const value = doc.value as Partial<TierModelConfig>;
-  return {
-    primaryModel: value.primaryModel ?? null,
-    fallbackModel: value.fallbackModel ?? null,
-    temperature: value.temperature ?? 0.7,
-    maxTokens: value.maxTokens ?? 4096,
-  };
-}
 
 /**
  * Get effective model config for chat (uses LOW tier)

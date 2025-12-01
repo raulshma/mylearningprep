@@ -1305,12 +1305,12 @@ export async function setAIConcurrencyLimit(
 import {
   TASK_TIER_MAPPING,
   TASK_DESCRIPTIONS,
-  DEFAULT_TIER_CONFIG,
   type ModelTier,
   type AITask,
   type TierModelConfig,
   type FullTieredModelConfig,
 } from "@/lib/db/schemas/settings";
+import { getTierKey, getTierConfigFromDB, parseTierConfig } from "@/lib/db/tier-config";
 
 /**
  * Task tier information for display
@@ -1338,37 +1338,6 @@ export async function getTaskTierMappings(): Promise<
 }
 
 /**
- * Get tier setting key
- */
-function getTierKey(tier: ModelTier): string {
-  return {
-    high: SETTINGS_KEYS.MODEL_TIER_HIGH,
-    medium: SETTINGS_KEYS.MODEL_TIER_MEDIUM,
-    low: SETTINGS_KEYS.MODEL_TIER_LOW,
-  }[tier];
-}
-
-/**
- * Get a single tier's configuration from single document
- */
-async function getTierConfig(tier: ModelTier): Promise<TierModelConfig> {
-  const collection = await getSettingsCollection();
-  const doc = await collection.findOne({ key: getTierKey(tier) });
-
-  if (!doc?.value) {
-    return { ...DEFAULT_TIER_CONFIG };
-  }
-
-  const value = doc.value as Partial<TierModelConfig>;
-  return {
-    primaryModel: value.primaryModel ?? null,
-    fallbackModel: value.fallbackModel ?? null,
-    temperature: value.temperature ?? 0.7,
-    maxTokens: value.maxTokens ?? 4096,
-  };
-}
-
-/**
  * Get the full tiered model configuration
  * Returns null for models that haven't been configured
  */
@@ -1377,9 +1346,9 @@ export async function getTieredModelConfig(): Promise<
 > {
   return requireAdmin(async () => {
     const [high, medium, low] = await Promise.all([
-      getTierConfig("high"),
-      getTierConfig("medium"),
-      getTierConfig("low"),
+      getTierConfigFromDB("high"),
+      getTierConfigFromDB("medium"),
+      getTierConfigFromDB("low"),
     ]);
 
     return { high, medium, low };
@@ -1398,9 +1367,9 @@ export async function areTieredModelsConfigured(): Promise<
 > {
   return requireAdmin(async () => {
     const [high, medium, low] = await Promise.all([
-      getTierConfig("high"),
-      getTierConfig("medium"),
-      getTierConfig("low"),
+      getTierConfigFromDB("high"),
+      getTierConfigFromDB("medium"),
+      getTierConfigFromDB("low"),
     ]);
     const config = { high, medium, low };
     const missingTiers: ModelTier[] = [];
@@ -1428,7 +1397,7 @@ export async function updateTierConfig(
     const key = getTierKey(tier);
 
     // Get existing config
-    const existing = await getTierConfig(tier);
+    const existing = await getTierConfigFromDB(tier);
 
     // Merge with new values
     const newConfig: TierModelConfig = {
@@ -1446,6 +1415,14 @@ export async function updateTierConfig(
           : existing.temperature,
       maxTokens:
         config.maxTokens !== undefined ? config.maxTokens : existing.maxTokens,
+      fallbackMaxTokens:
+        config.fallbackMaxTokens !== undefined
+          ? config.fallbackMaxTokens
+          : existing.fallbackMaxTokens,
+      toolsEnabled:
+        config.toolsEnabled !== undefined
+          ? config.toolsEnabled
+          : existing.toolsEnabled,
     };
 
     await collection.updateOne(

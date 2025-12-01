@@ -7,8 +7,7 @@ import { getAuthUserId } from "@/lib/auth/get-user";
 import { aiConversationRepository } from "@/lib/db/repositories/ai-conversation-repository";
 import { aiLogRepository } from "@/lib/db/repositories/ai-log-repository";
 import { userRepository } from "@/lib/db/repositories/user-repository";
-import { getSettingsCollection } from "@/lib/db/collections";
-import { SETTINGS_KEYS, type TierModelConfig } from "@/lib/db/schemas/settings";
+import { getTierConfigFromDB } from "@/lib/db/tier-config";
 import type { AIMessage, AIConversation } from "@/lib/db/schemas/ai-conversation";
 
 /**
@@ -30,26 +29,8 @@ export type ActionResult<T = void> =
 /**
  * Get low tier model configuration
  */
-async function getLowTierConfig(): Promise<TierModelConfig> {
-  const collection = await getSettingsCollection();
-  const doc = await collection.findOne({ key: SETTINGS_KEYS.MODEL_TIER_LOW });
-  
-  if (!doc?.value) {
-    return {
-      primaryModel: "meta-llama/llama-3.1-8b-instruct",
-      fallbackModel: null,
-      temperature: 0.7,
-      maxTokens: 100,
-    };
-  }
-  
-  const value = doc.value as Partial<TierModelConfig>;
-  return {
-    primaryModel: value.primaryModel ?? "meta-llama/llama-3.1-8b-instruct",
-    fallbackModel: value.fallbackModel ?? null,
-    temperature: value.temperature ?? 0.7,
-    maxTokens: value.maxTokens ?? 100,
-  };
+async function getLowTierConfig() {
+  return getTierConfigFromDB("low");
 }
 
 /**

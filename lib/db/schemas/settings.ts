@@ -51,6 +51,8 @@ export interface TierModelConfig {
   fallbackModel: string | null;
   temperature: number;
   maxTokens: number;
+  fallbackMaxTokens: number;
+  toolsEnabled: boolean;
 }
 
 /**
@@ -70,6 +72,8 @@ export const DEFAULT_TIER_CONFIG: TierModelConfig = {
   fallbackModel: null,
   temperature: 0.7,
   maxTokens: 4096,
+  fallbackMaxTokens: 4096,
+  toolsEnabled: true,
 };
 
 /**

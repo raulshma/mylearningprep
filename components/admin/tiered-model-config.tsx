@@ -18,6 +18,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Toggle } from "@/components/ui/toggle";
+import { Slider } from "@/components/ui/slider";
+import {
   Search,
   Check,
   DollarSign,
@@ -33,6 +40,8 @@ import {
   BrainCircuit,
   Wrench,
   Globe,
+  SlidersHorizontal,
+  X,
 } from "lucide-react";
 import {
   getTieredModelConfig,
@@ -99,6 +108,14 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
   );
   const [isPending, startTransition] = useTransition();
   const [saved, setSaved] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [filters, setFilters] = useState({
+    vision: false,
+    reasoning: false,
+    tools: false,
+    web: false,
+    minContext: 0,
+  });
 
   const ActiveIcon = TIER_INFO[activeTier].icon;
 
@@ -131,13 +148,86 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
   };
 
   const filterModels = (modelList: OpenRouterModel[]) => {
-    if (!searchQuery) return modelList;
-    const query = searchQuery.toLowerCase();
-    return modelList.filter(
-      (m) =>
-        m.id.toLowerCase().includes(query) ||
-        m.name.toLowerCase().includes(query)
-    );
+    return modelList.filter((m) => {
+      // Text search
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        if (
+          !m.id.toLowerCase().includes(query) &&
+          !m.name.toLowerCase().includes(query)
+        ) {
+          return false;
+        }
+      }
+
+      // Vision filter
+      if (filters.vision) {
+        const modality = m.architecture?.modality?.toLowerCase() || "";
+        if (
+          !modality.includes("image") &&
+          !modality.includes("multimodal") &&
+          !modality.includes("vision")
+        ) {
+          return false;
+        }
+      }
+
+      // Reasoning filter
+      if (filters.reasoning) {
+        if (
+          !m.supported_parameters?.some(
+            (p) => p === "reasoning" || p === "include_reasoning"
+          )
+        ) {
+          return false;
+        }
+      }
+
+      // Tools filter
+      if (filters.tools) {
+        if (
+          !m.supported_parameters?.some(
+            (p) => p === "tools" || p === "tool_choice"
+          )
+        ) {
+          return false;
+        }
+      }
+
+      // Web search filter
+      if (filters.web) {
+        if (!m.supported_parameters?.includes("web_search_options")) {
+          return false;
+        }
+      }
+
+      // Min context length filter
+      if (filters.minContext > 0) {
+        if (m.context_length < filters.minContext * 1000) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  };
+
+  const activeFilterCount = [
+    filters.vision,
+    filters.reasoning,
+    filters.tools,
+    filters.web,
+    filters.minContext > 0,
+  ].filter(Boolean).length;
+
+  const clearFilters = () => {
+    setFilters({
+      vision: false,
+      reasoning: false,
+      tools: false,
+      web: false,
+      minContext: 0,
+    });
   };
 
   const findModel = (modelId: string): OpenRouterModel | undefined => {
@@ -155,7 +245,8 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
   ) => {
     const model = findModel(modelId);
     // Use max_completion_tokens if available, otherwise fall back to context_length
-    const maxTokens = model?.top_provider?.max_completion_tokens || model?.context_length;
+    const maxTokens =
+      model?.top_provider?.max_completion_tokens || model?.context_length;
 
     setConfig((prev) => ({
       ...prev,
@@ -164,6 +255,8 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
         [type === "primary" ? "primaryModel" : "fallbackModel"]: modelId,
         // Auto-populate maxTokens from model data when selecting primary model
         ...(type === "primary" && maxTokens ? { maxTokens } : {}),
+        // Auto-populate fallbackMaxTokens from model data when selecting fallback model
+        ...(type === "fallback" && maxTokens ? { fallbackMaxTokens: maxTokens } : {}),
         // Auto-populate temperature from model data when selecting primary model
         ...(type === "primary" && model?.default_parameters?.temperature
           ? { temperature: model.default_parameters.temperature }
@@ -175,8 +268,8 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
 
   const handleUpdateSettings = (
     tier: ModelTier,
-    field: "temperature" | "maxTokens",
-    value: number
+    field: "temperature" | "maxTokens" | "fallbackMaxTokens" | "toolsEnabled",
+    value: number | boolean
   ) => {
     setConfig((prev) => ({
       ...prev,
@@ -212,18 +305,24 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
           fallbackModel: null,
           temperature: 0.7,
           maxTokens: 4096,
+          fallbackMaxTokens: 4096,
+          toolsEnabled: true,
         },
         medium: {
           primaryModel: null,
           fallbackModel: null,
           temperature: 0.7,
           maxTokens: 4096,
+          fallbackMaxTokens: 4096,
+          toolsEnabled: true,
         },
         low: {
           primaryModel: null,
           fallbackModel: null,
           temperature: 0.7,
           maxTokens: 4096,
+          fallbackMaxTokens: 4096,
+          toolsEnabled: true,
         },
       });
       setSaved(true);
@@ -672,15 +771,135 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
             </TabsContent>
           </Tabs>
 
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search models..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 w-full h-12 rounded-xl bg-secondary/30 border-transparent focus:bg-background focus:border-primary/20 transition-all"
-            />
+          {/* Search & Filters */}
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search models..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 w-full h-12 rounded-xl bg-secondary/30 border-transparent focus:bg-background focus:border-primary/20 transition-all"
+                />
+              </div>
+              <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
+                <CollapsibleTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={`h-12 rounded-xl px-4 gap-2 ${
+                      activeFilterCount > 0
+                        ? "border-primary bg-primary/5"
+                        : "border-transparent bg-secondary/30"
+                    }`}
+                  >
+                    <SlidersHorizontal className="w-4 h-4" />
+                    <span className="hidden sm:inline">Filters</span>
+                    {activeFilterCount > 0 && (
+                      <Badge className="h-5 w-5 p-0 justify-center text-[10px]">
+                        {activeFilterCount}
+                      </Badge>
+                    )}
+                  </Button>
+                </CollapsibleTrigger>
+              </Collapsible>
+            </div>
+
+            <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
+              <CollapsibleContent>
+                <div className="p-4 bg-secondary/30 rounded-xl space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium">
+                      Filter by Capabilities
+                    </Label>
+                    {activeFilterCount > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={clearFilters}
+                        className="h-7 text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="w-3 h-3 mr-1" />
+                        Clear all
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <Toggle
+                      pressed={filters.vision}
+                      onPressedChange={(pressed) =>
+                        setFilters((f) => ({ ...f, vision: pressed }))
+                      }
+                      className="h-8 px-3 rounded-lg data-[state=on]:bg-blue-500/10 data-[state=on]:text-blue-600 data-[state=on]:border-blue-500/30"
+                      variant="outline"
+                    >
+                      <ImageIcon className="w-3.5 h-3.5 mr-1.5" />
+                      Vision
+                    </Toggle>
+                    <Toggle
+                      pressed={filters.reasoning}
+                      onPressedChange={(pressed) =>
+                        setFilters((f) => ({ ...f, reasoning: pressed }))
+                      }
+                      className="h-8 px-3 rounded-lg data-[state=on]:bg-purple-500/10 data-[state=on]:text-purple-600 data-[state=on]:border-purple-500/30"
+                      variant="outline"
+                    >
+                      <BrainCircuit className="w-3.5 h-3.5 mr-1.5" />
+                      Reasoning
+                    </Toggle>
+                    <Toggle
+                      pressed={filters.tools}
+                      onPressedChange={(pressed) =>
+                        setFilters((f) => ({ ...f, tools: pressed }))
+                      }
+                      className="h-8 px-3 rounded-lg data-[state=on]:bg-orange-500/10 data-[state=on]:text-orange-600 data-[state=on]:border-orange-500/30"
+                      variant="outline"
+                    >
+                      <Wrench className="w-3.5 h-3.5 mr-1.5" />
+                      Tools
+                    </Toggle>
+                    <Toggle
+                      pressed={filters.web}
+                      onPressedChange={(pressed) =>
+                        setFilters((f) => ({ ...f, web: pressed }))
+                      }
+                      className="h-8 px-3 rounded-lg data-[state=on]:bg-green-500/10 data-[state=on]:text-green-600 data-[state=on]:border-green-500/30"
+                      variant="outline"
+                    >
+                      <Globe className="w-3.5 h-3.5 mr-1.5" />
+                      Web Search
+                    </Toggle>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium">
+                        Min Context Length
+                      </Label>
+                      <span className="text-sm text-muted-foreground font-mono">
+                        {filters.minContext > 0
+                          ? `${filters.minContext}K+`
+                          : "Any"}
+                      </span>
+                    </div>
+                    <Slider
+                      value={[filters.minContext]}
+                      onValueChange={([value]) =>
+                        setFilters((f) => ({ ...f, minContext: value }))
+                      }
+                      max={200}
+                      step={8}
+                      className="w-full"
+                    />
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Any</span>
+                      <span>200K</span>
+                    </div>
+                  </div>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           </div>
 
           {/* Model List */}
@@ -761,49 +980,122 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
             </TabsContent>
           </Tabs>
 
-          {/* Temperature and Max Tokens */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-6 border-t border-border/50">
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">Temperature</Label>
-              <div className="relative">
-                <Input
-                  type="number"
-                  value={config[activeTier].temperature}
-                  onChange={(e) =>
-                    handleUpdateSettings(
-                      activeTier,
-                      "temperature",
-                      parseFloat(e.target.value) || 0
-                    )
-                  }
-                  step="0.1"
-                  min="0"
-                  max="2"
-                  className="font-mono h-11 rounded-xl bg-secondary/30 border-transparent focus:bg-background"
-                />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
-                  0.0 – 2.0
+          {/* Model Settings */}
+          <div className="space-y-6 pt-6 border-t border-border/50">
+            {/* Primary Model Settings */}
+            <div className="space-y-4">
+              <Label className="text-sm font-semibold text-foreground">
+                Primary Model Settings
+              </Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">
+                    Temperature
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      value={config[activeTier].temperature}
+                      onChange={(e) =>
+                        handleUpdateSettings(
+                          activeTier,
+                          "temperature",
+                          parseFloat(e.target.value) || 0
+                        )
+                      }
+                      step="0.1"
+                      min="0"
+                      max="2"
+                      className="font-mono h-10 rounded-xl bg-secondary/30 border-transparent focus:bg-background"
+                    />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
+                      0.0 – 2.0
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">
+                    Max Tokens
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      value={config[activeTier].maxTokens}
+                      onChange={(e) =>
+                        handleUpdateSettings(
+                          activeTier,
+                          "maxTokens",
+                          parseInt(e.target.value) || 0
+                        )
+                      }
+                      className="font-mono h-10 rounded-xl bg-secondary/30 border-transparent focus:bg-background"
+                    />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
+                      tokens
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-            <div className="space-y-3">
-              <Label className="text-sm font-medium">Max Tokens</Label>
-              <div className="relative">
-                <Input
-                  type="number"
-                  value={config[activeTier].maxTokens}
-                  onChange={(e) =>
-                    handleUpdateSettings(
-                      activeTier,
-                      "maxTokens",
-                      parseInt(e.target.value) || 0
-                    )
-                  }
-                  className="font-mono h-11 rounded-xl bg-secondary/30 border-transparent focus:bg-background"
-                />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
-                  tokens
+
+            {/* Fallback Model Settings */}
+            <div className="space-y-4">
+              <Label className="text-sm font-semibold text-foreground">
+                Fallback Model Settings
+              </Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">
+                    Fallback Max Tokens
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      value={config[activeTier].fallbackMaxTokens}
+                      onChange={(e) =>
+                        handleUpdateSettings(
+                          activeTier,
+                          "fallbackMaxTokens",
+                          parseInt(e.target.value) || 0
+                        )
+                      }
+                      className="font-mono h-10 rounded-xl bg-secondary/30 border-transparent focus:bg-background"
+                    />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
+                      tokens
+                    </div>
+                  </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Tools Configuration */}
+            <div className="space-y-4">
+              <Label className="text-sm font-semibold text-foreground">
+                Capabilities
+              </Label>
+              <div className="flex items-center justify-between p-4 rounded-xl bg-secondary/30">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                    <Wrench className="w-4 h-4 text-orange-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Tools</p>
+                    <p className="text-xs text-muted-foreground">
+                      Allow AI to use function calling tools
+                    </p>
+                  </div>
+                </div>
+                <Toggle
+                  pressed={config[activeTier].toolsEnabled}
+                  onPressedChange={(pressed) =>
+                    handleUpdateSettings(activeTier, "toolsEnabled", pressed)
+                  }
+                  className="h-9 px-4 data-[state=on]:bg-orange-500/10 data-[state=on]:text-orange-600"
+                  aria-label="Toggle tools"
+                >
+                  {config[activeTier].toolsEnabled ? "Enabled" : "Disabled"}
+                </Toggle>
               </div>
             </div>
           </div>
