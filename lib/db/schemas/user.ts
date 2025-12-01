@@ -14,6 +14,12 @@ export const UserInterviewsSchema = z.object({
   resetDate: z.date(),
 });
 
+export const UserChatMessagesSchema = z.object({
+  count: z.number().int().min(0).default(0),
+  limit: z.number().int().min(0).default(5),
+  resetDate: z.date(),
+});
+
 export const UserPreferencesSchema = z.object({
   theme: z.enum(['light', 'dark']).default('dark'),
   defaultAnalogy: z.enum(['professional', 'construction', 'simple']).default('professional'),
@@ -27,6 +33,7 @@ export const UserSchema = z.object({
   plan: UserPlanSchema.default('FREE'),
   iterations: UserIterationsSchema,
   interviews: UserInterviewsSchema.optional(),
+  chatMessages: UserChatMessagesSchema.optional(),
   preferences: UserPreferencesSchema,
   suspended: z.boolean().default(false),
   createdAt: z.date(),
@@ -44,6 +51,7 @@ export const CreateUserSchema = UserSchema.omit({
 export type UserPlan = z.infer<typeof UserPlanSchema>;
 export type UserIterations = z.infer<typeof UserIterationsSchema>;
 export type UserInterviews = z.infer<typeof UserInterviewsSchema>;
+export type UserChatMessages = z.infer<typeof UserChatMessagesSchema>;
 export type UserPreferences = z.infer<typeof UserPreferencesSchema>;
 export type User = z.infer<typeof UserSchema>;
 export type CreateUser = z.infer<typeof CreateUserSchema>;

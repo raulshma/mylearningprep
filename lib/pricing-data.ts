@@ -45,6 +45,10 @@ export const FREE_ITERATION_LIMIT = 20;
 export const PRO_ITERATION_LIMIT = 100;
 export const MAX_ITERATION_LIMIT = 250;
 
+export const FREE_CHAT_MESSAGE_LIMIT = 5;
+export const PRO_CHAT_MESSAGE_LIMIT = 100;
+export const MAX_CHAT_MESSAGE_LIMIT = 300;
+
 export const PRICING_TIERS: PricingTier[] = [
   {
     id: 'free',

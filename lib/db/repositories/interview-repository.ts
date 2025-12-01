@@ -190,7 +190,7 @@ export const interviewRepository: InterviewRepository = {
     await collection.updateOne(
       { _id: id },
       {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         $push: pushUpdate as any,
         $set: { updatedAt: now },
       }

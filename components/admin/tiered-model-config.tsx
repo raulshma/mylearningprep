@@ -50,7 +50,13 @@ interface TieredModelConfigProps {
 
 const TIER_INFO: Record<
   ModelTier,
-  { label: string; icon: typeof Zap; description: string; color: string; bgColor: string }
+  {
+    label: string;
+    icon: typeof Zap;
+    description: string;
+    color: string;
+    bgColor: string;
+  }
 > = {
   high: {
     label: "High Capability",
@@ -154,7 +160,9 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
         // Auto-populate maxTokens from model data when selecting primary model
         ...(type === "primary" && maxTokens ? { maxTokens } : {}),
         // Auto-populate temperature from model data when selecting primary model
-        ...(type === "primary" && model?.default_parameters?.temperature ? { temperature: model.default_parameters.temperature } : {}),
+        ...(type === "primary" && model?.default_parameters?.temperature
+          ? { temperature: model.default_parameters.temperature }
+          : {}),
       },
     }));
     setSaved(false);
@@ -235,10 +243,11 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
   }) => (
     <div
       onClick={onSelect}
-      className={`p-4 rounded-2xl cursor-pointer transition-all duration-200 border ${isSelected
-        ? "border-primary bg-primary/5 shadow-md"
-        : "border-border/50 bg-card hover:border-border hover:shadow-sm"
-        }`}
+      className={`p-4 rounded-2xl cursor-pointer transition-all duration-200 border ${
+        isSelected
+          ? "border-primary bg-primary/5 shadow-md"
+          : "border-border/50 bg-card hover:border-border hover:shadow-sm"
+      }`}
     >
       <div className="flex items-start justify-between mb-2">
         <div className="flex-1 min-w-0">
@@ -248,7 +257,7 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
             </p>
             {isSelected && (
               <div className="bg-primary/10 rounded-full p-0.5">
-                <Check className="w-3 h-3 text-primary flex-shrink-0" />
+                <Check className="w-3 h-3 text-primary shrink-0" />
               </div>
             )}
           </div>
@@ -259,22 +268,39 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
       </div>
 
       <div className="flex flex-wrap gap-1.5 mt-3">
-        <Badge variant="secondary" className="text-[10px] h-5 px-1.5 font-normal bg-secondary/50">
+        <Badge
+          variant="secondary"
+          className="text-[10px] h-5 px-1.5 font-normal bg-secondary/50"
+        >
           <Layers className="w-3 h-3 mr-1 opacity-70" />
           {(model.context_length / 1000).toFixed(0)}K
         </Badge>
-        <Badge variant="secondary" className="text-[10px] h-5 px-1.5 font-normal bg-secondary/50">
+        <Badge
+          variant="secondary"
+          className="text-[10px] h-5 px-1.5 font-normal bg-secondary/50"
+        >
           <DollarSign className="w-3 h-3 mr-1 opacity-70" />
           {formatPrice(model.pricing.prompt)}
         </Badge>
         {model.top_provider?.max_completion_tokens && (
-          <Badge variant="secondary" className="text-[10px] h-5 px-1.5 font-normal bg-secondary/50" title="Max Output Tokens">
+          <Badge
+            variant="secondary"
+            className="text-[10px] h-5 px-1.5 font-normal bg-secondary/50"
+            title="Max Output Tokens"
+          >
             <Maximize className="w-3 h-3 mr-1 opacity-70" />
-            {((model.top_provider?.max_completion_tokens || 0) / 1000).toFixed(0)}K
+            {((model.top_provider?.max_completion_tokens || 0) / 1000).toFixed(
+              0
+            )}
+            K
           </Badge>
         )}
         {model.default_parameters?.temperature !== undefined && (
-          <Badge variant="secondary" className="text-[10px] h-5 px-1.5 font-normal bg-secondary/50" title="Default Temperature">
+          <Badge
+            variant="secondary"
+            className="text-[10px] h-5 px-1.5 font-normal bg-secondary/50"
+            title="Default Temperature"
+          >
             <Thermometer className="w-3 h-3 mr-1 opacity-70" />
             {model.default_parameters.temperature}
           </Badge>
@@ -287,7 +313,10 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
     const info = TIER_INFO[tier];
     const Icon = info.icon;
     return (
-      <Badge variant="outline" className={`${info.color} ${info.bgColor} border-transparent`}>
+      <Badge
+        variant="outline"
+        className={`${info.color} ${info.bgColor} border-transparent`}
+      >
         <Icon className="w-3 h-3 mr-1" />
         {info.label}
       </Badge>
@@ -298,11 +327,18 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
     const tierConfig = config[tier];
     const isConfigured = !!tierConfig.primaryModel;
     return (
-      <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${isConfigured
-        ? "bg-green-500/10 text-green-600 dark:text-green-400"
-        : "bg-red-500/10 text-red-600 dark:text-red-400"
-        }`}>
-        <div className={`w-1.5 h-1.5 rounded-full ${isConfigured ? "bg-green-500" : "bg-red-500"}`} />
+      <div
+        className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${
+          isConfigured
+            ? "bg-green-500/10 text-green-600 dark:text-green-400"
+            : "bg-red-500/10 text-red-600 dark:text-red-400"
+        }`}
+      >
+        <div
+          className={`w-1.5 h-1.5 rounded-full ${
+            isConfigured ? "bg-green-500" : "bg-red-500"
+          }`}
+        />
         {isConfigured ? "Configured" : "Not Set"}
       </div>
     );
@@ -321,7 +357,10 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
           {/* Tier Cards Skeleton */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="p-5 rounded-3xl border-2 border-transparent bg-secondary/50 h-48 flex flex-col justify-between">
+              <div
+                key={i}
+                className="p-5 rounded-3xl border-2 border-transparent bg-secondary/50 h-48 flex flex-col justify-between"
+              >
                 <div className="flex justify-between items-start">
                   <Skeleton className="h-10 w-10 rounded-2xl" />
                   <Skeleton className="h-6 w-20 rounded-full" />
@@ -377,9 +416,15 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
           <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
             <AlertTriangle className="w-6 h-6 text-red-500" />
           </div>
-          <p className="text-foreground font-medium mb-2">Failed to load models</p>
+          <p className="text-foreground font-medium mb-2">
+            Failed to load models
+          </p>
           <p className="text-muted-foreground text-sm mb-6">{error}</p>
-          <Button onClick={fetchModels} variant="outline" className="rounded-full">
+          <Button
+            onClick={fetchModels}
+            variant="outline"
+            className="rounded-full"
+          >
             Retry Connection
           </Button>
         </CardContent>
@@ -390,7 +435,9 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
   return (
     <Card className="border-0 shadow-xl shadow-black/5 dark:shadow-black/20 bg-card/80 backdrop-blur-xl rounded-3xl overflow-hidden">
       <CardHeader className="p-6 md:p-8 border-b border-border/50">
-        <CardTitle className="text-xl font-bold">Tiered Model Configuration</CardTitle>
+        <CardTitle className="text-xl font-bold">
+          Tiered Model Configuration
+        </CardTitle>
         <CardDescription className="text-base mt-2">
           Configure different models for different task complexities. Each tier
           requires a primary model.
@@ -399,10 +446,14 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
       <CardContent className="space-y-8 p-6 md:p-8">
         {/* Warning for unconfigured tiers */}
         {missingTiers.length > 0 && (
-          <Alert variant="destructive" className="border-0 bg-red-500/10 text-red-600 dark:text-red-400 rounded-2xl">
+          <Alert
+            variant="destructive"
+            className="border-0 bg-red-500/10 text-red-600 dark:text-red-400 rounded-2xl"
+          >
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription className="ml-2 font-medium">
-              Missing configuration for: {missingTiers.map(t => TIER_INFO[t].label).join(", ")}.
+              Missing configuration for:{" "}
+              {missingTiers.map((t) => TIER_INFO[t].label).join(", ")}.
             </AlertDescription>
           </Alert>
         )}
@@ -418,14 +469,17 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
             return (
               <div
                 key={tier}
-                className={`p-5 rounded-3xl cursor-pointer transition-all duration-300 border-2 ${isActive
-                  ? "border-primary bg-primary/5 shadow-lg shadow-primary/5 scale-[1.02]"
-                  : "border-transparent bg-secondary/50 hover:bg-secondary hover:scale-[1.01]"
-                  }`}
+                className={`p-5 rounded-3xl cursor-pointer transition-all duration-300 border-2 ${
+                  isActive
+                    ? "border-primary bg-primary/5 shadow-lg shadow-primary/5 scale-[1.02]"
+                    : "border-transparent bg-secondary/50 hover:bg-secondary hover:scale-[1.01]"
+                }`}
                 onClick={() => setActiveTier(tier)}
               >
                 <div className="flex items-center justify-between mb-4">
-                  <div className={`w-10 h-10 rounded-2xl ${info.bgColor} flex items-center justify-center`}>
+                  <div
+                    className={`w-10 h-10 rounded-2xl ${info.bgColor} flex items-center justify-center`}
+                  >
                     <Icon className={`w-5 h-5 ${info.color}`} />
                   </div>
                   <TierStatus tier={tier} />
@@ -439,13 +493,19 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">Primary</span>
-                    <span className="font-mono font-medium truncate max-w-[100px]" title={tierConfig.primaryModel || ""}>
+                    <span
+                      className="font-mono font-medium truncate max-w-[100px]"
+                      title={tierConfig.primaryModel || ""}
+                    >
                       {tierConfig.primaryModel || "—"}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">Fallback</span>
-                    <span className="font-mono text-muted-foreground/70 truncate max-w-[100px]" title={tierConfig.fallbackModel || ""}>
+                    <span
+                      className="font-mono text-muted-foreground/70 truncate max-w-[100px]"
+                      title={tierConfig.fallbackModel || ""}
+                    >
                       {tierConfig.fallbackModel || "—"}
                     </span>
                   </div>
@@ -457,7 +517,7 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
 
         {/* Task Mappings */}
         <div className="p-6 bg-secondary/30 rounded-3xl">
-          <Label className="text-sm font-semibold mb-4 block flex items-center gap-2">
+          <Label className="text-sm font-semibold mb-4 flex items-center gap-2">
             <Layers className="w-4 h-4" />
             Task Routing
           </Label>
@@ -480,12 +540,20 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
         <div className="space-y-6 p-6 md:p-8 border border-border/50 rounded-3xl bg-background/50 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-2xl ${TIER_INFO[activeTier].bgColor} flex items-center justify-center`}>
-                <ActiveIcon className={`w-5 h-5 ${TIER_INFO[activeTier].color}`} />
+              <div
+                className={`w-10 h-10 rounded-2xl ${TIER_INFO[activeTier].bgColor} flex items-center justify-center`}
+              >
+                <ActiveIcon
+                  className={`w-5 h-5 ${TIER_INFO[activeTier].color}`}
+                />
               </div>
               <div>
-                <h3 className="font-bold text-lg">{TIER_INFO[activeTier].label} Settings</h3>
-                <p className="text-sm text-muted-foreground">{TIER_INFO[activeTier].description}</p>
+                <h3 className="font-bold text-lg">
+                  {TIER_INFO[activeTier].label} Settings
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {TIER_INFO[activeTier].description}
+                </p>
               </div>
             </div>
           </div>
@@ -521,7 +589,7 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
             <TabsContent value="primary" className="space-y-4 mt-0">
               <div className="flex items-center gap-2 text-sm text-muted-foreground bg-blue-500/5 p-3 rounded-xl border border-blue-500/10">
                 <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                Required. The main model used for this tier's tasks.
+                Required. The main model used for this tier&apos;s tasks.
               </div>
               {config[activeTier].primaryModel && (
                 <div className="p-3 bg-secondary/50 rounded-xl font-mono text-sm flex items-center justify-between">
@@ -565,7 +633,13 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
               >
                 <div className="flex items-center gap-2">
                   <DollarSign className="w-4 h-4" />
-                  Paid Models <Badge variant="secondary" className="ml-1 text-[10px] h-5 px-1.5">{models?.paid.length || 0}</Badge>
+                  Paid Models{" "}
+                  <Badge
+                    variant="secondary"
+                    className="ml-1 text-[10px] h-5 px-1.5"
+                  >
+                    {models?.paid.length || 0}
+                  </Badge>
                 </div>
               </TabsTrigger>
               <TabsTrigger
@@ -574,7 +648,13 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
               >
                 <div className="flex items-center gap-2">
                   <Zap className="w-4 h-4" />
-                  Free Models <Badge variant="secondary" className="ml-1 text-[10px] h-5 px-1.5">{models?.free.length || 0}</Badge>
+                  Free Models{" "}
+                  <Badge
+                    variant="secondary"
+                    className="ml-1 text-[10px] h-5 px-1.5"
+                  >
+                    {models?.free.length || 0}
+                  </Badge>
                 </div>
               </TabsTrigger>
             </TabsList>
@@ -643,7 +723,7 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
                   className="font-mono h-11 rounded-xl bg-secondary/30 border-transparent focus:bg-background"
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
-                  0.0 - 2.0
+                  0.0 – 2.0
                 </div>
               </div>
             </div>

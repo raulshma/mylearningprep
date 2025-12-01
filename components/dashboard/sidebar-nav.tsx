@@ -10,6 +10,7 @@ import {
   ChevronRight,
   BarChart3,
   Activity,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ViewTransitionLink } from "@/components/transitions/view-transition-link";
@@ -40,6 +41,13 @@ const navItems = [
     description: "Get more",
   },
 ];
+
+const aiChatItem = {
+  href: "/ai-chat",
+  label: "AI Chat",
+  icon: MessageSquare,
+  description: "Chat assistant",
+};
 
 const analyticsItem = {
   href: "/settings/analytics",
@@ -77,6 +85,10 @@ export function SidebarNav({
   const pathname = usePathname();
 
   let items = [...navItems];
+  // AI Chat is available for PRO+ users
+  if (isProPlan || isMaxPlan) {
+    items = [...items, aiChatItem];
+  }
   // Analytics is available for PRO+ users
   if (isProPlan || isMaxPlan) {
     items = [...items, analyticsItem];

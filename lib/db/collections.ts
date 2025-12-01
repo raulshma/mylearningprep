@@ -8,6 +8,7 @@ export const COLLECTIONS = {
   AI_LOGS: 'ai_logs',
   SETTINGS: 'settings',
   TOPIC_CHATS: 'topic_chats',
+  AI_CONVERSATIONS: 'ai_conversations',
   LEARNING_PATHS: 'learning_paths',
   FEEDBACK_ENTRIES: 'feedback_entries',
   WEAKNESS_ANALYSES: 'weakness_analyses',
@@ -145,6 +146,41 @@ export interface SettingsDocument extends Document {
 export async function getSettingsCollection(): Promise<Collection<SettingsDocument>> {
   const db = await getDb();
   return db.collection<SettingsDocument>(COLLECTIONS.SETTINGS);
+}
+
+export interface AIConversationDocument extends Document {
+  _id: string;
+  userId: string;
+  title: string;
+  messages: Array<{
+    id: string;
+    role: 'user' | 'assistant';
+    content: string;
+    toolCalls?: Array<{
+      id: string;
+      name: string;
+      input?: unknown;
+      output?: unknown;
+      state: 'input-streaming' | 'input-available' | 'output-available' | 'output-error';
+      errorText?: string;
+    }>;
+    createdAt: Date;
+  }>;
+  context?: {
+    interviewId?: string;
+    learningPathId?: string;
+    toolsUsed?: string[];
+  };
+  isPinned: boolean;
+  isArchived: boolean;
+  lastMessageAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export async function getAIConversationsCollection(): Promise<Collection<AIConversationDocument>> {
+  const db = await getDb();
+  return db.collection<AIConversationDocument>(COLLECTIONS.AI_CONVERSATIONS);
 }
 
 export interface TopicChatDocument extends Document {

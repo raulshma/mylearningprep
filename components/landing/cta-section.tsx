@@ -18,8 +18,8 @@ export function CTASection() {
         >
           {/* Abstract background shapes */}
           <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-            <div className="absolute top-[-50%] left-[-20%] w-[80%] h-[80%] rounded-full bg-gradient-to-br from-primary/30 to-transparent blur-[100px] animate-pulse" />
-            <div className="absolute bottom-[-50%] right-[-20%] w-[80%] h-[80%] rounded-full bg-gradient-to-tl from-secondary/30 to-transparent blur-[100px] animate-pulse delay-1000" />
+            <div className="absolute top-[-50%] left-[-20%] w-[80%] h-[80%] rounded-full bg-linear-to-br from-primary/30 to-transparent blur-[100px] animate-pulse" />
+            <div className="absolute bottom-[-50%] right-[-20%] w-[80%] h-[80%] rounded-full bg-linear-to-tl from-secondary/30 to-transparent blur-[100px] animate-pulse delay-1000" />
             <div className="absolute inset-0 bg-[url('/noise.png')] opacity-10 mix-blend-overlay" />
           </div>
 
@@ -32,17 +32,19 @@ export function CTASection() {
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-background/10 backdrop-blur-md border border-background/10 mb-8"
             >
               <Sparkles className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium text-background/90">Join the top 1% of engineers</span>
+              <span className="text-sm font-medium text-background/90">
+                Join the top 1% of engineers
+              </span>
             </motion.div>
 
             <motion.h2
-              className="text-5xl md:text-7xl md:leading-[1.1] font-bold tracking-tight mb-8 bg-clip-text text-transparent bg-gradient-to-b from-background to-background/60"
+              className="text-5xl md:text-7xl md:leading-[1.1] font-bold tracking-tight mb-8 bg-clip-text text-transparent bg-linear-to-b from-background to-background/60"
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: 0.3 }}
             >
-              Ready to ace your next interview?
+              Ready to ace your next interview
             </motion.h2>
 
             <motion.p
@@ -52,7 +54,7 @@ export function CTASection() {
               viewport={{ once: true }}
               transition={{ delay: 0.4 }}
             >
-              Join thousands of engineers who've transformed their career
+              Join thousands of engineers who&apos;ve transformed their career
               trajectory with our comprehensive prep platform.
             </motion.p>
 

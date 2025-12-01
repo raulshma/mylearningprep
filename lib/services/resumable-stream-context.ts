@@ -22,7 +22,7 @@ interface StreamContextCache {
 }
 
 declare global {
-  // eslint-disable-next-line no-var
+   
   var _resumableStreamContext: StreamContextCache | undefined;
 }
 

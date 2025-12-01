@@ -10,7 +10,7 @@ export function usePageHeader(config: UsePageHeaderConfig) {
 
   useEffect(() => {
     setHeader(config);
-  }, [config.badge, config.title, config.description, setHeader]);
+  }, [config, setHeader]);
 }
 
 export function useHidePageHeader() {

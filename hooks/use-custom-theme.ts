@@ -1,33 +1,57 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback, useSyncExternalStore } from "react";
 
 const STORAGE_KEY = "syntaxstate-custom-theme";
 
-export function useCustomTheme() {
-  const [customCSS, setCustomCSSState] = useState<string | null>(null);
-  const [isLoaded, setIsLoaded] = useState(false);
+// External store for localStorage theme
+function subscribe(callback: () => void) {
+  const handleStorage = (e: StorageEvent) => {
+    if (e.key === STORAGE_KEY) {
+      callback();
+    }
+  };
+  const handleCustomUpdate = () => callback();
 
-  // Load from localStorage on mount
-  useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    setCustomCSSState(stored);
-    setIsLoaded(true);
-  }, []);
+  window.addEventListener("storage", handleStorage);
+  window.addEventListener("custom-theme-update", handleCustomUpdate);
+
+  return () => {
+    window.removeEventListener("storage", handleStorage);
+    window.removeEventListener("custom-theme-update", handleCustomUpdate);
+  };
+}
+
+function getSnapshot() {
+  return localStorage.getItem(STORAGE_KEY);
+}
+
+function getServerSnapshot() {
+  return null;
+}
+
+export function useCustomTheme() {
+  const customCSS = useSyncExternalStore(
+    subscribe,
+    getSnapshot,
+    getServerSnapshot
+  );
+  // isLoaded is always true on client since useSyncExternalStore handles hydration
+  const isLoaded = typeof window !== "undefined";
 
   const setCustomCSS = useCallback((css: string | null) => {
     if (css === null || css.trim() === "") {
       localStorage.removeItem(STORAGE_KEY);
-      setCustomCSSState(null);
     } else {
       localStorage.setItem(STORAGE_KEY, css);
-      setCustomCSSState(css);
     }
+    // Trigger re-render via custom event (useSyncExternalStore will pick up the change)
+    window.dispatchEvent(new CustomEvent("custom-theme-update"));
   }, []);
 
   const clearCustomTheme = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
-    setCustomCSSState(null);
+    window.dispatchEvent(new CustomEvent("custom-theme-update"));
   }, []);
 
   return {

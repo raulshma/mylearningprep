@@ -1,18 +1,27 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { ChevronRight, CheckCircle2, BookOpen, Lightbulb, Code } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import type { ConceptExplanation } from '@/lib/db/schemas/learning-path';
+import { useState } from "react";
+import { motion } from "framer-motion";
+import {
+  ChevronRight,
+  CheckCircle2,
+  BookOpen,
+  Lightbulb,
+  Code,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import type { ConceptExplanation } from "@/lib/db/schemas/learning-path";
 
 interface ConceptExplanationViewProps {
   content: ConceptExplanation;
   onComplete: (answer: string, isCorrect?: boolean) => void;
 }
 
-export function ConceptExplanationView({ content, onComplete }: ConceptExplanationViewProps) {
+export function ConceptExplanationView({
+  content,
+  onComplete,
+}: ConceptExplanationViewProps) {
   const [checkedPoints, setCheckedPoints] = useState<Set<number>>(new Set());
 
   const handleCheckPoint = (index: number) => {
@@ -29,18 +38,20 @@ export function ConceptExplanationView({ content, onComplete }: ConceptExplanati
   const progress = (checkedPoints.size / content.keyPoints.length) * 100;
 
   const handleComplete = () => {
-    onComplete('read', true);
+    onComplete("read", true);
   };
 
   return (
     <div className="space-y-8">
       {/* Main Content Card */}
-      <div className="rounded-2xl border border-border/40 bg-gradient-to-br from-secondary/30 to-transparent overflow-hidden">
+      <div className="rounded-2xl border border-border/40 bg-linear-to-br from-secondary/30 to-transparent overflow-hidden">
         <div className="px-6 py-4 border-b border-border/30 flex items-center gap-3">
           <div className="p-2 rounded-xl bg-primary/10">
             <BookOpen className="w-4 h-4 text-primary" />
           </div>
-          <span className="text-sm font-medium text-muted-foreground">Concept Overview</span>
+          <span className="text-sm font-medium text-muted-foreground">
+            Concept Overview
+          </span>
         </div>
         <div className="p-6">
           <p className="text-lg text-foreground leading-relaxed whitespace-pre-wrap">
@@ -50,13 +61,15 @@ export function ConceptExplanationView({ content, onComplete }: ConceptExplanati
       </div>
 
       {/* Key Points Card */}
-      <div className="rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 to-transparent overflow-hidden">
+      <div className="rounded-2xl border border-primary/20 bg-linear-to-br from-primary/5 to-transparent overflow-hidden">
         <div className="px-6 py-4 border-b border-primary/10 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-primary/10">
               <Lightbulb className="w-4 h-4 text-primary" />
             </div>
-            <span className="text-sm font-medium text-foreground">Key Points</span>
+            <span className="text-sm font-medium text-foreground">
+              Key Points
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-24 h-1.5 rounded-full bg-secondary overflow-hidden">
@@ -81,8 +94,8 @@ export function ConceptExplanationView({ content, onComplete }: ConceptExplanati
               transition={{ delay: index * 0.1 }}
               className={`flex items-start gap-4 p-4 rounded-xl transition-all duration-300 ${
                 checkedPoints.has(index)
-                  ? 'bg-primary/5 border border-primary/20'
-                  : 'bg-secondary/20 border border-transparent hover:bg-secondary/40'
+                  ? "bg-primary/5 border border-primary/20"
+                  : "bg-secondary/20 border border-transparent hover:bg-secondary/40"
               }`}
             >
               <Checkbox
@@ -95,8 +108,8 @@ export function ConceptExplanationView({ content, onComplete }: ConceptExplanati
                 htmlFor={`point-${index}`}
                 className={`flex-1 text-sm cursor-pointer transition-all duration-300 leading-relaxed ${
                   checkedPoints.has(index)
-                    ? 'text-muted-foreground'
-                    : 'text-foreground'
+                    ? "text-muted-foreground"
+                    : "text-foreground"
                 }`}
               >
                 {point}
@@ -122,7 +135,7 @@ export function ConceptExplanationView({ content, onComplete }: ConceptExplanati
             <div className="flex items-center gap-3 p-4 rounded-xl bg-green-500/10 border border-green-500/20">
               <CheckCircle2 className="w-5 h-5 text-green-600" />
               <span className="text-sm font-medium text-green-600">
-                Great job! You've reviewed all key points.
+                Great job! You&apos;ve reviewed all key points.
               </span>
             </div>
           </motion.div>
@@ -136,7 +149,9 @@ export function ConceptExplanationView({ content, onComplete }: ConceptExplanati
             <div className="p-2 rounded-xl bg-secondary/50">
               <Code className="w-4 h-4 text-muted-foreground" />
             </div>
-            <span className="text-sm font-medium text-foreground">Examples</span>
+            <span className="text-sm font-medium text-foreground">
+              Examples
+            </span>
           </div>
           <div className="space-y-3">
             {content.examples.map((example, index) => (

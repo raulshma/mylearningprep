@@ -154,7 +154,7 @@ export function DashboardContent({
                   </p>
                   {viewMode === "grid" && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      Start a new preparation
+                      Start new preparation
                     </p>
                   )}
                 </div>
@@ -194,7 +194,7 @@ export function DashboardContent({
           </div>
           <h3 className="text-lg font-medium mb-2">No interviews found</h3>
           <p className="text-muted-foreground mb-6 max-w-sm mx-auto">
-            We couldn't find any interviews matching your search criteria.
+            We couldn&apos;t find any interviews matching your search criteria.
           </p>
           <Button
             variant="outline"

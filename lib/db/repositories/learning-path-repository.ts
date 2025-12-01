@@ -113,7 +113,7 @@ export const learningPathRepository: LearningPathRepository = {
     await collection.updateOne(
       { _id: pathId },
       {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         $push: { topics: topic } as any,
         $set: { updatedAt: now },
       }
@@ -172,7 +172,7 @@ export const learningPathRepository: LearningPathRepository = {
     await collection.updateOne(
       { _id: pathId },
       {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         $push: { timeline: entry } as any,
         $set: { updatedAt: now },
       }

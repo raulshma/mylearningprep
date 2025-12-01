@@ -42,6 +42,7 @@ import { ConceptExplanationView } from "./activity-views/concept-explanation";
 import { ReflectionForm } from "./reflection-form";
 import { TimelineView } from "./timeline-view";
 import { InsightsDashboard } from "./insights-dashboard";
+import { AIAssistantPanel } from "@/components/ai-tools/ai-assistant";
 
 interface LearningWorkspaceProps {
   learningPath: LearningPath;
@@ -74,7 +75,9 @@ export function LearningWorkspace({
   const [userAnswer, setUserAnswer] = useState<string>("");
   const [startTime, setStartTime] = useState(Date.now());
   const [insights, setInsights] = useState<LearningInsights | null>(null);
-  const [activeView, setActiveView] = useState<"activity" | "timeline" | "insights">("activity");
+  const [activeView, setActiveView] = useState<
+    "activity" | "timeline" | "insights"
+  >("activity");
 
   const currentTopic = learningPath.topics.find(
     (t) => t.id === learningPath.currentTopicId
@@ -229,12 +232,16 @@ export function LearningWorkspace({
                   <div className="hidden sm:flex items-center gap-4 px-4 py-2 rounded-xl bg-secondary/30">
                     <div className="flex items-center gap-2">
                       <Zap className="w-4 h-4 text-amber-500" />
-                      <span className="text-sm font-medium">{Math.round(learningPath.overallElo)}</span>
+                      <span className="text-sm font-medium">
+                        {Math.round(learningPath.overallElo)}
+                      </span>
                     </div>
                     <div className="h-4 w-px bg-border/50" />
                     <div className="flex items-center gap-2">
                       <Target className="w-4 h-4 text-primary" />
-                      <span className="text-sm font-medium">Lvl {learningPath.currentDifficulty}</span>
+                      <span className="text-sm font-medium">
+                        Lvl {learningPath.currentDifficulty}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -268,7 +275,11 @@ export function LearningWorkspace({
                     <motion.div
                       layoutId="activeTab"
                       className="absolute inset-0 bg-background rounded-xl shadow-sm border border-border/50"
-                      transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
+                      transition={{
+                        type: "spring",
+                        bounce: 0.15,
+                        duration: 0.5,
+                      }}
                     />
                   )}
                   <tab.icon className="w-4 h-4 relative z-10" />
@@ -313,7 +324,10 @@ export function LearningWorkspace({
                             <span className="text-muted-foreground capitalize">
                               {currentTopic.skillCluster.replace("-", " ")}
                             </span>
-                            <Badge variant="secondary" className="rounded-full text-xs">
+                            <Badge
+                              variant="secondary"
+                              className="rounded-full text-xs"
+                            >
                               Lvl {currentTopic.difficulty}
                             </Badge>
                           </div>
@@ -338,11 +352,13 @@ export function LearningWorkspace({
                             }`}
                           >
                             <div className="flex items-center justify-between">
-                              <span className={`text-sm font-medium line-clamp-1 ${
-                                topic.id === learningPath.currentTopicId
-                                  ? "text-primary"
-                                  : "text-foreground"
-                              }`}>
+                              <span
+                                className={`text-sm font-medium line-clamp-1 ${
+                                  topic.id === learningPath.currentTopicId
+                                    ? "text-primary"
+                                    : "text-foreground"
+                                }`}
+                              >
                                 {topic.title}
                               </span>
                               {topic.id === learningPath.currentTopicId && (
@@ -376,8 +392,16 @@ export function LearningWorkspace({
                                 <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
                                   <motion.div
                                     initial={{ width: 0 }}
-                                    animate={{ width: `${Math.min((score / 2000) * 100, 100)}%` }}
-                                    transition={{ duration: 1, ease: "easeOut" }}
+                                    animate={{
+                                      width: `${Math.min(
+                                        (score / 2000) * 100,
+                                        100
+                                      )}%`,
+                                    }}
+                                    transition={{
+                                      duration: 1,
+                                      ease: "easeOut",
+                                    }}
                                     className="h-full rounded-full bg-gradient-to-r from-primary to-primary/60"
                                   />
                                 </div>
@@ -458,10 +482,12 @@ export function LearningWorkspace({
           </AnimatePresence>
         </div>
       </main>
+
+      {/* AI Assistant Panel */}
+      <AIAssistantPanel learningPathId={learningPath._id} position="right" />
     </div>
   );
 }
-
 
 // Apple-style Activity Card Component
 function ActivityCard({
@@ -625,7 +651,9 @@ function ActivityLoadingSkeleton() {
       <div className="px-8 py-6 border-t border-border/30 flex justify-center">
         <div className="flex items-center gap-3 text-muted-foreground">
           <Loader2 className="w-5 h-5 animate-spin" />
-          <span className="text-sm font-medium">Generating your activity...</span>
+          <span className="text-sm font-medium">
+            Generating your activity...
+          </span>
         </div>
       </div>
     </motion.div>
@@ -687,7 +715,9 @@ function StreamingActivityCard({
     typeof c === "object" && c !== null && "question" in c;
   const hasOptions = (c: unknown): c is { options?: string[] } =>
     typeof c === "object" && c !== null && "options" in c;
-  const hasProblemDescription = (c: unknown): c is { problemDescription?: string } =>
+  const hasProblemDescription = (
+    c: unknown
+  ): c is { problemDescription?: string } =>
     typeof c === "object" && c !== null && "problemDescription" in c;
   const hasContent = (c: unknown): c is { content?: string } =>
     typeof c === "object" && c !== null && "content" in c;
@@ -734,26 +764,30 @@ function StreamingActivityCard({
           </motion.p>
         )}
 
-        {hasOptions(content) && content.options && content.options.length > 0 && (
-          <div className="space-y-3 mt-6">
-            {content.options.map((option, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="p-5 rounded-2xl border border-border/40 bg-secondary/20 text-muted-foreground"
-              >
-                <div className="flex items-center gap-4">
-                  <span className="w-8 h-8 rounded-xl bg-secondary/50 flex items-center justify-center text-sm font-medium">
-                    {String.fromCharCode(65 + index)}
-                  </span>
-                  <span>{option || <span className="animate-pulse">...</span>}</span>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        )}
+        {hasOptions(content) &&
+          content.options &&
+          content.options.length > 0 && (
+            <div className="space-y-3 mt-6">
+              {content.options.map((option, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className="p-5 rounded-2xl border border-border/40 bg-secondary/20 text-muted-foreground"
+                >
+                  <div className="flex items-center gap-4">
+                    <span className="w-8 h-8 rounded-xl bg-secondary/50 flex items-center justify-center text-sm font-medium">
+                      {String.fromCharCode(65 + index)}
+                    </span>
+                    <span>
+                      {option || <span className="animate-pulse">...</span>}
+                    </span>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
 
         {hasProblemDescription(content) && content.problemDescription && (
           <motion.p

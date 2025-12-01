@@ -1,7 +1,8 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import * as React from "react";
+import { useState, useRef } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -9,11 +10,11 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { 
-  PartyPopper, 
-  Check, 
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import {
+  PartyPopper,
+  Check,
   Sparkles,
   BarChart3,
   Key,
@@ -22,46 +23,80 @@ import {
   Palette,
   Wand2,
   Crown,
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import Link from 'next/link';
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 
 interface CheckoutSuccessDialogProps {
   plan: string;
 }
 
 const PRO_FEATURES = [
-  { icon: Wand2, label: 'All Analogy Styles', description: 'Professional, construction & simple' },
-  { icon: FileDown, label: 'PDF Export', description: 'Download your prep materials' },
-  { icon: Palette, label: 'Custom Theme', description: 'Personalize your workspace' },
-  { icon: Sparkles, label: 'Advanced AI', description: 'Higher-quality generation' },
+  {
+    icon: Wand2,
+    label: "All Analogy Styles",
+    description: "Professional, construction & simple",
+  },
+  {
+    icon: FileDown,
+    label: "PDF Export",
+    description: "Download your prep materials",
+  },
+  {
+    icon: Palette,
+    label: "Custom Theme",
+    description: "Personalize your workspace",
+  },
+  {
+    icon: Sparkles,
+    label: "Advanced AI",
+    description: "Higher-quality generation",
+  },
 ];
 
 const MAX_FEATURES = [
-  { icon: BarChart3, label: 'Analytics & Insights', description: 'Track your progress', href: '/settings/analytics' },
-  { icon: Key, label: 'Bring Your Own Key', description: 'Use your OpenRouter API key' },
-  { icon: Settings, label: 'Custom Prompts', description: 'Customize AI behavior' },
+  {
+    icon: BarChart3,
+    label: "Analytics & Insights",
+    description: "Track your progress",
+    href: "/settings/analytics",
+  },
+  {
+    icon: Key,
+    label: "Bring Your Own Key",
+    description: "Use your OpenRouter API key",
+  },
+  {
+    icon: Settings,
+    label: "Custom Prompts",
+    description: "Customize AI behavior",
+  },
 ];
 
 export function CheckoutSuccessDialog({ plan }: CheckoutSuccessDialogProps) {
   const searchParams = useSearchParams();
-  const router = useRouter();
+  const processedRef = useRef(false);
+
   const [open, setOpen] = useState(false);
   const [isUpgrade, setIsUpgrade] = useState(false);
 
-  useEffect(() => {
-    const checkout = searchParams.get('checkout');
-    const upgraded = searchParams.get('upgraded');
-    
-    if (checkout === 'success') {
+  // Use effect for state updates and URL cleanup
+  React.useEffect(() => {
+    if (processedRef.current) return;
+
+    const checkout = searchParams.get("checkout");
+    const upgraded = searchParams.get("upgraded");
+
+    if (checkout === "success") {
+      processedRef.current = true;
       setOpen(true);
-      setIsUpgrade(upgraded === 'true');
-      
+      setIsUpgrade(upgraded === "true");
+
       // Clean up URL without triggering navigation
       const url = new URL(window.location.href);
-      url.searchParams.delete('checkout');
-      url.searchParams.delete('upgraded');
-      window.history.replaceState({}, '', url.pathname);
+      url.searchParams.delete("checkout");
+      url.searchParams.delete("upgraded");
+      window.history.replaceState({}, "", url.pathname);
     }
   }, [searchParams]);
 
@@ -69,8 +104,8 @@ export function CheckoutSuccessDialog({ plan }: CheckoutSuccessDialogProps) {
     setOpen(false);
   };
 
-  const isPro = plan === 'PRO';
-  const isMax = plan === 'MAX';
+  const isPro = plan === "PRO";
+  const isMax = plan === "MAX";
   const features = isMax ? [...PRO_FEATURES, ...MAX_FEATURES] : PRO_FEATURES;
 
   return (
@@ -80,19 +115,18 @@ export function CheckoutSuccessDialog({ plan }: CheckoutSuccessDialogProps) {
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            transition={{ type: 'spring', duration: 0.5 }}
-            className="mx-auto mb-4 w-16 h-16 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/30"
+            transition={{ type: "spring", duration: 0.5 }}
+            className="mx-auto mb-4 w-16 h-16 rounded-full bg-linear-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/30"
           >
             <PartyPopper className="w-8 h-8 text-white" />
           </motion.div>
           <DialogTitle className="text-2xl font-bold">
-            {isUpgrade ? 'Upgrade Complete!' : 'Welcome to ' + plan + '!'}
+            {isUpgrade ? "Upgrade Complete!" : "Welcome to " + plan + "!"}
           </DialogTitle>
           <DialogDescription className="text-base">
-            {isUpgrade 
+            {isUpgrade
               ? `You've successfully upgraded to the ${plan} plan.`
-              : `Thank you for subscribing to the ${plan} plan!`
-            }
+              : `Thank you for subscribing to the ${plan} plan!`}
           </DialogDescription>
         </DialogHeader>
 
@@ -110,14 +144,18 @@ export function CheckoutSuccessDialog({ plan }: CheckoutSuccessDialogProps) {
                   transition={{ delay: index * 0.1 }}
                   className="flex items-center gap-3 p-3 rounded-xl bg-primary/5 border border-primary/10"
                 >
-                  <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                     <feature.icon className="w-4 h-4 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground">{feature.label}</p>
-                    <p className="text-xs text-muted-foreground">{feature.description}</p>
+                    <p className="text-sm font-medium text-foreground">
+                      {feature.label}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {feature.description}
+                    </p>
                   </div>
-                  <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
+                  <Check className="w-4 h-4 text-green-500 shrink-0" />
                 </motion.div>
               ))}
             </AnimatePresence>
@@ -133,12 +171,12 @@ export function CheckoutSuccessDialog({ plan }: CheckoutSuccessDialogProps) {
               </Link>
             </Button>
           )}
-          <Button 
-            variant={isMax ? 'outline' : 'default'} 
-            onClick={handleClose} 
+          <Button
+            variant={isMax ? "outline" : "default"}
+            onClick={handleClose}
             className="w-full rounded-full"
           >
-            {isMax ? 'Continue to Dashboard' : 'Start Exploring'}
+            {isMax ? "Continue to Dashboard" : "Start Exploring"}
           </Button>
         </DialogFooter>
       </DialogContent>

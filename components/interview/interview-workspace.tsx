@@ -1,6 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo, startTransition } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+  startTransition,
+} from "react";
 import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 import { InterviewHeader } from "@/components/interview/interview-header";
@@ -41,6 +48,7 @@ import type {
 import type { UserPlan } from "@/lib/db/schemas/user";
 import Link from "next/link";
 import { FeedbackSection } from "@/components/interview/feedback-section";
+import { AIAssistantPanel } from "@/components/ai-tools/ai-assistant";
 
 const MarkdownRenderer = dynamic(
   () => import("@/components/streaming/markdown-renderer"),
@@ -333,7 +341,10 @@ export function InterviewWorkspace({
 
   // Memoize isGenerating to prevent recalculating on every render
   const isGenerating = useMemo(
-    () => Object.values(moduleStatus).some((s) => s === "loading" || s === "streaming"),
+    () =>
+      Object.values(moduleStatus).some(
+        (s) => s === "loading" || s === "streaming"
+      ),
     [moduleStatus]
   );
 
@@ -351,7 +362,8 @@ export function InterviewWorkspace({
 
   // Memoize scroll handler to prevent recreating on every render
   const scrollToActiveContent = useCallback(() => {
-    if (!autoScrollEnabled || !activeStreamingModule || isScrollingRef.current) return;
+    if (!autoScrollEnabled || !activeStreamingModule || isScrollingRef.current)
+      return;
 
     const element = document.getElementById(`module-${activeStreamingModule}`);
     if (!element) return;
@@ -363,13 +375,14 @@ export function InterviewWorkspace({
     // Only scroll if content bottom is below viewport
     if (rect.bottom > viewportHeight - padding) {
       isScrollingRef.current = true;
-      const scrollTarget = window.scrollY + rect.bottom - viewportHeight + padding;
-      
+      const scrollTarget =
+        window.scrollY + rect.bottom - viewportHeight + padding;
+
       window.scrollTo({
         top: scrollTarget,
         behavior: "instant", // Use instant to avoid lag
       });
-      
+
       // Reset scrolling flag after a short delay
       setTimeout(() => {
         isScrollingRef.current = false;
@@ -380,10 +393,10 @@ export function InterviewWorkspace({
   // Throttled scroll listener - only detect user scroll up
   useEffect(() => {
     let ticking = false;
-    
+
     const handleScroll = () => {
       if (!isGenerating || isScrollingRef.current) return;
-      
+
       if (!ticking) {
         requestAnimationFrame(() => {
           const currentScrollTop = window.scrollY;
@@ -425,10 +438,10 @@ export function InterviewWorkspace({
   // When switching to a new module, scroll to bring it into view
   useEffect(() => {
     if (!activeStreamingModule || !autoScrollEnabled) return;
-    
+
     if (lastActiveModuleRef.current !== activeStreamingModule) {
       lastActiveModuleRef.current = activeStreamingModule;
-      
+
       // Small delay to let the DOM update
       setTimeout(() => {
         scrollToActiveContent();
@@ -519,17 +532,17 @@ export function InterviewWorkspace({
       const successfullyResumed: ModuleKey[] = [];
 
       // Try to resume each module that doesn't have content
-      for (const module of modules) {
+      for (const mod of modules) {
         // Only try to resume if module appears incomplete
         const hasContent =
-          module === "openingBrief"
+          mod === "openingBrief"
             ? !!initialInterview.modules.openingBrief
-            : initialInterview.modules[module].length > 0;
+            : initialInterview.modules[mod].length > 0;
 
         if (!hasContent) {
-          const resumed = await resumeModuleStream(module);
+          const resumed = await resumeModuleStream(mod);
           if (resumed) {
-            successfullyResumed.push(module);
+            successfullyResumed.push(mod);
           }
         }
       }
@@ -565,7 +578,7 @@ export function InterviewWorkspace({
       if (moduleStatus[module] === "streaming") return false;
       // Skip if already complete
       if (moduleStatus[module] === "complete") return false;
-      
+
       // Check if module has content
       switch (module) {
         case "openingBrief":
@@ -592,9 +605,10 @@ export function InterviewWorkspace({
       generationStartedRef.current = true;
       generateAllModulesExcludingResumed();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [interview, resumeCheckComplete, resumedModules, moduleStatus]);
 
-  const generateAllModulesExcludingResumed = async () => {
+  const generateAllModulesExcludingResumed = useCallback(async () => {
     const concurrencyLimit = await getAIConcurrencyLimit();
     const excludedModules = interview.excludedModules ?? [];
 
@@ -606,8 +620,8 @@ export function InterviewWorkspace({
     ];
 
     // Helper to check if module already has content
-    const hasContent = (module: ModuleKey): boolean => {
-      switch (module) {
+    const hasContent = (mod: ModuleKey): boolean => {
+      switch (mod) {
         case "openingBrief":
           return !!interview.modules.openingBrief;
         case "revisionTopics":
@@ -636,10 +650,11 @@ export function InterviewWorkspace({
     );
 
     const moduleTasks = modulesToGenerate.map(
-      (module) => () => handleGenerateModule(module)
+      (mod) => () => handleGenerateModule(mod)
     );
     await runWithConcurrencyLimit(moduleTasks, concurrencyLimit);
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [interview, resumedModules, moduleStatus]);
 
   const handleGenerateModule = async (
     module: ModuleKey,
@@ -739,7 +754,10 @@ export function InterviewWorkspace({
                 ]);
                 break;
               case "mcqs":
-                setStreamingMcqs([...interview.modules.mcqs, ...(data as MCQ[])]);
+                setStreamingMcqs([
+                  ...interview.modules.mcqs,
+                  ...(data as MCQ[]),
+                ]);
                 break;
               case "rapidFire":
                 setStreamingRapidFire([
@@ -961,17 +979,19 @@ export function InterviewWorkspace({
               {revisionTopics.length > 0 && (
                 <div className="space-y-3">
                   {revisionTopics.map((topic, index) => {
-                    const isStreaming = moduleStatus.revisionTopics === "streaming";
+                    const isStreaming =
+                      moduleStatus.revisionTopics === "streaming";
                     const isLastTopic = index === revisionTopics.length - 1;
                     const isCurrentlyStreaming = isStreaming && isLastTopic;
-                    const hasContent = topic.content && topic.content.length > 0;
-                    
+                    const hasContent =
+                      topic.content && topic.content.length > 0;
+
                     // Expanded view for the currently streaming topic - show title and preview only
                     if (isCurrentlyStreaming && hasContent) {
                       // Show only first ~200 chars of the streaming content as preview
                       const previewContent = topic.content.slice(0, 200);
                       const isContentTruncated = topic.content.length > 200;
-                      
+
                       return (
                         <div
                           key={topic.id || `topic-${index}`}
@@ -1021,7 +1041,7 @@ export function InterviewWorkspace({
                         </div>
                       );
                     }
-                    
+
                     // Collapsed view for completed topics
                     return (
                       <Link
@@ -1396,6 +1416,11 @@ export function InterviewWorkspace({
           </AnimatePresence>
         </div>
       </div>
+
+      {/* AI Assistant Panel for Pro/Max users */}
+      {userPlan !== "FREE" && (
+        <AIAssistantPanel interviewId={interviewId} position="right" />
+      )}
     </div>
   );
 }

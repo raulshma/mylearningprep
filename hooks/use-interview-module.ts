@@ -92,6 +92,66 @@ export function useInterviewModule<T extends ModuleType>({
     [module, status, onComplete, onError]
   );
 
+  // Process a ReadableStream
+  const processStream = useCallback(
+    async (body: ReadableStream<Uint8Array>) => {
+      const reader = body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+
+          // Process complete data lines from the AI SDK data stream protocol
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            // AI SDK data stream format uses different prefixes
+            if (line.startsWith("2:")) {
+              // Data part - parse JSON array
+              try {
+                const jsonStr = line.slice(2);
+                const dataArray = JSON.parse(jsonStr);
+                if (Array.isArray(dataArray)) {
+                  for (const dataPart of dataArray) {
+                    processDataPart(dataPart);
+                  }
+                } else {
+                  processDataPart(dataArray);
+                }
+              } catch {
+                // Ignore parse errors
+              }
+            } else if (line.startsWith("d:")) {
+              // Finish event
+              const finishData = JSON.parse(line.slice(2));
+              if (finishData.finishReason === "stop") {
+                setStatus("complete");
+              }
+            } else if (line.startsWith("3:")) {
+              // Error part
+              try {
+                const errorData = JSON.parse(line.slice(2));
+                setStatus("error");
+                setError(errorData.message || "Stream error");
+                onError?.(errorData.message || "Stream error");
+              } catch {
+                // Ignore parse errors
+              }
+            }
+          }
+        }
+      } finally {
+        reader.releaseLock();
+      }
+    },
+    [processDataPart, onError]
+  );
   // Try to resume an active stream on mount
   useEffect(() => {
     if (!resumeOnMount || resumeAttemptedRef.current || initialData) return;
@@ -129,65 +189,7 @@ export function useInterviewModule<T extends ModuleType>({
     };
 
     tryResume();
-  }, [interviewId, module, resumeOnMount, initialData]);
-
-  // Process a ReadableStream
-  const processStream = async (body: ReadableStream<Uint8Array>) => {
-    const reader = body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-
-        // Process complete data lines from the AI SDK data stream protocol
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          // AI SDK data stream format uses different prefixes
-          if (line.startsWith("2:")) {
-            // Data part - parse JSON array
-            try {
-              const jsonStr = line.slice(2);
-              const dataArray = JSON.parse(jsonStr);
-              if (Array.isArray(dataArray)) {
-                for (const dataPart of dataArray) {
-                  processDataPart(dataPart);
-                }
-              } else {
-                processDataPart(dataArray);
-              }
-            } catch {
-              // Ignore parse errors
-            }
-          } else if (line.startsWith("d:")) {
-            // Finish event
-            const finishData = JSON.parse(line.slice(2));
-            if (finishData.finishReason === "stop") {
-              setStatus("complete");
-            }
-          } else if (line.startsWith("3:")) {
-            // Error part
-            try {
-              const errorData = JSON.parse(line.slice(2));
-              setStatus("error");
-              setError(errorData.message || "Stream error");
-              onError?.(errorData.message || "Stream error");
-            } catch {
-              // Ignore parse errors
-            }
-          }
-        }
-      }
-    } finally {
-      reader.releaseLock();
-    }
-  };
+  }, [interviewId, module, resumeOnMount, initialData, processStream]);
 
   // Generate module content
   const generate = useCallback(
@@ -294,77 +296,80 @@ export function useAddMore<T extends "mcqs" | "rapidFire" | "revisionTopics">({
   }, [existingData]);
 
   // Process a ReadableStream
-  const processStream = async (body: ReadableStream<Uint8Array>) => {
-    const reader = body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
+  const processStream = useCallback(
+    async (body: ReadableStream<Uint8Array>) => {
+      const reader = body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
 
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
 
-        for (const line of lines) {
-          if (line.startsWith("2:")) {
-            try {
-              const jsonStr = line.slice(2);
-              const dataArray = JSON.parse(jsonStr);
-              const processPart = (part: {
-                type: string;
-                module: string;
-                data?: unknown;
-              }) => {
-                if (part.module !== module) return;
+          for (const line of lines) {
+            if (line.startsWith("2:")) {
+              try {
+                const jsonStr = line.slice(2);
+                const dataArray = JSON.parse(jsonStr);
+                const processPart = (part: {
+                  type: string;
+                  module: string;
+                  data?: unknown;
+                }) => {
+                  if (part.module !== module) return;
 
-                if (
-                  (part.type === "partial" || part.type === "complete") &&
-                  part.data !== undefined
-                ) {
-                  // Merge with existing data
-                  setData(
-                    (prev) =>
-                      [
-                        ...(prev as unknown[]),
-                        ...(part.data as unknown[]),
-                      ] as ModuleDataMap[T]
-                  );
-                  if (part.type === "complete") {
-                    setStatus("complete");
-                    onComplete?.(data);
+                  if (
+                    (part.type === "partial" || part.type === "complete") &&
+                    part.data !== undefined
+                  ) {
+                    // Merge with existing data
+                    setData(
+                      (prev) =>
+                        [
+                          ...(prev as unknown[]),
+                          ...(part.data as unknown[]),
+                        ] as ModuleDataMap[T]
+                    );
+                    if (part.type === "complete") {
+                      setStatus("complete");
+                      onComplete?.(data);
+                    }
                   }
-                }
-              };
+                };
 
-              if (Array.isArray(dataArray)) {
-                for (const part of dataArray) {
-                  processPart(part);
+                if (Array.isArray(dataArray)) {
+                  for (const part of dataArray) {
+                    processPart(part);
+                  }
+                } else {
+                  processPart(dataArray);
                 }
-              } else {
-                processPart(dataArray);
+              } catch {
+                // Ignore parse errors
               }
-            } catch {
-              // Ignore parse errors
-            }
-          } else if (line.startsWith("3:")) {
-            try {
-              const errorData = JSON.parse(line.slice(2));
-              setStatus("error");
-              setError(errorData.message || "Stream error");
-              onError?.(errorData.message || "Stream error");
-            } catch {
-              // Ignore parse errors
+            } else if (line.startsWith("3:")) {
+              try {
+                const errorData = JSON.parse(line.slice(2));
+                setStatus("error");
+                setError(errorData.message || "Stream error");
+                onError?.(errorData.message || "Stream error");
+              } catch {
+                // Ignore parse errors
+              }
             }
           }
         }
+      } finally {
+        reader.releaseLock();
       }
-    } finally {
-      reader.releaseLock();
-    }
-  };
+    },
+    [module, data, onComplete, onError]
+  );
 
   const addMore = useCallback(
     async (count: number = 5, instructions?: string) => {
@@ -407,7 +412,7 @@ export function useAddMore<T extends "mcqs" | "rapidFire" | "revisionTopics">({
         onError?.(errorMessage);
       }
     },
-    [interviewId, module, data, onComplete, onError]
+    [interviewId, module, processStream, onError]
   );
 
   const stop = useCallback(() => {

@@ -75,6 +75,7 @@ export const TASK_TIER_MAPPING: Record<string, ModelTier> = {
 
   // Low capability - simple parsing and extraction
   parse_interview_prompt: "low",
+  generate_conversation_title: "low", // Simple title summarization
 
   // Feedback feature tasks
   analyze_feedback_entry: "high",      // Complex skill gap analysis
@@ -105,6 +106,7 @@ export const TASK_DESCRIPTIONS: Record<string, string> = {
   generate_mcqs: "Generate multiple choice questions",
   generate_rapid_fire: "Generate rapid-fire Q&A pairs",
   parse_interview_prompt: "Parse natural language to structured data",
+  generate_conversation_title: "Generate conversation title from message",
   // Feedback feature tasks
   analyze_feedback_entry: "Analyze interview feedback to identify skill gaps",
   aggregate_feedback_analysis: "Aggregate feedback entries into weakness analysis",

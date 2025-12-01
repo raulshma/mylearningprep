@@ -1,63 +1,113 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Logo } from "@/components/ui/logo"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { ArrowLeft, ArrowRight, Check, ChevronRight } from "lucide-react"
-import Link from "next/link"
-import { motion, AnimatePresence } from "framer-motion"
-import { cn } from "@/lib/utils"
+import { useState } from "react";
+import { Logo } from "@/components/ui/logo";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ArrowLeft, ArrowRight, Check, ChevronRight } from "lucide-react";
+import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 const roles = [
-  { id: "frontend", label: "Frontend Engineer", icon: "🎨", description: "Crafting beautiful user interfaces" },
-  { id: "backend", label: "Backend Engineer", icon: "⚙️", description: "Building robust server-side logic" },
-  { id: "fullstack", label: "Full Stack Engineer", icon: "🚀", description: "Mastering the entire stack" },
-  { id: "devops", label: "DevOps / SRE", icon: "🛠️", description: "Ensuring reliability and scale" },
-  { id: "data", label: "Data Engineer", icon: "📊", description: "Wrangling big data pipelines" },
-  { id: "mobile", label: "Mobile Developer", icon: "📱", description: "Creating native mobile experiences" },
-]
+  {
+    id: "frontend",
+    label: "Frontend Engineer",
+    icon: "🎨",
+    description: "Crafting beautiful user interfaces",
+  },
+  {
+    id: "backend",
+    label: "Backend Engineer",
+    icon: "⚙️",
+    description: "Building robust server-side logic",
+  },
+  {
+    id: "fullstack",
+    label: "Full Stack Engineer",
+    icon: "🚀",
+    description: "Mastering the entire stack",
+  },
+  {
+    id: "devops",
+    label: "DevOps / SRE",
+    icon: "🛠️",
+    description: "Ensuring reliability and scale",
+  },
+  {
+    id: "data",
+    label: "Data Engineer",
+    icon: "📊",
+    description: "Wrangling big data pipelines",
+  },
+  {
+    id: "mobile",
+    label: "Mobile Developer",
+    icon: "📱",
+    description: "Creating native mobile experiences",
+  },
+];
 
 const experienceLevels = [
-  { id: "junior", label: "Junior", years: "0-2 years", description: "Just starting your journey" },
-  { id: "mid", label: "Mid-Level", years: "2-5 years", description: "Ready for more complexity" },
-  { id: "senior", label: "Senior", years: "5-8 years", description: "Leading technical decisions" },
-  { id: "staff", label: "Staff+", years: "8+ years", description: "Setting strategic direction" },
-]
+  {
+    id: "junior",
+    label: "Junior",
+    years: "0-2 years",
+    description: "Just starting your journey",
+  },
+  {
+    id: "mid",
+    label: "Mid-Level",
+    years: "2-5 years",
+    description: "Ready for more complexity",
+  },
+  {
+    id: "senior",
+    label: "Senior",
+    years: "5-8 years",
+    description: "Leading technical decisions",
+  },
+  {
+    id: "staff",
+    label: "Staff+",
+    years: "8+ years",
+    description: "Setting strategic direction",
+  },
+];
 
 export default function OnboardingPage() {
-  const [step, setStep] = useState(1)
-  const [selectedRole, setSelectedRole] = useState<string | null>(null)
-  const [selectedLevel, setSelectedLevel] = useState<string | null>(null)
-  const [name, setName] = useState("")
+  const [step, setStep] = useState(1);
+  const [selectedRole, setSelectedRole] = useState<string | null>(null);
+  const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
+  const [name, setName] = useState("");
 
-  const totalSteps = 3
+  const totalSteps = 3;
 
   const canProceed = () => {
-    if (step === 1) return selectedRole !== null
-    if (step === 2) return selectedLevel !== null
-    if (step === 3) return name.trim() !== ""
-    return false
-  }
+    if (step === 1) return selectedRole !== null;
+    if (step === 2) return selectedLevel !== null;
+    if (step === 3) return name.trim() !== "";
+    return false;
+  };
 
   const handleNext = () => {
     if (canProceed() && step < totalSteps) {
-      setStep(step + 1)
+      setStep(step + 1);
     }
-  }
+  };
 
   const handleBack = () => {
     if (step > 1) {
-      setStep(step - 1)
+      setStep(step - 1);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-background flex flex-col relative overflow-hidden">
       {/* Ambient Background */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/20 via-background to-background opacity-50 pointer-events-none" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-blue-500/10 via-background to-background opacity-50 pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,var(--tw-gradient-stops))] from-primary/20 via-background to-background opacity-50 pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,var(--tw-gradient-stops))] from-blue-500/10 via-background to-background opacity-50 pointer-events-none" />
 
       {/* Header */}
       <header className="relative z-10 px-6 h-20 flex items-center justify-between max-w-7xl mx-auto w-full">
@@ -85,10 +135,11 @@ export default function OnboardingPage() {
               >
                 <div className="text-center mb-12 space-y-4">
                   <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground">
-                    Choose your path.
+                    Choose your path
                   </h1>
                   <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-                    Select the role you're preparing for to get a tailored experience.
+                    Select the role you&apos;re preparing for to get a tailored
+                    experience.
                   </p>
                 </div>
 
@@ -106,7 +157,7 @@ export default function OnboardingPage() {
                           : "border-border/50 bg-card/50 hover:bg-card hover:border-border hover:shadow-lg"
                       )}
                     >
-                      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="absolute inset-0 bg-linear-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                       <div className="relative z-10">
                         <span className="text-3xl mb-4 block filter grayscale group-hover:grayscale-0 transition-all duration-300">
                           {role.icon}
@@ -140,10 +191,11 @@ export default function OnboardingPage() {
               >
                 <div className="text-center mb-12 space-y-4">
                   <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground">
-                    What's your level?
+                    What&apos;s your level?
                   </h1>
                   <p className="text-xl text-muted-foreground">
-                    We'll adapt the content complexity to match your expertise.
+                    We&apos;ll adapt the content complexity to match your
+                    expertise.
                   </p>
                 </div>
 
@@ -162,17 +214,21 @@ export default function OnboardingPage() {
                       )}
                     >
                       <div className="flex items-center gap-4">
-                        <div className={cn(
-                          "w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-colors",
-                          selectedLevel === level.id
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-secondary text-muted-foreground group-hover:bg-secondary/80"
-                        )}>
+                        <div
+                          className={cn(
+                            "w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-colors",
+                            selectedLevel === level.id
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-secondary text-muted-foreground group-hover:bg-secondary/80"
+                          )}
+                        >
                           {level.id.charAt(0).toUpperCase()}
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="font-semibold text-lg">{level.label}</span>
+                            <span className="font-semibold text-lg">
+                              {level.label}
+                            </span>
                             <span className="text-xs px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground">
                               {level.years}
                             </span>
@@ -208,7 +264,7 @@ export default function OnboardingPage() {
               >
                 <div className="text-center mb-12 space-y-4">
                   <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground">
-                    One last thing.
+                    One last thing
                   </h1>
                   <p className="text-xl text-muted-foreground">
                     How should we address you?
@@ -229,7 +285,8 @@ export default function OnboardingPage() {
 
                   <div className="text-center">
                     <p className="text-sm text-muted-foreground">
-                      We'll use this to personalize your dashboard and daily greetings.
+                      We&apos;ll use this to personalize your dashboard and
+                      daily greetings.
                     </p>
                   </div>
                 </div>
@@ -240,7 +297,7 @@ export default function OnboardingPage() {
       </main>
 
       {/* Footer Navigation */}
-      <footer className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-background via-background/95 to-transparent z-20">
+      <footer className="fixed bottom-0 left-0 right-0 p-6 bg-linear-to-t from-background via-background/95 to-transparent z-20">
         <div className="max-w-4xl mx-auto relative flex items-center justify-center">
           <div className="absolute left-0 hidden sm:flex gap-2">
             {Array.from({ length: totalSteps }).map((_, i) => (
@@ -293,5 +350,5 @@ export default function OnboardingPage() {
         </div>
       </footer>
     </div>
-  )
+  );
 }

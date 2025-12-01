@@ -7,6 +7,9 @@ import {
   FREE_ITERATION_LIMIT,
   PRO_ITERATION_LIMIT,
   MAX_ITERATION_LIMIT,
+  FREE_CHAT_MESSAGE_LIMIT,
+  PRO_CHAT_MESSAGE_LIMIT,
+  MAX_CHAT_MESSAGE_LIMIT,
 } from '@/lib/pricing-data';
 
 if (!process.env.STRIPE_SECRET_KEY) {
@@ -22,6 +25,7 @@ export interface PlanConfig {
   priceId: string;
   iterationLimit: number;
   interviewLimit: number;
+  chatMessageLimit: number;
   plan: UserPlan;
 }
 
@@ -31,6 +35,7 @@ export const PLAN_CONFIGS: Record<string, PlanConfig> = {
     priceId: process.env.STRIPE_PRICE_PRO || '',
     iterationLimit: PRO_ITERATION_LIMIT,
     interviewLimit: PRO_INTERVIEW_LIMIT,
+    chatMessageLimit: PRO_CHAT_MESSAGE_LIMIT,
     plan: 'PRO',
   },
   MAX: {
@@ -38,6 +43,7 @@ export const PLAN_CONFIGS: Record<string, PlanConfig> = {
     priceId: process.env.STRIPE_PRICE_MAX || '',
     iterationLimit: MAX_ITERATION_LIMIT,
     interviewLimit: MAX_INTERVIEW_LIMIT,
+    chatMessageLimit: MAX_CHAT_MESSAGE_LIMIT,
     plan: 'MAX',
   },
 };
@@ -74,6 +80,19 @@ export function getPlanInterviewLimit(plan: UserPlan): number {
       return MAX_INTERVIEW_LIMIT;
     default:
       return FREE_INTERVIEW_LIMIT;
+  }
+}
+
+export function getPlanChatMessageLimit(plan: UserPlan): number {
+  switch (plan) {
+    case 'FREE':
+      return FREE_CHAT_MESSAGE_LIMIT;
+    case 'PRO':
+      return PRO_CHAT_MESSAGE_LIMIT;
+    case 'MAX':
+      return MAX_CHAT_MESSAGE_LIMIT;
+    default:
+      return FREE_CHAT_MESSAGE_LIMIT;
   }
 }
 
@@ -202,7 +221,7 @@ export async function getSubscription(subscriptionId: string): Promise<Stripe.Su
  * Handles different Stripe API versions where current_period_end might be typed differently
  */
 export function getSubscriptionPeriodEnd(subscription: Stripe.Subscription): number {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   return (subscription as any).current_period_end as number;
 }
 

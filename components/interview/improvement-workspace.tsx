@@ -170,7 +170,7 @@ export function ImprovementWorkspace({
       );
       setStreamState("error");
     }
-  }, [selectedSkill, selectedGap, userLevel]);
+  }, [selectedSkill, selectedGap, userLevel, programmingLanguage]);
 
   // Handle activity completion
   const handleActivityComplete = useCallback(

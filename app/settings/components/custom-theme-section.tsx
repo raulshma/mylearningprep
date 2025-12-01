@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import * as React from "react";
+import { useState } from "react";
 import { Palette, Trash2, Check, ExternalLink, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,8 +29,10 @@ export function CustomThemeSection({ plan }: CustomThemeSectionProps) {
   const { toast } = useToast();
 
   // Sync input with stored value when loaded
-  useEffect(() => {
-    if (isLoaded && customCSS) {
+  const hasSyncedRef = React.useRef(false);
+  React.useEffect(() => {
+    if (isLoaded && customCSS && !hasSyncedRef.current) {
+      hasSyncedRef.current = true;
       setInputValue(customCSS);
     }
   }, [isLoaded, customCSS]);
@@ -85,12 +88,14 @@ export function CustomThemeSection({ plan }: CustomThemeSectionProps) {
         className="bg-card/50 backdrop-blur-xl border border-white/10 p-6 md:p-8 rounded-3xl hover:border-primary/20 transition-all duration-300 shadow-sm relative overflow-hidden"
       >
         <div className="flex items-center gap-4 mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/10">
+          <div className="w-12 h-12 rounded-2xl bg-linear-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/10">
             <Palette className="w-6 h-6 text-primary" />
           </div>
           <div className="flex-1">
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-bold text-foreground">Custom Theme</h2>
+              <h2 className="text-lg font-bold text-foreground">
+                Custom Theme
+              </h2>
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
                 <Lock className="h-3 w-3" />
                 PRO
@@ -117,7 +122,8 @@ export function CustomThemeSection({ plan }: CustomThemeSectionProps) {
 
         <div className="mt-6 pt-4 border-t border-white/10">
           <p className="text-sm text-muted-foreground mb-3">
-            Upgrade to PRO to unlock custom themes and personalize your workspace.
+            Upgrade to PRO to unlock custom themes and personalize your
+            workspace.
           </p>
           <Link href="/pricing">
             <Button className="rounded-full h-10 font-medium">
@@ -137,7 +143,7 @@ export function CustomThemeSection({ plan }: CustomThemeSectionProps) {
       className="bg-card/50 backdrop-blur-xl border border-white/10 p-6 md:p-8 rounded-3xl hover:border-primary/20 transition-all duration-300 shadow-sm"
     >
       <div className="flex items-center gap-4 mb-8">
-        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/10">
+        <div className="w-12 h-12 rounded-2xl bg-linear-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/10">
           <Palette className="w-6 h-6 text-primary" />
         </div>
         <div>

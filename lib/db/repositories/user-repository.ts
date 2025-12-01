@@ -8,16 +8,19 @@ export interface UserRepository {
   findByClerkId(clerkId: string): Promise<User | null>;
   findById(id: string): Promise<User | null>;
   findByStripeCustomerId(stripeCustomerId: string): Promise<User | null>;
-  updatePlan(clerkId: string, plan: UserPlan, newIterationLimit: number, newInterviewLimit: number): Promise<User | null>;
+  updatePlan(clerkId: string, plan: UserPlan, newIterationLimit: number, newInterviewLimit: number, newChatMessageLimit: number): Promise<User | null>;
   updateStripeCustomerId(clerkId: string, stripeCustomerId: string): Promise<User | null>;
   updateStripeSubscriptionId(clerkId: string, stripeSubscriptionId: string): Promise<User | null>;
   clearStripeSubscriptionId(clerkId: string): Promise<User | null>;
   incrementIteration(clerkId: string, amount?: number): Promise<User | null>;
   incrementInterview(clerkId: string): Promise<User | null>;
+  incrementChatMessage(clerkId: string): Promise<User | null>;
   resetIterations(clerkId: string): Promise<User | null>;
   resetInterviews(clerkId: string): Promise<User | null>;
+  resetChatMessages(clerkId: string): Promise<User | null>;
   updatePreferences(clerkId: string, preferences: Partial<UserPreferences>): Promise<User | null>;
   handlePlanChange(clerkId: string, newPlan: UserPlan, previousPlan: UserPlan): Promise<void>;
+  getChatMessageUsage(clerkId: string): Promise<{ count: number; limit: number; remaining: number } | null>;
 }
 
 function getDefaultResetDate(): Date {
@@ -36,6 +39,9 @@ import {
   FREE_ITERATION_LIMIT,
   PRO_ITERATION_LIMIT,
   MAX_ITERATION_LIMIT,
+  FREE_CHAT_MESSAGE_LIMIT,
+  PRO_CHAT_MESSAGE_LIMIT,
+  MAX_CHAT_MESSAGE_LIMIT,
 } from '@/lib/pricing-data';
 
 function getPlanIterationLimit(plan: UserPlan): number {
@@ -64,6 +70,19 @@ function getPlanInterviewLimit(plan: UserPlan): number {
   }
 }
 
+function getPlanChatMessageLimit(plan: UserPlan): number {
+  switch (plan) {
+    case 'FREE':
+      return FREE_CHAT_MESSAGE_LIMIT;
+    case 'PRO':
+      return PRO_CHAT_MESSAGE_LIMIT;
+    case 'MAX':
+      return MAX_CHAT_MESSAGE_LIMIT;
+    default:
+      return FREE_CHAT_MESSAGE_LIMIT;
+  }
+}
+
 /**
  * Cached findByClerkId - deduplicates DB calls within a single request
  */
@@ -82,6 +101,7 @@ export const userRepository: UserRepository = {
     const plan = data.plan ?? 'FREE';
     const iterationLimit = data.iterations?.limit ?? getPlanIterationLimit(plan);
     const interviewLimit = data.interviews?.limit ?? getPlanInterviewLimit(plan);
+    const chatMessageLimit = getPlanChatMessageLimit(plan);
 
     const user: User = {
       _id: id,
@@ -97,6 +117,11 @@ export const userRepository: UserRepository = {
         count: data.interviews?.count ?? 0,
         limit: interviewLimit,
         resetDate: data.interviews?.resetDate ?? getDefaultResetDate(),
+      },
+      chatMessages: {
+        count: 0,
+        limit: chatMessageLimit,
+        resetDate: getDefaultResetDate(),
       },
       preferences: data.preferences ?? {
         theme: 'dark',
@@ -127,7 +152,7 @@ export const userRepository: UserRepository = {
     return user as User | null;
   },
 
-  async updatePlan(clerkId: string, plan: UserPlan, newIterationLimit: number, newInterviewLimit: number) {
+  async updatePlan(clerkId: string, plan: UserPlan, newIterationLimit: number, newInterviewLimit: number, newChatMessageLimit: number) {
     const collection = await getUsersCollection();
     const now = new Date();
 
@@ -146,6 +171,9 @@ export const userRepository: UserRepository = {
           'interviews.limit': newInterviewLimit,
           'interviews.count': 0,
           'interviews.resetDate': getDefaultResetDate(),
+          'chatMessages.limit': newChatMessageLimit,
+          'chatMessages.count': 0,
+          'chatMessages.resetDate': getDefaultResetDate(),
           updatedAt: now,
         },
       },
@@ -280,6 +308,58 @@ export const userRepository: UserRepository = {
     );
 
     return result as User | null;
+  },
+
+  async incrementChatMessage(clerkId: string) {
+    const collection = await getUsersCollection();
+    const now = new Date();
+
+    const result = await collection.findOneAndUpdate(
+      { clerkId },
+      {
+        $inc: { 'chatMessages.count': 1 },
+        $set: { updatedAt: now },
+      },
+      { returnDocument: 'after' }
+    );
+
+    return result as User | null;
+  },
+
+  async resetChatMessages(clerkId: string) {
+    const collection = await getUsersCollection();
+    const now = new Date();
+
+    const result = await collection.findOneAndUpdate(
+      { clerkId },
+      {
+        $set: {
+          'chatMessages.count': 0,
+          'chatMessages.resetDate': getDefaultResetDate(),
+          updatedAt: now,
+        },
+      },
+      { returnDocument: 'after' }
+    );
+
+    return result as User | null;
+  },
+
+  async getChatMessageUsage(clerkId: string) {
+    const user = await findByClerkIdCached(clerkId);
+    if (!user) return null;
+
+    const chatMessages = user.chatMessages ?? {
+      count: 0,
+      limit: getPlanChatMessageLimit(user.plan),
+      resetDate: getDefaultResetDate(),
+    };
+
+    return {
+      count: chatMessages.count,
+      limit: chatMessages.limit,
+      remaining: Math.max(0, chatMessages.limit - chatMessages.count),
+    };
   },
 
   async updatePreferences(clerkId: string, preferences: Partial<UserPreferences>) {

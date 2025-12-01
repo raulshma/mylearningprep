@@ -55,7 +55,7 @@ export const chatRepository: ChatRepository = {
     await collection.updateOne(
       { interviewId, topicId },
       {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         $push: { messages: message } as any,
         $set: { updatedAt: now },
       }
@@ -69,7 +69,7 @@ export const chatRepository: ChatRepository = {
     await collection.updateOne(
       { interviewId, topicId },
       {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         $push: { messages: { $each: messages } } as any,
         $set: { updatedAt: now },
       }

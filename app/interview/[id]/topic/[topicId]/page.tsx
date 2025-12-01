@@ -249,7 +249,7 @@ export default function TopicDetailPage() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [interviewId, topicId, isRegenerating, router, showShortcuts]);
+  }, [interviewId, topicId, isRegenerating, router, showShortcuts, handleStyleChange]);
 
   const handleCopyContent = useCallback(() => {
     if (topic) {

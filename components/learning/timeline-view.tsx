@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Clock,
   TrendingUp,
@@ -18,12 +18,12 @@ import {
   Target,
   Brain,
   History,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { addTimelineNotes } from '@/lib/actions/learning-path';
-import type { TimelineEntry } from '@/lib/db/schemas/learning-path';
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { addTimelineNotes } from "@/lib/actions/learning-path";
+import type { TimelineEntry } from "@/lib/db/schemas/learning-path";
 
 interface TimelineViewProps {
   timeline: TimelineEntry[];
@@ -32,36 +32,36 @@ interface TimelineViewProps {
 
 const activityTypeIcons: Record<string, typeof HelpCircle> = {
   mcq: HelpCircle,
-  'coding-challenge': Code,
-  'debugging-task': Bug,
-  'concept-explanation': FileText,
-  'real-world-assignment': Target,
-  'mini-case-study': Brain,
+  "coding-challenge": Code,
+  "debugging-task": Bug,
+  "concept-explanation": FileText,
+  "real-world-assignment": Target,
+  "mini-case-study": Brain,
 };
 
 const activityTypeLabels: Record<string, string> = {
-  mcq: 'MCQ',
-  'coding-challenge': 'Coding',
-  'debugging-task': 'Debug',
-  'concept-explanation': 'Concept',
-  'real-world-assignment': 'Assignment',
-  'mini-case-study': 'Case Study',
+  mcq: "MCQ",
+  "coding-challenge": "Coding",
+  "debugging-task": "Debug",
+  "concept-explanation": "Concept",
+  "real-world-assignment": "Assignment",
+  "mini-case-study": "Case Study",
 };
 
 export function TimelineView({ timeline, pathId }: TimelineViewProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editNotes, setEditNotes] = useState('');
+  const [editNotes, setEditNotes] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [localTimeline, setLocalTimeline] = useState(timeline);
 
   const handleEditStart = (entry: TimelineEntry) => {
     setEditingId(entry.id);
-    setEditNotes(entry.userNotes || '');
+    setEditNotes(entry.userNotes || "");
   };
 
   const handleEditCancel = () => {
     setEditingId(null);
-    setEditNotes('');
+    setEditNotes("");
   };
 
   const handleEditSave = async (entryId: string) => {
@@ -75,7 +75,7 @@ export function TimelineView({ timeline, pathId }: TimelineViewProps) {
           )
         );
         setEditingId(null);
-        setEditNotes('');
+        setEditNotes("");
       }
     } catch {
       // Handle error silently
@@ -92,11 +92,11 @@ export function TimelineView({ timeline, pathId }: TimelineViewProps) {
   };
 
   const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
+    return new Date(date).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
@@ -106,7 +106,9 @@ export function TimelineView({ timeline, pathId }: TimelineViewProps) {
         <div className="w-24 h-24 rounded-3xl bg-secondary/30 flex items-center justify-center mx-auto mb-8">
           <History className="w-12 h-12 text-muted-foreground" />
         </div>
-        <h3 className="text-2xl font-semibold text-foreground mb-3">No Activity Yet</h3>
+        <h3 className="text-2xl font-semibold text-foreground mb-3">
+          No Activity Yet
+        </h3>
         <p className="text-muted-foreground max-w-sm mx-auto leading-relaxed">
           Complete activities to see your learning timeline here.
         </p>
@@ -125,7 +127,9 @@ export function TimelineView({ timeline, pathId }: TimelineViewProps) {
             <History className="w-6 h-6 text-primary" />
           </div>
           <div>
-            <h3 className="text-2xl font-semibold text-foreground">Learning Timeline</h3>
+            <h3 className="text-2xl font-semibold text-foreground">
+              Learning Timeline
+            </h3>
             <p className="text-sm text-muted-foreground mt-1">
               Your journey through {localTimeline.length} activities
             </p>
@@ -151,17 +155,19 @@ export function TimelineView({ timeline, pathId }: TimelineViewProps) {
               >
                 <div
                   className={`rounded-3xl bg-background/80 backdrop-blur-xl border border-border/40 shadow-sm overflow-hidden transition-all duration-300 hover:shadow-lg hover:border-border/60 ${
-                    entry.success ? 'hover:border-green-500/20' : 'hover:border-destructive/20'
+                    entry.success
+                      ? "hover:border-green-500/20"
+                      : "hover:border-destructive/20"
                   }`}
                 >
                   <div className="p-6">
                     <div className="flex items-start gap-4">
                       {/* Status Icon */}
                       <div
-                        className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${
+                        className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
                           entry.success
-                            ? 'bg-green-500/10 text-green-600'
-                            : 'bg-destructive/10 text-destructive'
+                            ? "bg-green-500/10 text-green-600"
+                            : "bg-destructive/10 text-destructive"
                         }`}
                       >
                         {entry.success ? (
@@ -184,7 +190,8 @@ export function TimelineView({ timeline, pathId }: TimelineViewProps) {
                                 className="rounded-xl px-3 py-1 text-xs font-medium gap-1.5"
                               >
                                 <Icon className="w-3 h-3" />
-                                {activityTypeLabels[entry.activityType] || entry.activityType}
+                                {activityTypeLabels[entry.activityType] ||
+                                  entry.activityType}
                               </Badge>
                               <span className="text-xs text-muted-foreground flex items-center gap-1.5">
                                 <Clock className="w-3 h-3" />
@@ -201,8 +208,8 @@ export function TimelineView({ timeline, pathId }: TimelineViewProps) {
                             <div
                               className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold ${
                                 entry.eloChange >= 0
-                                  ? 'text-green-600 bg-green-500/10'
-                                  : 'text-destructive bg-destructive/10'
+                                  ? "text-green-600 bg-green-500/10"
+                                  : "text-destructive bg-destructive/10"
                               }`}
                             >
                               {entry.eloChange >= 0 ? (
@@ -210,7 +217,7 @@ export function TimelineView({ timeline, pathId }: TimelineViewProps) {
                               ) : (
                                 <TrendingDown className="w-4 h-4" />
                               )}
-                              {entry.eloChange >= 0 ? '+' : ''}
+                              {entry.eloChange >= 0 ? "+" : ""}
                               {Math.round(entry.eloChange)}
                             </div>
                             {!isEditing && (
@@ -228,11 +235,17 @@ export function TimelineView({ timeline, pathId }: TimelineViewProps) {
 
                         {/* ELO Details */}
                         <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground">
-                          <span>ELO: {Math.round(entry.eloBefore)} → {Math.round(entry.eloAfter)}</span>
+                          <span>
+                            ELO: {Math.round(entry.eloBefore)} →{" "}
+                            {Math.round(entry.eloAfter)}
+                          </span>
                           {entry.reflection && (
                             <>
                               <span className="w-1 h-1 rounded-full bg-border" />
-                              <span>Difficulty: {entry.reflection.difficultyRating}/5</span>
+                              <span>
+                                Difficulty: {entry.reflection.difficultyRating}
+                                /5
+                              </span>
                             </>
                           )}
                         </div>
@@ -241,7 +254,7 @@ export function TimelineView({ timeline, pathId }: TimelineViewProps) {
                         {isEditing ? (
                           <motion.div
                             initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
+                            animate={{ opacity: 1, height: "auto" }}
                             className="mt-4 space-y-3"
                           >
                             <Textarea
@@ -268,14 +281,14 @@ export function TimelineView({ timeline, pathId }: TimelineViewProps) {
                                 className="rounded-xl"
                               >
                                 <Save className="w-4 h-4 mr-1.5" />
-                                {isSaving ? 'Saving...' : 'Save'}
+                                {isSaving ? "Saving..." : "Save"}
                               </Button>
                             </div>
                           </motion.div>
                         ) : entry.userNotes ? (
                           <div className="mt-4 p-4 rounded-2xl bg-secondary/20 border border-border/30">
                             <p className="text-sm text-foreground/80 italic leading-relaxed">
-                              "{entry.userNotes}"
+                              &ldquo;{entry.userNotes}&rdquo;
                             </p>
                           </div>
                         ) : null}
@@ -283,7 +296,9 @@ export function TimelineView({ timeline, pathId }: TimelineViewProps) {
                         {/* Struggle Points */}
                         {entry.reflection?.strugglePoints && (
                           <div className="mt-4 p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20">
-                            <p className="text-xs font-medium text-amber-600 mb-1">Struggled with</p>
+                            <p className="text-xs font-medium text-amber-600 mb-1">
+                              Struggled with
+                            </p>
                             <p className="text-sm text-foreground/80 leading-relaxed">
                               {entry.reflection.strugglePoints}
                             </p>

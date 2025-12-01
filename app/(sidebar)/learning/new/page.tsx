@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Sparkles,
   Loader2,
@@ -17,22 +17,22 @@ import {
   TrendingUp,
   Lightbulb,
   ArrowRight,
-} from 'lucide-react';
-import { createLearningPath } from '@/lib/actions/learning-path';
-import { useSharedHeader } from '@/components/dashboard/shared-header-context';
+} from "lucide-react";
+import { createLearningPath } from "@/lib/actions/learning-path";
+import { useSharedHeader } from "@/components/dashboard/shared-header-context";
 
 const tips = [
-  'Be specific about your learning goal',
-  'Include the technology or framework you want to learn',
-  'Mention your target level (beginner, intermediate, senior)',
+  "Be specific about your learning goal",
+  "Include the technology or framework you want to learn",
+  "Mention your target level (beginner, intermediate, senior)",
   'Add context like "for interviews" or "for a project"',
 ];
 
 const examples = [
-  'Learn .NET for senior dev interviews',
-  'Master React hooks and state management',
-  'Understand system design patterns for distributed systems',
-  'Learn TypeScript advanced types and generics',
+  "Learn .NET for senior dev interviews",
+  "Master React hooks and state management",
+  "Understand system design patterns for distributed systems",
+  "Learn TypeScript advanced types and generics",
 ];
 
 export default function NewLearningPathPage() {
@@ -40,17 +40,17 @@ export default function NewLearningPathPage() {
   const { setHeader } = useSharedHeader();
 
   // Form state
-  const [goal, setGoal] = useState('');
+  const [goal, setGoal] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Set header on mount
   useEffect(() => {
     setHeader({
-      badge: 'Learning Path',
+      badge: "Learning Path",
       badgeIcon: BookOpen,
-      title: 'Start Your Learning Journey',
-      description: 'Create a personalized, adaptive learning path',
+      title: "Start Your Learning Journey",
+      description: "Create a personalized, adaptive learning path",
     });
   }, [setHeader]);
 
@@ -60,7 +60,7 @@ export default function NewLearningPathPage() {
 
     // Client-side validation (minimum 10 characters per Requirements 1.5)
     if (goal.trim().length < 10) {
-      setError('Please provide a more detailed goal (at least 10 characters)');
+      setError("Please provide a more detailed goal (at least 10 characters)");
       return;
     }
 
@@ -73,7 +73,7 @@ export default function NewLearningPathPage() {
         setError(result.error.message);
       }
     } catch {
-      setError('An unexpected error occurred. Please try again.');
+      setError("An unexpected error occurred. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -97,9 +97,12 @@ export default function NewLearningPathPage() {
             exit={{ opacity: 0, y: -10 }}
             className="mb-6 flex items-center gap-3 p-4 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive text-sm"
           >
-            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <AlertCircle className="w-4 h-4 shrink-0" />
             <p>{error}</p>
-            <button onClick={() => setError(null)} className="ml-auto hover:bg-destructive/20 p-1 rounded-full">
+            <button
+              onClick={() => setError(null)}
+              className="ml-auto hover:bg-destructive/20 p-1 rounded-full"
+            >
               <X className="w-4 h-4" />
             </button>
           </motion.div>
@@ -110,16 +113,24 @@ export default function NewLearningPathPage() {
         {/* Main form area */}
         <div className="lg:col-span-3 space-y-6">
           {/* Goal Input Card */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
             <form onSubmit={handleSubmit}>
               <div className="bg-card/50 backdrop-blur-xl border border-white/10 p-6 md:p-8 rounded-3xl hover:border-primary/20 transition-all duration-300 shadow-sm">
                 <div className="flex items-center gap-4 mb-6">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/10">
+                  <div className="w-12 h-12 rounded-2xl bg-linear-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/10">
                     <Target className="w-6 h-6 text-primary" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold text-foreground">What do you want to learn?</h2>
-                    <p className="text-sm text-muted-foreground">Describe your learning goal in detail</p>
+                    <h2 className="text-lg font-bold text-foreground">
+                      What do you want to learn?
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      Describe your learning goal in detail
+                    </p>
                   </div>
                 </div>
                 <div className="relative">
@@ -130,14 +141,14 @@ export default function NewLearningPathPage() {
                       if (error) setError(null);
                     }}
                     placeholder="e.g., Learn .NET for senior dev interviews, focusing on dependency injection, LINQ, and async patterns..."
-                    className="font-mono text-sm min-h-[160px] bg-secondary/30 border-border/50 focus:border-primary/30 focus:ring-0 resize-none rounded-2xl p-4 leading-relaxed"
+                    className="font-mono text-sm min-h-40 bg-secondary/30 border-border/50 focus:border-primary/30 focus:ring-0 resize-none rounded-2xl p-4 leading-relaxed"
                     disabled={isSubmitting}
                   />
                   <div className="absolute bottom-4 right-4">
                     <p className="text-[10px] text-muted-foreground bg-background/80 backdrop-blur-sm px-2 py-1 rounded-full border border-border/50">
                       {goal.trim().length < 10
-                        ? `${10 - goal.trim().length} more chars`
-                        : 'Ready'}
+                        ? `${10 - goal.trim().length} more characters`
+                        : "Ready"}
                     </p>
                   </div>
                 </div>
@@ -175,7 +186,9 @@ export default function NewLearningPathPage() {
                 <div className="w-8 h-8 rounded-lg bg-yellow-500/10 flex items-center justify-center">
                   <Lightbulb className="w-4 h-4 text-yellow-500" />
                 </div>
-                <h3 className="font-bold text-sm text-foreground">Example goals</h3>
+                <h3 className="font-bold text-sm text-foreground">
+                  Example goals
+                </h3>
               </div>
               <div className="flex flex-wrap gap-2">
                 {examples.map((example) => (
@@ -206,7 +219,9 @@ export default function NewLearningPathPage() {
               <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
                 <Target className="w-4 h-4 text-primary" />
               </div>
-              <h3 className="font-bold text-sm text-foreground">Tips for best results</h3>
+              <h3 className="font-bold text-sm text-foreground">
+                Tips for best results
+              </h3>
             </div>
             <ul className="space-y-4">
               {tips.map((tip, i) => (
@@ -217,14 +232,14 @@ export default function NewLearningPathPage() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.3 + i * 0.05 }}
                 >
-                  <CheckCircle2 className="w-5 h-5 text-green-500/80 mt-0.5 flex-shrink-0" />
+                  <CheckCircle2 className="w-5 h-5 text-green-500/80 mt-0.5 shrink-0" />
                   <span className="leading-relaxed">{tip}</span>
                 </motion.li>
               ))}
             </ul>
           </div>
 
-          <div className="relative overflow-hidden bg-gradient-to-br from-primary/5 to-blue-500/5 border border-white/10 p-6 rounded-3xl">
+          <div className="relative overflow-hidden bg-linear-to-br from-primary/5 to-blue-500/5 border border-white/10 p-6 rounded-3xl">
             <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
 
             <div className="relative">
@@ -232,7 +247,9 @@ export default function NewLearningPathPage() {
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
                   <Brain className="w-4 h-4 text-primary" />
                 </div>
-                <h3 className="font-bold text-sm text-foreground">What you'll get</h3>
+                <h3 className="font-bold text-sm text-foreground">
+                  What you&apos;ll get
+                </h3>
               </div>
               <ul className="space-y-3">
                 <li className="flex items-center gap-3 text-sm text-muted-foreground">

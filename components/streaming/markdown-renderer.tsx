@@ -4,7 +4,7 @@
  * Markdown Renderer using llm-ui
  * Displays streaming markdown content with code block support
  * Based on: https://github.com/richardgill/llm-ui
- * 
+ *
  * OPTIMIZED: Only loads required themes and common languages
  * to prevent page slowdown during streaming
  */
@@ -118,7 +118,7 @@ const codeToHtmlOptions: CodeToHtmlOptions = {
 };
 
 // Memoized Code block component with Shiki syntax highlighting
-const CodeBlock: LLMOutputComponent = memo(({ blockMatch }) => {
+const CodeBlock: LLMOutputComponent = memo(function CodeBlock({ blockMatch }) {
   const { html, code } = useCodeBlockToHtml({
     markdownCodeBlock: blockMatch.output,
     highlighter,
@@ -153,15 +153,26 @@ interface MarkdownRendererProps {
 }
 
 // Memoized Markdown component to prevent re-renders
-const createMarkdownComponent = (proseClassName?: string): LLMOutputComponent => 
-  memo(({ blockMatch }) => {
+const createMarkdownComponent = (
+  proseClassName?: string
+): LLMOutputComponent => {
+  const MarkdownBlock: LLMOutputComponent = memo(function MarkdownBlock({
+    blockMatch,
+  }) {
     const markdown = blockMatch.output;
     return (
-      <div className={cn("prose dark:prose-invert max-w-none prose-p:my-2 prose-headings:my-3 prose-ul:my-2 prose-ol:my-2 prose-li:my-1 prose-pre:my-0 prose-code:before:content-none prose-code:after:content-none prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-sm", proseClassName)}>
+      <div
+        className={cn(
+          "prose dark:prose-invert max-w-none prose-p:my-2 prose-headings:my-3 prose-ul:my-2 prose-ol:my-2 prose-li:my-1 prose-pre:my-0 prose-code:before:content-none prose-code:after:content-none prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-sm",
+          proseClassName
+        )}
+      >
         <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown}</ReactMarkdown>
       </div>
     );
   });
+  return MarkdownBlock;
+};
 
 export function MarkdownRenderer({
   content,
@@ -176,20 +187,26 @@ export function MarkdownRenderer({
   );
 
   // Memoize blocks configuration
-  const blocks = useMemo(() => [
-    {
-      component: CodeBlock,
-      findCompleteMatch: findCompleteCodeBlock(),
-      findPartialMatch: findPartialCodeBlock(),
-      lookBack: codeBlockLookBack(),
-    },
-  ], []);
+  const blocks = useMemo(
+    () => [
+      {
+        component: CodeBlock,
+        findCompleteMatch: findCompleteCodeBlock(),
+        findPartialMatch: findPartialCodeBlock(),
+        lookBack: codeBlockLookBack(),
+      },
+    ],
+    []
+  );
 
   // Memoize fallback block
-  const fallbackBlock = useMemo(() => ({
-    component: MarkdownComponent,
-    lookBack: markdownLookBack(),
-  }), [MarkdownComponent]);
+  const fallbackBlock = useMemo(
+    () => ({
+      component: MarkdownComponent,
+      lookBack: markdownLookBack(),
+    }),
+    [MarkdownComponent]
+  );
 
   const { blockMatches } = useLLMOutput({
     llmOutput: content,

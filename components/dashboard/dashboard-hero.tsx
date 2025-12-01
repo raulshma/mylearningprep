@@ -1,17 +1,17 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useEffect, useState } from "react";
+
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+}
 
 export function DashboardHero() {
-  const [greeting, setGreeting] = useState("");
-
-  useEffect(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) setGreeting("Good morning");
-    else if (hour < 18) setGreeting("Good afternoon");
-    else setGreeting("Good evening");
-  }, []);
+  // Calculate greeting during render (safe since it's based on current time)
+  const greeting = getGreeting();
 
   return (
     <motion.div

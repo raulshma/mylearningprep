@@ -11,7 +11,7 @@ interface RedisClientCache {
 }
 
 declare global {
-  // eslint-disable-next-line no-var
+   
   var _redisClient: RedisClientCache | undefined;
 }
 

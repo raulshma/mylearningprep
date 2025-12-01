@@ -101,3 +101,16 @@ export {
   type CreateFeedbackInput,
   type RecordActivityCompletionInput,
 } from "./feedback";
+
+// AI Chat actions
+export {
+  createConversation,
+  getConversation,
+  getConversations,
+  updateConversationTitle,
+  generateConversationTitle,
+  addMessageToConversation,
+  togglePinConversation,
+  archiveConversation,
+  deleteConversation,
+} from "./ai-chat-actions";

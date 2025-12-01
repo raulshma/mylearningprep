@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { constructWebhookEvent, getPlanFromPriceId, getPlanLimit, getPlanInterviewLimit } from '@/lib/services/stripe';
+import { constructWebhookEvent, getPlanFromPriceId, getPlanLimit, getPlanInterviewLimit, getPlanChatMessageLimit } from '@/lib/services/stripe';
 import { userRepository } from '@/lib/db/repositories/user-repository';
 import { UserPlan } from '@/lib/db/schemas/user';
+import { FREE_CHAT_MESSAGE_LIMIT } from '@/lib/pricing-data';
 
 export async function POST(request: NextRequest) {
   const body = await request.text();
@@ -75,11 +76,12 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
 
   const iterationLimit = getPlanLimit(plan);
   const interviewLimit = getPlanInterviewLimit(plan);
+  const chatMessageLimit = getPlanChatMessageLimit(plan);
   
   // Update user with new plan and Stripe customer ID
   const user = await userRepository.findByClerkId(clerkId);
   if (user) {
-    await userRepository.updatePlan(clerkId, plan, iterationLimit, interviewLimit);
+    await userRepository.updatePlan(clerkId, plan, iterationLimit, interviewLimit, chatMessageLimit);
     
     // Update stripeCustomerId if not already set
     if (!user.stripeCustomerId && customerId) {
@@ -137,7 +139,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   }
 
   // Update user plan and ensure subscription ID is stored
-  await userRepository.updatePlan(clerkId, planConfig.plan, planConfig.iterationLimit, planConfig.interviewLimit);
+  await userRepository.updatePlan(clerkId, planConfig.plan, planConfig.iterationLimit, planConfig.interviewLimit, planConfig.chatMessageLimit);
   await userRepository.updateStripeSubscriptionId(clerkId, subscription.id);
   console.log(`User ${clerkId} subscription updated to ${planConfig.plan}`);
 }
@@ -166,7 +168,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   }
 
   // Downgrade user to FREE plan and clear subscription ID
-  await userRepository.updatePlan(clerkId, 'FREE', 5, 3);
+  await userRepository.updatePlan(clerkId, 'FREE', 5, 3, FREE_CHAT_MESSAGE_LIMIT);
   await userRepository.clearStripeSubscriptionId(clerkId);
   console.log(`User ${clerkId} downgraded to FREE plan after subscription cancellation`);
 }
@@ -201,8 +203,9 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
     return;
   }
 
-  // Reset iteration and interview counts on renewal
+  // Reset iteration, interview, and chat message counts on renewal
   await userRepository.resetIterations(clerkId);
   await userRepository.resetInterviews(clerkId);
-  console.log(`User ${clerkId} iterations and interviews reset on subscription renewal`);
+  await userRepository.resetChatMessages(clerkId);
+  console.log(`User ${clerkId} iterations, interviews, and chat messages reset on subscription renewal`);
 }

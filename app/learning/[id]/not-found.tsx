@@ -1,6 +1,6 @@
-import Link from 'next/link';
-import { BookOpen, ArrowLeft } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import Link from "next/link";
+import { BookOpen, ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function LearningPathNotFound() {
   return (
@@ -9,9 +9,12 @@ export default function LearningPathNotFound() {
         <div className="w-16 h-16 bg-secondary flex items-center justify-center mx-auto mb-6">
           <BookOpen className="w-8 h-8 text-muted-foreground" />
         </div>
-        <h1 className="text-2xl font-mono text-foreground mb-2">Learning Path Not Found</h1>
+        <h1 className="text-2xl font-mono text-foreground mb-2">
+          Learning Path Not Found
+        </h1>
         <p className="text-muted-foreground mb-6">
-          The learning path you're looking for doesn't exist or you don't have access to it.
+          The learning path you&apos;re looking for doesn&apos;t exist or you
+          don&apos;t have access to it.
         </p>
         <Button asChild>
           <Link href="/dashboard">
