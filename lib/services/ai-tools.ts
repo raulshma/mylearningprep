@@ -44,6 +44,7 @@ import type { BYOKTierConfig } from "./ai-engine";
 export type AIToolName =
   | "searchWeb"
   | "crawlWeb"
+  | "searchAndCrawl"
   | "analyzeTechTrends"
   | "mockInterview"
   | "analyzeGitHubRepo"
@@ -1450,6 +1451,7 @@ export function getAITools(
 export const TOOL_DISPLAY_NAMES: Record<AIToolName, string> = {
   searchWeb: "Searching Web",
   crawlWeb: "Crawling Web Page",
+  searchAndCrawl: "Searching & Crawling Web",
   analyzeTechTrends: "Analyzing Tech Trends",
   mockInterview: "Preparing Mock Interview",
   analyzeGitHubRepo: "Analyzing GitHub Repository",
@@ -1464,6 +1466,7 @@ export const TOOL_DISPLAY_NAMES: Record<AIToolName, string> = {
 export const TOOL_DESCRIPTIONS: Record<AIToolName, string> = {
   searchWeb: "Search the web for current information",
   crawlWeb: "Extract full content from web pages",
+  searchAndCrawl: "Search the web and crawl top results for full content",
   analyzeTechTrends: "Analyze technology market trends and job demand",
   mockInterview: "Generate realistic mock interview questions",
   analyzeGitHubRepo: "Analyze GitHub repositories for learning",

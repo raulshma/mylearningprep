@@ -21,6 +21,8 @@ import type { AIToolName } from "@/lib/services/ai-tools";
 export type ToolStatusStep =
   | "idle"
   | "searching"
+  | "crawling"
+  | "searchingAndCrawling"
   | "reading"
   | "generating"
   | "complete"
@@ -56,6 +58,16 @@ const statusConfig: Record<
     icon: Search,
     label: "Searching Web",
     color: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+  },
+  crawling: {
+    icon: FileText,
+    label: "Crawling Web Page",
+    color: "bg-orange-500/10 text-orange-500 border-orange-500/20",
+  },
+  searchingAndCrawling: {
+    icon: Search,
+    label: "Searching & Crawling",
+    color: "bg-teal-500/10 text-teal-500 border-teal-500/20",
   },
   reading: {
     icon: FileText,
@@ -111,6 +123,8 @@ const statusConfig: Record<
 export function toolNameToStatus(toolName: AIToolName): ToolStatusStep {
   const mapping: Record<AIToolName, ToolStatusStep> = {
     searchWeb: "searching",
+    crawlWeb: "crawling",
+    searchAndCrawl: "searchingAndCrawling",
     analyzeTechTrends: "analyzingTrends",
     mockInterview: "mockInterview",
     analyzeGitHubRepo: "analyzingRepo",

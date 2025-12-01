@@ -356,6 +356,177 @@ function createOrchestratorTools(
     });
   }
 
+  // Combined search and crawl tool (available for all paid plans)
+  if (ctx.plan !== "FREE" && isSearchEnabled()) {
+    tools.searchAndCrawl = tool({
+      description:
+        "Search the web for information and optionally crawl top results for full content. This is the recommended tool for comprehensive research - it searches and can automatically crawl the most relevant results to get complete article content.",
+      inputSchema: z.object({
+        query: z.string().describe("The search query to find relevant information"),
+        crawlTopResults: z
+          .number()
+          .min(0)
+          .max(3)
+          .optional()
+          .default(1)
+          .describe("Number of top search results to crawl for full content (0-3)"),
+      }),
+      execute: async ({ query, crawlTopResults = 1 }) => {
+        onToolStatus({
+          toolName: "searchAndCrawl",
+          status: "calling",
+          input: { query, crawlTopResults },
+          timestamp: new Date(),
+        });
+
+        try {
+          // First, search the web
+          const searchResponse = await searchService.query(query, 5);
+
+          if (searchResponse.results.length === 0) {
+            onToolStatus({
+              toolName: "searchAndCrawl",
+              status: "complete",
+              input: { query },
+              output: { searchResults: 0, crawledPages: 0 },
+              timestamp: new Date(),
+            });
+
+            return {
+              searchResults: [],
+              crawledContent: [],
+              message: "No search results found",
+            };
+          }
+
+          // If crawling is not requested or not enabled, return search results only
+          const { crawlService, isCrawlEnabled } = await import("./crawl-service");
+          if (crawlTopResults === 0 || !isCrawlEnabled()) {
+            onToolStatus({
+              toolName: "searchAndCrawl",
+              status: "complete",
+              input: { query },
+              output: { searchResults: searchResponse.results.length, crawledPages: 0 },
+              timestamp: new Date(),
+            });
+
+            return {
+              searchResults: searchResponse.results.map((r) => ({
+                title: r.title,
+                snippet: r.snippet,
+                url: r.url,
+              })),
+              crawledContent: [],
+              message: `Found ${searchResponse.results.length} search results`,
+            };
+          }
+
+          // Check quota before crawling
+          const { checkQuota, consumeQuota } = await import("./crawl-quota");
+          const quotaCheck = await checkQuota(ctx.userId, ctx.plan, crawlTopResults);
+
+          if (!quotaCheck.allowed) {
+            onToolStatus({
+              toolName: "searchAndCrawl",
+              status: "complete",
+              input: { query },
+              output: { searchResults: searchResponse.results.length, crawledPages: 0, quotaExceeded: true },
+              timestamp: new Date(),
+            });
+
+            return {
+              searchResults: searchResponse.results.map((r) => ({
+                title: r.title,
+                snippet: r.snippet,
+                url: r.url,
+              })),
+              crawledContent: [],
+              message: `Found ${searchResponse.results.length} results. ${quotaCheck.message}`,
+            };
+          }
+
+          // Crawl top N results
+          const urlsToCrawl = searchResponse.results
+            .slice(0, crawlTopResults)
+            .map((r) => r.url);
+
+          const crawledContent: Array<{
+            url: string;
+            title: string;
+            markdown?: string;
+            error?: string;
+          }> = [];
+
+          for (const url of urlsToCrawl) {
+            const crawlResult = await crawlService.crawlUrl(url, {
+              priority: ctx.plan === "MAX" ? 8 : 5,
+              timeout: 15000,
+            });
+
+            const searchResult = searchResponse.results.find((r) => r.url === url);
+
+            if (crawlResult.success && crawlResult.markdown) {
+              crawledContent.push({
+                url,
+                title: searchResult?.title || crawlResult.metadata?.title || url,
+                markdown: crawlResult.markdown,
+              });
+            } else {
+              crawledContent.push({
+                url,
+                title: searchResult?.title || url,
+                error: crawlResult.error || "Failed to crawl",
+              });
+            }
+          }
+
+          // Consume quota for successful crawls
+          const successfulCrawls = crawledContent.filter((c) => c.markdown).length;
+          if (successfulCrawls > 0) {
+            await consumeQuota(ctx.userId, ctx.plan, successfulCrawls);
+          }
+
+          onToolStatus({
+            toolName: "searchAndCrawl",
+            status: "complete",
+            input: { query, crawlTopResults },
+            output: {
+              searchResults: searchResponse.results.length,
+              crawledPages: successfulCrawls,
+            },
+            timestamp: new Date(),
+          });
+
+          return {
+            searchResults: searchResponse.results.map((r) => ({
+              title: r.title,
+              snippet: r.snippet,
+              url: r.url,
+            })),
+            crawledContent,
+            message: `Found ${searchResponse.results.length} results, crawled ${successfulCrawls} pages`,
+          };
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : "Unknown error";
+
+          onToolStatus({
+            toolName: "searchAndCrawl",
+            status: "error",
+            input: { query },
+            output: { error: errorMessage },
+            timestamp: new Date(),
+          });
+
+          return {
+            searchResults: [],
+            crawledContent: [],
+            error: `Search and crawl failed: ${errorMessage}`,
+          };
+        }
+      },
+    });
+  }
+
   // Tech trends analysis tool
   if (ctx.plan !== "FREE") {
     tools.analyzeTechTrends = tool({

@@ -14,6 +14,9 @@ import {
   Wand2,
   Palette,
   BarChart3,
+  Globe,
+  MessageSquare,
+  Wrench,
 } from 'lucide-react';
 import Link from 'next/link';
 import { getAvailableFeatures, type PlanFeature } from '@/lib/utils/feature-gate';
@@ -24,6 +27,18 @@ interface PlanFeaturesSectionProps {
 }
 
 const FEATURE_INFO: Record<PlanFeature, { label: string; description: string; icon: React.ReactNode; minPlan: UserPlan }> = {
+  ai_chat: {
+    label: 'AI Chat Assistant',
+    description: 'Chat with AI for interview guidance and preparation help',
+    icon: <MessageSquare className="w-5 h-5" />,
+    minPlan: 'FREE',
+  },
+  ai_tools: {
+    label: 'AI Tools',
+    description: 'Web search, tech trends analysis, mock interviews, and more',
+    icon: <Wrench className="w-5 h-5" />,
+    minPlan: 'PRO',
+  },
   analogy_all_styles: {
     label: 'All Analogy Styles',
     description: 'Professional, construction, and simple explanations',
@@ -34,6 +49,12 @@ const FEATURE_INFO: Record<PlanFeature, { label: string; description: string; ic
     label: 'PDF Export',
     description: 'Export interview prep as downloadable PDF',
     icon: <FileDown className="w-5 h-5" />,
+    minPlan: 'PRO',
+  },
+  web_search_crawl: {
+    label: 'Web Search & Crawl',
+    description: 'AI-powered web search and content extraction for up-to-date information',
+    icon: <Globe className="w-5 h-5" />,
     minPlan: 'PRO',
   },
   byok: {
@@ -69,8 +90,11 @@ const FEATURE_INFO: Record<PlanFeature, { label: string; description: string; ic
 };
 
 const ALL_FEATURES: PlanFeature[] = [
+  'ai_chat',
+  'ai_tools',
   'analogy_all_styles',
   'pdf_export',
+  'web_search_crawl',
   'advanced_ai',
   'custom_theme',
   'analytics',

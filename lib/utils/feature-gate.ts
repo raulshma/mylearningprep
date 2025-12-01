@@ -15,7 +15,10 @@ export type PlanFeature =
   | 'custom_prompts'
   | 'advanced_ai'
   | 'custom_theme'
-  | 'analytics';
+  | 'analytics'
+  | 'web_search_crawl'
+  | 'ai_tools'
+  | 'ai_chat';
 
 /**
  * Result of a feature access check
@@ -37,6 +40,9 @@ export const FEATURE_ACCESS_MAP: Record<PlanFeature, UserPlan[]> = {
   advanced_ai: ['PRO', 'MAX'],
   custom_theme: ['PRO', 'MAX'],
   analytics: ['PRO', 'MAX'],
+  web_search_crawl: ['PRO', 'MAX'],
+  ai_tools: ['PRO', 'MAX'],
+  ai_chat: ['FREE', 'PRO', 'MAX'], // All plans have AI chat, but with different limits
 };
 
 /**

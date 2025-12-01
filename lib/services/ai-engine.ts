@@ -18,6 +18,7 @@ import {
   type OpeningBrief,
 } from "@/lib/db/schemas/interview";
 import { searchService, isSearchEnabled } from "./search-service";
+import { crawlService, isCrawlEnabled } from "./crawl-service";
 import { getSettingsCollection } from "@/lib/db/collections";
 import {
   SETTINGS_KEYS,
@@ -168,6 +169,33 @@ const searchWebToolSchema = z.object({
 });
 
 /**
+ * Crawl Web Tool Definition Schema
+ */
+const crawlWebToolSchema = z.object({
+  url: z.string().url().describe("The URL to crawl and extract content from"),
+  extractionType: z
+    .enum(["full", "markdown-only", "metadata-only"])
+    .optional()
+    .default("markdown-only")
+    .describe("Type of content to extract"),
+});
+
+/**
+ * Combined Search and Crawl Tool Definition Schema
+ * This tool first searches for relevant URLs, then crawls the most relevant ones
+ */
+const searchAndCrawlToolSchema = z.object({
+  query: z.string().describe("The search query to find relevant information"),
+  crawlTopResults: z
+    .number()
+    .min(0)
+    .max(3)
+    .optional()
+    .default(1)
+    .describe("Number of top search results to crawl for full content (0-3)"),
+});
+
+/**
  * Create search web tool
  */
 function createSearchWebTool() {
@@ -185,13 +213,141 @@ function createSearchWebTool() {
 }
 
 /**
+ * Create crawl web tool
+ */
+function createCrawlWebTool() {
+  return {
+    crawlWeb: tool({
+      description:
+        "Crawl and extract full content from a web page. Use this when you need the complete article/page content, not just search snippets. Returns markdown content.",
+      inputSchema: crawlWebToolSchema,
+      execute: async (params: { url: string; extractionType?: string }) => {
+        const result = await crawlService.crawlUrl(params.url, {
+          timeout: 15000,
+        });
+
+        if (!result.success) {
+          return {
+            success: false,
+            error: result.error || "Failed to crawl URL",
+          };
+        }
+
+        if (params.extractionType === "metadata-only") {
+          return {
+            success: true,
+            url: result.url,
+            metadata: result.metadata,
+          };
+        }
+
+        return {
+          success: true,
+          url: result.url,
+          markdown: result.markdown,
+          metadata: result.metadata,
+        };
+      },
+    }),
+  };
+}
+
+/**
+ * Create combined search and crawl tool
+ * This is the recommended tool for interview prep - it searches and optionally crawls top results
+ */
+function createSearchAndCrawlTool() {
+  return {
+    searchAndCrawl: tool({
+      description:
+        "Search the web for information and optionally crawl top results for full content. Use this to get comprehensive, up-to-date information about technologies, frameworks, companies, or interview topics. Set crawlTopResults > 0 to get full article content from the most relevant search results.",
+      inputSchema: searchAndCrawlToolSchema,
+      execute: async (params: { query: string; crawlTopResults?: number }) => {
+        const crawlCount = params.crawlTopResults ?? 1;
+
+        // First, search the web
+        const searchResponse = await searchService.query(params.query, 5);
+
+        if (searchResponse.results.length === 0) {
+          return {
+            searchResults: [],
+            crawledContent: [],
+            message: "No search results found",
+          };
+        }
+
+        // If crawling is disabled or not requested, return search results only
+        if (crawlCount === 0 || !isCrawlEnabled()) {
+          return {
+            searchResults: searchResponse.results,
+            crawledContent: [],
+            message: `Found ${searchResponse.results.length} search results`,
+          };
+        }
+
+        // Crawl top N results
+        const urlsToCrawl = searchResponse.results
+          .slice(0, crawlCount)
+          .map((r) => r.url);
+
+        const crawledContent: Array<{
+          url: string;
+          title: string;
+          markdown?: string;
+          error?: string;
+        }> = [];
+
+        for (const url of urlsToCrawl) {
+          const crawlResult = await crawlService.crawlUrl(url, {
+            timeout: 15000,
+          });
+
+          const searchResult = searchResponse.results.find(
+            (r) => r.url === url
+          );
+
+          if (crawlResult.success && crawlResult.markdown) {
+            crawledContent.push({
+              url,
+              title: searchResult?.title || crawlResult.metadata?.title || url,
+              markdown: crawlResult.markdown,
+            });
+          } else {
+            crawledContent.push({
+              url,
+              title: searchResult?.title || url,
+              error: crawlResult.error || "Failed to crawl",
+            });
+          }
+        }
+
+        return {
+          searchResults: searchResponse.results,
+          crawledContent,
+          message: `Found ${searchResponse.results.length} results, crawled ${crawledContent.filter((c) => c.markdown).length} pages`,
+        };
+      },
+    }),
+  };
+}
+
+/**
  * Get tools based on configuration
+ * Returns search, crawl, and combined search+crawl tools when available
  */
 function getTools(searchEnabled: boolean) {
+  const tools: Record<string, ReturnType<typeof tool>> = {};
+
   if (searchEnabled && isSearchEnabled()) {
-    return createSearchWebTool();
+    Object.assign(tools, createSearchWebTool());
+    Object.assign(tools, createSearchAndCrawlTool());
   }
-  return undefined;
+
+  if (isCrawlEnabled()) {
+    Object.assign(tools, createCrawlWebTool());
+  }
+
+  return Object.keys(tools).length > 0 ? tools : undefined;
 }
 
 // Schema for streaming topics array
@@ -791,8 +947,8 @@ The explanation should be comprehensive but match the requested style throughout
 // Export types
 export type { MCQ, RevisionTopic, RapidFire, OpeningBrief };
 
-// Export search tool for external use
-export { createSearchWebTool, getTools };
+// Export tools for external use
+export { createSearchWebTool, createCrawlWebTool, createSearchAndCrawlTool, getTools };
 
 // Export AI Engine interface
 export interface AIEngine {

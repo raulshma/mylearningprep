@@ -11,9 +11,11 @@
  */
 
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { generateObject } from "ai";
+import { generateObject, tool } from "ai";
 import { z } from "zod";
 import { ObjectId } from "mongodb";
+import { searchService, isSearchEnabled } from "./search-service";
+import { crawlService, isCrawlEnabled } from "./crawl-service";
 import {
   type LearningPath,
   type LearningTopic,
@@ -49,6 +51,121 @@ import type { BYOKTierConfig } from "./ai-engine";
 // Constants
 const MIN_GOAL_LENGTH = 10;
 const RECENT_RESULTS_COUNT = 10;
+
+// ============================================================================
+// Search and Crawl Tools for Learning Path Generation
+// ============================================================================
+
+/**
+ * Search and Crawl Tool Schema for learning path generation
+ */
+const searchAndCrawlToolSchema = z.object({
+  query: z.string().describe("The search query to find relevant learning information"),
+  crawlTopResults: z
+    .number()
+    .min(0)
+    .max(2)
+    .optional()
+    .default(1)
+    .describe("Number of top search results to crawl for full content (0-2)"),
+});
+
+/**
+ * Create search and crawl tool for learning path generation
+ * This tool searches for learning resources and optionally crawls top results
+ */
+function createLearningSearchAndCrawlTool() {
+  return {
+    searchAndCrawl: tool({
+      description:
+        "Search the web for learning resources, documentation, tutorials, and technical information. Optionally crawl top results for full content. Use this to find up-to-date information about technologies, best practices, and learning materials.",
+      inputSchema: searchAndCrawlToolSchema,
+      execute: async (params: { query: string; crawlTopResults?: number }) => {
+        const crawlCount = params.crawlTopResults ?? 1;
+
+        // First, search the web
+        if (!isSearchEnabled()) {
+          return {
+            searchResults: [],
+            crawledContent: [],
+            message: "Search is not enabled",
+          };
+        }
+
+        const searchResponse = await searchService.query(params.query, 5);
+
+        if (searchResponse.results.length === 0) {
+          return {
+            searchResults: [],
+            crawledContent: [],
+            message: "No search results found",
+          };
+        }
+
+        // If crawling is disabled or not requested, return search results only
+        if (crawlCount === 0 || !isCrawlEnabled()) {
+          return {
+            searchResults: searchResponse.results,
+            crawledContent: [],
+            message: `Found ${searchResponse.results.length} search results`,
+          };
+        }
+
+        // Crawl top N results
+        const urlsToCrawl = searchResponse.results
+          .slice(0, crawlCount)
+          .map((r) => r.url);
+
+        const crawledContent: Array<{
+          url: string;
+          title: string;
+          markdown?: string;
+          error?: string;
+        }> = [];
+
+        for (const url of urlsToCrawl) {
+          const crawlResult = await crawlService.crawlUrl(url, {
+            timeout: 15000,
+          });
+
+          const searchResult = searchResponse.results.find(
+            (r) => r.url === url
+          );
+
+          if (crawlResult.success && crawlResult.markdown) {
+            crawledContent.push({
+              url,
+              title: searchResult?.title || crawlResult.metadata?.title || url,
+              markdown: crawlResult.markdown,
+            });
+          } else {
+            crawledContent.push({
+              url,
+              title: searchResult?.title || url,
+              error: crawlResult.error || "Failed to crawl",
+            });
+          }
+        }
+
+        return {
+          searchResults: searchResponse.results,
+          crawledContent,
+          message: `Found ${searchResponse.results.length} results, crawled ${crawledContent.filter((c) => c.markdown).length} pages`,
+        };
+      },
+    }),
+  };
+}
+
+/**
+ * Get learning tools based on service availability
+ */
+function getLearningTools() {
+  if (isSearchEnabled() || isCrawlEnabled()) {
+    return createLearningSearchAndCrawlTool();
+  }
+  return undefined;
+}
 
 /**
  * Get tier setting key
@@ -189,8 +306,51 @@ export function validateGoal(goal: string): { valid: boolean; error?: string } {
 }
 
 /**
+ * Gather search context for learning goal
+ * Uses search and crawl to get up-to-date information about the learning topic
+ */
+async function gatherLearningContext(goal: string): Promise<string> {
+  if (!isSearchEnabled()) {
+    return "";
+  }
+
+  try {
+    // Search for relevant learning resources and interview topics
+    const searchQuery = `${goal} interview preparation learning path topics`;
+    const searchResponse = await searchService.query(searchQuery, 3);
+
+    if (searchResponse.results.length === 0) {
+      return "";
+    }
+
+    let context = "\n\n## Current Industry Context (from web search):\n";
+    context += searchResponse.results
+      .map((r) => `- ${r.title}: ${r.snippet}`)
+      .join("\n");
+
+    // Optionally crawl the top result for more detailed content
+    if (isCrawlEnabled() && searchResponse.results.length > 0) {
+      const topUrl = searchResponse.results[0].url;
+      const crawlResult = await crawlService.crawlUrl(topUrl, { timeout: 10000 });
+
+      if (crawlResult.success && crawlResult.markdown) {
+        // Truncate to avoid token limits
+        const truncatedContent = crawlResult.markdown.slice(0, 2000);
+        context += `\n\n## Detailed Resource Content:\n${truncatedContent}`;
+      }
+    }
+
+    return context;
+  } catch (error) {
+    console.error("Error gathering learning context:", error);
+    return "";
+  }
+}
+
+/**
  * Parse learning goal to extract skill clusters and generate comprehensive curriculum
  * Requirements: 1.1, 1.2, 1.3
+ * Now enhanced with search and crawl for up-to-date curriculum generation
  */
 export async function parseGoal(
   goal: string,
@@ -214,9 +374,12 @@ export async function parseGoal(
   const tierConfig = await getEffectiveConfig("parse_learning_goal", byokConfig);
   const openrouter = getOpenRouterClient(apiKey);
 
+  // Gather search context for better curriculum generation
+  const searchContext = await gatherLearningContext(goal);
+
   const prompt = `You are designing a comprehensive, interview-focused learning curriculum. Analyze this learning goal and create an extensive, structured learning path.
 
-Learning Goal: "${goal}"
+Learning Goal: "${goal}"${searchContext}
 
 Create a DETAILED and COMPREHENSIVE learning path with the following:
 
@@ -415,7 +578,12 @@ export async function selectNextTopic(
     .map((t) => `- ${t.title} (${t.skillCluster}, difficulty ${t.difficulty})`)
     .join("\n") || "None";
 
-  const prompt = `Generate a NEW, COMPREHENSIVE learning topic to extend this learning path.
+  // Gather search context for better topic generation
+  const searchContext = await gatherLearningContext(
+    `${path.goal} ${path.skillClusters.join(" ")} advanced topics`
+  );
+
+  const prompt = `Generate a NEW, COMPREHENSIVE learning topic to extend this learning path.${searchContext}
 
 ## Current Learning Path Context
 Learning Goal: "${path.goal}"
