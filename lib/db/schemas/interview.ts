@@ -28,7 +28,7 @@ export const RevisionTopicSchema = z.object({
   confidence: z.enum(['low', 'medium', 'high']),
   status: TopicStatusSchema.default('not_started'),
   styleCache: TopicStyleCacheSchema.optional(),
-  // New fields for enhanced topic generation
+  // Enhanced topic generation fields for detailed content
   difficulty: SeniorityLevelSchema.optional(),
   estimatedMinutes: z.number().int().min(5).max(480).optional(),
   prerequisites: z.array(z.string()).optional(),

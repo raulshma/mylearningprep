@@ -118,6 +118,46 @@ const codeToHtmlOptions: CodeToHtmlOptions = {
   defaultColor: false,
 };
 
+// Extract language from markdown code block
+function extractLanguage(markdownCodeBlock: string): string | null {
+  const match = markdownCodeBlock.match(/^```(\w+)/);
+  return match ? match[1] : null;
+}
+
+// Language display names
+const languageDisplayNames: Record<string, string> = {
+  javascript: "JavaScript",
+  typescript: "TypeScript",
+  python: "Python",
+  java: "Java",
+  cpp: "C++",
+  csharp: "C#",
+  go: "Go",
+  rust: "Rust",
+  sql: "SQL",
+  json: "JSON",
+  yaml: "YAML",
+  markdown: "Markdown",
+  bash: "Bash",
+  html: "HTML",
+  css: "CSS",
+  jsx: "JSX",
+  tsx: "TSX",
+  ruby: "Ruby",
+  php: "PHP",
+  swift: "Swift",
+  kotlin: "Kotlin",
+  scala: "Scala",
+  graphql: "GraphQL",
+  dockerfile: "Dockerfile",
+  js: "JavaScript",
+  ts: "TypeScript",
+  py: "Python",
+  rb: "Ruby",
+  sh: "Shell",
+  shell: "Shell",
+};
+
 // Memoized Code block component with Shiki syntax highlighting
 const CodeBlock: LLMOutputComponent = memo(function CodeBlock({ blockMatch }) {
   const { html, code } = useCodeBlockToHtml({
@@ -127,6 +167,8 @@ const CodeBlock: LLMOutputComponent = memo(function CodeBlock({ blockMatch }) {
   });
 
   const [isCopied, setIsCopied] = useState(false);
+  const language = extractLanguage(blockMatch.output);
+  const displayLanguage = language ? (languageDisplayNames[language.toLowerCase()] || language) : null;
 
   const handleCopy = useCallback(async () => {
     if (!code) return;
@@ -143,7 +185,12 @@ const CodeBlock: LLMOutputComponent = memo(function CodeBlock({ blockMatch }) {
     // Fallback while Shiki is loading
     return (
       <div className="relative group my-4">
-        <pre className="shiki bg-muted p-4 rounded-lg overflow-x-auto max-w-full scrollbar-thin scrollbar-track-muted scrollbar-thumb-muted-foreground/30">
+        {displayLanguage && (
+          <div className="absolute left-3 top-2 text-xs text-muted-foreground/70 font-mono">
+            {displayLanguage}
+          </div>
+        )}
+        <pre className="shiki bg-muted p-4 pt-8 rounded-lg overflow-x-auto max-w-full scrollbar-thin scrollbar-track-muted scrollbar-thumb-muted-foreground/30">
           <code className="text-sm font-mono">{code}</code>
         </pre>
       </div>
@@ -151,21 +198,36 @@ const CodeBlock: LLMOutputComponent = memo(function CodeBlock({ blockMatch }) {
   }
 
   return (
-    <div className="relative group my-4 rounded-lg overflow-hidden border border-border/50">
-      <div className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+    <div className="relative group my-4 rounded-lg overflow-hidden border border-border/50 bg-muted/30">
+      {/* Header bar with language and copy button */}
+      <div className="flex items-center justify-between px-4 py-2 bg-muted/50 border-b border-border/30">
+        {displayLanguage ? (
+          <span className="text-xs text-muted-foreground font-mono font-medium">
+            {displayLanguage}
+          </span>
+        ) : (
+          <span />
+        )}
         <button
           onClick={handleCopy}
-          className="p-1.5 rounded-md bg-background/80 hover:bg-background border border-border/50 shadow-sm backdrop-blur-sm transition-all"
+          className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
           title="Copy code"
         >
           {isCopied ? (
-            <Check className="h-4 w-4 text-green-500" />
+            <>
+              <Check className="h-3.5 w-3.5 text-green-500" />
+              <span className="text-green-500">Copied!</span>
+            </>
           ) : (
-            <Copy className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+            <>
+              <Copy className="h-3.5 w-3.5" />
+              <span>Copy</span>
+            </>
           )}
         </button>
       </div>
-      <div className="max-w-full [&_pre]:p-4 [&_pre]:overflow-x-auto [&_pre]:max-w-full [&_pre]:-webkit-overflow-scrolling-touch [&_code]:text-sm [&_pre]:scrollbar-thin [&_pre]:scrollbar-track-muted [&_pre]:scrollbar-thumb-muted-foreground/30">
+      {/* Code content */}
+      <div className="max-w-full [&_pre]:p-4 [&_pre]:overflow-x-auto [&_pre]:max-w-full [&_pre]:-webkit-overflow-scrolling-touch [&_code]:text-sm [&_pre]:scrollbar-thin [&_pre]:scrollbar-track-muted [&_pre]:scrollbar-thumb-muted-foreground/30 [&_pre]:bg-transparent">
         {parseHtml(html)}
       </div>
     </div>
@@ -194,7 +256,40 @@ const createMarkdownComponent = (
     return (
       <div
         className={cn(
-          "prose dark:prose-invert max-w-none prose-p:my-2 prose-headings:my-3 prose-ul:my-2 prose-ol:my-2 prose-li:my-1 prose-pre:my-0 prose-code:before:content-none prose-code:after:content-none prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:text-sm",
+          "prose dark:prose-invert max-w-none",
+          // Paragraph and text spacing
+          "prose-p:my-3 prose-p:leading-relaxed",
+          // Heading styles with better hierarchy
+          "prose-headings:font-semibold prose-headings:tracking-tight",
+          "prose-h2:text-xl prose-h2:mt-8 prose-h2:mb-4 prose-h2:pb-2 prose-h2:border-b prose-h2:border-border/40",
+          "prose-h3:text-lg prose-h3:mt-6 prose-h3:mb-3",
+          "prose-h4:text-base prose-h4:mt-4 prose-h4:mb-2",
+          // List styles
+          "prose-ul:my-3 prose-ol:my-3 prose-li:my-1.5",
+          "prose-ul:pl-4 prose-ol:pl-4",
+          // Code styles (inline)
+          "prose-pre:my-0",
+          "prose-code:before:content-none prose-code:after:content-none",
+          "prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-code:font-mono",
+          // Table styles - enhanced for interview content
+          "prose-table:my-4 prose-table:w-full prose-table:border-collapse",
+          "prose-thead:bg-muted/50",
+          "prose-th:px-4 prose-th:py-2.5 prose-th:text-left prose-th:font-semibold prose-th:text-sm prose-th:border prose-th:border-border/50",
+          "prose-td:px-4 prose-td:py-2.5 prose-td:text-sm prose-td:border prose-td:border-border/50",
+          "prose-tr:even:bg-muted/20",
+          // Blockquote styles - for interview answer frameworks
+          "prose-blockquote:border-l-4 prose-blockquote:border-primary/50 prose-blockquote:bg-primary/5",
+          "prose-blockquote:py-3 prose-blockquote:px-4 prose-blockquote:my-4 prose-blockquote:rounded-r-lg",
+          "prose-blockquote:not-italic prose-blockquote:text-foreground/90",
+          // Strong and emphasis
+          "prose-strong:font-semibold prose-strong:text-foreground",
+          "prose-em:text-muted-foreground",
+          // Horizontal rule
+          "prose-hr:my-8 prose-hr:border-border/50",
+          // Links
+          "prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-a:font-medium",
+          // Images
+          "prose-img:rounded-lg prose-img:shadow-md",
           proseClassName
         )}
       >

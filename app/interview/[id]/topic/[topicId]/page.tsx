@@ -49,9 +49,13 @@ function getReadingTime(content: string): string {
 
 import { RegenerateMenu } from "@/components/streaming/regenerate-menu";
 
-// Dynamic import for Shiki (code highlighting) - prevents SSR issues
+// Dynamic import for components with Shiki (code highlighting) - prevents SSR issues
 const MarkdownRenderer = dynamic(
   () => import("@/components/streaming/markdown-renderer"),
+  { ssr: false }
+);
+const TopicContentDisplay = dynamic(
+  () => import("@/components/interview/topic-content-display"),
   { ssr: false }
 );
 import { getInterview } from "@/lib/actions/interview";
@@ -718,20 +722,22 @@ export default function TopicDetailPage() {
                 )}
               </div>
 
-              <div className="prose prose-lg prose-neutral dark:prose-invert max-w-none">
-                {isRegenerating && !streamingContent ? (
-                  <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-                    <Loader2 className="w-8 h-8 animate-spin mb-4 opacity-50" />
-                    <p>Crafting your {styleLabels[selectedStyle].toLowerCase()} explanation...</p>
-                  </div>
-                ) : (
-                  <MarkdownRenderer
-                    content={displayContent}
-                    isStreaming={isStreaming}
-                    proseClassName="prose-lg"
-                  />
-                )}
-              </div>
+              {isRegenerating && !streamingContent ? (
+                <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+                  <Loader2 className="w-8 h-8 animate-spin mb-4 opacity-50" />
+                  <p>Crafting your {styleLabels[selectedStyle].toLowerCase()} explanation...</p>
+                </div>
+              ) : (
+                <TopicContentDisplay
+                  topic={{
+                    ...topic,
+                    content: displayContent,
+                  }}
+                  isStreaming={isStreaming}
+                  streamingContent={streamingContent}
+                  showMetadata={true}
+                />
+              )}
             </CardContent>
 
             {/* Footer Actions */}

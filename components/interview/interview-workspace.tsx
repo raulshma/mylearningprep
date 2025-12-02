@@ -15,6 +15,7 @@ import { InterviewSidebar } from "@/components/interview/interview-sidebar";
 import { MobileInterviewSidebar } from "@/components/interview/mobile-interview-sidebar";
 import { ModuleCard } from "@/components/interview/module-card";
 import { ModuleProgress } from "@/components/interview/module-progress";
+import { TopicListItem } from "@/components/interview/topic-list-item";
 import { type StreamingCardStatus } from "@/components/streaming/streaming-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -983,100 +984,16 @@ export function InterviewWorkspace({
                       moduleStatus.revisionTopics === "streaming";
                     const isLastTopic = index === revisionTopics.length - 1;
                     const isCurrentlyStreaming = isStreaming && isLastTopic;
-                    const hasContent =
-                      topic.content && topic.content.length > 0;
 
-                    // Expanded view for the currently streaming topic - show title and preview only
-                    if (isCurrentlyStreaming && hasContent) {
-                      // Show only first ~200 chars of the streaming content as preview
-                      const previewContent = topic.content.slice(0, 200);
-                      const isContentTruncated = topic.content.length > 200;
-
-                      return (
-                        <div
-                          key={topic.id || `topic-${index}`}
-                          className="rounded-2xl border border-primary/30 bg-primary/5 overflow-hidden"
-                        >
-                          <div className="flex items-center justify-between p-4">
-                            <div className="flex items-center gap-4">
-                              <div className="relative">
-                                <div
-                                  className={`w-2.5 h-2.5 rounded-full ${
-                                    topic.confidence === "low"
-                                      ? "bg-red-500"
-                                      : topic.confidence === "medium"
-                                      ? "bg-yellow-500"
-                                      : "bg-green-500"
-                                  }`}
-                                />
-                                <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-primary/50 animate-ping" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="font-semibold text-foreground">
-                                  {topic.title || "Generating..."}
-                                </p>
-                                {topic.reason && (
-                                  <p className="text-sm text-muted-foreground line-clamp-1">
-                                    {topic.reason}
-                                  </p>
-                                )}
-                                {/* Streaming content preview */}
-                                <p className="text-xs text-muted-foreground/70 mt-2 line-clamp-2 font-mono">
-                                  {previewContent}
-                                  {isContentTruncated && (
-                                    <span className="animate-pulse">▊</span>
-                                  )}
-                                </p>
-                              </div>
-                            </div>
-                            {topic.confidence && (
-                              <Badge
-                                variant="outline"
-                                className="capitalize rounded-full px-3 shrink-0 ml-4"
-                              >
-                                {topic.confidence}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    }
-
-                    // Collapsed view for completed topics
                     return (
-                      <Link
+                      <TopicListItem
                         key={topic.id || `topic-${index}`}
-                        href={`/interview/${interviewId}/topic/${topic.id}`}
-                        className="group block"
-                      >
-                        <div className="flex items-center justify-between p-4 rounded-2xl border border-border/50 bg-background/50 hover:border-primary/30 hover:bg-background hover:shadow-md transition-all">
-                          <div className="flex items-center gap-4">
-                            <div
-                              className={`w-2.5 h-2.5 rounded-full ${
-                                topic.confidence === "low"
-                                  ? "bg-red-500"
-                                  : topic.confidence === "medium"
-                                  ? "bg-yellow-500"
-                                  : "bg-green-500"
-                              }`}
-                            />
-                            <div>
-                              <p className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                                {topic.title}
-                              </p>
-                              <p className="text-sm text-muted-foreground line-clamp-1">
-                                {topic.reason}
-                              </p>
-                            </div>
-                          </div>
-                          <Badge
-                            variant="outline"
-                            className="capitalize rounded-full px-3"
-                          >
-                            {topic.confidence}
-                          </Badge>
-                        </div>
-                      </Link>
+                        topic={topic}
+                        interviewId={interviewId}
+                        index={index}
+                        isStreaming={isStreaming}
+                        isCurrentlyStreaming={isCurrentlyStreaming}
+                      />
                     );
                   })}
                 </div>

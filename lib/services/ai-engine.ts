@@ -354,25 +354,21 @@ const RapidFireArraySchema = z.object({
  * Generate system prompt for interview preparation
  */
 function getSystemPrompt(): string {
-  return `You are an expert interview preparation assistant with deep knowledge across software engineering, system design, algorithms, and industry best practices. Your role is to help candidates prepare for technical interviews by generating comprehensive, in-depth, and highly relevant content based on their resume and the job description.
+  return `You are an expert interview preparation assistant. Generate comprehensive, detailed content for technical interview preparation.
 
-CRITICAL RULES:
-- ALWAYS write actual, complete content - NEVER use placeholders like "[content here]", "[800 words]", or "[Follow-Up Questions Array]"
-- Every piece of content must be fully written out with real information
-- Code examples must be real, working code - not pseudo-code or placeholders
-- Generate complete responses for every field requested
+ABSOLUTE REQUIREMENTS - VIOLATION WILL CAUSE FAILURE:
+1. NEVER use placeholder text like "[content here]", "[topic]", "(full detailed content)", "[add details]", or similar
+2. NEVER use template markers or instructions as content
+3. ALWAYS write complete, real, substantive content for every section
+4. ALL code examples must be real, working, syntactically correct code
+5. Every field must contain actual content, not descriptions of what should be there
 
-Guidelines:
-- Be extremely thorough and detailed in all content you generate
-- Provide extensive explanations with real-world examples and practical applications
-- Cover edge cases, common pitfalls, and advanced considerations
-- Use the candidate's experience to personalize content and identify skill gaps
-- Focus on practical, actionable preparation material that mirrors real interview scenarios
-- When generating MCQs, ensure all options are plausible and test deep understanding
-- For revision topics, provide comprehensive explanations with code examples, diagram descriptions, and multiple perspectives
-- Include industry best practices, performance considerations, and trade-offs
-- Reference common interview patterns and what top companies typically ask
-- Always aim for interview-ready depth that would satisfy a senior interviewer`;
+CONTENT QUALITY:
+- Write detailed technical explanations with specific examples
+- Include real code that compiles and runs
+- Provide concrete interview answers, not answer templates
+- Use proper markdown formatting with actual content
+- Be thorough - each topic should be comprehensive enough to study from`;
 }
 
 /**
@@ -571,150 +567,95 @@ export async function generateTopics(
   const modelToUse = config.model || tierConfig.model;
 
   const existingTopicsNote = ctx.existingContent?.length
-    ? `\n\nExisting topics to avoid duplicating:\n${ctx.existingContent.join("\n")}`
+    ? `\n\nIMPORTANT - Existing topics to AVOID duplicating:\n${ctx.existingContent.join("\n")}`
     : "";
 
   const seniorityLevel = inferSeniorityLevel(ctx.jobTitle);
 
-  const seniorityGuidance = {
-    junior: `Target depth: Foundational concepts with clear explanations. Focus on core fundamentals, basic patterns, and common gotchas. Assume 0-2 years experience. Interviewers will test understanding of basics and ability to learn.`,
-    mid: `Target depth: Solid understanding with practical application. Cover standard patterns, trade-offs, and real implementation details. Assume 2-5 years experience. Interviewers will test problem-solving and hands-on knowledge.`,
-    senior: `Target depth: Deep expertise with system-level thinking. Include architectural decisions, scalability concerns, and leadership aspects. Assume 5-8 years experience. Interviewers will test design skills and technical leadership.`,
-    staff: `Target depth: Expert-level with strategic thinking. Cover cross-system architecture, organizational impact, and mentorship angles. Assume 8+ years experience. Interviewers will test vision, influence, and complex problem decomposition.`
-  };
+  // Determine primary programming language from job description or context
+  const programmingLanguage = ctx.jobDescription.toLowerCase().includes('python') ? 'python' :
+    ctx.jobDescription.toLowerCase().includes('java') && !ctx.jobDescription.toLowerCase().includes('javascript') ? 'java' :
+    ctx.jobDescription.toLowerCase().includes('typescript') ? 'typescript' :
+    ctx.jobDescription.toLowerCase().includes('go ') || ctx.jobDescription.toLowerCase().includes('golang') ? 'go' :
+    ctx.jobDescription.toLowerCase().includes('rust') ? 'rust' :
+    ctx.jobDescription.toLowerCase().includes('c++') ? 'cpp' :
+    ctx.jobDescription.toLowerCase().includes('c#') ? 'csharp' :
+    'javascript';
 
-  const prompt = `Generate ${count} interview preparation topics for a ${ctx.jobTitle} position at ${ctx.company}.
+  const prompt = `Generate ${count} detailed interview preparation topics for a ${ctx.jobTitle} position at ${ctx.company}.
 
-## CANDIDATE CONTEXT
-
-**Job Requirements:**
+**Job Description:**
 ${ctx.jobDescription}
 
-**Candidate Background:**
+**Candidate Resume:**
 ${ctx.resumeText}
 ${existingTopicsNote}
 
-## TOPIC SELECTION STRATEGY
+For each topic, provide:
+- id: unique string starting with "topic_" followed by 8 random characters
+- title: specific topic name (e.g., "React Hooks and State Management" not just "React")
+- confidence: "low", "medium", or "high" based on likelihood of being asked
+- reason: 2 sentences explaining why this topic matters for this specific interview
+- difficulty: "${seniorityLevel}"
+- estimatedMinutes: number between 30-60
+- prerequisites: array of 2-3 prerequisite concepts
+- skillGaps: array of 1-2 skills from the job description this addresses
+- followUpQuestions: array of 4-5 interview follow-up questions
+- content: DETAILED markdown content (see structure below)
 
-Analyze gaps between job requirements and candidate experience. Select topics that:
-- Address skills required by the job but missing/weak in the resume (prioritize these)
-- Cover core competencies interviewers always ask about for this role
-- Include differentiators that could set the candidate apart
+CRITICAL: The "content" field must contain COMPLETE, REAL content - not templates or placeholders.
 
-## CALIBRATION: ${seniorityLevel.toUpperCase()} LEVEL
+## CONTENT STRUCTURE FOR EACH TOPIC
 
-${seniorityGuidance[seniorityLevel]}
+Write 1000-1500 words of actual technical content in markdown format:
 
-## REQUIRED OUTPUT FOR EACH TOPIC
+## Overview
+Write 3-4 sentences explaining what this topic is, why it matters in software development, and what interviewers are testing when they ask about it.
 
-Generate exactly ${count} topics. For EACH topic, you MUST provide ALL of the following fields:
+## Key Concepts
+Explain 4-5 core concepts with ### subheadings. Each concept needs 2-3 sentences of real explanation.
 
-1. **id**: Unique identifier (format: "topic_" + 8 random alphanumeric chars, e.g., "topic_a7f3b2c9")
-2. **title**: Specific, actionable topic name (e.g., "Database Indexing Strategies" not just "Databases")
-3. **confidence**: "low", "medium", or "high" (how likely this topic will be asked)
-4. **reason**: 1-2 sentences explaining WHY this topic matters for THIS specific interview
-5. **content**: Complete markdown content following the structure below (400-600 words)
-6. **difficulty**: "${seniorityLevel}" (must be one of: junior, mid, senior, staff)
-7. **estimatedMinutes**: Realistic study time in minutes (15-60 minutes recommended)
-8. **prerequisites**: Array of 2-4 prerequisite concepts (e.g., ["JavaScript basics", "Async programming"])
-9. **skillGaps**: Array of 1-3 skills from the job description this topic addresses (be specific)
-10. **followUpQuestions**: Array of 3-5 likely follow-up questions an interviewer would ask
+## How It Works
+Explain the technical mechanism in detail. Include a step-by-step breakdown.
 
-## CONTENT STRUCTURE (800-1200 words per topic)
+## Code Example
 
-For the "content" field, write comprehensive, well-formatted markdown with proper spacing between sections:
-
-### Quick Overview
-
-A 3-4 sentence summary explaining what this topic is, why it matters in production systems, and how it's typically used in industry. Set the context for why interviewers care about this.
-
-### Core Concepts
-
-Explain 5-7 fundamental principles in detail:
-- **Concept 1**: Detailed explanation with context
-- **Concept 2**: How it works under the hood
-- **Concept 3**: Relationship to other concepts
-- **Concept 4**: Common variations or implementations
-- **Concept 5**: Performance characteristics
-
-Include how these concepts interact and build upon each other.
-
-### How It Works
-
-Step-by-step explanation of the mechanism or process:
-1. First step with technical details
-2. Second step explaining the flow
-3. Third step covering edge cases
-
-Include diagram descriptions where helpful (e.g., "Imagine a flow: Client → Load Balancer → Server Pool → Database").
-
-### Practical Implementation
-
-\`\`\`language
-// Comprehensive code example (15-30 lines)
-// Include error handling
-// Show real-world usage patterns
-// Add detailed comments explaining each part
+\`\`\`${programmingLanguage}
+// Write a REAL, WORKING code example (15-25 lines)
+// Include comments explaining each part
+// Show practical usage
 \`\`\`
 
-Explain the code: what it does, why certain choices were made, and how to extend it.
+Explain what the code does and why it's written this way.
 
-### Common Interview Questions
+## Common Interview Questions
 
-**Q: What is [topic] and why is it important?**
-A: Structured answer with definition, use cases, and benefits.
+Write 3 actual interview questions with detailed answer frameworks:
 
-**Q: How would you implement [topic] in a production system?**
-A: Step-by-step approach covering architecture, trade-offs, and considerations.
+**Q: First real question about this topic?**
+Provide a 3-4 sentence answer framework.
 
-**Q: What are the trade-offs of [topic]?**
-A: Balanced analysis of pros, cons, and when to use alternatives.
+**Q: Second real question?**
+Provide a 3-4 sentence answer framework.
 
-**Q: Can you explain a time you used [topic]?**
-A: STAR format answer framework (Situation, Task, Action, Result).
+**Q: Third real question?**
+Provide a 3-4 sentence answer framework.
 
-**Q: How does [topic] compare to [alternative]?**
-A: Comparison covering performance, complexity, and use cases.
+## Best Practices
+List 3-4 specific best practices with explanations.
 
-### Best Practices & Common Pitfalls
+## Common Mistakes
+List 2-3 common mistakes developers make and how to avoid them.
 
-**Do:**
-- Best practice 1 with explanation
-- Best practice 2 with example
-- Best practice 3 with reasoning
+---
 
-**Avoid:**
-- Common mistake 1 and why it's problematic
-- Common mistake 2 and how to fix it
-- Anti-pattern and better alternative
-
-### Real-World Applications
-
-How this is used at scale:
-- Example from well-known companies or systems
-- Production considerations and optimizations
-- Monitoring and debugging approaches
-
-## GENERATION RULES
-
-1. **Proper Markdown**: Include blank lines between headings and content. Each section must be clearly separated with proper formatting.
-
-2. **Word Count**: 800-1200 words per topic for comprehensive coverage.
-
-3. **Real Content Only**: No placeholders - provide actual technical explanations, working code examples, and specific details.
-
-4. **Interview-Ready**: Content should prepare candidates to answer real interview questions confidently.
-
-5. **Complete All Topics**: Generate ALL ${count} topics with all 10 fields populated.
-
-6. **Field Requirements**:
-   - "id": starts with "topic_" + 8 random chars
-   - "difficulty": "${seniorityLevel}"
-   - "estimatedMinutes": 15-60
-   - "prerequisites": array of 2-4 items
-   - "skillGaps": array of 1-3 items
-   - "followUpQuestions": array of 3-5 questions${ctx.customInstructions
-      ? `\n\n## ADDITIONAL USER INSTRUCTIONS\n${ctx.customInstructions}`
+IMPORTANT RULES:
+1. Write ACTUAL content - no placeholders like "[content here]" or "[topic]"
+2. All code must be real, working ${programmingLanguage} code
+3. Every section must have substantive content
+4. Use proper markdown: ## for sections, ### for subsections, \`\`\` for code
+5. Generate all ${count} topics with complete content${ctx.customInstructions
+      ? `\n\nAdditional instructions: ${ctx.customInstructions}`
       : ""
     }`;
 
@@ -1064,75 +1005,67 @@ export async function regenerateTopicAnalogy(
 
   const seniorityLevel = topic.difficulty || inferSeniorityLevel(_ctx.jobTitle);
 
-  const styleDescriptions = {
-    professional: `Use professional, technical language appropriate for a ${seniorityLevel}-level developer. Include industry terminology, architectural considerations, and best practices. Write as if explaining to a peer in a technical discussion.`,
-    construction: `Explain using house construction analogies - compare software concepts to building a house. Make technical concepts relatable through building metaphors (foundation = core architecture, plumbing = data flow, electrical = event systems, etc.). Keep the interview-readiness but make it memorable.`,
-    simple: `Explain as if to someone completely new to programming - use simple words, everyday examples, and avoid jargon. Use fun analogies anyone would understand. Still cover the key points an interviewer expects, but in accessible language.`,
+  // Determine primary programming language from job description or context
+  const programmingLanguage = _ctx.jobDescription.toLowerCase().includes('python') ? 'python' :
+    _ctx.jobDescription.toLowerCase().includes('java') && !_ctx.jobDescription.toLowerCase().includes('javascript') ? 'java' :
+    _ctx.jobDescription.toLowerCase().includes('typescript') ? 'typescript' :
+    _ctx.jobDescription.toLowerCase().includes('go ') || _ctx.jobDescription.toLowerCase().includes('golang') ? 'go' :
+    _ctx.jobDescription.toLowerCase().includes('rust') ? 'rust' :
+    _ctx.jobDescription.toLowerCase().includes('c++') ? 'cpp' :
+    _ctx.jobDescription.toLowerCase().includes('c#') ? 'csharp' :
+    'javascript';
+
+  const styleInstructions = {
+    professional: "Use technical, professional language. Include industry terminology and precise definitions. Write as if explaining to a fellow developer in a technical discussion.",
+    construction: "Use house-building analogies throughout. Compare code concepts to construction: foundation = core architecture, plumbing = data flow, electrical = events, blueprints = design patterns. Make it memorable and visual.",
+    simple: "Use simple everyday language. Avoid jargon. Use analogies like cooking, organizing a library, or planning a party. Explain as if to someone new to programming.",
   };
 
-  const prompt = `Regenerate the explanation for this interview preparation topic using a different communication style while maintaining interview-readiness.
+  const prompt = `Rewrite this interview topic explanation in a ${style} style.
 
-## TOPIC DETAILS
-- **Title**: ${topic.title}
-- **Why It Matters**: ${topic.reason}
-- **Target Level**: ${seniorityLevel}
-- **Confidence**: ${topic.confidence} likelihood of being asked
-${topic.skillGaps?.length ? `- **Addresses Gaps**: ${topic.skillGaps.join(", ")}` : ""}
-${topic.prerequisites?.length ? `- **Prerequisites**: ${topic.prerequisites.join(", ")}` : ""}
+**Topic:** ${topic.title}
+**Why it matters:** ${topic.reason}
+**Level:** ${seniorityLevel}
 
-## STYLE REQUIREMENTS
-**Target Style**: ${style.toUpperCase()}
-${styleDescriptions[style]}
+**Style Instructions:** ${styleInstructions[style]}
 
-## CONTENT STRUCTURE
+Write COMPLETE, DETAILED content (1000-1500 words) in markdown format:
 
-Rewrite the content (800-1200 words) maintaining this interview-focused structure but in the ${style} style:
+## Overview
+3-4 sentences explaining ${topic.title} using ${style} language and examples.
 
-## What It Is & Why It Matters
-- Concise definition in ${style} style
-- Business/practical impact
-- Big picture context
+## Key Concepts
+Explain 4-5 core concepts using ${style} style. Use ### for each concept name.
 
-## Core Concepts to Articulate
-Present 4-6 key concepts using ${style === "construction" ? "building analogies" : style === "simple" ? "everyday examples" : "technical precision"}:
-- Each concept clearly explained
-- How concepts relate to each other
-- Common misconceptions
+## How It Works
+Explain the mechanism step-by-step using ${style} language.
 
-## How to Explain It (Interview-Ready)
-- 30-second explanation (${style} style)
-- 2-3 minute deep dive (${style} style)
-- Mental model or analogy to use
-
-## Practical Code/Implementation
-\`\`\`language
-// Code example with ${style === "simple" ? "very detailed beginner-friendly" : style === "construction" ? "building-analogy" : "professional"} comments
-// Show the concept in action
+## Code Example
+\`\`\`${programmingLanguage}
+// Write a REAL working code example (15-25 lines)
+// Use ${style} style comments
 \`\`\`
 
-## Interview Question Patterns
-Reframe these questions and answers in ${style} style:
-1. Basic "What is X?" with answer framework
-2. "How does X work?" with key points
-3. "When would you use X?" with decision criteria
-4. Trade-offs question with nuanced answer
+Explain what the code does in ${style} terms.
 
-## Common Follow-Up Questions
-3-4 follow-ups interviewers ask, with ${style}-style answer hints
+## Interview Questions
+Write 3 real interview questions with ${style}-style answer frameworks.
 
-## Red Flags to Avoid
-What NOT to say (in ${style} terms)
+## Best Practices
+3-4 best practices explained in ${style} style.
 
-## PRESERVE THESE FIELDS
-- Keep the same id: ${topic.id}
-- Keep the same title: ${topic.title}
-- Keep the same reason
-- Keep the same confidence level: ${topic.confidence}
-- Keep difficulty: ${seniorityLevel}
-- Keep estimatedMinutes: ${topic.estimatedMinutes || 30}
-- Keep prerequisites and skillGaps if present
-- Update followUpQuestions to match the new style${_ctx.customInstructions
-      ? `\n\n## ADDITIONAL USER INSTRUCTIONS\n${_ctx.customInstructions}`
+## Common Mistakes
+2-3 mistakes to avoid, explained in ${style} terms.
+
+CRITICAL RULES:
+1. Write ACTUAL content - no placeholders or templates
+2. All code must be real, working ${programmingLanguage}
+3. Use proper markdown formatting
+4. Keep the same id: ${topic.id}
+5. Keep confidence: ${topic.confidence}
+6. Keep difficulty: ${seniorityLevel}
+7. Keep estimatedMinutes: ${topic.estimatedMinutes || 45}${_ctx.customInstructions
+      ? `\n\nAdditional instructions: ${_ctx.customInstructions}`
       : ""
     }`;
 
