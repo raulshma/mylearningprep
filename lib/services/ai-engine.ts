@@ -620,54 +620,94 @@ Generate exactly ${count} topics. For EACH topic, you MUST provide ALL of the fo
 9. **skillGaps**: Array of 1-3 skills from the job description this topic addresses (be specific)
 10. **followUpQuestions**: Array of 3-5 likely follow-up questions an interviewer would ask
 
-## CONTENT STRUCTURE (400-600 words per topic)
+## CONTENT STRUCTURE (800-1200 words per topic)
 
-For the "content" field, write well-formatted markdown with proper spacing between sections:
+For the "content" field, write comprehensive, well-formatted markdown with proper spacing between sections:
 
-### What It Is & Why It Matters
+### Quick Overview
 
-A 2-3 sentence summary explaining what this topic is and why interviewers ask about it.
+A 3-4 sentence summary explaining what this topic is, why it matters in production systems, and how it's typically used in industry. Set the context for why interviewers care about this.
 
 ### Core Concepts
 
-- **Concept 1**: Brief explanation
-- **Concept 2**: Brief explanation  
-- **Concept 3**: Brief explanation
+Explain 5-7 fundamental principles in detail:
+- **Concept 1**: Detailed explanation with context
+- **Concept 2**: How it works under the hood
+- **Concept 3**: Relationship to other concepts
+- **Concept 4**: Common variations or implementations
+- **Concept 5**: Performance characteristics
 
-### How to Explain in an Interview
+Include how these concepts interact and build upon each other.
 
-**30-Second Pitch**: A concise explanation you could give verbally.
+### How It Works
 
-**Key Points to Cover**:
-1. First key point
-2. Second key point
-3. Third key point
+Step-by-step explanation of the mechanism or process:
+1. First step with technical details
+2. Second step explaining the flow
+3. Third step covering edge cases
 
-### Code Example
+Include diagram descriptions where helpful (e.g., "Imagine a flow: Client → Load Balancer → Server Pool → Database").
+
+### Practical Implementation
 
 \`\`\`language
-// Real, working code example with comments
+// Comprehensive code example (15-30 lines)
+// Include error handling
+// Show real-world usage patterns
+// Add detailed comments explaining each part
 \`\`\`
+
+Explain the code: what it does, why certain choices were made, and how to extend it.
 
 ### Common Interview Questions
 
-**Q: Example question?**
-A: Concise answer framework.
+**Q: What is [topic] and why is it important?**
+A: Structured answer with definition, use cases, and benefits.
 
-**Q: Follow-up question?**
-A: Concise answer framework.
+**Q: How would you implement [topic] in a production system?**
+A: Step-by-step approach covering architecture, trade-offs, and considerations.
+
+**Q: What are the trade-offs of [topic]?**
+A: Balanced analysis of pros, cons, and when to use alternatives.
+
+**Q: Can you explain a time you used [topic]?**
+A: STAR format answer framework (Situation, Task, Action, Result).
+
+**Q: How does [topic] compare to [alternative]?**
+A: Comparison covering performance, complexity, and use cases.
+
+### Best Practices & Common Pitfalls
+
+**Do:**
+- Best practice 1 with explanation
+- Best practice 2 with example
+- Best practice 3 with reasoning
+
+**Avoid:**
+- Common mistake 1 and why it's problematic
+- Common mistake 2 and how to fix it
+- Anti-pattern and better alternative
+
+### Real-World Applications
+
+How this is used at scale:
+- Example from well-known companies or systems
+- Production considerations and optimizations
+- Monitoring and debugging approaches
 
 ## GENERATION RULES
 
-1. **Proper Markdown**: Include blank lines between headings and content. Each section should be clearly separated.
+1. **Proper Markdown**: Include blank lines between headings and content. Each section must be clearly separated with proper formatting.
 
-2. **Word Count**: 400-600 words per topic ensures completion without cutoff.
+2. **Word Count**: 800-1200 words per topic for comprehensive coverage.
 
-3. **Real Content Only**: No placeholders like "[Write here]" - provide actual technical explanations and working code.
+3. **Real Content Only**: No placeholders - provide actual technical explanations, working code examples, and specific details.
 
-4. **Complete All Topics**: Generate ALL ${count} topics with all 10 fields populated.
+4. **Interview-Ready**: Content should prepare candidates to answer real interview questions confidently.
 
-5. **Field Requirements**:
+5. **Complete All Topics**: Generate ALL ${count} topics with all 10 fields populated.
+
+6. **Field Requirements**:
    - "id": starts with "topic_" + 8 random chars
    - "difficulty": "${seniorityLevel}"
    - "estimatedMinutes": 15-60
