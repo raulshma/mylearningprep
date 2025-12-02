@@ -199,6 +199,9 @@ export default function TopicDetailPage() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  // Style change handler - defined before keyboard shortcuts that use it
+  const handleStyleChangeRef = useRef<((style: AnalogyStyle, instructions?: string) => Promise<void>) | null>(null);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -228,15 +231,15 @@ export default function TopicDetailPage() {
 
       // 1, 2, 3 - switch styles
       if (e.key === "1" && !isRegenerating) {
-        handleStyleChange("professional");
+        handleStyleChangeRef.current?.("professional");
         return;
       }
       if (e.key === "2" && !isRegenerating) {
-        handleStyleChange("construction");
+        handleStyleChangeRef.current?.("construction");
         return;
       }
       if (e.key === "3" && !isRegenerating) {
-        handleStyleChange("simple");
+        handleStyleChangeRef.current?.("simple");
         return;
       }
 
@@ -249,7 +252,7 @@ export default function TopicDetailPage() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [interviewId, topicId, isRegenerating, router, showShortcuts, handleStyleChange]);
+  }, [interviewId, topicId, isRegenerating, router, showShortcuts]);
 
   const handleCopyContent = useCallback(() => {
     if (topic) {
@@ -431,6 +434,11 @@ export default function TopicDetailPage() {
     },
     [interviewId, topicId, selectedStyle, isRegenerating, topic]
   );
+
+  // Keep ref updated for keyboard shortcuts
+  useEffect(() => {
+    handleStyleChangeRef.current = handleStyleChange;
+  }, [handleStyleChange]);
 
   const handleRegenerateWithInstructions = useCallback(
     async (instructions: string) => {

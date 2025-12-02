@@ -37,6 +37,11 @@ import type {
   MCQ,
   RapidFire,
 } from "@/lib/db/schemas/interview";
+import {
+  DEFAULT_TOPIC_COUNT,
+  DEFAULT_MCQ_COUNT,
+  DEFAULT_RAPID_FIRE_COUNT,
+} from "@/lib/db/schemas/user";
 
 /**
  * POST /api/interview/[id]/generate
@@ -192,12 +197,26 @@ export async function POST(
         };
 
         try {
+          // Get generation counts from user preferences (MAX users only)
+          const generationCounts: GenerationCounts = {
+            topicCount: user.plan === 'MAX' && user.preferences?.generation?.topicCount
+              ? user.preferences.generation.topicCount
+              : DEFAULT_TOPIC_COUNT,
+            mcqCount: user.plan === 'MAX' && user.preferences?.generation?.mcqCount
+              ? user.preferences.generation.mcqCount
+              : DEFAULT_MCQ_COUNT,
+            rapidFireCount: user.plan === 'MAX' && user.preferences?.generation?.rapidFireCount
+              ? user.preferences.generation.rapidFireCount
+              : DEFAULT_RAPID_FIRE_COUNT,
+          };
+
           // Get the appropriate streamObject result based on module type
           const result = await getModuleStream(
             module,
             ctx,
             apiKey ?? undefined,
-            byokTierConfig ?? undefined
+            byokTierConfig ?? undefined,
+            generationCounts
           );
 
           // Stream partial objects as custom data parts with throttling
@@ -322,23 +341,37 @@ export async function POST(
 }
 
 /**
+ * Generation counts configuration
+ */
+interface GenerationCounts {
+  topicCount: number;
+  mcqCount: number;
+  rapidFireCount: number;
+}
+
+/**
  * Get the appropriate stream result for the module type
  */
 async function getModuleStream(
   module: ModuleType,
   ctx: GenerationContext,
   apiKey?: string,
-  byokTierConfig?: BYOKTierConfig
+  byokTierConfig?: BYOKTierConfig,
+  counts?: GenerationCounts
 ) {
+  const topicCount = counts?.topicCount ?? DEFAULT_TOPIC_COUNT;
+  const mcqCount = counts?.mcqCount ?? DEFAULT_MCQ_COUNT;
+  const rapidFireCount = counts?.rapidFireCount ?? DEFAULT_RAPID_FIRE_COUNT;
+
   switch (module) {
     case "openingBrief":
       return aiEngine.generateOpeningBrief(ctx, {}, apiKey, byokTierConfig);
     case "revisionTopics":
-      return aiEngine.generateTopics(ctx, 8, {}, apiKey, byokTierConfig);
+      return aiEngine.generateTopics(ctx, topicCount, {}, apiKey, byokTierConfig);
     case "mcqs":
-      return aiEngine.generateMCQs(ctx, 10, {}, apiKey, byokTierConfig);
+      return aiEngine.generateMCQs(ctx, mcqCount, {}, apiKey, byokTierConfig);
     case "rapidFire":
-      return aiEngine.generateRapidFire(ctx, 20, {}, apiKey, byokTierConfig);
+      return aiEngine.generateRapidFire(ctx, rapidFireCount, {}, apiKey, byokTierConfig);
     default:
       throw new Error(`Unknown module type: ${module}`);
   }

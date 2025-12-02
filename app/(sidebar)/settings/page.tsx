@@ -9,6 +9,7 @@ import { BYOKTierConfigSection } from '@/app/settings/components/byok-tier-confi
 import { BYOKUsageStatsSection } from '@/app/settings/components/byok-usage-stats';
 import { CustomThemeSection } from '@/app/settings/components/custom-theme-section';
 import { PlanFeaturesSection } from '@/app/settings/components/plan-features-section';
+import { GenerationPreferencesSection } from '@/app/settings/components/generation-preferences-section';
 
 export default async function SettingsPage() {
   // Single optimized call fetches all settings data
@@ -34,6 +35,10 @@ export default async function SettingsPage() {
         {/* Right column */}
         <div className="space-y-6 min-w-0">
           <SubscriptionSection profile={profile} subscription={subscription} />
+          <GenerationPreferencesSection 
+            plan={profile.plan} 
+            generationPreferences={profile.generationPreferences} 
+          />
           <BYOKUsageStatsSection hasByokKey={profile.hasByokKey} />
           <CustomThemeSection plan={profile.plan} />
           <DataManagementSection />

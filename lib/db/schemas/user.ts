@@ -20,9 +20,28 @@ export const UserChatMessagesSchema = z.object({
   resetDate: z.date(),
 });
 
+// Generation count limits and defaults (single source of truth)
+export const GENERATION_LIMITS = {
+  topics: { min: 5, max: 10, default: 8 },
+  mcqs: { min: 5, max: 20, default: 10 },
+  rapidFire: { min: 10, max: 40, default: 20 },
+} as const;
+
+// Convenience exports for backward compatibility
+export const DEFAULT_TOPIC_COUNT = GENERATION_LIMITS.topics.default;
+export const DEFAULT_MCQ_COUNT = GENERATION_LIMITS.mcqs.default;
+export const DEFAULT_RAPID_FIRE_COUNT = GENERATION_LIMITS.rapidFire.default;
+
+export const GenerationPreferencesSchema = z.object({
+  topicCount: z.number().int().min(GENERATION_LIMITS.topics.min).max(GENERATION_LIMITS.topics.max).default(GENERATION_LIMITS.topics.default),
+  mcqCount: z.number().int().min(GENERATION_LIMITS.mcqs.min).max(GENERATION_LIMITS.mcqs.max).default(GENERATION_LIMITS.mcqs.default),
+  rapidFireCount: z.number().int().min(GENERATION_LIMITS.rapidFire.min).max(GENERATION_LIMITS.rapidFire.max).default(GENERATION_LIMITS.rapidFire.default),
+});
+
 export const UserPreferencesSchema = z.object({
   theme: z.enum(['light', 'dark']).default('dark'),
   defaultAnalogy: z.enum(['professional', 'construction', 'simple']).default('professional'),
+  generation: GenerationPreferencesSchema.optional(),
 });
 
 export const UserSchema = z.object({
@@ -52,6 +71,7 @@ export type UserPlan = z.infer<typeof UserPlanSchema>;
 export type UserIterations = z.infer<typeof UserIterationsSchema>;
 export type UserInterviews = z.infer<typeof UserInterviewsSchema>;
 export type UserChatMessages = z.infer<typeof UserChatMessagesSchema>;
+export type GenerationPreferences = z.infer<typeof GenerationPreferencesSchema>;
 export type UserPreferences = z.infer<typeof UserPreferencesSchema>;
 export type User = z.infer<typeof UserSchema>;
 export type CreateUser = z.infer<typeof CreateUserSchema>;

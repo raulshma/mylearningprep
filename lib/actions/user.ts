@@ -10,7 +10,8 @@ import { cache } from "react";
 import { getAuthUserId, getAuthUser, hasByokApiKey } from "@/lib/auth/get-user";
 import { userRepository } from "@/lib/db/repositories/user-repository";
 import { createAPIError, type APIError } from "@/lib/schemas/error";
-import type { User, UserPreferences } from "@/lib/db/schemas/user";
+import type { User, UserPreferences, GenerationPreferences } from "@/lib/db/schemas/user";
+import { GENERATION_LIMITS } from "@/lib/db/schemas/user";
 
 /**
  * Result type for server actions
@@ -199,6 +200,71 @@ export async function updatePreferences(
     return {
       success: false,
       error: createAPIError("DATABASE_ERROR", "Failed to update preferences"),
+    };
+  }
+}
+
+/**
+ * Update generation preferences (MAX users only)
+ * Allows customizing topic count (5-10), MCQ count (5-20), and rapid-fire count (10-40)
+ */
+export async function updateGenerationPreferences(
+  generation: Partial<GenerationPreferences>
+): Promise<ActionResult<User>> {
+  try {
+    const clerkId = await getAuthUserId();
+    const user = await userRepository.findByClerkId(clerkId);
+
+    if (!user) {
+      return {
+        success: false,
+        error: createAPIError("NOT_FOUND", "User not found"),
+      };
+    }
+
+    // Only MAX users can customize generation preferences
+    if (user.plan !== "MAX") {
+      return {
+        success: false,
+        error: createAPIError("PLAN_REQUIRED", "Generation customization is only available for MAX plan users"),
+      };
+    }
+
+    // Validate ranges using single source of truth
+    if (generation.topicCount !== undefined && (generation.topicCount < GENERATION_LIMITS.topics.min || generation.topicCount > GENERATION_LIMITS.topics.max)) {
+      return {
+        success: false,
+        error: createAPIError("VALIDATION_ERROR", `Topic count must be between ${GENERATION_LIMITS.topics.min} and ${GENERATION_LIMITS.topics.max}`),
+      };
+    }
+    if (generation.mcqCount !== undefined && (generation.mcqCount < GENERATION_LIMITS.mcqs.min || generation.mcqCount > GENERATION_LIMITS.mcqs.max)) {
+      return {
+        success: false,
+        error: createAPIError("VALIDATION_ERROR", `MCQ count must be between ${GENERATION_LIMITS.mcqs.min} and ${GENERATION_LIMITS.mcqs.max}`),
+      };
+    }
+    if (generation.rapidFireCount !== undefined && (generation.rapidFireCount < GENERATION_LIMITS.rapidFire.min || generation.rapidFireCount > GENERATION_LIMITS.rapidFire.max)) {
+      return {
+        success: false,
+        error: createAPIError("VALIDATION_ERROR", `Rapid-fire count must be between ${GENERATION_LIMITS.rapidFire.min} and ${GENERATION_LIMITS.rapidFire.max}`),
+      };
+    }
+
+    const updatedUser = await userRepository.updateGenerationPreferences(clerkId, generation);
+
+    if (!updatedUser) {
+      return {
+        success: false,
+        error: createAPIError("DATABASE_ERROR", "Failed to update generation preferences"),
+      };
+    }
+
+    return { success: true, data: updatedUser };
+  } catch (error) {
+    console.error("updateGenerationPreferences error:", error);
+    return {
+      success: false,
+      error: createAPIError("DATABASE_ERROR", "Failed to update generation preferences"),
     };
   }
 }
@@ -437,15 +503,20 @@ export interface SettingsPageData {
     firstName: string | null;
     lastName: string | null;
     imageUrl: string | null;
-    plan: string;
+    plan: "FREE" | "PRO" | "MAX";
     iterations: { count: number; limit: number; resetDate: Date };
     interviews: { count: number; limit: number; resetDate: Date };
     hasStripeSubscription: boolean;
     hasByokKey: boolean;
     subscriptionCancelAt?: string | null;
+    generationPreferences?: {
+      topicCount: number;
+      mcqCount: number;
+      rapidFireCount: number;
+    };
   };
   subscription: {
-    plan: string;
+    plan: "FREE" | "PRO" | "MAX";
     hasSubscription: boolean;
   };
 }
@@ -503,6 +574,11 @@ const getSettingsPageDataInternal = cache(
       hasStripeSubscription: !!dbUser?.stripeCustomerId,
       hasByokKey: !!authUser.byokApiKey,
       subscriptionCancelAt,
+      generationPreferences: dbUser?.preferences?.generation ?? {
+        topicCount: GENERATION_LIMITS.topics.default,
+        mcqCount: GENERATION_LIMITS.mcqs.default,
+        rapidFireCount: GENERATION_LIMITS.rapidFire.default,
+      },
     };
 
     const subscription = {

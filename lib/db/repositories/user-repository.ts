@@ -1,7 +1,7 @@
 import { ObjectId } from 'mongodb';
 import { cache } from 'react';
 import { getUsersCollection } from '../collections';
-import { User, UserPlan, CreateUser, UserPreferences } from '../schemas/user';
+import { User, UserPlan, CreateUser, UserPreferences, GenerationPreferences } from '../schemas/user';
 
 export interface UserRepository {
   create(data: Omit<CreateUser, 'iterations' | 'interviews'> & { iterations?: Partial<CreateUser['iterations']>; interviews?: Partial<NonNullable<CreateUser['interviews']>> }): Promise<User>;
@@ -19,6 +19,7 @@ export interface UserRepository {
   resetInterviews(clerkId: string): Promise<User | null>;
   resetChatMessages(clerkId: string): Promise<User | null>;
   updatePreferences(clerkId: string, preferences: Partial<UserPreferences>): Promise<User | null>;
+  updateGenerationPreferences(clerkId: string, generation: Partial<GenerationPreferences>): Promise<User | null>;
   handlePlanChange(clerkId: string, newPlan: UserPlan, previousPlan: UserPlan): Promise<void>;
   getChatMessageUsage(clerkId: string): Promise<{ count: number; limit: number; remaining: number } | null>;
 }
@@ -373,6 +374,31 @@ export const userRepository: UserRepository = {
     }
     if (preferences.defaultAnalogy !== undefined) {
       updateFields['preferences.defaultAnalogy'] = preferences.defaultAnalogy;
+    }
+
+    const result = await collection.findOneAndUpdate(
+      { clerkId },
+      { $set: updateFields },
+      { returnDocument: 'after' }
+    );
+
+    return result as User | null;
+  },
+
+  async updateGenerationPreferences(clerkId: string, generation: Partial<GenerationPreferences>) {
+    const collection = await getUsersCollection();
+    const now = new Date();
+
+    const updateFields: Record<string, unknown> = { updatedAt: now };
+
+    if (generation.topicCount !== undefined) {
+      updateFields['preferences.generation.topicCount'] = generation.topicCount;
+    }
+    if (generation.mcqCount !== undefined) {
+      updateFields['preferences.generation.mcqCount'] = generation.mcqCount;
+    }
+    if (generation.rapidFireCount !== undefined) {
+      updateFields['preferences.generation.rapidFireCount'] = generation.rapidFireCount;
     }
 
     const result = await collection.findOneAndUpdate(

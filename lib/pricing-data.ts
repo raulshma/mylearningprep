@@ -1,4 +1,5 @@
 import type { SubscriptionPlan } from '@/lib/actions/stripe';
+import { GENERATION_LIMITS } from '@/lib/db/schemas/user';
 
 export interface PlanFeature {
   name: string;
@@ -137,6 +138,7 @@ export const PRICING_TIERS: PricingTier[] = [
       { name: `${MAX_CHAT_MESSAGE_LIMIT} AI chat messages/month`, included: true, tooltip: 'Unlimited AI chat with all tools and model selection' },
       { name: 'Everything in Pro', included: true },
       { name: 'AI tools (search, trends, etc.)', included: true, tooltip: 'All AI tools with higher quotas and priority processing' },
+      { name: 'Customizable generation', included: true, tooltip: `Fine-tune the number of topics (${GENERATION_LIMITS.topics.min}-${GENERATION_LIMITS.topics.max}), MCQs (${GENERATION_LIMITS.mcqs.min}-${GENERATION_LIMITS.mcqs.max}), and rapid-fire questions (${GENERATION_LIMITS.rapidFire.min}-${GENERATION_LIMITS.rapidFire.max}) per interview` },
       { name: 'BYOK option', included: true, tooltip: 'Bring Your Own Key - use your own OpenRouter API key' },
       { name: 'Analytics & Insights', included: true },
       { name: 'AI Usage Dashboard', included: true, tooltip: 'Monitor AI requests, token usage, costs, and performance metrics' },
@@ -148,7 +150,7 @@ export const PRICING_TIERS: PricingTier[] = [
     previewFeatures: [
       `${MAX_INTERVIEW_LIMIT} interviews/month`,
       `${MAX_CHAT_MESSAGE_LIMIT} AI chat messages`,
-      'All AI tools',
+      'Customizable generation',
       'BYOK option',
       'AI Usage Dashboard',
     ],
@@ -161,6 +163,9 @@ export const COMPARISON_FEATURES: ComparisonFeature[] = [
   { name: 'Monthly Interviews', free: `${FREE_INTERVIEW_LIMIT}`, pro: `${PRO_INTERVIEW_LIMIT}`, max: `${MAX_INTERVIEW_LIMIT}` },
   { name: 'Monthly Iterations', free: `${FREE_ITERATION_LIMIT}`, pro: `${PRO_ITERATION_LIMIT}`, max: `${MAX_ITERATION_LIMIT}` },
   { name: 'AI Chat Messages', free: `${FREE_CHAT_MESSAGE_LIMIT}`, pro: `${PRO_CHAT_MESSAGE_LIMIT}`, max: `${MAX_CHAT_MESSAGE_LIMIT}` },
+  { name: 'Revision Topics', free: `${GENERATION_LIMITS.topics.default}`, pro: `${GENERATION_LIMITS.topics.default}`, max: `${GENERATION_LIMITS.topics.min}-${GENERATION_LIMITS.topics.max} (customizable)` },
+  { name: 'MCQs per Interview', free: `${GENERATION_LIMITS.mcqs.default}`, pro: `${GENERATION_LIMITS.mcqs.default}`, max: `${GENERATION_LIMITS.mcqs.min}-${GENERATION_LIMITS.mcqs.max} (customizable)` },
+  { name: 'Rapid-Fire Questions', free: `${GENERATION_LIMITS.rapidFire.default}`, pro: `${GENERATION_LIMITS.rapidFire.default}`, max: `${GENERATION_LIMITS.rapidFire.min}-${GENERATION_LIMITS.rapidFire.max} (customizable)` },
   { name: 'AI Model', free: 'Standard', pro: 'Advanced', max: 'Advanced' },
   { name: 'AI Tools (Search, Trends, etc.)', free: false, pro: true, max: true },
   { name: 'PDF Export', free: false, pro: true, max: true },
