@@ -462,6 +462,16 @@ export function TieredModelConfig({ initialConfig }: TieredModelConfigProps) {
               Web
             </Badge>
           )}
+          {model.supported_parameters?.includes("structured_outputs") && (
+            <Badge
+              variant="secondary"
+              className="text-[10px] h-5 px-1.5 font-normal bg-cyan-500/10 text-cyan-600"
+              title="Supports structured outputs with JSON schema"
+            >
+              <Layers className="w-3 h-3 mr-1" />
+              Structured
+            </Badge>
+          )}
         </div>
       </div>
     );
