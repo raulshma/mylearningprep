@@ -28,6 +28,7 @@ export function parseTierConfig(value: unknown): TierModelConfig {
 
   const v = value as Partial<TierModelConfig>;
   return {
+    provider: v.provider ?? 'openrouter',
     primaryModel: v.primaryModel ?? null,
     fallbackModel: v.fallbackModel ?? null,
     temperature: v.temperature ?? 0.7,
