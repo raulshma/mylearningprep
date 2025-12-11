@@ -222,26 +222,26 @@ export function RoadmapTopicDetail({
       </div>
       
       {/* Actions */}
-      <div className="p-6 border-t border-border bg-background">
-        <div className="flex gap-3">
+      <div className="p-4 border-t border-border bg-background">
+        <div className="flex flex-row gap-2">
           {!isCompleted && (
             <>
               <Button
                 onClick={onStartLearning}
+                size="default"
                 className="flex-1"
-                size="lg"
               >
-                <Play className="w-4 h-4 mr-2" />
-                {isInProgress ? 'Continue Learning' : 'Start Learning'}
+                <Play className="w-4 h-4 shrink-0" />
+                <span className="ml-2">{isInProgress ? 'Continue' : 'Start'}</span>
               </Button>
               {isInProgress && (
                 <Button
                   onClick={onMarkComplete}
                   variant="outline"
-                  size="lg"
+                  size="default"
                 >
-                  <CheckCircle2 className="w-4 h-4 mr-2" />
-                  Mark Complete
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span className="ml-2 hidden sm:inline">Done</span>
                 </Button>
               )}
             </>
@@ -250,11 +250,11 @@ export function RoadmapTopicDetail({
             <Button
               onClick={onStartLearning}
               variant="outline"
+              size="default"
               className="flex-1"
-              size="lg"
             >
-              <Play className="w-4 h-4 mr-2" />
-              Review Again
+              <Play className="w-4 h-4 shrink-0" />
+              <span className="ml-2">Review</span>
             </Button>
           )}
         </div>
