@@ -168,19 +168,30 @@ export function useAIAssistant(
       setActiveTools([]);
       activeToolsRef.current = [];
 
-      // Update last model ID from context refs
-      if (contextRefs.lastModelId && result.message) {
+      // Extract metadata from the message (sent via messageMetadata callback in toUIMessageStreamResponse)
+      if (result.message) {
         const messageId = result.message.id;
-
-        // Create metadata for this message
+        // The metadata is attached to the message by the AI SDK from the server's messageMetadata callback
+        const streamMetadata = (result.message as any).metadata as MessageMetadata | undefined;
+        
+        // Build metadata from stream metadata or fall back to model ID from headers
         const metadata: MessageMetadata = {
-          model: contextRefs.lastModelId,
+          model: streamMetadata?.model || contextRefs.lastModelId || 'unknown',
+          modelName: streamMetadata?.modelName,
+          tokensIn: streamMetadata?.tokensIn,
+          tokensOut: streamMetadata?.tokensOut,
+          totalTokens: streamMetadata?.totalTokens,
+          latencyMs: streamMetadata?.latencyMs,
+          ttft: streamMetadata?.ttft,
+          throughput: streamMetadata?.throughput,
         };
 
         // Use queueMicrotask to defer state updates completely outside React's update cycle
         // This prevents "Maximum update depth exceeded" errors
         queueMicrotask(() => {
-          setLastModelId(contextRefs.lastModelId);
+          if (metadata.model) {
+            setLastModelId(metadata.model);
+          }
           setMessageMetadata((prev) => {
             const next = new Map(prev);
             next.set(messageId, metadata);

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo, memo } from "react";
-import { Loader2, Bot, AlertCircle } from "lucide-react";
+import { Loader2, Bot, AlertCircle, ArrowDown, Copy } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { MessageBubble } from "./message/message-bubble";
 import { ChatInput } from "./input/chat-input";
 import { ChatEmptyState } from "./empty-state/chat-empty-state";
@@ -13,7 +14,10 @@ import {
   type SuggestionCategory,
 } from "@/hooks/use-ai-assistant";
 import { generateConversationTitle } from "@/lib/actions/ai-chat-actions";
-import { getMessageTextContent, isErrorMessage, getErrorContent } from "./utils/message-helpers";
+import { getMessageTextContent, isErrorMessage, getErrorContent, formatMessagesForCopy } from "./utils/message-helpers";
+import { LoadingAnnouncer, ErrorAnnouncer } from "./accessibility";
+import { useModels, useModelActions } from "@/lib/store/chat";
+import { fileService } from "@/lib/services/chat/client";
 import type { UserPlan } from "@/lib/db/schemas/user";
 
 interface AIChatMainProps {
@@ -47,30 +51,24 @@ export const AIChatMain = memo(function AIChatMain({
   const isUserScrollingRef = useRef(false);
   const titleGeneratedRef = useRef(false);
   const shownErrorToastsRef = useRef<Set<string>>(new Set());
+  
+  // QoL: Track if user has scrolled away from bottom
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
 
-  // Model selection state (MAX plan only)
-  // Initialize from localStorage to persist across mode switches and new conversations
+  // Model state from store (Requirements: 1.1, 1.2 - centralized state management)
   const isMaxPlan = userPlan === "MAX";
-  const [selectedModelId, setSelectedModelId] = useState<string | null>(() => {
-    if (typeof window !== "undefined" && isMaxPlan) {
-      return localStorage.getItem("ai-chat-selected-model");
-    }
-    return null;
-  });
-  const [selectedProvider, setSelectedProvider] = useState<import("@/lib/ai/types").AIProviderType | null>(() => {
-    if (typeof window !== "undefined" && isMaxPlan) {
-      const savedModel = localStorage.getItem("ai-chat-selected-model");
-      if (savedModel?.startsWith("google:")) return "google";
-      if (savedModel) return "openrouter";
-    }
-    return null;
-  });
-  const [modelSupportsImages, setModelSupportsImages] = useState(false);
+  const modelState = useModels();
+  const modelActions = useModelActions();
+  
+  // Derive model selection from store
+  const selectedModelId = modelState.selectedId;
+  const selectedProvider = modelState.selectedProvider;
+  const modelSupportsImages = modelState.supportsImages;
+  const enabledProviderTools = modelState.enabledProviderTools;
+  
+  // File attachment state (local, not persisted)
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [filePreviews, setFilePreviews] = useState<string[]>([]);
-  
-  // Provider tools state (e.g., Google Search, URL Context)
-  const [enabledProviderTools, setEnabledProviderTools] = useState<import("@/lib/ai/provider-tools").ProviderToolType[]>([]);
 
   const {
     messages,
@@ -113,48 +111,62 @@ export const AIChatMain = memo(function AIChatMain({
     },
   });
 
-  // Handle model selection
+  // Handle model selection - updates store (Requirements: 1.2 - unidirectional data flow)
   const handleModelSelect = useCallback(
     (modelId: string, supportsImages: boolean, provider: import("@/lib/ai/types").AIProviderType) => {
-      // Batch state updates to reduce re-renders
-      setSelectedModelId(modelId);
-      setSelectedProvider(provider);
-      setModelSupportsImages(supportsImages);
+      modelActions.select(modelId, provider, supportsImages);
       if (!supportsImages) {
+        // Clear files if model doesn't support images
+        filePreviews.forEach((previewUrl) => fileService.revokePreview({ id: '', previewUrl, name: '', type: '', size: 0 }));
         setAttachedFiles([]);
         setFilePreviews([]);
       }
-      // Reset provider tools when model changes (they'll be restored from localStorage by the selector)
-      setEnabledProviderTools([]);
+      // Reset provider tools when model changes
+      modelActions.setProviderTools([]);
       // Persist to localStorage asynchronously
       queueMicrotask(() => {
         localStorage.setItem("ai-chat-selected-model", modelId);
       });
     },
-    []
+    [modelActions, filePreviews]
   );
 
-  // Handle file selection
-  const handleFileSelect = useCallback((files: File[]) => {
-    const newPreviews = files.map((file) => URL.createObjectURL(file));
+  // Handle provider tools change - updates store
+  const handleProviderToolsChange = useCallback(
+    (tools: import("@/lib/ai/provider-tools").ProviderToolType[]) => {
+      modelActions.setProviderTools(tools);
+    },
+    [modelActions]
+  );
+
+  // Handle file selection using file service (Requirements: 7.1 - display preview thumbnail)
+  const handleFileSelect = useCallback(async (files: File[]) => {
+    const newPreviews: string[] = [];
+    for (const file of files) {
+      const preview = await fileService.createPreview(file);
+      newPreviews.push(preview.previewUrl);
+    }
     setAttachedFiles((prev) => [...prev, ...files]);
     setFilePreviews((prev) => [...prev, ...newPreviews]);
   }, []);
 
-  // Remove attached file
+  // Remove attached file using file service (Requirements: 7.2 - revoke object URL)
   const handleFileRemove = useCallback((index: number) => {
     setAttachedFiles((prev) => prev.filter((_, i) => i !== index));
     setFilePreviews((prev) => {
-      URL.revokeObjectURL(prev[index]);
+      const urlToRevoke = prev[index];
+      fileService.revokePreview({ id: '', previewUrl: urlToRevoke, name: '', type: '', size: 0 });
       return prev.filter((_, i) => i !== index);
     });
   }, []);
 
-  // Cleanup file previews on unmount
+  // Cleanup file previews on unmount (Requirements: 2.4 - clean up subscriptions/resources)
   useEffect(() => {
     const currentPreviews = filePreviews;
     return () => {
-      currentPreviews.forEach((url) => URL.revokeObjectURL(url));
+      currentPreviews.forEach((previewUrl) => {
+        fileService.revokePreview({ id: '', previewUrl, name: '', type: '', size: 0 });
+      });
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -313,7 +325,7 @@ export const AIChatMain = memo(function AIChatMain({
     scrollToBottom();
   }, [messages, activeTools, scrollToBottom]);
 
-  // Detect user scrolling to pause auto-scroll
+  // Detect user scrolling to pause auto-scroll and show scroll-to-bottom button
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -324,6 +336,9 @@ export const AIChatMain = memo(function AIChatMain({
       const { scrollTop, scrollHeight, clientHeight } = container;
       const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
       isUserScrollingRef.current = !isNearBottom;
+      
+      // QoL: Show scroll-to-bottom button when scrolled up
+      setShowScrollToBottom(!isNearBottom && messages.length > 0);
 
       clearTimeout(scrollTimeout);
       if (isNearBottom) {
@@ -338,6 +353,13 @@ export const AIChatMain = memo(function AIChatMain({
       container.removeEventListener("scroll", handleScroll);
       clearTimeout(scrollTimeout);
     };
+  }, [messages.length]);
+  
+  // QoL: Force scroll to bottom handler
+  const handleScrollToBottom = useCallback(() => {
+    isUserScrollingRef.current = false;
+    setShowScrollToBottom(false);
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, []);
 
   const handleSend = async () => {
@@ -362,10 +384,25 @@ export const AIChatMain = memo(function AIChatMain({
   const handleCopy = useCallback(async (content: string) => {
     try {
       await navigator.clipboard.writeText(content);
+      toast.success("Copied to clipboard");
     } catch (err) {
       console.error("Failed to copy:", err);
+      toast.error("Failed to copy");
     }
   }, []);
+  
+  // QoL: Copy entire conversation
+  const handleCopyAll = useCallback(async () => {
+    if (messages.length === 0) return;
+    try {
+      const formatted = formatMessagesForCopy(messages);
+      await navigator.clipboard.writeText(formatted);
+      toast.success("Conversation copied to clipboard");
+    } catch (err) {
+      console.error("Failed to copy conversation:", err);
+      toast.error("Failed to copy conversation");
+    }
+  }, [messages]);
 
   const handleEdit = useCallback(
     async (index: number, content: string) => {
@@ -407,10 +444,27 @@ export const AIChatMain = memo(function AIChatMain({
 
   return (
     <div className="flex flex-col h-full bg-transparent">
+      {/* Accessibility announcements for loading and errors
+          Requirements: 14.4 - Communicate loading progress to assistive technologies
+          Requirements: 14.5 - Announce errors to screen reader users */}
+      <LoadingAnnouncer 
+        isLoading={isLoading} 
+        loadingMessage="AI is generating a response"
+        completeMessage="Response complete"
+      />
+      <ErrorAnnouncer 
+        error={error?.message} 
+        prefix="Chat error:"
+      />
+      
       {/* Messages */}
       <div
         ref={scrollContainerRef}
         className="flex-1 overflow-y-auto scroll-smooth"
+        id="message-list"
+        role="log"
+        aria-label="Chat messages"
+        aria-live="polite"
       >
         <div className="max-w-5xl mx-auto px-4 py-8">
           {messages.length === 0 ? (
@@ -475,12 +529,16 @@ export const AIChatMain = memo(function AIChatMain({
 
               {/* Loading indicator */}
               {isLoading && activeTools.length === 0 && (
-                <div className="flex gap-4">
-                  <div className="shrink-0 h-10 w-10 rounded-full flex items-center justify-center bg-muted border border-border/50">
+                <div 
+                  className="flex gap-4"
+                  role="status"
+                  aria-label="AI is thinking"
+                >
+                  <div className="shrink-0 h-10 w-10 rounded-full flex items-center justify-center bg-muted border border-border/50" aria-hidden="true">
                     <Bot className="h-5 w-5" />
                   </div>
                   <div className="flex items-center gap-2 text-muted-foreground text-sm py-3 px-1">
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
                     <span>Thinking...</span>
                   </div>
                 </div>
@@ -488,8 +546,12 @@ export const AIChatMain = memo(function AIChatMain({
 
               {/* Error display */}
               {error && !isLoading && (
-                <div className="flex gap-4">
-                  <div className="shrink-0 h-10 w-10 rounded-full flex items-center justify-center bg-destructive/10 border border-destructive/20">
+                <div 
+                  className="flex gap-4"
+                  role="alert"
+                  aria-live="assertive"
+                >
+                  <div className="shrink-0 h-10 w-10 rounded-full flex items-center justify-center bg-destructive/10 border border-destructive/20" aria-hidden="true">
                     <AlertCircle className="h-5 w-5 text-destructive" />
                   </div>
                   <div className="flex-1 max-w-[85%]">
@@ -510,28 +572,62 @@ export const AIChatMain = memo(function AIChatMain({
           <div ref={messagesEndRef} className="h-4" />
         </div>
       </div>
-
-      {/* Input Area */}
-      <ChatInput
-        value={input}
-        onChange={setInput}
-        onSend={handleSend}
-        onStop={stop}
-        onNewChat={handleNewChat}
-        isLoading={isLoading}
-        placeholder="Ask me anything about interviews..."
-        isMaxPlan={isMaxPlan}
-        selectedModelId={selectedModelId}
-        selectedProvider={selectedProvider}
-        onModelSelect={handleModelSelect}
-        modelSupportsImages={modelSupportsImages}
-        enabledProviderTools={enabledProviderTools}
-        onProviderToolsChange={setEnabledProviderTools}
-        attachedFiles={attachedFiles}
-        filePreviews={filePreviews}
-        onFileSelect={handleFileSelect}
-        onFileRemove={handleFileRemove}
-      />
+      
+      {/* Input Area - wrapped in relative container for floating buttons */}
+      <div className="relative">
+        {/* QoL: Floating action buttons - absolutely positioned above input */}
+        {(messages.length > 0 || showScrollToBottom) && (
+          <div className="absolute -top-12 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2">
+            {/* Copy all button - show when there are messages and not scrolled */}
+            {messages.length > 0 && !showScrollToBottom && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCopyAll}
+                className="rounded-full shadow-lg gap-1.5 px-3 h-8 bg-background/90 backdrop-blur-sm border border-border/50 hover:bg-background text-muted-foreground hover:text-foreground"
+                title="Copy entire conversation"
+              >
+                <Copy className="h-3.5 w-3.5" />
+                <span className="text-xs">Copy all</span>
+              </Button>
+            )}
+            
+            {/* Scroll to bottom button */}
+            {showScrollToBottom && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleScrollToBottom}
+                className="rounded-full shadow-lg gap-1.5 px-3 h-8 bg-background/90 backdrop-blur-sm border border-border/50 hover:bg-background"
+              >
+                <ArrowDown className="h-3.5 w-3.5" />
+                <span className="text-xs">New messages</span>
+              </Button>
+            )}
+          </div>
+        )}
+        
+        <ChatInput
+          value={input}
+          onChange={setInput}
+          onSend={handleSend}
+          onStop={stop}
+          onNewChat={handleNewChat}
+          isLoading={isLoading}
+          placeholder="Ask me anything about interviews..."
+          isMaxPlan={isMaxPlan}
+          selectedModelId={selectedModelId}
+          selectedProvider={selectedProvider}
+          onModelSelect={handleModelSelect}
+          modelSupportsImages={modelSupportsImages}
+          enabledProviderTools={enabledProviderTools}
+          onProviderToolsChange={handleProviderToolsChange}
+          attachedFiles={attachedFiles}
+          filePreviews={filePreviews}
+          onFileSelect={handleFileSelect}
+          onFileRemove={handleFileRemove}
+        />
+      </div>
     </div>
   );
 });

@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, memo, useMemo } from "react";
+import { useState, memo, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Bot, User, AlertCircle, Copy, Pencil, RefreshCw, Download, GitBranch } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { MarkdownRenderer } from "@/components/streaming/markdown-renderer";
 import { ThinkingIndicator } from "../thinking-indicator";
 import { MessageMetadataDisplay } from "../message-metadata";
-import { ToolInvocation } from "./tool-invocation";
+import { MessageTextContent } from "./message-text-content";
+import { ToolDisplay } from "./tool-display";
 import { MessageEditor } from "./message-editor";
 import {
   getMessageTextContent,
@@ -59,6 +59,7 @@ export const MessageBubble = memo(function MessageBubble({
 }: MessageBubbleProps) {
   const [isEditing, setIsEditing] = useState(false);
   const isCompact = variant === "compact";
+  const isUser = message.role === "user";
   
   // Memoize expensive computations
   const textContent = useMemo(() => getMessageTextContent(message), [message]);
@@ -66,20 +67,30 @@ export const MessageBubble = memo(function MessageBubble({
   const toolParts = useMemo(() => getToolParts(message), [message]);
   const fileParts = useMemo(() => getFileParts(message), [message]);
 
-  const handleEditClick = () => {
+  // Memoized callbacks to prevent unnecessary re-renders
+  const handleEditClick = useCallback(() => {
     setIsEditing(true);
-  };
-
-  const handleEditSave = (newContent: string) => {
-    setIsEditing(false);
-    if (onEdit) {
-      onEdit(newContent);
+  }, []);
+  
+  // QoL: Double-click to edit user messages
+  const handleDoubleClick = useCallback(() => {
+    if (isUser && onEdit && !isLoading) {
+      setIsEditing(true);
     }
-  };
+  }, [isUser, onEdit, isLoading]);
 
-  const handleEditCancel = () => {
+  const handleEditSave = useCallback((newContent: string) => {
     setIsEditing(false);
-  };
+    onEdit?.(newContent);
+  }, [onEdit]);
+
+  const handleEditCancel = useCallback(() => {
+    setIsEditing(false);
+  }, []);
+
+  const handleCopy = useCallback(() => {
+    onCopy?.(textContent);
+  }, [onCopy, textContent]);
 
   // Handle persisted error messages
   if (isErrorMessage(message)) {
@@ -120,7 +131,6 @@ export const MessageBubble = memo(function MessageBubble({
     );
   }
 
-  const isUser = message.role === "user";
   const avatarSize = isCompact ? "h-7 w-7" : "h-10 w-10";
   const iconSize = isCompact ? "h-3.5 w-3.5" : "h-5 w-5";
 
@@ -163,6 +173,10 @@ export const MessageBubble = memo(function MessageBubble({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn("flex gap-4 group", isUser && "flex-row-reverse")}
+      role="article"
+      aria-label={`Message from ${isUser ? 'you' : 'AI assistant'}`}
+      onDoubleClick={handleDoubleClick}
+      title={isUser && onEdit ? "Double-click to edit" : undefined}
     >
       {/* Avatar */}
       <div
@@ -173,6 +187,7 @@ export const MessageBubble = memo(function MessageBubble({
             ? "bg-primary text-primary-foreground"
             : "bg-muted border border-border/50"
         )}
+        aria-hidden="true"
       >
         {isUser ? (
           <User className={iconSize} />
@@ -216,42 +231,19 @@ export const MessageBubble = memo(function MessageBubble({
 
         {/* Text content */}
         {textContent && (
-          <div
-            className={cn(
-              "inline-block text-sm shadow-sm",
-              isCompact
-                ? "rounded-lg px-3 py-2"
-                : "rounded-[20px] px-5 py-3.5",
-              isUser
-                ? cn(
-                    "bg-primary text-primary-foreground",
-                    isCompact ? "rounded-tr-none" : "rounded-tr-none"
-                  )
-                : cn(
-                    "bg-muted/50 border border-border/50",
-                    isCompact ? "rounded-tl-none" : "rounded-tl-none"
-                  )
-            )}
-          >
-            {!isUser ? (
-              <MarkdownRenderer content={textContent} className="prose-sm" />
-            ) : (
-              <p className="whitespace-pre-wrap text-left">{textContent}</p>
-            )}
-          </div>
+          <MessageTextContent
+            content={textContent}
+            isUser={isUser}
+            variant={variant}
+          />
         )}
 
         {/* Tool invocations */}
         {!isUser && toolParts.length > 0 && (
-          <div className="space-y-2 text-left">
-            {toolParts.map((part) => (
-              <ToolInvocation
-                key={part.toolCallId}
-                part={part}
-                variant={isCompact ? "compact" : "default"}
-              />
-            ))}
-          </div>
+          <ToolDisplay
+            toolParts={toolParts}
+            variant={variant}
+          />
         )}
 
         {/* Generated images for assistant messages */}
@@ -297,19 +289,21 @@ export const MessageBubble = memo(function MessageBubble({
         {(onCopy || onEdit || onRegenerate || onBranch) && (
           <div
             className={cn(
-              "flex items-center gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity",
+              "flex items-center gap-1 mt-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity",
               isUser ? "justify-end" : "justify-start"
             )}
+            role="toolbar"
+            aria-label="Message actions"
           >
             {onCopy && (
               <Button
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6 rounded-full text-muted-foreground hover:text-foreground"
-                onClick={() => onCopy(textContent)}
-                title="Copy message"
+                onClick={handleCopy}
+                aria-label="Copy message to clipboard"
               >
-                <Copy className="h-3 w-3" />
+                <Copy className="h-3 w-3" aria-hidden="true" />
               </Button>
             )}
 
@@ -319,9 +313,9 @@ export const MessageBubble = memo(function MessageBubble({
                 size="icon"
                 className="h-6 w-6 rounded-full text-muted-foreground hover:text-foreground"
                 onClick={handleEditClick}
-                title="Edit message"
+                aria-label="Edit message"
               >
-                <Pencil className="h-3 w-3" />
+                <Pencil className="h-3 w-3" aria-hidden="true" />
               </Button>
             )}
 
@@ -331,9 +325,9 @@ export const MessageBubble = memo(function MessageBubble({
                 size="icon"
                 className="h-6 w-6 rounded-full text-muted-foreground hover:text-foreground"
                 onClick={onRegenerate}
-                title="Regenerate response"
+                aria-label="Regenerate response"
               >
-                <RefreshCw className="h-3 w-3" />
+                <RefreshCw className="h-3 w-3" aria-hidden="true" />
               </Button>
             )}
 
@@ -343,9 +337,9 @@ export const MessageBubble = memo(function MessageBubble({
                 size="icon"
                 className="h-6 w-6 rounded-full text-muted-foreground hover:text-foreground"
                 onClick={onBranch}
-                title="Branch from here"
+                aria-label="Branch conversation from this message"
               >
-                <GitBranch className="h-3 w-3" />
+                <GitBranch className="h-3 w-3" aria-hidden="true" />
               </Button>
             )}
           </div>

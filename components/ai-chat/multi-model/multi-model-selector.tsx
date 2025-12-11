@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -17,6 +16,7 @@ import {
   Loader2,
   X,
   Plus,
+  AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { OpenRouterModel, GroupedModels } from "@/app/api/models/route";
@@ -26,6 +26,12 @@ import type { SelectedModel } from "@/lib/ai/multi-model-types";
 import { MAX_MODELS_SELECTION } from "@/lib/ai/multi-model-types";
 
 const MULTI_MODEL_STORAGE_KEY = "ai-chat-multi-models";
+
+/**
+ * Minimum number of models required for multi-model comparison
+ * Requirements: 5.1 - Allow selection of 2-4 models for comparison
+ */
+export const MIN_MODELS_SELECTION = 2;
 
 interface VirtualizedModelListProps {
   models: OpenRouterModel[];
@@ -42,6 +48,7 @@ function VirtualizedModelList({
 }: VirtualizedModelListProps) {
   const parentRef = useRef<HTMLDivElement>(null);
 
+  // eslint-disable-next-line react-hooks/incompatible-library -- useVirtualizer is intentionally used; React Compiler auto-skips memoization
   const rowVirtualizer = useVirtualizer({
     count: models.length,
     getScrollElement: () => parentRef.current,
@@ -109,6 +116,34 @@ interface MultiModelSelectorProps {
   disabled?: boolean;
 }
 
+/**
+ * Validates that the number of selected models is within bounds
+ * Requirements: 5.1 - Allow selection of 2-4 models for comparison
+ */
+export function validateModelSelection(models: SelectedModel[]): {
+  isValid: boolean;
+  error?: string;
+} {
+  if (models.length < MIN_MODELS_SELECTION) {
+    return {
+      isValid: false,
+      error: `Select at least ${MIN_MODELS_SELECTION} models for comparison`,
+    };
+  }
+  if (models.length > MAX_MODELS_SELECTION) {
+    return {
+      isValid: false,
+      error: `Maximum ${MAX_MODELS_SELECTION} models allowed`,
+    };
+  }
+  return { isValid: true };
+}
+
+/**
+ * Multi-model selector component for comparing AI model responses
+ * Requirements: 5.1 - Allow selection of 2-4 models for comparison
+ * Connected to store for state management
+ */
 export function MultiModelSelector({
   selectedModels,
   onModelsChange,
@@ -123,12 +158,8 @@ export function MultiModelSelector({
   const [searchQuery, setSearchQuery] = useState("");
   const [activeProvider, setActiveProvider] = useState<AIProviderType | "all">("all");
 
-  useEffect(() => {
-    fetchModels();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const fetchModels = async () => {
+  // Fetch models on mount
+  const fetchModels = useCallback(async () => {
     try {
       setLoading(true);
       const [openRouterRes, googleRes] = await Promise.all([
@@ -145,15 +176,17 @@ export function MultiModelSelector({
 
       setAllModelsCache({ openrouter: openRouterData, google: googleData });
 
+      // Load saved models from localStorage if none selected
       const saved = localStorage.getItem(MULTI_MODEL_STORAGE_KEY);
       if (saved && selectedModels.length === 0) {
         try {
           const savedModels = JSON.parse(saved) as SelectedModel[];
-          if (savedModels.length > 0) {
+          // Validate saved models are within bounds
+          if (savedModels.length > 0 && savedModels.length <= MAX_MODELS_SELECTION) {
             onModelsChange(savedModels);
           }
         } catch {
-          // Ignore
+          // Ignore parse errors
         }
       }
     } catch (err) {
@@ -161,7 +194,11 @@ export function MultiModelSelector({
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedModels.length, onModelsChange]);
+
+  useEffect(() => {
+    fetchModels();
+  }, [fetchModels]);
 
   const groupedModels = useMemo(() => {
     if (!allModelsCache) return { free: [], paid: [] };
@@ -184,61 +221,82 @@ export function MultiModelSelector({
     };
   }, [allModelsCache, activeProvider]);
 
-  const filterModels = (models: OpenRouterModel[]) => {
+  const filterModels = useCallback((models: OpenRouterModel[]) => {
     if (!searchQuery) return models;
     const query = searchQuery.toLowerCase();
     return models.filter(
       (m) => m.id.toLowerCase().includes(query) || m.name.toLowerCase().includes(query)
     );
-  };
+  }, [searchQuery]);
 
-  const modelSupportsImages = (model: OpenRouterModel): boolean => {
+  const modelSupportsImages = useCallback((model: OpenRouterModel): boolean => {
     const modality = model.architecture?.modality?.toLowerCase() || "";
     return modality.includes("image") || modality.includes("multimodal") || modality.includes("vision");
-  };
+  }, []);
 
-  const isModelSelected = (model: OpenRouterModel) => {
+  const isModelSelected = useCallback((model: OpenRouterModel) => {
     const modelKey = model.provider === "google" ? `google:${model.id}` : model.id;
     return selectedModels.some((m) => {
       const selectedKey = m.provider === "google" ? `google:${m.id}` : m.id;
       return selectedKey === modelKey;
     });
-  };
+  }, [selectedModels]);
 
-  const handleToggleModel = (model: OpenRouterModel) => {
+  /**
+   * Toggle model selection with bounds enforcement
+   * Requirements: 5.1 - Enforce 2-4 model selection bounds
+   */
+  const handleToggleModel = useCallback((model: OpenRouterModel) => {
     const provider: AIProviderType = model.provider === "google" ? "google" : "openrouter";
+    const modality = model.architecture?.modality?.toLowerCase() || "";
+    const supportsImages = modality.includes("image") || modality.includes("multimodal") || modality.includes("vision");
+    
     const newModel: SelectedModel = {
       id: model.id,
       name: model.name,
       provider,
-      supportsImages: modelSupportsImages(model),
+      supportsImages,
     };
 
+    const modelKey = model.provider === "google" ? `google:${model.id}` : model.id;
+    const isSelected = selectedModels.some((m) => {
+      const selectedKey = m.provider === "google" ? `google:${m.id}` : m.id;
+      return selectedKey === modelKey;
+    });
+
     let newModels: SelectedModel[];
-    if (isModelSelected(model)) {
+    if (isSelected) {
+      // Allow removal even if it goes below minimum (user can add more)
       newModels = selectedModels.filter((m) => !(m.id === model.id && m.provider === provider));
     } else {
+      // Enforce maximum bound
       if (selectedModels.length >= MAX_MODELS_SELECTION) return;
       newModels = [...selectedModels, newModel];
     }
 
     onModelsChange(newModels);
     localStorage.setItem(MULTI_MODEL_STORAGE_KEY, JSON.stringify(newModels));
-  };
+  }, [selectedModels, onModelsChange]);
 
-  const handleRemoveModel = (model: SelectedModel) => {
+  /**
+   * Remove a model from selection
+   */
+  const handleRemoveModel = useCallback((model: SelectedModel) => {
     const newModels = selectedModels.filter(
       (m) => !(m.id === model.id && m.provider === model.provider)
     );
     onModelsChange(newModels);
     localStorage.setItem(MULTI_MODEL_STORAGE_KEY, JSON.stringify(newModels));
-  };
+  }, [selectedModels, onModelsChange]);
+
+  // Validate current selection
+  const validation = useMemo(() => validateModelSelection(selectedModels), [selectedModels]);
 
   if (loading) {
     return (
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <Loader2 className="h-3 w-3 animate-spin" />
-        <span>Loading...</span>
+        <span>Loading models...</span>
       </div>
     );
   }
@@ -256,14 +314,24 @@ export function MultiModelSelector({
           <button
             type="button"
             onClick={() => handleRemoveModel(model)}
-            className="h-4 w-4 rounded-full hover:bg-background/80 flex items-center justify-center -mr-0.5"
+            disabled={disabled}
+            className="h-4 w-4 rounded-full hover:bg-background/80 flex items-center justify-center -mr-0.5 disabled:opacity-50"
+            aria-label={`Remove ${model.name}`}
           >
             <X className="h-2.5 w-2.5" />
           </button>
         </div>
       ))}
 
-      {/* Add button */}
+      {/* Validation warning - show when below minimum */}
+      {!validation.isValid && selectedModels.length > 0 && selectedModels.length < MIN_MODELS_SELECTION && (
+        <div className="flex items-center gap-1 text-[10px] text-amber-600">
+          <AlertCircle className="h-3 w-3" />
+          <span>Need {MIN_MODELS_SELECTION - selectedModels.length} more</span>
+        </div>
+      )}
+
+      {/* Add button - Requirements: 5.1 - Enforce 2-4 model selection bounds */}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <button
@@ -273,11 +341,18 @@ export function MultiModelSelector({
               "flex items-center gap-1 h-6 px-2 rounded-full text-xs transition-colors",
               selectedModels.length === 0
                 ? "bg-amber-500/10 border border-amber-500/30 text-amber-600"
+                : selectedModels.length < MIN_MODELS_SELECTION
+                ? "bg-amber-500/10 border border-amber-500/30 text-amber-600"
                 : "bg-muted/40 hover:bg-muted/60 border border-border/40"
             )}
+            aria-label="Add model for comparison"
           >
             <Plus className="h-3 w-3" />
-            <span>{selectedModels.length === 0 ? "Add models" : selectedModels.length + "/4"}</span>
+            <span>
+              {selectedModels.length === 0 
+                ? "Add models" 
+                : `${selectedModels.length}/${MAX_MODELS_SELECTION}`}
+            </span>
             <ChevronDown className="h-3 w-3 opacity-50" />
           </button>
         </PopoverTrigger>

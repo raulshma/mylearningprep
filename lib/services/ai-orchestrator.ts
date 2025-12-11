@@ -1046,6 +1046,9 @@ export async function runOrchestrator(
 
   // Run streamText with multi-step tool calling
   // Disable retries for rate limit errors (429) - let the client handle them
+  // Note: We don't set maxOutputTokens here - let the model use its default
+  // Setting it too high (e.g., 65536) causes OpenRouter to reject requests
+  // when input + maxOutput > context limit, even though it's just a limit
   const result = streamText({
     model: provider.getModel(modelToUse),
     system: systemPrompt,
@@ -1053,7 +1056,6 @@ export async function runOrchestrator(
     tools: imageGenerationEnabled ? undefined : (tools && Object.keys(tools).length > 0 ? tools : undefined), // Image gen models don't support tools, and only pass tools if they exist
     stopWhen: imageGenerationEnabled || !tools ? undefined : stepCountIs(maxSteps),
     temperature: config.temperature,
-    maxOutputTokens: config.maxTokens,
     maxRetries: 0, // Don't retry - rate limits should be shown to user immediately
     // Enable image generation for supported models
     ...(imageGenerationEnabled && {

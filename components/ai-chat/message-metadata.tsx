@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, memo, useCallback, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import {
   Tooltip,
@@ -17,10 +17,19 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { MessageMetadata } from "@/hooks/use-ai-assistant";
+import type { MessageMetadata as StoreMessageMetadata } from "@/lib/store/chat/types";
 
+/**
+ * Props for MessageMetadataDisplay component
+ * Supports both hook-based and store-based metadata types
+ */
 interface MessageMetadataDisplayProps {
-  metadata: MessageMetadata;
+  metadata: MessageMetadata | StoreMessageMetadata;
   className?: string;
+  /**
+   * Whether to start in expanded state
+   */
+  defaultExpanded?: boolean;
 }
 
 /**
@@ -66,15 +75,33 @@ function formatThroughput(value?: number | null): string {
   return `${value} tok/s`;
 }
 
-export function MessageMetadataDisplay({
+/**
+ * Message metadata display component
+ * 
+ * Displays token counts, latency, and model information for AI responses.
+ * 
+ * Requirements: 8.6 - Display message metadata with final token counts and latency
+ */
+export const MessageMetadataDisplay = memo(function MessageMetadataDisplay({
   metadata,
   className,
+  defaultExpanded = false,
 }: MessageMetadataDisplayProps) {
-  const [expanded, setExpanded] = useState(false);
-  const modelName = metadata.modelName || formatModelName(metadata.model);
+  const [expanded, setExpanded] = useState(defaultExpanded);
+  
+  // Memoize formatted model name
+  const modelName = useMemo(
+    () => metadata.modelName || formatModelName(metadata.model),
+    [metadata.modelName, metadata.model]
+  );
+
+  // Memoize toggle callback
+  const toggleExpanded = useCallback(() => {
+    setExpanded((prev) => !prev);
+  }, []);
 
   return (
-    <div className={cn("flex flex-col gap-1", className)}>
+    <div className={cn("flex flex-col gap-1", className)} role="region" aria-label="Message metadata">
       {/* Model badge - always visible */}
       <div className="flex items-center gap-2 flex-wrap">
         <TooltipProvider>
@@ -83,14 +110,16 @@ export function MessageMetadataDisplay({
               <Badge
                 variant="secondary"
                 className="text-[10px] h-5 px-1.5 font-normal bg-primary/10 text-primary cursor-pointer"
-                onClick={() => setExpanded(!expanded)}
+                onClick={toggleExpanded}
+                aria-expanded={expanded}
+                aria-controls="metadata-details"
               >
-                <Cpu className="w-3 h-3 mr-1" />
+                <Cpu className="w-3 h-3 mr-1" aria-hidden="true" />
                 {modelName}
                 {expanded ? (
-                  <ChevronUp className="w-3 h-3 ml-1" />
+                  <ChevronUp className="w-3 h-3 ml-1" aria-hidden="true" />
                 ) : (
-                  <ChevronDown className="w-3 h-3 ml-1" />
+                  <ChevronDown className="w-3 h-3 ml-1" aria-hidden="true" />
                 )}
               </Badge>
             </TooltipTrigger>
@@ -105,6 +134,7 @@ export function MessageMetadataDisplay({
         <Badge
           variant="outline"
           className="text-[10px] h-5 px-1.5 font-normal text-muted-foreground"
+          aria-label={`Total tokens: ${formatTokens(metadata.totalTokens)}`}
         >
           {formatTokens(metadata.totalTokens)} tokens
         </Badge>
@@ -112,7 +142,7 @@ export function MessageMetadataDisplay({
 
       {/* Expanded details */}
       {expanded && (
-        <div className="flex items-center gap-2 flex-wrap mt-1 pl-1">
+        <div id="metadata-details" className="flex items-center gap-2 flex-wrap mt-1 pl-1" role="list" aria-label="Detailed metrics">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -198,4 +228,4 @@ export function MessageMetadataDisplay({
       )}
     </div>
   );
-}
+});

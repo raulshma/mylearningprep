@@ -75,6 +75,20 @@ export function isErrorMessage(message: UIMessage): boolean {
 }
 
 /**
+ * QoL: Format all messages as plain text for copying
+ */
+export function formatMessagesForCopy(messages: UIMessage[]): string {
+  return messages
+    .filter((m) => m.role === "user" || m.role === "assistant")
+    .map((m) => {
+      const role = m.role === "user" ? "You" : "Assistant";
+      const content = getMessageTextContent(m);
+      return `${role}:\n${content}`;
+    })
+    .join("\n\n---\n\n");
+}
+
+/**
  * Get error content from a persisted error message
  */
 export function getErrorContent(

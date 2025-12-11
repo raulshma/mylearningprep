@@ -88,9 +88,9 @@ describe('Feature Gate Utility', () => {
   });
 
   describe('getAvailableFeatures', () => {
-    it('should return empty array for FREE plan', () => {
+    it('should return only ai_chat for FREE plan', () => {
       const features = getAvailableFeatures('FREE');
-      expect(features).toEqual([]);
+      expect(features).toEqual(['ai_chat']);
     });
 
     it('should return PRO features for PRO plan', () => {

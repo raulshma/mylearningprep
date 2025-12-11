@@ -67,12 +67,20 @@ export const ChatEmptyState = memo(function ChatEmptyState({
 
   if (isCompact) {
     return (
-      <div className="text-center py-8">
-        <Bot className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+      <div 
+        className="text-center py-8"
+        role="region"
+        aria-label="Chat welcome message"
+      >
+        <Bot className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" aria-hidden="true" />
         <h4 className="text-sm font-medium mb-2">{title}</h4>
         <p className="text-xs text-muted-foreground mb-6">{description}</p>
         {suggestions.length > 0 && onSuggestionClick && (
-          <div className="space-y-2">
+          <div 
+            className="space-y-2"
+            role="list"
+            aria-label="Suggested prompts"
+          >
             {suggestions.slice(0, 3).map((suggestion, index) => (
               <SuggestionButton
                 key={suggestion}
@@ -92,9 +100,11 @@ export const ChatEmptyState = memo(function ChatEmptyState({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="text-center py-16"
+      className="text-center py-2"
+      role="region"
+      aria-label="Chat welcome message"
     >
-      <div className="inline-flex p-6 rounded-3xl bg-linear-to-br from-primary/10 to-primary/5 mb-8 shadow-sm">
+      <div className="inline-flex p-6 rounded-3xl bg-linear-to-br from-primary/10 to-primary/5 mb-8 shadow-sm" aria-hidden="true">
         <Bot className="h-12 w-12 text-primary" />
       </div>
       <h2 className="text-3xl font-bold mb-3 tracking-tight">{title}</h2>
@@ -104,7 +114,11 @@ export const ChatEmptyState = memo(function ChatEmptyState({
 
       {/* Suggestions Grid */}
       {suggestions.length > 0 && onSuggestionClick && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
+        <div 
+          className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto"
+          role="list"
+          aria-label="Suggested prompts to get started"
+        >
           {suggestions.slice(0, 4).map((suggestion, index) => (
             <SuggestionButton
               key={suggestion}

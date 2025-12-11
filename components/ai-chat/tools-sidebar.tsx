@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback } from "react";
+import { memo, useCallback, useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   TrendingUp,
@@ -14,22 +14,38 @@ import {
   Zap,
   ChevronRight,
   Globe,
+  type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useChatStore, useUI, useUIActions } from "@/lib/store/chat/store";
 
-interface Tool {
+// =============================================================================
+// Types
+// =============================================================================
+
+/**
+ * Tool definition for the sidebar
+ */
+export interface Tool {
   id: string;
   name: string;
   description: string;
-  icon: typeof TrendingUp;
+  icon: LucideIcon;
   color: string;
   gradient: string;
   prompt: string;
 }
 
-// Static tools array - defined outside component to prevent recreation
-const tools: Tool[] = [
+// =============================================================================
+// Tool Definitions
+// =============================================================================
+
+/**
+ * Static tools array - defined outside component to prevent recreation
+ * Requirements: 9.1 - Display available tools with descriptions and icons
+ */
+export const tools: Tool[] = [
   {
     id: "tech-trends",
     name: "Tech Trends",
@@ -95,22 +111,75 @@ const tools: Tool[] = [
   },
 ];
 
-interface ToolsSidebarProps {
-  onToolSelect: (prompt: string) => void;
-  isCollapsed?: boolean;
-  onToggleCollapse?: () => void;
+/**
+ * Get a tool by its ID
+ */
+export function getToolById(id: string): Tool | undefined {
+  return tools.find((tool) => tool.id === id);
 }
 
-// Memoized tool button to prevent re-renders
-const ToolButton = memo(function ToolButton({
+/**
+ * Get all tool IDs
+ */
+export function getAllToolIds(): string[] {
+  return tools.map((tool) => tool.id);
+}
+
+// =============================================================================
+// Component Props
+// =============================================================================
+
+export interface ToolsSidebarProps {
+  /**
+   * Callback when a tool is selected
+   * Requirements: 9.2 - Populate input with tool's prompt template
+   */
+  onToolSelect: (prompt: string) => void;
+  /**
+   * Whether the sidebar is collapsed (icon-only mode)
+   */
+  isCollapsed?: boolean;
+  /**
+   * Callback to toggle collapse state
+   */
+  onToggleCollapse?: () => void;
+  /**
+   * Optional class name for the container
+   */
+  className?: string;
+}
+
+export interface ToolCardProps {
+  /**
+   * The tool to display
+   */
+  tool: Tool;
+  /**
+   * Animation index for staggered entrance
+   */
+  index: number;
+  /**
+   * Callback when the tool is selected
+   */
+  onSelect: (prompt: string) => void;
+}
+
+// =============================================================================
+// Tool Card Component
+// =============================================================================
+
+/**
+ * Individual tool card with icon, name, and description
+ * Memoized to prevent unnecessary re-renders
+ * 
+ * Requirements: 9.1 - Display tools with descriptions and icons
+ * Requirements: 9.2 - Click populates input with prompt template
+ */
+export const ToolCard = memo(function ToolCard({
   tool,
   index,
   onSelect,
-}: {
-  tool: Tool;
-  index: number;
-  onSelect: (prompt: string) => void;
-}) {
+}: ToolCardProps) {
   const Icon = tool.icon;
   const handleClick = useCallback(() => onSelect(tool.prompt), [onSelect, tool.prompt]);
   
@@ -121,8 +190,12 @@ const ToolButton = memo(function ToolButton({
       transition={{ delay: index * 0.05 }}
       onClick={handleClick}
       className={cn(
-        "group w-full p-3 rounded-xl border border-border/50 bg-card/40 hover:bg-card/80 hover:border-primary/30 transition-all duration-300 text-left shadow-sm hover:shadow-md"
+        "group w-full p-3 rounded-xl border border-border/50 bg-card/40",
+        "hover:bg-card/80 hover:border-primary/30",
+        "transition-all duration-300 text-left shadow-sm hover:shadow-md",
+        "focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-2"
       )}
+      aria-label={`Use ${tool.name} tool: ${tool.description}`}
     >
       <div className="flex items-start gap-3">
         <div
@@ -130,6 +203,7 @@ const ToolButton = memo(function ToolButton({
             "p-2 rounded-lg bg-linear-to-br transition-transform duration-300 group-hover:scale-110 shadow-sm",
             tool.gradient
           )}
+          aria-hidden="true"
         >
           <Icon className={cn("h-4 w-4", tool.color)} />
         </div>
@@ -138,7 +212,10 @@ const ToolButton = memo(function ToolButton({
             <span className="font-medium text-sm group-hover:text-primary transition-colors">
               {tool.name}
             </span>
-            <ArrowRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+            <ArrowRight 
+              className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" 
+              aria-hidden="true"
+            />
           </div>
           <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
             {tool.description}
@@ -149,51 +226,163 @@ const ToolButton = memo(function ToolButton({
   );
 });
 
+// =============================================================================
+// Collapsed Sidebar Component
+// =============================================================================
+
+/**
+ * Collapsed version of the tools sidebar (icon-only)
+ */
+const CollapsedToolsSidebar = memo(function CollapsedToolsSidebar({
+  onToolSelect,
+  onToggleCollapse,
+}: Pick<ToolsSidebarProps, 'onToolSelect' | 'onToggleCollapse'>) {
+  return (
+    <div 
+      className="flex flex-col items-center py-4 px-2 bg-muted/20 border-l border-border/50"
+      role="toolbar"
+      aria-label="AI Tools (collapsed)"
+    >
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={onToggleCollapse}
+        className="mb-4"
+        aria-label="Expand tools sidebar"
+      >
+        <ChevronRight className="h-4 w-4 rotate-180" />
+      </Button>
+      {tools.map((tool) => (
+        <Button
+          key={tool.id}
+          variant="ghost"
+          size="icon"
+          className={cn("mb-2", tool.color)}
+          onClick={() => onToolSelect(tool.prompt)}
+          title={tool.name}
+          aria-label={`Use ${tool.name} tool`}
+        >
+          <tool.icon className="h-5 w-5" />
+        </Button>
+      ))}
+    </div>
+  );
+});
+
+// =============================================================================
+// Tools List Component
+// =============================================================================
+
+/**
+ * List of tool cards
+ */
+const ToolsList = memo(function ToolsList({
+  onToolSelect,
+}: Pick<ToolsSidebarProps, 'onToolSelect'>) {
+  return (
+    <div className="flex-1 overflow-y-auto">
+      <div className="p-3 space-y-2" role="list" aria-label="Available AI tools">
+        {tools.map((tool, index) => (
+          <ToolCard
+            key={tool.id}
+            tool={tool}
+            index={index}
+            onSelect={onToolSelect}
+          />
+        ))}
+      </div>
+    </div>
+  );
+});
+
+// =============================================================================
+// Pro Features Notice Component
+// =============================================================================
+
+/**
+ * Pro features notice at the bottom of the sidebar
+ */
+const ProFeaturesNotice = memo(function ProFeaturesNotice() {
+  return (
+    <div className="p-4 border-t border-border/40 bg-transparent shrink-0">
+      <div className="p-4 rounded-2xl bg-gradient-to-br from-primary/5 to-violet-600/5 border border-primary/10 relative overflow-hidden">
+        <div className="absolute top-0 right-0 -mt-4 -mr-4 w-16 h-16 bg-primary/10 blur-2xl rounded-full pointer-events-none" aria-hidden="true" />
+
+        <div className="flex items-center gap-2 mb-2 relative z-10">
+          <div className="p-1 rounded-md bg-primary/10">
+            <Sparkles className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+          </div>
+          <span className="text-sm font-semibold text-foreground/90">Pro Features</span>
+        </div>
+        <p className="text-xs text-muted-foreground relative z-10 leading-relaxed">
+          These tools use advanced AI capabilities to help you prepare.
+        </p>
+      </div>
+    </div>
+  );
+});
+
+// =============================================================================
+// Main Tools Sidebar Component
+// =============================================================================
+
+/**
+ * Tools sidebar component displaying available AI tools
+ * Connected to the chat store for state management
+ * 
+ * Requirements: 9.1 - Display available tools with descriptions and icons
+ * Requirements: 9.2 - Click populates input with tool's prompt template
+ */
 export const ToolsSidebar = memo(function ToolsSidebar({
   onToolSelect,
   isCollapsed = false,
   onToggleCollapse,
+  className,
 }: ToolsSidebarProps) {
-  if (isCollapsed) {
+  // Connect to store for sidebar state
+  const ui = useUI();
+  const { setRightSidebar } = useUIActions();
+  
+  // Use store state if no explicit props provided
+  const effectiveIsCollapsed = isCollapsed;
+  const effectiveOnToggle = onToggleCollapse ?? (() => setRightSidebar(!ui.rightSidebarOpen));
+
+  // Memoized tool select handler
+  const handleToolSelect = useCallback((prompt: string) => {
+    onToolSelect(prompt);
+  }, [onToolSelect]);
+
+  if (effectiveIsCollapsed) {
     return (
-      <div className="flex flex-col items-center py-4 px-2 bg-muted/20 border-l border-border/50">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onToggleCollapse}
-          className="mb-4"
-        >
-          <ChevronRight className="h-4 w-4 rotate-180" />
-        </Button>
-        {tools.map((tool) => (
-          <Button
-            key={tool.id}
-            variant="ghost"
-            size="icon"
-            className={cn("mb-2", tool.color)}
-            onClick={() => onToolSelect(tool.prompt)}
-            title={tool.name}
-          >
-            <tool.icon className="h-5 w-5" />
-          </Button>
-        ))}
-      </div>
+      <CollapsedToolsSidebar
+        onToolSelect={handleToolSelect}
+        onToggleCollapse={effectiveOnToggle}
+      />
     );
   }
 
   return (
-    <div className="flex flex-col h-full bg-transparent w-80">
+    <div 
+      className={cn("flex flex-col h-full bg-transparent w-80", className)}
+      role="complementary"
+      aria-label="AI Tools sidebar"
+    >
       {/* Header */}
       <div className="p-4 border-b border-border/40 bg-transparent">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="p-1.5 rounded-lg bg-primary/10">
-              <Zap className="h-4 w-4 text-primary" />
+              <Zap className="h-4 w-4 text-primary" aria-hidden="true" />
             </div>
             <span className="font-semibold">AI Tools</span>
           </div>
-          {onToggleCollapse && (
-            <Button variant="ghost" size="icon" onClick={onToggleCollapse}>
+          {effectiveOnToggle && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={effectiveOnToggle}
+              aria-label="Collapse tools sidebar"
+            >
               <ChevronRight className="h-4 w-4" />
             </Button>
           )}
@@ -204,35 +393,30 @@ export const ToolsSidebar = memo(function ToolsSidebar({
       </div>
 
       {/* Tools List */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="p-3 space-y-2">
-          {tools.map((tool, index) => (
-            <ToolButton
-              key={tool.id}
-              tool={tool}
-              index={index}
-              onSelect={onToolSelect}
-            />
-          ))}
-        </div>
-      </div>
+      <ToolsList onToolSelect={handleToolSelect} />
 
       {/* Pro Features Notice */}
-      <div className="p-4 border-t border-border/40 bg-transparent shrink-0">
-        <div className="p-4 rounded-2xl bg-gradient-to-br from-primary/5 to-violet-600/5 border border-primary/10 relative overflow-hidden">
-          <div className="absolute top-0 right-0 -mt-4 -mr-4 w-16 h-16 bg-primary/10 blur-2xl rounded-full pointer-events-none" />
-
-          <div className="flex items-center gap-2 mb-2 relative z-10">
-            <div className="p-1 rounded-md bg-primary/10">
-              <Sparkles className="h-3.5 w-3.5 text-primary" />
-            </div>
-            <span className="text-sm font-semibold text-foreground/90">Pro Features</span>
-          </div>
-          <p className="text-xs text-muted-foreground relative z-10 leading-relaxed">
-            These tools use advanced AI capabilities to help you prepare.
-          </p>
-        </div>
-      </div>
+      <ProFeaturesNotice />
     </div>
   );
 });
+
+// =============================================================================
+// Hook for using tools sidebar with store
+// =============================================================================
+
+/**
+ * Hook to get tools sidebar state and actions from the store
+ */
+export function useToolsSidebar() {
+  const ui = useUI();
+  const { setRightSidebar } = useUIActions();
+  
+  return useMemo(() => ({
+    isOpen: ui.rightSidebarOpen,
+    toggle: () => setRightSidebar(!ui.rightSidebarOpen),
+    open: () => setRightSidebar(true),
+    close: () => setRightSidebar(false),
+    tools,
+  }), [ui.rightSidebarOpen, setRightSidebar]);
+}

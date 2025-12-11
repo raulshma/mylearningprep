@@ -17,7 +17,9 @@ import {
   Pencil,
   Check,
   X,
+  Copy,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -28,6 +30,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import type { AIConversation } from "@/lib/db/schemas/ai-conversation";
 
@@ -42,6 +54,13 @@ interface ChatHistorySidebarProps {
   onRenameConversation: (id: string, newTitle: string) => void;
   onToggleCollapse?: () => void;
   onOpenArchived?: () => void;
+}
+
+// Helper to sort conversations by lastMessageAt descending
+function sortByLastMessage(items: AIConversation[]): AIConversation[] {
+  return [...items].sort(
+    (a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
+  );
 }
 
 // Helper to group conversations by date - moved outside component
@@ -71,12 +90,13 @@ function groupByDate(convs: AIConversation[]) {
   });
   const olderItems = convs.filter((c) => new Date(c.lastMessageAt) <= lastWeek);
 
-  if (todayItems.length) groups.push({ label: "Today", items: todayItems });
+  // Sort each group by lastMessageAt descending so newest appears first
+  if (todayItems.length) groups.push({ label: "Today", items: sortByLastMessage(todayItems) });
   if (yesterdayItems.length)
-    groups.push({ label: "Yesterday", items: yesterdayItems });
+    groups.push({ label: "Yesterday", items: sortByLastMessage(yesterdayItems) });
   if (lastWeekItems.length)
-    groups.push({ label: "Last 7 days", items: lastWeekItems });
-  if (olderItems.length) groups.push({ label: "Older", items: olderItems });
+    groups.push({ label: "Last 7 days", items: sortByLastMessage(lastWeekItems) });
+  if (olderItems.length) groups.push({ label: "Older", items: sortByLastMessage(olderItems) });
 
   return groups;
 }
@@ -252,7 +272,18 @@ const ConversationItem = memo(function ConversationItem({
 }: ConversationItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(conversation.title);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  
+  // QoL: Copy conversation title to clipboard
+  const handleCopyTitle = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(conversation.title);
+      toast.success("Title copied to clipboard");
+    } catch {
+      toast.error("Failed to copy");
+    }
+  }, [conversation.title]);
 
   useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -396,17 +427,45 @@ const ConversationItem = memo(function ConversationItem({
               </>
             )}
           </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleCopyTitle} className="rounded-lg">
+            <Copy className="h-4 w-4 mr-2" />
+            Copy Title
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={onArchive} className="rounded-lg">
             <Archive className="h-4 w-4 mr-2" />
             Archive Conversation
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive rounded-lg">
+          <DropdownMenuItem 
+            onClick={() => setShowDeleteConfirm(true)} 
+            className="text-destructive focus:text-destructive rounded-lg"
+          >
             <Trash2 className="h-4 w-4 mr-2" />
             Delete Conversation
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      
+      {/* QoL: Delete confirmation dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete conversation?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete &quot;{conversation.title}&quot;. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={onDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </motion.div>
   );
 });

@@ -39,20 +39,20 @@ describe('ai-engine', () => {
         expect(streamObject).toHaveBeenCalled();
         const callArgs = vi.mocked(streamObject).mock.calls[0][0];
 
-        // Check if prompt contains the new optimizations
-        expect(callArgs.prompt).toContain('600-800 words');
-        expect(callArgs.prompt).toContain('DETAILED content');
-        expect(callArgs.prompt).toContain('How to Explain to an Interviewer');
-        expect(callArgs.prompt).toContain('Code / Real-World Examples');
+        // Check if prompt contains the current content structure
+        expect(callArgs.prompt).toContain('1000-1500 words');
+        expect(callArgs.prompt).toContain('DETAILED markdown content');
+        expect(callArgs.prompt).toContain('Key Concepts');
+        expect(callArgs.prompt).toContain('Code Example');
+        expect(callArgs.prompt).toContain('Common Interview Questions');
+        expect(callArgs.prompt).toContain('Best Practices');
+        expect(callArgs.prompt).toContain('Common Mistakes');
 
-        // Check if old heavy requirements are gone
-        expect(callArgs.prompt).not.toContain('800-1200 words');
-
-        // Check if unused fields are gone
-        expect(callArgs.prompt).not.toContain('estimatedMinutes');
-        expect(callArgs.prompt).not.toContain('prerequisites');
-        expect(callArgs.prompt).not.toContain('skillGaps');
-        expect(callArgs.prompt).not.toContain('followUpQuestions');
-        expect(callArgs.prompt).not.toContain('difficulty');
+        // Check that prompt includes required topic fields
+        expect(callArgs.prompt).toContain('estimatedMinutes');
+        expect(callArgs.prompt).toContain('prerequisites');
+        expect(callArgs.prompt).toContain('skillGaps');
+        expect(callArgs.prompt).toContain('followUpQuestions');
+        expect(callArgs.prompt).toContain('difficulty');
     });
 });

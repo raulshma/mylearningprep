@@ -158,6 +158,9 @@ const languageDisplayNames: Record<string, string> = {
   shell: "Shell",
 };
 
+// QoL: Line count threshold for collapsible code blocks
+const COLLAPSE_THRESHOLD = 20;
+
 // Memoized Code block component with Shiki syntax highlighting
 const CodeBlock: LLMOutputComponent = memo(function CodeBlock({ blockMatch }) {
   const { html, code } = useCodeBlockToHtml({
@@ -167,8 +170,13 @@ const CodeBlock: LLMOutputComponent = memo(function CodeBlock({ blockMatch }) {
   });
 
   const [isCopied, setIsCopied] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const language = extractLanguage(blockMatch.output);
   const displayLanguage = language ? (languageDisplayNames[language.toLowerCase()] || language) : null;
+  
+  // QoL: Calculate line count for collapse feature
+  const lineCount = useMemo(() => code?.split('\n').length ?? 0, [code]);
+  const shouldCollapse = lineCount > COLLAPSE_THRESHOLD;
 
   const handleCopy = useCallback(async () => {
     if (!code) return;
@@ -180,6 +188,10 @@ const CodeBlock: LLMOutputComponent = memo(function CodeBlock({ blockMatch }) {
       console.error("Failed to copy code:", err);
     }
   }, [code]);
+  
+  const toggleExpand = useCallback(() => {
+    setIsExpanded(prev => !prev);
+  }, []);
 
   if (!html) {
     // Fallback while Shiki is loading
@@ -199,37 +211,65 @@ const CodeBlock: LLMOutputComponent = memo(function CodeBlock({ blockMatch }) {
 
   return (
     <div className="relative group my-4 rounded-lg overflow-hidden border border-border/50 bg-muted/30">
-      {/* Header bar with language and copy button */}
+      {/* Header bar with language, line count, and actions */}
       <div className="flex items-center justify-between px-4 py-2 bg-muted/50 border-b border-border/30">
-        {displayLanguage ? (
-          <span className="text-xs text-muted-foreground font-mono font-medium">
-            {displayLanguage}
-          </span>
-        ) : (
-          <span />
-        )}
-        <button
-          onClick={handleCopy}
-          className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
-          title="Copy code"
-        >
-          {isCopied ? (
-            <>
-              <Check className="h-3.5 w-3.5 text-green-500" />
-              <span className="text-green-500">Copied!</span>
-            </>
-          ) : (
-            <>
-              <Copy className="h-3.5 w-3.5" />
-              <span>Copy</span>
-            </>
+        <div className="flex items-center gap-2">
+          {displayLanguage && (
+            <span className="text-xs text-muted-foreground font-mono font-medium">
+              {displayLanguage}
+            </span>
           )}
-        </button>
+          {/* QoL: Show line count */}
+          <span className="text-[10px] text-muted-foreground/60 tabular-nums">
+            {lineCount} {lineCount === 1 ? 'line' : 'lines'}
+          </span>
+        </div>
+        <div className="flex items-center gap-1">
+          {/* QoL: Expand/collapse button for long code */}
+          {shouldCollapse && (
+            <button
+              onClick={toggleExpand}
+              className="flex items-center gap-1 px-2 py-1 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
+              title={isExpanded ? "Collapse code" : "Expand code"}
+            >
+              <span>{isExpanded ? "Collapse" : "Expand"}</span>
+            </button>
+          )}
+          <button
+            onClick={handleCopy}
+            className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
+            title="Copy code"
+          >
+            {isCopied ? (
+              <>
+                <Check className="h-3.5 w-3.5 text-green-500" />
+                <span className="text-green-500">Copied!</span>
+              </>
+            ) : (
+              <>
+                <Copy className="h-3.5 w-3.5" />
+                <span>Copy</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
-      {/* Code content */}
-      <div className="max-w-full [&_pre]:p-4 [&_pre]:overflow-x-auto [&_pre]:max-w-full [&_pre]:-webkit-overflow-scrolling-touch [&_code]:text-sm [&_pre]:scrollbar-thin [&_pre]:scrollbar-track-muted [&_pre]:scrollbar-thumb-muted-foreground/30 [&_pre]:bg-transparent">
+      {/* Code content with optional collapse */}
+      <div 
+        className={cn(
+          "max-w-full [&_pre]:p-4 [&_pre]:overflow-x-auto [&_pre]:max-w-full [&_pre]:-webkit-overflow-scrolling-touch [&_code]:text-sm [&_pre]:scrollbar-thin [&_pre]:scrollbar-track-muted [&_pre]:scrollbar-thumb-muted-foreground/30 [&_pre]:bg-transparent transition-all duration-200",
+          shouldCollapse && !isExpanded && "max-h-[300px] overflow-hidden"
+        )}
+      >
         {parseHtml(html)}
       </div>
+      {/* QoL: Gradient overlay when collapsed */}
+      {shouldCollapse && !isExpanded && (
+        <div 
+          className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-muted/80 to-transparent pointer-events-none"
+          aria-hidden="true"
+        />
+      )}
     </div>
   );
 });
@@ -342,7 +382,7 @@ export function MarkdownRenderer({
   });
 
   return (
-    <div className={cn("relative", className)}>
+    <div className={cn("relative overflow-hidden", className)}>
       {blockMatches.map((blockMatch, index) => {
         const Component = blockMatch.block.component;
         return <Component key={index} blockMatch={blockMatch} />;

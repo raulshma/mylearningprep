@@ -5,6 +5,7 @@ export {
   getFileParts,
   isErrorMessage,
   getErrorContent,
+  formatMessagesForCopy,
   type ToolPart,
   type FilePart,
 } from "./message-helpers";

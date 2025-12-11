@@ -53,7 +53,11 @@ export const ThinkingIndicator = memo(function ThinkingIndicator({
   if (!reasoning) return null;
 
   return (
-    <div className={cn("mb-3", className)}>
+    <div 
+      className={cn("mb-3", className)}
+      role="region"
+      aria-label="AI reasoning process"
+    >
       <Button
         variant="ghost"
         size="sm"
@@ -63,8 +67,11 @@ export const ThinkingIndicator = memo(function ThinkingIndicator({
           "bg-violet-500/10 hover:bg-violet-500/20 text-violet-600 dark:text-violet-400",
           "border border-violet-500/20 transition-all duration-200"
         )}
+        aria-expanded={isExpanded}
+        aria-controls="thinking-content"
+        aria-label={isStreaming ? "AI is thinking, click to collapse" : "View AI thought process"}
       >
-        <div className="relative">
+        <div className="relative" aria-hidden="true">
           <Brain className="h-3.5 w-3.5" />
           {isStreaming && (
             <motion.div
@@ -76,9 +83,9 @@ export const ThinkingIndicator = memo(function ThinkingIndicator({
         </div>
         <span>{isStreaming ? "Thinking..." : "Thought process"}</span>
         {isExpanded ? (
-          <ChevronUp className="h-3 w-3" />
+          <ChevronUp className="h-3 w-3" aria-hidden="true" />
         ) : (
-          <ChevronDown className="h-3 w-3" />
+          <ChevronDown className="h-3 w-3" aria-hidden="true" />
         )}
       </Button>
 
@@ -90,10 +97,16 @@ export const ThinkingIndicator = memo(function ThinkingIndicator({
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.2 }}
             className="overflow-hidden"
+            id="thinking-content"
           >
-            <div className="mt-2 p-3 rounded-xl bg-violet-500/5 border border-violet-500/10 text-sm text-muted-foreground">
+            <div 
+              className="mt-2 p-3 rounded-xl bg-violet-500/5 border border-violet-500/10 text-sm text-muted-foreground"
+              role="status"
+              aria-live={isStreaming ? "polite" : "off"}
+              aria-busy={isStreaming}
+            >
               <div className="flex items-start gap-2">
-                <Sparkles className="h-4 w-4 text-violet-500 shrink-0 mt-0.5" />
+                <Sparkles className="h-4 w-4 text-violet-500 shrink-0 mt-0.5" aria-hidden="true" />
                 <div className="flex-1 whitespace-pre-wrap leading-relaxed">
                   {reasoning}
                   {isStreaming && (
@@ -101,6 +114,7 @@ export const ThinkingIndicator = memo(function ThinkingIndicator({
                       className="inline-block w-1.5 h-4 bg-violet-500 ml-0.5 align-middle"
                       animate={{ opacity: [1, 0] }}
                       transition={{ duration: 0.5, repeat: Infinity }}
+                      aria-hidden="true"
                     />
                   )}
                 </div>
