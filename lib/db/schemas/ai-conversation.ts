@@ -74,6 +74,14 @@ export const AIConversationSchema = z.object({
       toolsUsed: z.array(z.string()).default([]),
     })
     .optional(),
+  // Chat mode: single model or multi-model comparison
+  chatMode: z.enum(["single", "multi"]).default("single"),
+  // Models used in multi-model comparison mode
+  comparisonModels: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    provider: z.enum(["openrouter", "google"]),
+  })).optional(),
   // Parent conversation ID for branched conversations
   parentConversationId: z.string().optional(),
   branchedFromMessageId: z.string().optional(),

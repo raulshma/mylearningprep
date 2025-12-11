@@ -6,26 +6,194 @@ import { ChatEmptyState } from "../empty-state/chat-empty-state";
 import { MultiModelSelector } from "./multi-model-selector";
 import { MultiModelResponse } from "./multi-model-response";
 import { useMultiModelAssistant } from "@/hooks/use-multi-model-assistant";
-import type { SelectedModel } from "@/lib/ai/multi-model-types";
+import type { SelectedModel, ModelResponse } from "@/lib/ai/multi-model-types";
 import { ASSISTANT_SUGGESTIONS } from "@/hooks/use-ai-assistant";
 import { cn } from "@/lib/utils";
 
 interface MultiModelChatMainProps {
-  onSwitchToSingle?: () => void;
+  conversationId?: string;
+  onConversationCreated?: (id: string, title: string) => void;
 }
 
-export function MultiModelChatMain({ onSwitchToSingle }: MultiModelChatMainProps) {
+export function MultiModelChatMain({ 
+  conversationId: externalConversationId,
+  onConversationCreated,
+}: MultiModelChatMainProps) {
   const [input, setInput] = useState("");
   const [selectedModels, setSelectedModels] = useState<SelectedModel[]>([]);
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [lastUserMessage, setLastUserMessage] = useState("");
+  const [internalConversationId, setInternalConversationId] = useState<string | undefined>();
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  
+  // Use external conversationId if provided, otherwise use internal state
+  const conversationId = externalConversationId ?? internalConversationId;
+  const pendingResponsesRef = useRef<Map<string, ModelResponse>>(new Map());
 
-  const { responses, isLoading, sendMessage, stop, reset } = useMultiModelAssistant({
+  // Track if we've already created conversation for current message
+  const conversationCreatedRef = useRef(false);
+  
+  // Use refs to track current values for callbacks (avoids stale closure issues)
+  const selectedModelsRef = useRef<SelectedModel[]>([]);
+  const lastUserMessageRef = useRef("");
+
+  // Create conversation after all responses complete
+  const createConversation = useCallback(async (
+    userMessage: string,
+    models: SelectedModel[],
+    completedResponses: Map<string, ModelResponse>
+  ) => {
+    // Prevent duplicate creation
+    if (conversationCreatedRef.current) return;
+    conversationCreatedRef.current = true;
+
+    try {
+      const responsesArray = Array.from(completedResponses.values())
+        .filter(r => r.isComplete && !r.error)
+        .map(r => ({
+          modelId: r.modelId,
+          modelName: r.modelName,
+          provider: r.provider,
+          content: r.content,
+          metadata: r.metadata,
+        }));
+
+      const res = await fetch("/api/ai-assistant/multi/conversation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          conversationId,
+          userMessage,
+          models: models.map(m => ({ id: m.id, name: m.name, provider: m.provider })),
+          responses: responsesArray,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.isNewConversation && data.conversationId) {
+          setInternalConversationId(data.conversationId);
+          const title = userMessage.slice(0, 40) + (userMessage.length > 40 ? "..." : "");
+          onConversationCreated?.(data.conversationId, title);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to create conversation:", error);
+    }
+  }, [conversationId, onConversationCreated]);
+
+  // Check if all responses are complete and trigger conversation creation
+  const checkAndCreateConversation = useCallback((
+    currentResponses: Map<string, ModelResponse>
+  ) => {
+    const userMessage = lastUserMessageRef.current;
+    const models = selectedModelsRef.current;
+    
+    if (currentResponses.size === 0 || !userMessage || models.length === 0) return;
+    
+    const allComplete = Array.from(currentResponses.values()).every(r => r.isComplete);
+    if (allComplete && currentResponses.size === models.length) {
+      createConversation(userMessage, models, currentResponses);
+    }
+  }, [createConversation]);
+
+  const handleResponseComplete = useCallback((modelId: string, response: ModelResponse) => {
+    pendingResponsesRef.current.set(`${response.provider}:${modelId}`, response);
+    
+    // Check if all models have completed using refs for current values
+    const models = selectedModelsRef.current;
+    if (models.length > 0 && pendingResponsesRef.current.size === models.length) {
+      checkAndCreateConversation(pendingResponsesRef.current);
+    }
+  }, [checkAndCreateConversation]);
+
+  const { responses, isLoading, sendMessage, stop, reset, setResponses } = useMultiModelAssistant({
+    conversationId,
     onError: (error, modelId) => {
       console.error(`Error from model ${modelId}:`, error);
     },
+    onResponseComplete: handleResponseComplete,
   });
+
+  // Load existing conversation when externalConversationId changes
+  useEffect(() => {
+    if (!externalConversationId) {
+      // Reset state when no conversation selected
+      reset();
+      setHasSubmitted(false);
+      setLastUserMessage("");
+      setSelectedModels([]);
+      return;
+    }
+
+    const loadConversation = async () => {
+      try {
+        const { getConversation } = await import("@/lib/actions/ai-chat-actions");
+        const result = await getConversation(externalConversationId);
+
+        if (result.success && result.data.messages.length > 0) {
+          const conversation = result.data;
+          
+          // Find the last user message
+          const userMessages = conversation.messages.filter(m => m.role === "user");
+          const lastUserMsg = userMessages[userMessages.length - 1];
+          
+          if (lastUserMsg) {
+            setLastUserMessage(lastUserMsg.content);
+            setHasSubmitted(true);
+          }
+
+          // Restore selected models from conversation
+          if (conversation.comparisonModels && conversation.comparisonModels.length > 0) {
+            setSelectedModels(conversation.comparisonModels.map(m => ({
+              id: m.id,
+              name: m.name,
+              provider: m.provider,
+              supportsImages: false, // Default, not stored in conversation
+            })));
+          }
+
+          // Parse assistant messages and restore responses
+          const assistantMessages = conversation.messages.filter(m => m.role === "assistant");
+          const restoredResponses = new Map<string, ModelResponse>();
+
+          for (const msg of assistantMessages) {
+            // Parse format: **ModelName** (provider):\n\n{content}
+            const match = msg.content.match(/^\*\*(.+?)\*\* \((.+?)\):\n\n([\s\S]*)$/);
+            if (match) {
+              const [, modelName, provider, content] = match;
+              const modelId = msg.metadata?.model || modelName;
+              const key = `${provider}:${modelId}`;
+              
+              restoredResponses.set(key, {
+                modelId,
+                modelName,
+                provider: provider as "openrouter" | "google",
+                content,
+                reasoning: msg.reasoning,
+                isStreaming: false,
+                isComplete: true,
+                metadata: msg.metadata ? {
+                  tokensIn: msg.metadata.tokensIn,
+                  tokensOut: msg.metadata.tokensOut,
+                  latencyMs: msg.metadata.latencyMs,
+                  ttft: msg.metadata.ttft,
+                } : undefined,
+              });
+            }
+          }
+
+          if (restoredResponses.size > 0) {
+            setResponses(restoredResponses);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load conversation:", error);
+      }
+    };
+
+    loadConversation();
+  }, [externalConversationId, reset, setResponses]);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -35,6 +203,11 @@ export function MultiModelChatMain({ onSwitchToSingle }: MultiModelChatMainProps
     const content = input.trim();
     if (!content || isLoading || selectedModels.length === 0) return;
 
+    pendingResponsesRef.current.clear();
+    conversationCreatedRef.current = false;
+    // Update refs before sending so callbacks have current values
+    lastUserMessageRef.current = content;
+    selectedModelsRef.current = selectedModels;
     setLastUserMessage(content);
     setHasSubmitted(true);
     setInput("");
@@ -44,18 +217,17 @@ export function MultiModelChatMain({ onSwitchToSingle }: MultiModelChatMainProps
   const handleSuggestionClick = useCallback(
     async (suggestion: string) => {
       if (isLoading || selectedModels.length === 0) return;
+      pendingResponsesRef.current.clear();
+      conversationCreatedRef.current = false;
+      // Update refs before sending so callbacks have current values
+      lastUserMessageRef.current = suggestion;
+      selectedModelsRef.current = selectedModels;
       setLastUserMessage(suggestion);
       setHasSubmitted(true);
       await sendMessage(suggestion, selectedModels);
     },
     [isLoading, selectedModels, sendMessage]
   );
-
-  const handleNewChat = useCallback(() => {
-    reset();
-    setHasSubmitted(false);
-    setLastUserMessage("");
-  }, [reset]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {

@@ -173,12 +173,13 @@ export function AIChatPageContent({
   }, [isMobile]);
 
   // Handle conversation created from first message
-  const handleConversationCreated = useCallback((id: string, title: string) => {
+  const handleConversationCreated = useCallback((id: string, title: string, mode: ChatMode = "single") => {
     const newConversation: AIConversation = {
       _id: id,
       userId: "",
       title,
       messages: [],
+      chatMode: mode,
       isPinned: false,
       isArchived: false,
       lastMessageAt: new Date(),
@@ -209,7 +210,15 @@ export function AIChatPageContent({
     url.searchParams.set("conversation", id);
     window.history.replaceState({}, "", url);
     if (isMobile) setLeftSidebarOpen(false);
-  }, [isMobile]);
+    
+    // Switch to the conversation's chat mode if MAX plan
+    if (userPlan === "MAX") {
+      const conversation = conversations.find((c) => c._id === id);
+      const mode = conversation?.chatMode ?? "single";
+      setChatMode(mode);
+      localStorage.setItem("ai-chat-mode", mode);
+    }
+  }, [isMobile, userPlan, conversations]);
 
   const handlePinConversation = useCallback(async (id: string) => {
     await togglePinConversation(id);
@@ -376,7 +385,8 @@ export function AIChatPageContent({
 
           {chatMode === "multi" && userPlan === "MAX" ? (
             <MultiModelChatMain
-              onSwitchToSingle={() => handleChatModeChange("single")}
+              conversationId={activeConversationId}
+              onConversationCreated={(id, title) => handleConversationCreated(id, title, "multi")}
             />
           ) : (
             <AIChatMain

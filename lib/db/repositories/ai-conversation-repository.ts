@@ -7,7 +7,11 @@ export interface AIConversationRepository {
   create(
     userId: string,
     title: string,
-    context?: AIConversation["context"]
+    context?: AIConversation["context"],
+    options?: {
+      chatMode?: "single" | "multi";
+      comparisonModels?: AIConversation["comparisonModels"];
+    }
   ): Promise<AIConversation>;
   findById(id: string): Promise<AIConversation | null>;
   findByUser(
@@ -43,7 +47,7 @@ export interface AIConversationRepository {
 }
 
 export const aiConversationRepository: AIConversationRepository = {
-  create: cache(async (userId, title, context) => {
+  create: cache(async (userId, title, context, options) => {
     const collection = await getAIConversationsCollection();
     const now = new Date();
 
@@ -53,6 +57,8 @@ export const aiConversationRepository: AIConversationRepository = {
       title,
       messages: [],
       context,
+      chatMode: options?.chatMode ?? "single",
+      comparisonModels: options?.comparisonModels,
       isPinned: false,
       isArchived: false,
       lastMessageAt: now,
@@ -227,6 +233,7 @@ export const aiConversationRepository: AIConversationRepository = {
       title,
       messages,
       context,
+      chatMode: "single",
       parentConversationId: sourceConversationId,
       branchedFromMessageId,
       isPinned: false,

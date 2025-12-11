@@ -15,6 +15,7 @@ export interface UseMultiModelAssistantReturn {
   sendMessage: (content: string, models: SelectedModel[]) => Promise<void>;
   stop: () => void;
   reset: () => void;
+  setResponses: React.Dispatch<React.SetStateAction<Map<string, ModelResponse>>>;
 }
 
 /**
@@ -258,5 +259,6 @@ export function useMultiModelAssistant(
     sendMessage,
     stop,
     reset,
+    setResponses,
   };
 }
