@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, PanelLeftClose, PanelRightClose, Layers, MessageSquare } from "lucide-react";
+import { PanelLeftClose, PanelRightClose, Layers, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChatHistorySidebar } from "./chat-history-sidebar";
 import { AIChatMain } from "./chat-main";
@@ -433,7 +433,7 @@ export function AIChatPageContent({
                   onArchiveConversation={handleArchiveConversation}
                   onDeleteConversation={handleDeleteConversation}
                   onRenameConversation={handleRenameConversation}
-                  onToggleCollapse={!isMobile ? () => uiActions.setLeftSidebar(false) : undefined}
+                  onToggleCollapse={() => uiActions.setLeftSidebar(false)}
                   onOpenArchived={() => setArchivedModalOpen(true)}
                 />
               </div>
@@ -448,49 +448,11 @@ export function AIChatPageContent({
           role="main"
           aria-label="Chat messages"
         >
-          {/* Mobile Header */}
-          {(isMobile || isTablet) && (
-            <header 
-              className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-4 py-2 bg-background/80  border-b border-border/50"
-              role="banner"
-            >
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => uiActions.setLeftSidebar(!ui.leftSidebarOpen)}
-                aria-label={ui.leftSidebarOpen ? "Close conversation sidebar" : "Open conversation sidebar"}
-                aria-expanded={ui.leftSidebarOpen}
-                aria-controls="conversation-sidebar"
-              >
-                {ui.leftSidebarOpen ? (
-                  <PanelLeftClose className="h-5 w-5" aria-hidden="true" />
-                ) : (
-                  <Menu className="h-5 w-5" aria-hidden="true" />
-                )}
-              </Button>
-              <h1 className="font-semibold">
-                {ui.chatMode === "multi" ? "Multi-Model Chat" : "AI Chat"}
-              </h1>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => uiActions.setRightSidebar(!ui.rightSidebarOpen)}
-                aria-label={ui.rightSidebarOpen ? "Close tools sidebar" : "Open tools sidebar"}
-                aria-expanded={ui.rightSidebarOpen}
-                aria-controls="tools-sidebar"
-              >
-                {ui.rightSidebarOpen ? (
-                  <PanelRightClose className="h-5 w-5" aria-hidden="true" />
-                ) : (
-                  <Menu className="h-5 w-5" aria-hidden="true" />
-                )}
-              </Button>
-            </header>
-          )}
+
 
           <div className="h-full rounded-3xl border border-border/40 bg-background/60  shadow-sm overflow-hidden flex flex-col relative border-none">
             {/* Chat Mode Toggle (MAX plan only) */}
-            {userPlan === "MAX" && !isMobile && (
+            {userPlan === "MAX" && (
               <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30">
                 <div className="flex items-center gap-1 p-1 rounded-full bg-muted/80  border border-border/50">
                   <Button
@@ -537,8 +499,8 @@ export function AIChatPageContent({
               </div>
             )}
 
-            {/* Collapsed Left Sidebar Toggle (Desktop only) */}
-            {!isMobile && !ui.leftSidebarOpen && (
+            {/* Collapsed Left Sidebar Toggle */}
+            {!ui.leftSidebarOpen && (
               <div className="absolute left-4 top-4 z-30">
                 <Button
                   variant="secondary"
@@ -554,8 +516,8 @@ export function AIChatPageContent({
               </div>
             )}
 
-            {/* Collapsed Right Sidebar Toggle (Desktop only) */}
-            {!isMobile && !ui.rightSidebarOpen && ui.chatMode === "single" && (
+            {/* Collapsed Right Sidebar Toggle */}
+            {!ui.rightSidebarOpen && ui.chatMode === "single" && (
               <div className="absolute right-4 top-4 z-30">
                 <Button
                   variant="secondary"
@@ -592,7 +554,7 @@ export function AIChatPageContent({
               <div className="h-full w-full rounded-3xl border border-border/40 bg-background/60  shadow-sm overflow-hidden">
                 <ToolsSidebar
                   onToolSelect={handleToolSelect}
-                  onToggleCollapse={!isMobile ? () => uiActions.setRightSidebar(false) : undefined}
+                  onToggleCollapse={() => uiActions.setRightSidebar(false)}
                 />
               </div>
             </motion.aside>
