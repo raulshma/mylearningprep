@@ -1,0 +1,332 @@
+# How Does the Internet Work?
+
+<InfoBox type="info">
+  This advanced guide provides a deep technical exploration of Internet
+  protocols, packet structure, routing algorithms, and implementation details
+  relevant to system design and network engineering.
+</InfoBox>
+
+## Internet Architecture: Deep Dive
+
+The Internet is built on the principle of **end-to-end design**: intelligence at the edges, dumb pipes in the middle. This architectural decision has profound implications for scalability, reliability, and innovation.
+
+### Key Architectural Principles
+
+1. **Layered Protocol Stack**: Each layer provides services to the layer above
+2. **Packet Switching**: Statistical multiplexing for efficient resource utilization
+3. **Decentralization**: No single point of control or failure
+4. **Best-Effort Delivery**: Network makes no delivery guarantees
+
+<ProgressCheckpoint section="introduction" />
+
+---
+
+## The TCP/IP Protocol Suite
+
+### IP Header Structure (RFC 791)
+
+```text
+ 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|Version|  IHL  |Type of Service|          Total Length         |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|         Identification        |Flags|      Fragment Offset    |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|  Time to Live |    Protocol   |         Header Checksum       |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                       Source Address                          |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                    Destination Address                        |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                    Options                    |    Padding    |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+<KeyConcept title="TTL (Time to Live)">
+  TTL prevents packets from circulating forever. Each router decrements TTL by
+  1. When TTL reaches 0, the packet is discarded and an ICMP "Time Exceeded"
+  message is sent. This is how traceroute works!
+</KeyConcept>
+
+### TCP Segment Structure (RFC 793)
+
+```text
+ 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|          Source Port          |       Destination Port        |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                        Sequence Number                        |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                    Acknowledgment Number                      |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|  Data |           |U|A|P|R|S|F|                               |
+| Offset| Reserved  |R|C|S|S|Y|I|            Window             |
+|       |           |G|K|H|T|N|N|                               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|           Checksum            |         Urgent Pointer        |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+<ProgressCheckpoint section="networks" />
+
+---
+
+## IP Addressing: CIDR and Subnetting
+
+### CIDR Notation
+
+Classless Inter-Domain Routing (CIDR) replaced classful addressing:
+
+```text
+192.168.1.0/24    (256 addresses: 192.168.1.0 - 192.168.1.255)
+10.0.0.0/8        (16,777,216 addresses)
+172.16.0.0/12     (1,048,576 addresses)
+192.168.0.0/16    (65,536 addresses)
+```
+
+### Subnet Calculations
+
+Given `192.168.100.0/26`:
+
+| Component         | Value           |
+| ----------------- | --------------- |
+| Network bits      | 26              |
+| Host bits         | 32 - 26 = 6     |
+| Usable hosts      | 2^6 - 2 = 62    |
+| Subnet mask       | 255.255.255.192 |
+| Network address   | 192.168.100.0   |
+| Broadcast address | 192.168.100.63  |
+| First usable      | 192.168.100.1   |
+| Last usable       | 192.168.100.62  |
+
+<Quiz id="cidr-quiz">
+  <Question>
+    How many usable host addresses are available in a /28 subnet?
+  </Question>
+  <Answer correct>14 (2^4 - 2 = 14)</Answer>
+  <Answer>16 (2^4 = 16)</Answer>
+  <Answer>30 (2^5 - 2 = 30)</Answer>
+  <Answer>28 (the number in the CIDR notation)</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="ip-addresses" />
+
+---
+
+## TCP Congestion Control
+
+### Congestion Control Algorithms
+
+TCP uses several mechanisms to avoid overwhelming the network:
+
+<Comparison
+  left={{
+    title: "Slow Start",
+    items: [
+      "Exponential growth of congestion window",
+      "cwnd doubles each RTT",
+      "Until ssthresh (slow start threshold)",
+      "Then switches to congestion avoidance",
+    ],
+    variant: "neutral",
+  }}
+  right={{
+    title: "Congestion Avoidance",
+    items: [
+      "Linear growth of congestion window",
+      "cwnd increases by 1 per RTT",
+      "More conservative than slow start",
+      "Continues until packet loss detected",
+    ],
+    variant: "neutral",
+  }}
+/>
+
+### Modern Congestion Control: CUBIC and BBR
+
+```javascript
+// Simplified congestion window growth
+
+// TCP Reno: AIMD (Additive Increase, Multiplicative Decrease)
+function renoOnAck(cwnd, ssthresh) {
+  if (cwnd < ssthresh) {
+    return cwnd * 2; // Slow start: exponential
+  }
+  return cwnd + 1; // Congestion avoidance: linear
+}
+
+function renoOnLoss(cwnd) {
+  return cwnd / 2; // Multiplicative decrease
+}
+
+// CUBIC: Better utilization of high-bandwidth links
+// Uses cubic function of time since last congestion event
+// Currently default in Linux
+
+// BBR (Bottleneck Bandwidth and RTT)
+// Model-based, not loss-based
+// Measures actual bottleneck bandwidth
+// Used by Google infrastructure
+```
+
+<KeyConcept title="Why BBR Matters">
+  Traditional congestion control (Reno, CUBIC) uses packet loss as a congestion
+  signal. BBR instead models the network and aims for maximum throughput at
+  minimum delay. This is especially important for high-latency links (satellite,
+  intercontinental).
+</KeyConcept>
+
+<ProgressCheckpoint section="data-packets" />
+
+---
+
+## DNS: Implementation Details
+
+### Recursive vs Iterative Resolution
+
+```text
+User Query: www.example.com
+
+[Recursive Resolver]    Your computer asks here
+        |
+        v
+[Root Server]           "Ask .com TLD servers"
+        |
+        v
+[TLD Server (.com)]     "Ask example.com nameservers"
+        |
+        v
+[Authoritative Server]  "www.example.com = 93.184.216.34"
+        |
+        v
+[Back to Resolver]      Caches result, returns to user
+```
+
+### DNS Security Extensions (DNSSEC)
+
+DNSSEC adds cryptographic signatures to DNS responses:
+
+| Record     | Purpose                              |
+| ---------- | ------------------------------------ |
+| RRSIG      | Signature over a resource record set |
+| DNSKEY     | Public key for verifying RRSIG       |
+| DS         | Delegation signer (child zone hash)  |
+| NSEC/NSEC3 | Authenticated denial of existence    |
+
+<InfoBox type="warning">
+  DNSSEC prevents cache poisoning but does not encrypt queries. For privacy,
+  consider DNS over HTTPS (DoH) or DNS over TLS (DoT).
+</InfoBox>
+
+### DNS over HTTPS (DoH) Implementation
+
+```javascript
+// Performing DNS lookup over HTTPS
+async function dohLookup(domain) {
+  const response = await fetch(
+    `https://cloudflare-dns.com/dns-query?name=${domain}&type=A`,
+    {
+      headers: {
+        Accept: "application/dns-json",
+      },
+    }
+  );
+
+  const data = await response.json();
+  return data.Answer?.[0]?.data; // Returns IP address
+}
+
+// Example usage
+const ip = await dohLookup("example.com");
+// Returns: "93.184.216.34"
+```
+
+<ProgressCheckpoint section="dns" />
+
+---
+
+## Routing Protocols
+
+### Interior vs Exterior Gateway Protocols
+
+<Comparison
+  left={{
+    title: "IGP (Interior Gateway Protocol)",
+    items: [
+      "Used within an autonomous system",
+      "Examples: OSPF, IS-IS, EIGRP, RIP",
+      "Optimizes for shortest path",
+      "Full network topology knowledge",
+    ],
+    variant: "neutral",
+  }}
+  right={{
+    title: "EGP (Exterior Gateway Protocol)",
+    items: [
+      "Used between autonomous systems",
+      "BGP is the Internet EGP",
+      "Policy-based routing decisions",
+      "Path-vector protocol",
+    ],
+    variant: "neutral",
+  }}
+/>
+
+### BGP (Border Gateway Protocol)
+
+BGP is the routing protocol of the Internet:
+
+```text
+BGP Path Attributes (in order of preference):
+1. Weight (Cisco-specific, local)
+2. Local Preference (higher = preferred)
+3. Originate (prefer locally originated routes)
+4. AS Path Length (shorter = preferred)
+5. Origin Type (IGP, EGP, Incomplete)
+6. MED (Multi-Exit Discriminator)
+7. eBGP over iBGP
+8. IGP Metric (lowest to BGP next-hop)
+9. Router ID (lowest wins)
+```
+
+<KeyConcept title="BGP Hijacking">
+  BGP has no built-in authentication. Malicious or misconfigured announcements
+  can redirect traffic (BGP hijacking). RPKI (Resource Public Key
+  Infrastructure) helps mitigate this by cryptographically validating route
+  origins.
+</KeyConcept>
+
+<Quiz id="bgp-quiz">
+  <Question>Why is BGP considered policy-based routing?</Question>
+  <Answer correct>
+    Routing decisions can be influenced by business relationships and policies,
+    not just shortest path
+  </Answer>
+  <Answer>It uses government policies to route traffic</Answer>
+  <Answer>It only works with enterprise-grade routers</Answer>
+  <Answer>Routes are manually configured by administrators</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="summary" />
+
+---
+
+## Summary: System Design Implications
+
+Understanding Internet fundamentals is crucial for system design:
+
+| Concept            | System Design Implication               |
+| ------------------ | --------------------------------------- |
+| TCP handshake      | Connection pooling, HTTP/2 multiplexing |
+| DNS caching        | TTL tuning, multi-CDN strategies        |
+| BGP routing        | Anycast for geo-distribution            |
+| Congestion control | Buffer sizing, bandwidth estimation     |
+| IP fragmentation   | MTU considerations, Path MTU Discovery  |
+
+<InfoBox type="success">
+  You now have deep technical knowledge of Internet protocols. This foundation
+  is essential for designing distributed systems, debugging network issues, and
+  understanding web performance optimization.
+</InfoBox>

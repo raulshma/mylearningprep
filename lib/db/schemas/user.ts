@@ -44,6 +44,42 @@ export const UserPreferencesSchema = z.object({
   generation: GenerationPreferencesSchema.optional(),
 });
 
+// Gamification Schemas
+export const BadgeSchema = z.object({
+  id: z.string(),
+  earnedAt: z.date(),
+});
+
+export const CompletedLessonSchema = z.object({
+  lessonId: z.string(),
+  experienceLevel: z.enum(['beginner', 'intermediate', 'advanced']),
+  sectionsCompleted: z.array(z.object({
+    sectionId: z.string(),
+    completedAt: z.date(),
+    xpEarned: z.number(),
+  })),
+  quizAnswers: z.array(z.object({
+    questionId: z.string(),
+    selectedAnswer: z.string(),
+    isCorrect: z.boolean(),
+    answeredAt: z.date(),
+  })).default([]),
+  xpEarned: z.number(),
+  startedAt: z.date().optional(),
+  completedAt: z.date().optional(),
+  timeSpentSeconds: z.number().default(0),
+});
+
+export const UserGamificationSchema = z.object({
+  totalXp: z.number().int().min(0).default(0),
+  level: z.number().int().min(1).default(1),
+  currentStreak: z.number().int().min(0).default(0),
+  longestStreak: z.number().int().min(0).default(0),
+  lastActivityDate: z.date().optional(),
+  badges: z.array(BadgeSchema).default([]),
+  completedLessons: z.array(CompletedLessonSchema).default([]),
+});
+
 export const UserSchema = z.object({
   _id: z.string(),
   clerkId: z.string(),
@@ -54,6 +90,7 @@ export const UserSchema = z.object({
   interviews: UserInterviewsSchema.optional(),
   chatMessages: UserChatMessagesSchema.optional(),
   preferences: UserPreferencesSchema,
+  gamification: UserGamificationSchema.optional(),
   suspended: z.boolean().default(false),
   createdAt: z.date(),
   updatedAt: z.date(),
@@ -75,3 +112,6 @@ export type GenerationPreferences = z.infer<typeof GenerationPreferencesSchema>;
 export type UserPreferences = z.infer<typeof UserPreferencesSchema>;
 export type User = z.infer<typeof UserSchema>;
 export type CreateUser = z.infer<typeof CreateUserSchema>;
+export type UserGamification = z.infer<typeof UserGamificationSchema>;
+export type CompletedLesson = z.infer<typeof CompletedLessonSchema>;
+export type Badge = z.infer<typeof BadgeSchema>;

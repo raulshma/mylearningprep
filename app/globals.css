@@ -247,13 +247,15 @@
 
 /* Shiki dual theme support - light/dark mode code highlighting */
 /* Light mode (default) */
-.shiki span {
+.shiki span,
+[data-rehype-pretty-code-figure] span {
   color: var(--shiki-light) !important;
   background-color: transparent !important;
 }
 
 pre.shiki,
-.shiki {
+.shiki,
+[data-rehype-pretty-code-figure] pre {
   background-color: var(--shiki-light-bg, #f6f8fa) !important;
 }
 
@@ -263,7 +265,13 @@ html.dark .shiki span,
 html.dark-dim .shiki span,
 .dark-dim .shiki span,
 html.cyberpunk .shiki span,
-.cyberpunk .shiki span {
+.cyberpunk .shiki span,
+html.dark [data-rehype-pretty-code-figure] span,
+.dark [data-rehype-pretty-code-figure] span,
+html.dark-dim [data-rehype-pretty-code-figure] span,
+.dark-dim [data-rehype-pretty-code-figure] span,
+html.cyberpunk [data-rehype-pretty-code-figure] span,
+.cyberpunk [data-rehype-pretty-code-figure] span {
   color: var(--shiki-dark) !important;
   background-color: transparent !important;
 }
@@ -279,8 +287,87 @@ html.dark-dim .shiki,
 html.cyberpunk pre.shiki,
 html.cyberpunk .shiki,
 .cyberpunk pre.shiki,
-.cyberpunk .shiki {
+.cyberpunk .shiki,
+html.dark [data-rehype-pretty-code-figure] pre,
+.dark [data-rehype-pretty-code-figure] pre,
+html.dark-dim [data-rehype-pretty-code-figure] pre,
+.dark-dim [data-rehype-pretty-code-figure] pre,
+html.cyberpunk [data-rehype-pretty-code-figure] pre,
+.cyberpunk [data-rehype-pretty-code-figure] pre {
   background-color: var(--shiki-dark-bg, #24292e) !important;
+}
+
+/* Rehype Pretty Code - code block styling */
+[data-rehype-pretty-code-figure] {
+  margin: 1.5rem 0;
+  position: relative;
+}
+
+[data-rehype-pretty-code-figure] pre {
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  overflow-x: auto;
+  font-size: 0.875rem;
+  line-height: 1.7;
+}
+
+[data-rehype-pretty-code-figure] pre code {
+  display: grid;
+  font-family: var(--font-mono);
+}
+
+/* Line numbers */
+[data-rehype-pretty-code-figure] code[data-line-numbers] {
+  counter-reset: line;
+}
+
+[data-rehype-pretty-code-figure] code[data-line-numbers] > [data-line]::before {
+  counter-increment: line;
+  content: counter(line);
+  display: inline-block;
+  width: 1.5rem;
+  margin-right: 1rem;
+  text-align: right;
+  color: var(--muted-foreground);
+  opacity: 0.5;
+}
+
+/* Line highlighting */
+[data-rehype-pretty-code-figure] [data-line] {
+  padding: 0 1rem 0 0;
+}
+
+[data-rehype-pretty-code-figure] [data-highlighted-line] {
+  background-color: rgba(var(--primary), 0.1);
+  border-left: 3px solid var(--primary);
+  padding-left: calc(1rem - 3px);
+}
+
+/* Word highlighting */
+[data-rehype-pretty-code-figure] [data-highlighted-chars] {
+  background-color: rgba(var(--primary), 0.2);
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+}
+
+/* Code block title/caption */
+[data-rehype-pretty-code-title] {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  background-color: var(--secondary);
+  border: 1px solid var(--border);
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  color: var(--muted-foreground);
+}
+
+[data-rehype-pretty-code-title] + pre {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  margin-top: 0;
 }
 
 @layer base {

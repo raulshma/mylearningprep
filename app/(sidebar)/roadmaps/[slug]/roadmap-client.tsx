@@ -7,15 +7,18 @@ import { startNode, completeNode, startRoadmap } from '@/lib/actions/roadmap';
 import { toast } from 'sonner';
 import type { Roadmap } from '@/lib/db/schemas/roadmap';
 import type { UserRoadmapProgress, NodeProgress } from '@/lib/db/schemas/user-roadmap-progress';
+import type { ObjectiveLessonInfo } from '@/lib/actions/lessons';
 
 interface RoadmapClientProps {
   initialRoadmap: Roadmap;
   initialProgress: UserRoadmapProgress | null;
+  initialLessonAvailability: Record<string, ObjectiveLessonInfo[]>;
 }
 
 export function RoadmapClient({ 
   initialRoadmap, 
-  initialProgress 
+  initialProgress,
+  initialLessonAvailability = {}
 }: RoadmapClientProps) {
   const [roadmap] = useState(initialRoadmap);
   const [progress, setProgress] = useState(initialProgress);
@@ -149,6 +152,7 @@ export function RoadmapClient({
           progress={progress}
           selectedNodeId={selectedNodeId}
           onNodeSelect={handleNodeClick}
+          initialLessonAvailability={initialLessonAvailability}
         />
       </div>
       
@@ -176,6 +180,7 @@ export function RoadmapClient({
               <RoadmapTopicDetail
                 node={selectedNode}
                 nodeProgress={selectedNodeProgress}
+                roadmapSlug={roadmap.slug}
                 onStartLearning={handleStartLearning}
                 onMarkComplete={handleMarkComplete}
                 onClose={handleCloseDetail}

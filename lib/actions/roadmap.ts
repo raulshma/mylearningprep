@@ -37,12 +37,13 @@ export async function getRoadmapWithProgress(slug: string): Promise<{
   roadmap: Roadmap | null;
   progress: UserRoadmapProgress | null;
   subRoadmaps: Roadmap[];
+  lessonAvailability: Record<string, import('@/lib/actions/lessons').ObjectiveLessonInfo[]>;
 }> {
   const { userId } = await auth();
 
   const roadmap = await roadmapRepo.findRoadmapBySlug(slug);
   if (!roadmap) {
-    return { roadmap: null, progress: null, subRoadmaps: [] };
+    return { roadmap: null, progress: null, subRoadmaps: [], lessonAvailability: {} };
   }
 
   let progress: UserRoadmapProgress | null = null;
@@ -53,7 +54,12 @@ export async function getRoadmapWithProgress(slug: string): Promise<{
   // Get sub-roadmaps for nodes that have them
   const subRoadmaps = await roadmapRepo.findSubRoadmaps(slug);
 
-  return { roadmap, progress, subRoadmaps };
+  // Get lesson availability map
+  // We import dynamically to avoid circular dependencies if any (though lessons.ts is generic)
+  const { getRoadmapLessonAvailability } = await import('@/lib/actions/lessons');
+  const lessonAvailability = await getRoadmapLessonAvailability(roadmap);
+
+  return { roadmap, progress, subRoadmaps, lessonAvailability };
 }
 
 // Start learning a roadmap (creates progress record)
