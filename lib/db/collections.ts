@@ -34,6 +34,36 @@ export interface UserDocument extends Document {
     theme: 'light' | 'dark';
     defaultAnalogy: 'professional' | 'construction' | 'simple';
   };
+  gamification?: {
+    totalXp: number;
+    level: number;
+    currentStreak: number;
+    longestStreak: number;
+    lastActivityDate?: Date;
+    badges: Array<{
+      id: string;
+      earnedAt: Date;
+    }>;
+    completedLessons: Array<{
+      lessonId: string;
+      experienceLevel: 'beginner' | 'intermediate' | 'advanced';
+      sectionsCompleted: Array<{
+        sectionId: string;
+        completedAt: Date;
+        xpEarned: number;
+      }>;
+      quizAnswers: Array<{
+        questionId: string;
+        selectedAnswer: string;
+        isCorrect: boolean;
+        answeredAt: Date;
+      }>;
+      xpEarned: number;
+      startedAt?: Date;
+      completedAt?: Date;
+      timeSpentSeconds: number;
+    }>;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -486,3 +516,5 @@ export async function getUserRoadmapProgressCollection(): Promise<Collection<Use
   const db = await getDb();
   return db.collection<UserRoadmapProgressDocument>(COLLECTIONS.USER_ROADMAP_PROGRESS);
 }
+
+

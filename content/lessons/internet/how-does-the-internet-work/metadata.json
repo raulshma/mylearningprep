@@ -1,0 +1,31 @@
+{
+  "id": "how-does-the-internet-work",
+  "title": "How Does the Internet Work?",
+  "description": "Learn the fundamentals of how the Internet connects billions of devices worldwide",
+  "milestone": "internet",
+  "order": 1,
+  "sections": [
+    "introduction",
+    "networks",
+    "ip-addresses",
+    "data-packets",
+    "dns",
+    "summary"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 8,
+      "xpReward": 50
+    },
+    "intermediate": {
+      "estimatedMinutes": 12,
+      "xpReward": 100
+    },
+    "advanced": {
+      "estimatedMinutes": 20,
+      "xpReward": 200
+    }
+  },
+  "prerequisites": [],
+  "tags": ["internet", "networking", "fundamentals"]
+}

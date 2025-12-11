@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useEffect, useState } from 'react';
+import { useCallback, useMemo, useEffect, useState, useRef } from 'react';
 import {
   ReactFlow,
   Controls,
@@ -13,6 +13,7 @@ import {
   Panel,
   MarkerType,
   type Edge,
+  type Viewport,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { LayoutGrid, TreeDeciduous, GitBranch, Zap } from 'lucide-react';
@@ -32,7 +33,15 @@ interface RoadmapViewerProps {
   onNodeHover?: (nodeId: string | null) => void;
 }
 
+// Storage keys for persisting viewer state
 const LAYOUT_STORAGE_KEY = 'roadmap-elk-layout-preference';
+const getViewportStorageKey = (roadmapSlug: string) => `roadmap-viewport-${roadmapSlug}`;
+const getSelectedNodeStorageKey = (roadmapSlug: string) => `roadmap-selected-node-${roadmapSlug}`;
+
+interface SavedViewportState {
+  viewport: Viewport;
+  savedAt: number;
+}
 
 // Custom node types
 const nodeTypes = {
@@ -57,6 +66,13 @@ const layoutOptions: { type: ElkLayoutType; label: string; icon: React.ReactNode
   { type: 'stress', label: 'Stress', icon: <LayoutGrid className="w-4 h-4" /> },
 ];
 
+interface RoadmapViewerInnerProps extends RoadmapViewerProps {
+  layoutType: ElkLayoutType;
+  layoutResult: LayoutResult | null;
+  savedViewport: SavedViewportState | null;
+  onViewportChange: (viewport: Viewport) => void;
+}
+
 function RoadmapViewerInner({
   roadmap,
   progress,
@@ -64,8 +80,12 @@ function RoadmapViewerInner({
   onNodeClick,
   layoutType,
   layoutResult,
-}: RoadmapViewerProps & { layoutType: ElkLayoutType; layoutResult: LayoutResult | null }) {
-  const { fitView } = useReactFlow();
+  savedViewport,
+  onViewportChange,
+}: RoadmapViewerInnerProps) {
+  const { fitView, setViewport, getViewport } = useReactFlow();
+  const hasRestoredViewport = useRef(false);
+  const isFirstLayout = useRef(true);
 
   // Get node status from progress
   const getNodeStatus = useCallback((nodeId: string): NodeProgressStatus => {
@@ -139,28 +159,37 @@ function RoadmapViewerInner({
   useEffect(() => {
     if (initialNodes.length > 0) {
       setNodes(initialNodes);
-      setTimeout(() => {
-        fitView({ padding: 0.1, duration: 400 });
-      }, 50);
+      
+      // Only auto-fit on first layout if no saved viewport
+      if (isFirstLayout.current) {
+        isFirstLayout.current = false;
+        
+        if (savedViewport && !hasRestoredViewport.current) {
+          // Restore saved viewport
+          hasRestoredViewport.current = true;
+          setTimeout(() => {
+            setViewport(savedViewport.viewport, { duration: 0 });
+          }, 100);
+        } else if (!savedViewport) {
+          // No saved state, do auto-fit
+          setTimeout(() => {
+            fitView({ padding: 0.1, duration: 400 });
+          }, 50);
+        }
+      }
     }
-  }, [initialNodes, setNodes, fitView]);
+  }, [initialNodes, setNodes, fitView, setViewport, savedViewport]);
 
   // Update edges when props change
   useEffect(() => {
     setEdges(initialEdges);
   }, [initialEdges, setEdges]);
 
-  // Auto fit view on resize
-  useEffect(() => {
-    const handleResize = () => {
-      setTimeout(() => {
-        fitView({ padding: 0.1, duration: 300 });
-      }, 100);
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [fitView]);
+  // Save viewport on move end (debounced)
+  const handleMoveEnd = useCallback(() => {
+    const viewport = getViewport();
+    onViewportChange(viewport);
+  }, [getViewport, onViewportChange]);
 
   return (
     <ReactFlow
@@ -170,8 +199,11 @@ function RoadmapViewerInner({
       onEdgesChange={onEdgesChange}
       nodeTypes={nodeTypes}
       defaultEdgeOptions={defaultEdgeOptions}
-      fitView
+      // Don't use fitView prop if we have saved viewport
+      fitView={!savedViewport}
       fitViewOptions={{ padding: 0.1 }}
+      // Apply saved viewport as default
+      defaultViewport={savedViewport?.viewport}
       minZoom={0.2}
       maxZoom={1.5}
       nodesDraggable={false}
@@ -179,6 +211,7 @@ function RoadmapViewerInner({
       elementsSelectable={true}
       panOnScroll
       zoomOnScroll
+      onMoveEnd={handleMoveEnd}
       proOptions={{ hideAttribution: true }}
     >
       <Controls 
@@ -200,13 +233,88 @@ export function RoadmapViewer(props: RoadmapViewerProps) {
   const [layoutType, setLayoutType] = useState<ElkLayoutType>('layered');
   const [layoutResult, setLayoutResult] = useState<LayoutResult | null>(null);
   const [isLayouting, setIsLayouting] = useState(false);
-
-  // Load layout preference from localStorage on mount
+  const [savedViewport, setSavedViewport] = useState<SavedViewportState | null>(null);
+  const [hasLoadedState, setHasLoadedState] = useState(false);
+  const viewportSaveTimeout = useRef<NodeJS.Timeout | null>(null);
+  const onNodeClickRef = useRef(props.onNodeClick);
+  
+  // Keep ref updated
   useEffect(() => {
-    const saved = localStorage.getItem(LAYOUT_STORAGE_KEY);
-    if (saved && ['layered', 'mrtree', 'force', 'stress'].includes(saved)) {
-      setLayoutType(saved as ElkLayoutType);
+    onNodeClickRef.current = props.onNodeClick;
+  }, [props.onNodeClick]);
+
+  // Load saved state from localStorage on mount
+  useEffect(() => {
+    // Load layout preference
+    const savedLayout = localStorage.getItem(LAYOUT_STORAGE_KEY);
+    if (savedLayout && ['layered', 'mrtree', 'force', 'stress'].includes(savedLayout)) {
+      setLayoutType(savedLayout as ElkLayoutType);
     }
+
+    // Load saved viewport
+    const viewportKey = getViewportStorageKey(props.roadmap.slug);
+    const savedViewportData = localStorage.getItem(viewportKey);
+    if (savedViewportData) {
+      try {
+        const parsed = JSON.parse(savedViewportData) as SavedViewportState;
+        // Only use if saved within the last 24 hours
+        if (Date.now() - parsed.savedAt < 24 * 60 * 60 * 1000) {
+          setSavedViewport(parsed);
+        }
+      } catch (e) {
+        console.error('Failed to parse saved viewport:', e);
+      }
+    }
+
+    // Load and notify parent of selected node (if needed)
+    const selectedNodeKey = getSelectedNodeStorageKey(props.roadmap.slug);
+    const savedSelectedNode = localStorage.getItem(selectedNodeKey);
+    if (savedSelectedNode && props.roadmap.nodes.some(n => n.id === savedSelectedNode)) {
+      // Call onNodeClick to restore selection using ref to avoid stale closure
+      onNodeClickRef.current(savedSelectedNode);
+    }
+
+    setHasLoadedState(true);
+  }, [props.roadmap.slug, props.roadmap.nodes]);
+
+  // Save selected node when it changes
+  useEffect(() => {
+    if (!hasLoadedState) return;
+    
+    const selectedNodeKey = getSelectedNodeStorageKey(props.roadmap.slug);
+    if (props.selectedNodeId) {
+      localStorage.setItem(selectedNodeKey, props.selectedNodeId);
+    } else {
+      localStorage.removeItem(selectedNodeKey);
+    }
+  }, [props.selectedNodeId, props.roadmap.slug, hasLoadedState]);
+
+  // Handle viewport change with debounce
+  const handleViewportChange = useCallback((viewport: Viewport) => {
+    // Clear existing timeout
+    if (viewportSaveTimeout.current) {
+      clearTimeout(viewportSaveTimeout.current);
+    }
+
+    // Debounce save to avoid too many writes
+    viewportSaveTimeout.current = setTimeout(() => {
+      const viewportKey = getViewportStorageKey(props.roadmap.slug);
+      const stateToSave: SavedViewportState = {
+        viewport,
+        savedAt: Date.now(),
+      };
+      localStorage.setItem(viewportKey, JSON.stringify(stateToSave));
+      setSavedViewport(stateToSave);
+    }, 300);
+  }, [props.roadmap.slug]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (viewportSaveTimeout.current) {
+        clearTimeout(viewportSaveTimeout.current);
+      }
+    };
   }, []);
 
   // Compute layout when type or roadmap changes
@@ -241,6 +349,10 @@ export function RoadmapViewer(props: RoadmapViewerProps) {
   const handleLayoutChange = (newLayout: ElkLayoutType) => {
     setLayoutType(newLayout);
     localStorage.setItem(LAYOUT_STORAGE_KEY, newLayout);
+    // Clear saved viewport when layout changes (new positions)
+    const viewportKey = getViewportStorageKey(props.roadmap.slug);
+    localStorage.removeItem(viewportKey);
+    setSavedViewport(null);
   };
 
   // Calculate container height based on layout
@@ -259,6 +371,8 @@ export function RoadmapViewer(props: RoadmapViewerProps) {
           {...props} 
           layoutType={layoutType} 
           layoutResult={layoutResult}
+          savedViewport={savedViewport}
+          onViewportChange={handleViewportChange}
         />
         
         {/* Layout selector panel */}

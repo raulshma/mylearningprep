@@ -1,0 +1,233 @@
+# How Does the Internet Work?
+
+<InfoBox type="info">
+  This intermediate guide covers the technical fundamentals of Internet
+  architecture, protocols, and data transmission.
+</InfoBox>
+
+## The Internet: A Technical Overview
+
+The Internet is a global system of interconnected computer networks using the **Internet Protocol Suite (TCP/IP)** to communicate. It's a "network of networks" consisting of private, public, academic, business, and government networks.
+
+<AnimatedDiagram type="packet-flow" />
+
+<ProgressCheckpoint section="introduction" />
+
+---
+
+## Network Architecture
+
+### The OSI Model (Simplified)
+
+The Internet operates on a layered architecture. Understanding these layers helps you troubleshoot and build web applications:
+
+| Layer | Name        | Function                    | Example             |
+| ----- | ----------- | --------------------------- | ------------------- |
+| 7     | Application | User interfaces & protocols | HTTP, HTTPS, FTP    |
+| 4     | Transport   | End-to-end communication    | TCP, UDP            |
+| 3     | Network     | Routing & addressing        | IP, ICMP            |
+| 2     | Data Link   | Local network delivery      | Ethernet, WiFi      |
+| 1     | Physical    | Hardware transmission       | Cables, radio waves |
+
+<KeyConcept title="Why Layers Matter">
+  Each layer handles specific responsibilities. When you debug network issues,
+  understanding which layer is failing helps you find solutions faster.
+</KeyConcept>
+
+### Network Types
+
+<Comparison
+  left={{
+    title: "Circuit Switching",
+    items: [
+      "Dedicated path for entire communication",
+      "Used by traditional phone networks",
+      "Guaranteed quality but wasteful",
+      "Resources reserved even when idle",
+    ],
+    variant: "negative",
+  }}
+  right={{
+    title: "Packet Switching",
+    items: [
+      "Data split into packets",
+      "Packets routed independently",
+      "Efficient use of bandwidth",
+      "Foundation of the Internet",
+    ],
+    variant: "positive",
+  }}
+/>
+
+<ProgressCheckpoint section="networks" />
+
+---
+
+## IP Addressing in Depth
+
+### IPv4 vs IPv6
+
+<InteractiveDemo type="ip-address-demo" />
+
+**IPv4** uses 32-bit addresses (4.3 billion possible addresses):
+
+```
+192.168.1.100
+```
+
+**IPv6** uses 128-bit addresses (340 undecillion possible addresses):
+
+```
+2001:0db8:85a3:0000:0000:8a2e:0370:7334
+```
+
+<InfoBox type="warning">
+  IPv4 addresses are running out! IPv6 adoption is critical for the Internet's
+  future growth.
+</InfoBox>
+
+### Private vs Public IP Addresses
+
+| Type    | Range                         | Use               |
+| ------- | ----------------------------- | ----------------- |
+| Private | 10.0.0.0 - 10.255.255.255     | Internal networks |
+| Private | 172.16.0.0 - 172.31.255.255   | Internal networks |
+| Private | 192.168.0.0 - 192.168.255.255 | Home networks     |
+| Public  | Everything else               | Internet-facing   |
+
+<KeyConcept title="NAT (Network Address Translation)">
+  NAT allows multiple devices on a private network to share a single public IP
+  address. Your router performs NAT, which is why all your devices can access
+  the Internet through one connection.
+</KeyConcept>
+
+<Quiz id="ip-intermediate-quiz">
+  <Question>Why was IPv6 created?</Question>
+  <Answer correct>
+    IPv4 addresses are running out, and IPv6 provides a vastly larger address
+    space
+  </Answer>
+  <Answer>IPv4 was too fast for modern networks</Answer>
+  <Answer>IPv6 is easier to remember than IPv4</Answer>
+  <Answer>IPv4 doesn't support encryption</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="ip-addresses" />
+
+---
+
+## TCP/IP and Data Transmission
+
+### The TCP Three-Way Handshake
+
+Before data is sent via TCP, a connection must be established:
+
+<AnimatedDiagram type="tcp-handshake" />
+
+1. **SYN**: Client sends synchronize request
+2. **SYN-ACK**: Server acknowledges and sends its own sync
+3. **ACK**: Client acknowledges, connection established
+
+### TCP vs UDP
+
+<Comparison
+  left={{
+    title: "TCP (Transmission Control Protocol)",
+    items: [
+      "Connection-oriented",
+      "Guarantees delivery order",
+      "Error checking and retransmission",
+      "Used for: HTTP, Email, File transfers",
+    ],
+    variant: "positive",
+  }}
+  right={{
+    title: "UDP (User Datagram Protocol)",
+    items: [
+      "Connectionless",
+      "No guaranteed delivery or order",
+      "Faster, lower overhead",
+      "Used for: Video streaming, Gaming, DNS",
+    ],
+    variant: "neutral",
+  }}
+/>
+
+### Packet Structure
+
+Each IP packet contains:
+
+```text
++-------------------+
+|    IP Header      |  Source/Destination IP, TTL, Protocol
++-------------------+
+|   TCP/UDP Header  |  Ports, Sequence numbers, Flags
++-------------------+
+|      Payload      |  Actual data (HTTP request, etc.)
++-------------------+
+```
+
+<ProgressCheckpoint section="data-packets" />
+
+---
+
+## DNS Resolution Process
+
+<AnimatedDiagram type="dns-lookup" />
+
+### DNS Query Types
+
+1. **Recursive Query**: Your resolver does all the work
+2. **Iterative Query**: Each server points to the next
+
+### DNS Record Types
+
+| Type  | Purpose        | Example                           |
+| ----- | -------------- | --------------------------------- |
+| A     | IPv4 address   | example.com → 93.184.216.34       |
+| AAAA  | IPv6 address   | example.com → 2606:2800:220:1:... |
+| CNAME | Alias/redirect | www.example.com → example.com     |
+| MX    | Mail server    | example.com → mail.example.com    |
+| TXT   | Text data      | Used for verification, SPF        |
+
+<InteractiveDemo type="url-parser" />
+
+<Quiz id="dns-quiz">
+  <Question>What is a CNAME record used for?</Question>
+  <Answer correct>Creating an alias from one domain name to another</Answer>
+  <Answer>Storing the IPv4 address of a domain</Answer>
+  <Answer>Specifying the mail server for a domain</Answer>
+  <Answer>Encrypting DNS queries</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="dns" />
+
+---
+
+## Putting It Together: HTTP Request Flow
+
+When you visit `https://example.com`:
+
+1. **DNS Resolution**: Browser finds IP address
+2. **TCP Handshake**: Connection established
+3. **TLS Handshake**: Encryption negotiated (HTTPS)
+4. **HTTP Request**: Browser sends GET request
+5. **Server Response**: HTML/data returned
+6. **Rendering**: Browser displays the page
+
+<AnimatedDiagram type="http-request" />
+
+<KeyConcept title="Performance Considerations">
+  Understanding this flow helps you optimize: - **DNS caching** reduces lookup
+  time - **Keep-alive connections** reduce TCP handshakes - **HTTP/2**
+  multiplexes requests over single connection - **CDNs** reduce geographic
+  distance
+</KeyConcept>
+
+<InfoBox type="success">
+  You now have a solid technical understanding of Internet architecture. This
+  knowledge forms the foundation for understanding web protocols, APIs, and
+  distributed systems.
+</InfoBox>
+
+<ProgressCheckpoint section="summary" />

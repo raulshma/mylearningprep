@@ -8,7 +8,7 @@ interface RoadmapPageProps {
 
 export default async function RoadmapPage({ params }: RoadmapPageProps) {
   const { slug } = await params;
-  const { roadmap, progress } = await getRoadmapWithProgress(slug);
+  const { roadmap, progress, lessonAvailability } = await getRoadmapWithProgress(slug);
   
   if (!roadmap) {
     notFound();
@@ -19,6 +19,7 @@ export default async function RoadmapPage({ params }: RoadmapPageProps) {
       <RoadmapClient 
         initialRoadmap={roadmap} 
         initialProgress={progress} 
+        initialLessonAvailability={lessonAvailability}
       />
     </div>
   );
