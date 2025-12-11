@@ -21,6 +21,7 @@ import {
   FREE_CHAT_MESSAGE_LIMIT,
   PRO_CHAT_MESSAGE_LIMIT,
   MAX_CHAT_MESSAGE_LIMIT,
+  ITERATION_COSTS,
 } from "@/lib/pricing-data";
 import type { AIMessage, AIRequestMetadata } from "@/lib/db/schemas/ai-conversation";
 
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
       }
     };
 
-    // Check chat message limits
+    // Check chat message limits and iteration limits
     const isByok = await hasByokApiKey();
     const chatMessages = user.chatMessages ?? { count: 0, limit: getChatLimit(user.plan), resetDate: new Date() };
     
@@ -95,8 +96,26 @@ export async function POST(request: NextRequest) {
           }
         );
       }
-      // Increment chat message count
+      
+      // Check iteration limits
+      const remainingIterations = user.iterations.limit - user.iterations.count;
+      if (remainingIterations < ITERATION_COSTS.CHAT_MESSAGE) {
+        return new Response(
+          JSON.stringify({
+            error: "Iteration limit reached. Please upgrade your plan.",
+            remaining: 0,
+            limit: user.iterations.limit,
+          }),
+          {
+            status: 429,
+            headers: { "Content-Type": "application/json" },
+          }
+        );
+      }
+      
+      // Increment chat message count and iteration count
       await userRepository.incrementChatMessage(clerkId);
+      await userRepository.incrementIteration(clerkId, ITERATION_COSTS.CHAT_MESSAGE);
     }
 
     // Create conversation on first message if no conversationId provided

@@ -20,6 +20,7 @@ import {
   createLoggerContext,
   extractTokenUsage,
 } from "@/lib/services/ai-logger";
+import { ITERATION_COSTS } from "@/lib/pricing-data";
 import {
   saveActiveStream,
   updateStreamStatus,
@@ -102,7 +103,7 @@ export async function POST(
         );
       }
       // Increment iteration count
-      await userRepository.incrementIteration(clerkId);
+      await userRepository.incrementIteration(clerkId, ITERATION_COSTS.FULL_GENERATION);
     }
 
     // Get BYOK API key and tier config if available

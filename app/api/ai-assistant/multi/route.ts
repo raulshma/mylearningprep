@@ -8,6 +8,7 @@ import {
   FREE_CHAT_MESSAGE_LIMIT,
   PRO_CHAT_MESSAGE_LIMIT,
   MAX_CHAT_MESSAGE_LIMIT,
+  ITERATION_COSTS,
 } from "@/lib/pricing-data";
 
 /**
@@ -83,12 +84,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Increment chat message count only if this is the first model in the comparison
+    // Check iteration limits
+    if (!isByok) {
+      const remainingIterations = user.iterations.limit - user.iterations.count;
+      if (remainingIterations < ITERATION_COSTS.CHAT_MESSAGE) {
+        return new Response(
+          JSON.stringify({
+            error: "Iteration limit reached. Please upgrade your plan.",
+            remaining: 0,
+            limit: user.iterations.limit,
+          }),
+          { status: 429, headers: { "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    // Increment chat message count and iteration count only if this is the first model in the comparison
     // This ensures multi-model comparisons count as a single user interaction
     // Don't await - do it in the background to not block parallel requests
     if (!isByok && shouldIncrementCount !== false) {
       userRepository.incrementChatMessage(clerkId).catch((err) => {
         console.error("Failed to increment chat message count:", err);
+      });
+      userRepository.incrementIteration(clerkId, ITERATION_COSTS.CHAT_MESSAGE).catch((err) => {
+        console.error("Failed to increment iteration count:", err);
       });
     }
     

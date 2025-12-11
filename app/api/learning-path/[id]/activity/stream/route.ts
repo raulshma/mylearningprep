@@ -27,6 +27,7 @@ import {
 } from "@/lib/services/stream-store";
 import type { ActivityType } from "@/lib/db/schemas/learning-path";
 import type { AIAction } from "@/lib/db/schemas/ai-log";
+import { ITERATION_COSTS } from "@/lib/pricing-data";
 
 // Map activity types to AI action types
 const ACTIVITY_TYPE_TO_ACTION: Record<ActivityType, AIAction> = {
@@ -167,7 +168,7 @@ export async function POST(
         );
       }
       // Increment iteration count
-      await userRepository.incrementIteration(clerkId);
+      await userRepository.incrementIteration(clerkId, ITERATION_COSTS.FULL_GENERATION);
     }
 
     // Get BYOK API key and tier config if available

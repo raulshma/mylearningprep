@@ -10,6 +10,7 @@ import {
   analyzeGitHubRepo,
   type ToolInvocation,
 } from "@/lib/services/ai-tools";
+import { ITERATION_COSTS } from "@/lib/pricing-data";
 
 /**
  * POST /api/ai-tools/github-analysis
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
         );
       }
       // Increment iteration count
-      await userRepository.incrementIteration(clerkId);
+      await userRepository.incrementIteration(clerkId, ITERATION_COSTS.AI_TOOL);
     }
 
     const body = await request.json();

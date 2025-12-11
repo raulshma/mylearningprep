@@ -50,6 +50,19 @@ export const FREE_CHAT_MESSAGE_LIMIT = 5;
 export const PRO_CHAT_MESSAGE_LIMIT = 100;
 export const MAX_CHAT_MESSAGE_LIMIT = 300;
 
+/**
+ * Iteration costs for different AI actions
+ * These define how many iterations each action consumes
+ */
+export const ITERATION_COSTS = {
+  /** Full generation actions (topics, MCQs, rapid-fire, etc.) */
+  FULL_GENERATION: 1,
+  /** Chat messages (topic chat, AI assistant) */
+  CHAT_MESSAGE: 0.33,
+  /** AI tools (mock interview, system design, etc.) */
+  AI_TOOL: 1,
+} as const;
+
 export const PRICING_TIERS: PricingTier[] = [
   {
     id: 'free',

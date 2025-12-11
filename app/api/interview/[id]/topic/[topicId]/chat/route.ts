@@ -14,9 +14,7 @@ import { getTierConfigFromDB } from "@/lib/db/tier-config";
 import { logAIRequest, createLoggerContext } from "@/lib/services/ai-logger";
 import type { ChatMessage } from "@/lib/db/schemas/chat";
 import { createProviderWithFallback, type AIProviderType } from "@/lib/ai";
-
-// Chat costs 0.33 iterations per message
-const CHAT_ITERATION_COST = 0.33;
+import { ITERATION_COSTS } from "@/lib/pricing-data";
 
 /**
  * Get effective model config for chat (uses LOW tier)
@@ -177,9 +175,9 @@ export async function POST(
     // Check iteration limits (unless BYOK)
     const isByok = await hasByokApiKey();
     if (!isByok) {
-      // Check if user has enough iterations (need at least CHAT_ITERATION_COST)
+      // Check if user has enough iterations (need at least ITERATION_COSTS.CHAT_MESSAGE)
       const remainingIterations = user.iterations.limit - user.iterations.count;
-      if (remainingIterations < CHAT_ITERATION_COST) {
+      if (remainingIterations < ITERATION_COSTS.CHAT_MESSAGE) {
         return new Response(
           JSON.stringify({
             error: "Iteration limit reached. Please upgrade your plan.",
@@ -188,7 +186,7 @@ export async function POST(
         );
       }
       // Increment iteration count by fractional amount
-      await userRepository.incrementIteration(clerkId, CHAT_ITERATION_COST);
+      await userRepository.incrementIteration(clerkId, ITERATION_COSTS.CHAT_MESSAGE);
     }
 
     // Get BYOK API key and tier config if available

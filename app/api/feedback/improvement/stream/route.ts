@@ -23,6 +23,7 @@ import {
 } from "@/lib/services/ai-logger";
 import type { ImprovementActivity } from "@/lib/db/schemas/feedback";
 import type { ActivityType, DifficultyLevel } from "@/lib/db/schemas/learning-path";
+import { ITERATION_COSTS } from "@/lib/pricing-data";
 
 // Custom streaming headers
 const STREAM_HEADERS = {
@@ -108,7 +109,7 @@ export async function POST(request: NextRequest) {
         );
       }
       // Increment iteration count
-      await userRepository.incrementIteration(clerkId);
+      await userRepository.incrementIteration(clerkId, ITERATION_COSTS.FULL_GENERATION);
     }
 
     // Get BYOK API key and tier config if available - Requirements 7.1, 7.2, 7.3
