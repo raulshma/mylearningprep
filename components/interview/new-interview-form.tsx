@@ -333,7 +333,7 @@ export function NewInterviewForm({ usageData }: NewInterviewFormProps) {
             <form onSubmit={handlePromptSubmit}>
               <div className="bg-card/50 backdrop-blur-xl border border-white/10 p-6 md:p-8 rounded-3xl hover:border-primary/20 transition-all duration-300 shadow-sm">
                 <div className="flex items-center gap-4 mb-6">
-                  <div className="w-12 h-12 rounded-2xl bg-linear-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/10">
+                  <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/10">
                     <Wand2 className="w-6 h-6 text-primary" />
                   </div>
                   <div>
@@ -477,11 +477,11 @@ export function NewInterviewForm({ usageData }: NewInterviewFormProps) {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
           >
-            <div className="flex-1 h-px bg-linear-to-r from-transparent via-border to-transparent" />
+            <div className="flex-1 h-px bg-border/50" />
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
               OR
             </span>
-            <div className="flex-1 h-px bg-linear-to-r from-transparent via-border to-transparent" />
+            <div className="flex-1 h-px bg-border/50" />
           </motion.div>
 
           {/* Detailed Form Toggle */}
@@ -852,8 +852,7 @@ export function NewInterviewForm({ usageData }: NewInterviewFormProps) {
             </ul>
           </div>
 
-          <div className="relative overflow-hidden bg-linear-to-br from-primary/5 to-purple-500/5 border border-white/10 p-6 rounded-3xl">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+          <div className="relative overflow-hidden bg-primary/5 border border-white/10 p-6 rounded-3xl">
 
             <div className="relative">
               <div className="flex items-center gap-3 mb-5">

@@ -46,7 +46,7 @@ export function ApiKeysSection({ hasByokKey, hasOpenRouterKey, hasGoogleKey, pla
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/10">
+            <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/10">
               <Key className="w-6 h-6 text-primary" />
             </div>
             <div>
@@ -57,7 +57,7 @@ export function ApiKeysSection({ hasByokKey, hasOpenRouterKey, hasGoogleKey, pla
         </div>
 
         <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-5 rounded-2xl bg-gradient-to-r from-primary/10 to-transparent border border-primary/20">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-5 rounded-2xl bg-primary/5 border border-primary/20">
             <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
               <Infinity className="w-5 h-5 text-primary" />
             </div>
@@ -100,7 +100,7 @@ export function ApiKeysSection({ hasByokKey, hasOpenRouterKey, hasGoogleKey, pla
     >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/10">
+          <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/10">
             <Key className="w-6 h-6 text-primary" />
           </div>
           <div>
@@ -209,7 +209,7 @@ function ApiKeyForm({ provider, hasKey, label, placeholder, helpLink, helpLabel 
   return (
     <div className="space-y-6">
       {/* BYOK benefits */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-5 rounded-2xl bg-gradient-to-r from-primary/10 to-transparent border border-primary/20">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-5 rounded-2xl bg-primary/5 border border-primary/20">
         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
           <Infinity className="w-5 h-5 text-primary" />
         </div>

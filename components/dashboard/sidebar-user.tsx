@@ -88,7 +88,7 @@ export function SidebarUser({
             )}
           </div>
 
-          <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent my-1" />
+          <div className="h-px bg-border/50 my-1" />
 
           <DropdownMenuSub>
             <DropdownMenuSubTrigger className="rounded-xl px-3 py-2.5 text-sm font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer data-[state=open]:bg-accent/50">
@@ -134,7 +134,7 @@ export function SidebarUser({
             </DropdownMenuSubContent>
           </DropdownMenuSub>
 
-          <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent my-1" />
+          <div className="h-px bg-border/50 my-1" />
 
           <DropdownMenuItem
             onClick={() => signOut({ redirectUrl: "/" })}

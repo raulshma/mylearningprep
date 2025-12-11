@@ -33,7 +33,7 @@ export interface Tool {
   description: string;
   icon: LucideIcon;
   color: string;
-  gradient: string;
+  bg: string;
   prompt: string;
 }
 
@@ -52,7 +52,7 @@ export const tools: Tool[] = [
     description: "Analyze technology market trends and career insights",
     icon: TrendingUp,
     color: "text-cyan-500",
-    gradient: "from-cyan-500/20 to-blue-600/20",
+    bg: "bg-cyan-500/20",
     prompt: "Analyze the current tech trends for ",
   },
   {
@@ -61,7 +61,7 @@ export const tools: Tool[] = [
     description: "Extract full content from web pages and articles",
     icon: Globe,
     color: "text-orange-500",
-    gradient: "from-orange-500/20 to-amber-600/20",
+    bg: "bg-orange-500/20",
     prompt: "Crawl this URL and extract the full content: ",
   },
   {
@@ -70,7 +70,7 @@ export const tools: Tool[] = [
     description: "Practice with realistic interview scenarios",
     icon: MessageSquare,
     color: "text-violet-500",
-    gradient: "from-violet-500/20 to-purple-600/20",
+    bg: "bg-violet-500/20",
     prompt: "Start a mock interview session for ",
   },
   {
@@ -79,7 +79,7 @@ export const tools: Tool[] = [
     description: "Review code quality and patterns",
     icon: Github,
     color: "text-gray-500",
-    gradient: "from-gray-500/20 to-slate-600/20",
+    bg: "bg-gray-500/20",
     prompt: "Analyze the GitHub repository at ",
   },
   {
@@ -88,7 +88,7 @@ export const tools: Tool[] = [
     description: "Learn to architect scalable systems",
     icon: Network,
     color: "text-indigo-500",
-    gradient: "from-indigo-500/20 to-blue-600/20",
+    bg: "bg-indigo-500/20",
     prompt: "Help me design a system for ",
   },
   {
@@ -97,7 +97,7 @@ export const tools: Tool[] = [
     description: "Craft compelling behavioral stories",
     icon: Users,
     color: "text-emerald-500",
-    gradient: "from-emerald-500/20 to-green-600/20",
+    bg: "bg-emerald-500/20",
     prompt: "Help me create a STAR story about ",
   },
   {
@@ -106,7 +106,7 @@ export const tools: Tool[] = [
     description: "Get curated learning resources",
     icon: BookOpen,
     color: "text-rose-500",
-    gradient: "from-rose-500/20 to-red-600/20",
+    bg: "bg-rose-500/20",
     prompt: "Find learning resources for ",
   },
 ];
@@ -200,8 +200,8 @@ export const ToolCard = memo(function ToolCard({
       <div className="flex items-start gap-3">
         <div
           className={cn(
-            "p-2 rounded-lg bg-linear-to-br transition-transform duration-300 group-hover:scale-110 shadow-sm",
-            tool.gradient
+            "p-2 rounded-lg transition-transform duration-300 group-hover:scale-110 shadow-sm",
+            tool.bg
           )}
           aria-hidden="true"
         >
@@ -305,7 +305,7 @@ const ToolsList = memo(function ToolsList({
 const ProFeaturesNotice = memo(function ProFeaturesNotice() {
   return (
     <div className="p-4 border-t border-border/40 bg-transparent shrink-0">
-      <div className="p-4 rounded-2xl bg-gradient-to-br from-primary/5 to-violet-600/5 border border-primary/10 relative overflow-hidden">
+      <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10 relative overflow-hidden">
         <div className="absolute top-0 right-0 -mt-4 -mr-4 w-16 h-16 bg-primary/10 blur-2xl rounded-full pointer-events-none" aria-hidden="true" />
 
         <div className="flex items-center gap-2 mb-2 relative z-10">

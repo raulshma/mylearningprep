@@ -76,7 +76,7 @@ export function CodingChallengeView({
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-6 rounded-2xl border border-border/40 bg-gradient-to-br from-secondary/30 to-transparent"
+          className="p-6 rounded-2xl border border-border/40 bg-secondary/20"
         >
           <div className="flex items-center gap-2 mb-3">
             <div className="p-2 rounded-xl bg-blue-500/10">
@@ -90,7 +90,7 @@ export function CodingChallengeView({
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="p-6 rounded-2xl border border-border/40 bg-gradient-to-br from-secondary/30 to-transparent"
+          className="p-6 rounded-2xl border border-border/40 bg-secondary/20"
         >
           <div className="flex items-center gap-2 mb-3">
             <div className="p-2 rounded-xl bg-green-500/10">
@@ -145,7 +145,7 @@ export function CodingChallengeView({
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.25 }}
-        className="p-6 rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/5 to-transparent"
+        className="p-6 rounded-2xl border border-primary/20 bg-primary/5"
       >
         <h4 className="text-sm font-semibold text-foreground mb-4">Evaluation Criteria</h4>
         <div className="flex flex-wrap gap-2">

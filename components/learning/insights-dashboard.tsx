@@ -227,7 +227,7 @@ export function InsightsDashboard({ insights, learningPath }: InsightsDashboardP
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="rounded-3xl bg-gradient-to-br from-green-500/10 to-green-500/5 border border-green-500/20 p-8"
+          className="rounded-3xl bg-green-500/10 border border-green-500/20 p-8"
         >
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2.5 rounded-xl bg-green-500/20">
@@ -257,7 +257,7 @@ export function InsightsDashboard({ insights, learningPath }: InsightsDashboardP
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25 }}
-          className="rounded-3xl bg-gradient-to-br from-destructive/10 to-destructive/5 border border-destructive/20 p-8"
+          className="rounded-3xl bg-destructive/10 border border-destructive/20 p-8"
         >
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2.5 rounded-xl bg-destructive/20">
@@ -290,7 +290,7 @@ export function InsightsDashboard({ insights, learningPath }: InsightsDashboardP
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="rounded-3xl bg-gradient-to-br from-amber-500/10 to-amber-500/5 border border-amber-500/20 p-8"
+          className="rounded-3xl bg-amber-500/10 border border-amber-500/20 p-8"
         >
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2.5 rounded-xl bg-amber-500/20">
@@ -370,7 +370,7 @@ export function InsightsDashboard({ insights, learningPath }: InsightsDashboardP
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
-        className="rounded-3xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 p-8"
+        className="rounded-3xl bg-primary/5 border border-primary/20 p-8"
       >
         <div className="flex items-center gap-3 mb-6">
           <div className="p-2.5 rounded-xl bg-primary/20">

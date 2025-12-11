@@ -44,7 +44,7 @@ export function ConceptExplanationView({
   return (
     <div className="space-y-8">
       {/* Main Content Card */}
-      <div className="rounded-2xl border border-border/40 bg-linear-to-br from-secondary/30 to-transparent overflow-hidden">
+      <div className="rounded-2xl border border-border/40 bg-secondary/20 overflow-hidden">
         <div className="px-6 py-4 border-b border-border/30 flex items-center gap-3">
           <div className="p-2 rounded-xl bg-primary/10">
             <BookOpen className="w-4 h-4 text-primary" />
@@ -61,7 +61,7 @@ export function ConceptExplanationView({
       </div>
 
       {/* Key Points Card */}
-      <div className="rounded-2xl border border-primary/20 bg-linear-to-br from-primary/5 to-transparent overflow-hidden">
+      <div className="rounded-2xl border border-primary/20 bg-primary/5 overflow-hidden">
         <div className="px-6 py-4 border-b border-primary/10 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-primary/10">

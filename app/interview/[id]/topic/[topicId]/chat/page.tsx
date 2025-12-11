@@ -280,7 +280,7 @@ export default function ChatPage() {
 
   if (error || !topic) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -304,7 +304,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="h-screen bg-gradient-to-b from-background via-background to-muted/10 flex overflow-hidden">
+    <div className="h-screen bg-background flex overflow-hidden">
       {/* Left Sidebar - Topic Context */}
       <AnimatePresence mode="wait">
         {sidebarOpen && (
@@ -475,7 +475,7 @@ export default function ChatPage() {
               </Link>
 
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                   <Sparkles className="w-5 h-5 text-primary" />
                 </div>
                 <div>

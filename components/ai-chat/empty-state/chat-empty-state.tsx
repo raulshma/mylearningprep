@@ -104,7 +104,7 @@ export const ChatEmptyState = memo(function ChatEmptyState({
       role="region"
       aria-label="Chat welcome message"
     >
-      <div className="inline-flex p-6 rounded-3xl bg-linear-to-br from-primary/10 to-primary/5 mb-8 shadow-sm" aria-hidden="true">
+      <div className="inline-flex p-6 rounded-3xl bg-primary/10 mb-8 shadow-sm" aria-hidden="true">
         <Bot className="h-12 w-12 text-primary" />
       </div>
       <h2 className="text-3xl font-bold mb-3 tracking-tight">{title}</h2>

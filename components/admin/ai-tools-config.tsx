@@ -44,7 +44,7 @@ const TOOL_ICONS: Record<AIToolId, typeof Search> = {
 const PLAN_COLORS: Record<string, string> = {
   FREE: "bg-secondary text-secondary-foreground",
   PRO: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-  MAX: "bg-gradient-to-r from-purple-500/10 to-blue-500/10 text-purple-600 dark:text-purple-400",
+  MAX: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
 };
 
 export function AIToolsConfig({ initialConfig }: AIToolsConfigProps) {

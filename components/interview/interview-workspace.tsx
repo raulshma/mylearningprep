@@ -811,7 +811,7 @@ export function InterviewWorkspace({
   return (
     <div className="min-h-screen bg-background relative">
       {/* Background effects */}
-      <div className="fixed inset-0 bg-linear-to-br from-background via-background to-secondary/20 pointer-events-none" />
+      <div className="fixed inset-0 bg-background pointer-events-none" />
 
       <div className="relative z-10">
         <InterviewHeader

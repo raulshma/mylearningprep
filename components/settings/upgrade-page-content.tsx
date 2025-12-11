@@ -402,14 +402,14 @@ export function UpgradePageContent({ profile }: UpgradePageContentProps) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
               className={`relative rounded-[2.5rem] overflow-hidden flex flex-col h-full ${isMax
-                  ? "p-[4px] bg-gradient-to-b from-primary/50 to-purple-500/50 shadow-2xl shadow-primary/20"
+                  ? "p-[4px] bg-purple-500/50 shadow-2xl shadow-primary/20"
                   : isPro
                     ? "p-8 border border-primary/50 bg-card/50 backdrop-blur-xl shadow-xl shadow-primary/10"
                     : "p-8 border border-white/10 bg-card/30 backdrop-blur-xl"
                 }`}
             >
               {isMax && (
-                <div className="absolute inset-0 bg-gradient-to-b from-primary/20 to-purple-500/20 blur-xl" />
+                <div className="absolute inset-0 bg-primary/10 blur-xl" />
               )}
 
               {/* Inner container for Max plan to create the border effect */}
@@ -514,7 +514,7 @@ export function UpgradePageContent({ profile }: UpgradePageContentProps) {
                       disabled={isLoading}
                       variant={isMax ? "default" : "outline"}
                       className={`w-full h-12 rounded-full transition-all ${isMax
-                          ? "bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 shadow-lg shadow-primary/25 hover:scale-[1.02] active:scale-[0.98]"
+                          ? "bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25 hover:scale-[1.02] active:scale-[0.98]"
                           : "border-primary/20 hover:bg-primary/10 hover:text-primary"
                         }`}
                     >
@@ -547,7 +547,7 @@ export function UpgradePageContent({ profile }: UpgradePageContentProps) {
           animate={{ opacity: 1, y: 0 }}
           className="mt-8 max-w-2xl mx-auto"
         >
-          <div className="p-6 rounded-3xl bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-500/20 backdrop-blur-xl">
+          <div className="p-6 rounded-3xl bg-amber-500/10 border border-amber-500/20 backdrop-blur-xl">
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 rounded-2xl bg-amber-500/20 flex items-center justify-center shrink-0">
                 <CalendarClock className="w-6 h-6 text-amber-500" />

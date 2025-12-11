@@ -138,7 +138,6 @@ export function AdminStatsGrid({ stats }: AdminStatsGridProps) {
         {primaryStats.map((stat) => (
           <motion.div key={stat.label} variants={itemVariants}>
             <Card className="relative overflow-hidden border-0 shadow-lg shadow-black/5 dark:shadow-black/20 bg-card hover:shadow-xl transition-all duration-300 rounded-3xl h-full group">
-              <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-gradient-to-br from-transparent via-transparent to-${stat.color.split('-')[1]}-500/5`} />
               <CardContent className="p-6 flex flex-col justify-between h-full relative z-10">
                 <div className="flex items-start justify-between mb-4">
                   <div

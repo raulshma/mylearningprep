@@ -118,8 +118,8 @@ export function MCQActivityView({ content, onComplete }: MCQActivityViewProps) {
             <div
               className={`p-6 rounded-2xl border ${
                 isCorrect
-                  ? 'border-green-500/30 bg-gradient-to-br from-green-500/10 to-green-500/5'
-                  : 'border-destructive/30 bg-gradient-to-br from-destructive/10 to-destructive/5'
+                  ? 'border-green-500/30 bg-green-500/10'
+                  : 'border-destructive/30 bg-destructive/10'
               }`}
             >
               <div className="flex items-start gap-4">

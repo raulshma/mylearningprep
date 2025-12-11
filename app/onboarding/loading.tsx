@@ -34,7 +34,7 @@ export default function OnboardingLoading() {
       </main>
 
       {/* Footer Navigation */}
-      <footer className="fixed bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-background via-background/95 to-transparent z-20">
+      <footer className="fixed bottom-0 left-0 right-0 p-6 bg-background z-20">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex gap-2">
             <Skeleton className="h-1.5 w-8 rounded-full" />

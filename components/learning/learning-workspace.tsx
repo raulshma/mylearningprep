@@ -204,7 +204,7 @@ export function LearningWorkspace({
     : BookOpen;
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background via-background to-secondary/20">
+    <div className="min-h-screen bg-background">
       {/* Apple-style floating header */}
       <header className="fixed top-0 left-0 right-0 z-50">
         <div className="mx-4 mt-4">
@@ -304,7 +304,7 @@ export function LearningWorkspace({
                   <aside className="lg:col-span-1 space-y-6">
                     {/* Current Topic Card */}
                     {currentTopic && (
-                      <div className="p-6 rounded-3xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20">
+                      <div className="p-6 rounded-3xl bg-primary/5 border border-primary/20">
                         <div className="flex items-center gap-2 mb-3">
                           <div className="p-2 rounded-xl bg-primary/10">
                             <Target className="w-4 h-4 text-primary" />
@@ -402,7 +402,7 @@ export function LearningWorkspace({
                                       duration: 1,
                                       ease: "easeOut",
                                     }}
-                                    className="h-full rounded-full bg-gradient-to-r from-primary to-primary/60"
+                                    className="h-full rounded-full bg-primary"
                                   />
                                 </div>
                               </div>
@@ -513,10 +513,10 @@ function ActivityCard({
       className="rounded-3xl bg-background/80 backdrop-blur-xl border border-border/40 shadow-xl shadow-black/5 overflow-hidden"
     >
       {/* Card Header */}
-      <div className="px-8 py-6 border-b border-border/30 bg-gradient-to-r from-secondary/30 to-transparent">
+      <div className="px-8 py-6 border-b border-border/30 bg-secondary/20">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/10">
+            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/10">
               <ActivityIcon className="w-7 h-7 text-primary" />
             </div>
             <div>
@@ -673,7 +673,7 @@ function ActivityError({
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.98 }}
-      className="rounded-3xl bg-gradient-to-br from-destructive/5 to-transparent border border-destructive/20 p-12 text-center"
+      className="rounded-3xl bg-destructive/5 border border-destructive/20 p-12 text-center"
     >
       <div className="w-20 h-20 rounded-3xl bg-destructive/10 flex items-center justify-center mx-auto mb-6">
         <XCircle className="w-10 h-10 text-destructive" />
@@ -731,10 +731,10 @@ function StreamingActivityCard({
       exit={{ opacity: 0, scale: 0.98, y: -20 }}
       className="rounded-3xl bg-background/80 backdrop-blur-xl border border-border/40 shadow-xl shadow-black/5 overflow-hidden"
     >
-      <div className="px-8 py-6 border-b border-border/30 bg-gradient-to-r from-primary/5 to-transparent">
+      <div className="px-8 py-6 border-b border-border/30 bg-primary/5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/10 relative">
+            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/10 relative">
               <ActivityIcon className="w-7 h-7 text-primary" />
               <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-primary animate-pulse" />
             </div>

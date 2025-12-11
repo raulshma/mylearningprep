@@ -71,7 +71,7 @@ export function DebuggingTaskView({
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="p-6 rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 to-primary/5"
+        className="p-6 rounded-2xl border border-primary/20 bg-primary/5"
       >
         <div className="flex items-center gap-3 mb-3">
           <div className="p-2 rounded-xl bg-primary/20">

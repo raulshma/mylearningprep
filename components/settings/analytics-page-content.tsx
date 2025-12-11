@@ -21,7 +21,7 @@ export function AnalyticsPageContent({ children }: AnalyticsPageContentProps) {
       actions: (
         <Badge
           variant="default"
-          className="text-sm px-4 py-1.5 flex items-center gap-2 w-fit rounded-full bg-gradient-to-r from-amber-500/10 to-amber-500/5 text-amber-600 dark:text-amber-400 border-amber-500/20 shadow-sm shadow-amber-500/5"
+          className="text-sm px-4 py-1.5 flex items-center gap-2 w-fit rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 shadow-sm shadow-amber-500/5"
         >
           <Crown className="w-3.5 h-3.5" />
           MAX Feature

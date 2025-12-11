@@ -443,7 +443,7 @@ export function AIChatPageContent({
 
         {/* Main Chat Area */}
         <main 
-          className="flex-1 flex flex-col min-w-0 h-full py-4 px-2 relative"
+          className="flex-1 flex flex-col min-w-0 h-full py-2 px-2 relative"
           id="main-content"
           role="main"
           aria-label="Chat messages"
@@ -488,10 +488,10 @@ export function AIChatPageContent({
             </header>
           )}
 
-          <div className="h-full rounded-3xl border border-border/40 bg-background/60 backdrop-blur-xl shadow-sm overflow-hidden flex flex-col relative">
+          <div className="h-full rounded-3xl border border-border/40 bg-background/60 backdrop-blur-xl shadow-sm overflow-hidden flex flex-col relative border-none">
             {/* Chat Mode Toggle (MAX plan only) */}
             {userPlan === "MAX" && !isMobile && (
-              <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30">
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 z-30">
                 <div className="flex items-center gap-1 p-1 rounded-full bg-muted/80 backdrop-blur-sm border border-border/50">
                   <Button
                     variant={ui.chatMode === "single" ? "default" : "ghost"}

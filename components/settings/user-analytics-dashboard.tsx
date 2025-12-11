@@ -79,7 +79,6 @@ function StatCard({
 }) {
   return (
     <Card className="group relative border-0 shadow-lg shadow-black/5 dark:shadow-black/20 bg-card/50 backdrop-blur-xl rounded-[2rem] overflow-hidden hover:scale-[1.02] transition-all duration-300">
-      <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
       <CardContent className="p-6 md:p-8 flex flex-col justify-between h-full relative z-10">
         <div className="flex items-center justify-between mb-6">
           <span className="text-sm font-medium text-muted-foreground/80 uppercase tracking-wider">{title}</span>

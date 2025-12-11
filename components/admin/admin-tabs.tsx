@@ -236,7 +236,7 @@ function UsersTab({ users }: { users: AdminUser[] }) {
                   >
                     <TableCell className="pl-8 py-4">
                       <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-primary font-bold text-sm border border-primary/10">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm border border-primary/10">
                           {user.name.charAt(0).toUpperCase()}
                         </div>
                         <div>
@@ -251,7 +251,7 @@ function UsersTab({ users }: { users: AdminUser[] }) {
                       <Badge
                         variant="secondary"
                         className={`rounded-full px-3 py-1 font-medium ${user.plan === "MAX"
-                            ? "bg-gradient-to-r from-purple-500/10 to-blue-500/10 text-purple-600 dark:text-purple-400 border-purple-200/20"
+                            ? "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-200/20"
                             : "bg-secondary text-secondary-foreground"
                           }`}
                       >

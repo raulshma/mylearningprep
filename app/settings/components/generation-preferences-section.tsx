@@ -82,7 +82,7 @@ export function GenerationPreferencesSection({
       className="bg-card/50 backdrop-blur-xl border border-white/10 p-6 md:p-8 rounded-3xl hover:border-primary/20 transition-all duration-300 shadow-sm"
     >
       <div className="flex items-center gap-4 mb-8">
-        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/5 flex items-center justify-center border border-amber-500/10">
+        <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center border border-amber-500/10">
           <Settings2 className="w-6 h-6 text-amber-500" />
         </div>
         <div className="flex-1">
@@ -103,7 +103,7 @@ export function GenerationPreferencesSection({
 
       {!isMax ? (
         <div className="space-y-6">
-          <div className="p-6 rounded-2xl bg-gradient-to-br from-amber-500/5 to-orange-500/5 border border-amber-500/10">
+          <div className="p-6 rounded-2xl bg-amber-500/5 border border-amber-500/10">
             <div className="flex items-start gap-4">
               <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
                 <Crown className="w-5 h-5 text-amber-500" />

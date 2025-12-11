@@ -263,10 +263,10 @@ const CodeBlock: LLMOutputComponent = memo(function CodeBlock({ blockMatch }) {
       >
         {parseHtml(html)}
       </div>
-      {/* QoL: Gradient overlay when collapsed */}
+      {/* QoL: Fade overlay when collapsed */}
       {shouldCollapse && !isExpanded && (
         <div 
-          className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-muted/80 to-transparent pointer-events-none"
+          className="absolute bottom-0 left-0 right-0 h-16 bg-muted/90 pointer-events-none"
           aria-hidden="true"
         />
       )}

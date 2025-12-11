@@ -686,7 +686,7 @@ export function AnalyticsDashboard({
                           className="h-full rounded-full transition-all duration-500 group-hover:scale-y-125 group-hover:shadow-lg origin-left"
                           style={{ 
                             width: `${barWidth}%`,
-                            background: 'linear-gradient(to right, #8b5cf6, #d946ef)',
+                            backgroundColor: '#8b5cf6',
                             boxShadow: '0 0 12px rgba(139, 92, 246, 0.4)'
                           }}
                         />

@@ -81,7 +81,7 @@ export function NewInterviewSkeleton() {
               </div>
 
               {/* What you'll get card */}
-              <div className="bg-gradient-to-br from-card to-secondary/20 border border-border p-6">
+              <div className="bg-card border border-border p-6">
                 <div className="flex items-center gap-2 mb-4">
                   <Skeleton className="w-4 h-4" />
                   <Skeleton className="h-4 w-28" />

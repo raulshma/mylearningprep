@@ -27,7 +27,7 @@ export function UsageUpgradePrompt() {
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
       >
-        <Card className="border-0 shadow-2xl shadow-black/10 dark:shadow-black/30 bg-gradient-to-br from-zinc-900 to-black text-white rounded-[2.5rem] overflow-hidden relative">
+        <Card className="border-0 shadow-2xl shadow-black/10 dark:shadow-black/30 bg-zinc-900 text-white rounded-[2.5rem] overflow-hidden relative">
           {/* Background Effects */}
           <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-amber-500/20 blur-[120px] rounded-full pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-violet-500/10 blur-[100px] rounded-full pointer-events-none" />
@@ -42,7 +42,7 @@ export function UsageUpgradePrompt() {
                 </div>
                 <h2 className="text-4xl md:text-5xl font-bold tracking-tight leading-tight">
                   Unlock detailed <br />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-200 to-amber-500">
+                  <span className="text-amber-400">
                     AI insights.
                   </span>
                 </h2>
@@ -91,8 +91,8 @@ export function UsageUpgradePrompt() {
                   </div>
 
                   {/* Chart Mock */}
-                  <div className="h-32 rounded-2xl bg-gradient-to-b from-amber-500/20 to-transparent border border-amber-500/20 relative overflow-hidden">
-                    <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-amber-500/30 to-transparent" />
+                  <div className="h-32 rounded-2xl bg-amber-500/15 border border-amber-500/20 relative overflow-hidden">
+                    <div className="absolute bottom-0 left-0 right-0 h-16 bg-amber-500/20" />
                     <svg className="absolute inset-0 w-full h-full text-amber-500/50" preserveAspectRatio="none">
                       <path d="M0,100 C50,80 100,90 150,60 C200,30 250,40 300,20 L300,128 L0,128 Z" fill="currentColor" />
                     </svg>

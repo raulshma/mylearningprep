@@ -124,7 +124,7 @@ export function CheckoutSuccessDialog({ plan }: CheckoutSuccessDialogProps) {
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: "spring", duration: 0.5 }}
-            className="mx-auto mb-4 w-16 h-16 rounded-full bg-linear-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/30"
+            className="mx-auto mb-4 w-16 h-16 rounded-full bg-amber-500 flex items-center justify-center shadow-lg shadow-amber-500/30"
           >
             <PartyPopper className="w-8 h-8 text-white" />
           </motion.div>

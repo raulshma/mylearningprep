@@ -5,7 +5,7 @@ export default function LearningLoading() {
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
       {/* Background effects */}
-      <div className="fixed inset-0 bg-gradient-to-br from-background via-background to-secondary/20 pointer-events-none" />
+      <div className="fixed inset-0 bg-background pointer-events-none" />
 
       <div className="relative z-10">
         {/* Header */}

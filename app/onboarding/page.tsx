@@ -105,9 +105,6 @@ export default function OnboardingPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col relative overflow-hidden">
-      {/* Ambient Background */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,var(--tw-gradient-stops))] from-primary/20 via-background to-background opacity-50 pointer-events-none" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,var(--tw-gradient-stops))] from-blue-500/10 via-background to-background opacity-50 pointer-events-none" />
 
       {/* Header */}
       <header className="relative z-10 px-6 h-20 flex items-center justify-between max-w-7xl mx-auto w-full">
@@ -157,7 +154,7 @@ export default function OnboardingPage() {
                           : "border-border/50 bg-card/50 hover:bg-card hover:border-border hover:shadow-lg"
                       )}
                     >
-                      <div className="absolute inset-0 bg-linear-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
                       <div className="relative z-10">
                         <span className="text-3xl mb-4 block filter grayscale group-hover:grayscale-0 transition-all duration-300">
                           {role.icon}
@@ -297,7 +294,7 @@ export default function OnboardingPage() {
       </main>
 
       {/* Footer Navigation */}
-      <footer className="fixed bottom-0 left-0 right-0 p-6 bg-linear-to-t from-background via-background/95 to-transparent z-20">
+      <footer className="fixed bottom-0 left-0 right-0 p-6 bg-background z-20">
         <div className="max-w-4xl mx-auto relative flex items-center justify-center">
           <div className="absolute left-0 hidden sm:flex gap-2">
             {Array.from({ length: totalSteps }).map((_, i) => (

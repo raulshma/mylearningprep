@@ -28,9 +28,7 @@ function ResponsiveSidebarLayoutContent({
     <div className="flex min-h-screen bg-background relative">
       {/* Background pattern - spans full width behind sidebar */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_110%)] opacity-30" />
-        <div className="absolute top-20 right-20 w-72 h-72 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 left-20 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
+        <div className="absolute inset-0 bg-secondary/5" />
       </div>
 
       {/* Desktop sidebar - hidden on mobile via CSS */}

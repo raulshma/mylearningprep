@@ -34,7 +34,7 @@ export function TopicCard({ topic, isActive, isExpanded: controlledExpanded, onC
       whileTap={{ scale: 0.99 }}
       className={`group relative rounded-2xl transition-all duration-300 cursor-pointer overflow-hidden ${
         isActive
-          ? "bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/30 shadow-lg shadow-primary/10"
+          ? "bg-primary/10 border border-primary/30 shadow-lg shadow-primary/10"
           : "bg-secondary/30 hover:bg-secondary/50 border border-transparent hover:border-border/50"
       }`}
     >

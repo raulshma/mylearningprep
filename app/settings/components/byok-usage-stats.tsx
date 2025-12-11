@@ -122,7 +122,7 @@ export function BYOKUsageStatsSection({ hasByokKey }: BYOKUsageStatsSectionProps
       className="bg-card/50 backdrop-blur-xl border border-white/10 p-6 md:p-8 rounded-3xl hover:border-primary/20 transition-all duration-300 shadow-sm"
     >
       <div className="flex items-center gap-4 mb-8">
-        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/10">
+        <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/10">
           <BarChart3 className="w-6 h-6 text-primary" />
         </div>
         <div>

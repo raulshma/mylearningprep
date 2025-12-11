@@ -55,14 +55,11 @@ export function LearningPathCard({ learningPath }: LearningPathCardProps) {
       animate={{ opacity: 1, y: 0 }}
       className="relative overflow-hidden rounded-3xl bg-card border border-border group hover:border-primary/30 transition-all duration-500"
     >
-      {/* Background Gradient */}
-      <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-
       <div className="p-6 md:p-8 relative">
         {/* Header */}
         <div className="flex items-start justify-between mb-8">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-purple-500/20 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
               <BookOpen className="w-6 h-6 text-primary" />
             </div>
             <div>

@@ -589,8 +589,7 @@ export default function TopicDetailPage() {
           transition={{ duration: 0.6, ease: "easeOut" }}
           className="mb-12 relative"
         >
-          {/* Subtle background gradient */}
-          <div className="absolute -top-20 -left-20 w-96 h-96 bg-primary/5 rounded-full blur-3xl -z-10 opacity-50 pointer-events-none" />
+
 
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-3 text-sm text-muted-foreground font-medium flex-wrap">

@@ -25,7 +25,7 @@ export function SidebarUi({ data }: SidebarUiProps) {
       )}
     >
       {/* Subtle tint overlay */}
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-transparent dark:from-white/5 dark:via-transparent dark:to-white/5 pointer-events-none" />
+      <div className="absolute inset-0 dark:bg-white/[0.02] pointer-events-none" />
 
       {/* Toggle Button */}
       <button

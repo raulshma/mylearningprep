@@ -287,7 +287,7 @@ export function BYOKTierConfigSection({ hasByokKey }: BYOKTierConfigProps) {
     >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-linear-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/10">
+          <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/10">
             <Settings className="w-6 h-6 text-primary" />
           </div>
           <div>

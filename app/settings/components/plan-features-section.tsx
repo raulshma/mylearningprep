@@ -116,7 +116,7 @@ export function PlanFeaturesSection({ plan }: PlanFeaturesSectionProps) {
       className="bg-card/50 backdrop-blur-xl border border-white/10 p-6 md:p-8 rounded-3xl hover:border-primary/20 transition-all duration-300 shadow-sm"
     >
       <div className="flex items-center gap-4 mb-8">
-        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/10">
+        <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/10">
           <Sparkles className="w-6 h-6 text-primary" />
         </div>
         <div>
@@ -176,7 +176,7 @@ export function PlanFeaturesSection({ plan }: PlanFeaturesSectionProps) {
       </div>
 
       {isFreePlan && (
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-5 rounded-2xl bg-gradient-to-r from-primary/10 to-transparent border border-primary/20">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-5 rounded-2xl bg-primary/5 border border-primary/20">
           <div className="flex-1">
             <p className="text-sm font-bold text-foreground mb-1">Unlock Premium Features</p>
             <p className="text-xs text-muted-foreground">
@@ -193,7 +193,7 @@ export function PlanFeaturesSection({ plan }: PlanFeaturesSectionProps) {
       )}
 
       {isProPlan && (
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-5 rounded-2xl bg-gradient-to-r from-purple-500/10 to-transparent border border-purple-500/20">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-5 rounded-2xl bg-purple-500/5 border border-purple-500/20">
           <div className="flex-1">
             <p className="text-sm font-bold text-foreground mb-1">Upgrade to MAX</p>
             <p className="text-xs text-muted-foreground">

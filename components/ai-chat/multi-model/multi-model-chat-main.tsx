@@ -442,7 +442,7 @@ export const MultiModelChatMain = memo(function MultiModelChatMain({
       </div>
       
       {/* Compact Input - wrapped in relative container for floating buttons */}
-      <div className="relative p-3 bg-background/50 backdrop-blur-sm border-t border-border/40">
+      <div className="relative p-3 bg-background/50">
         {/* QoL: Floating action buttons - absolutely positioned above input */}
         {hasSubmitted && (responses.size > 0 || showScrollToBottom) && (
           <div className="absolute -top-10 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2">

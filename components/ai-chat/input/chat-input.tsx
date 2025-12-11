@@ -201,7 +201,7 @@ export const ChatInput = memo(function ChatInput({
   const showCharCount = charCount > 100;
 
   return (
-    <div className="p-3 bg-background/50 backdrop-blur-sm border-t border-border/40">
+    <div className="p-3 bg-background/50 backdrop-blur-sm">
       <div className="max-w-3xl mx-auto">
         {/* Attached files preview - using new FileAttachmentList for encoded files */}
         {hasEncodedFiles && (

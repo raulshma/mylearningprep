@@ -46,9 +46,9 @@ export function ReflectionForm({ activity, onSubmit, isSubmitting }: ReflectionF
       className="rounded-3xl bg-background/80 backdrop-blur-xl border border-border/40 shadow-xl shadow-black/5 overflow-hidden"
     >
       {/* Header */}
-      <div className="px-8 py-6 border-b border-border/30 bg-gradient-to-r from-primary/5 to-transparent">
+      <div className="px-8 py-6 border-b border-border/30 bg-primary/5">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/10">
+          <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/10">
             <MessageSquare className="w-7 h-7 text-primary" />
           </div>
           <div>
