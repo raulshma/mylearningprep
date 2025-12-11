@@ -21,6 +21,7 @@ import {
   Link2,
   Link2Off,
   RefreshCw,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +29,16 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -43,6 +54,7 @@ import {
 } from "@/components/ui/tooltip";
 import { useCustomTheme } from "@/hooks/use-custom-theme";
 import { useToast } from "@/hooks/use-toast";
+import { generateThemeWithAI, type AIThemeConfig } from "@/lib/actions/theme-actions";
 
 // ============================================================================
 // Types
@@ -1249,6 +1261,11 @@ export function ThemeBuilder() {
   const [savedThemes, setSavedThemes] = useState<SavedTheme[]>(() => getSavedThemes());
   const [themeName, setThemeName] = useState("My Theme");
 
+  // AI Theme Generation State
+  const [aiDialogOpen, setAiDialogOpen] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+
   const [history, dispatch] = useReducer(historyReducer, {
     past: [],
     present: INITIAL_CONFIG,
@@ -1412,6 +1429,67 @@ export function ThemeBuilder() {
     toast({ title: "Theme deleted", description: "Theme removed from your collection." });
   }, [savedThemes, toast]);
 
+  // AI Theme Generation Handler
+  const handleAIGenerate = useCallback(async () => {
+    if (!aiPrompt.trim() || aiLoading) return;
+
+    setAiLoading(true);
+    try {
+      const result = await generateThemeWithAI(aiPrompt);
+      
+      if (!result.success) {
+        toast({
+          title: "Generation failed",
+          description: result.error,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Convert AI response to ThemeConfig format
+      const aiTheme = result.data;
+      const newConfig: ThemeConfig = {
+        name: aiTheme.name,
+        light: aiTheme.light,
+        dark: aiTheme.dark,
+        radius: aiTheme.radius,
+        shadow: aiTheme.shadow,
+      };
+
+      // Apply the generated theme
+      setConfig(newConfig);
+      setThemeName(aiTheme.name);
+
+      // Save to saved themes
+      const newTheme: SavedTheme = {
+        id: Date.now().toString(),
+        name: aiTheme.name,
+        config: newConfig,
+        createdAt: Date.now(),
+      };
+      const updated = [...savedThemes, newTheme];
+      setSavedThemes(updated);
+      saveThemesToStorage(updated);
+
+      // Close dialog and reset
+      setAiDialogOpen(false);
+      setAiPrompt("");
+
+      toast({
+        title: "Theme generated!",
+        description: `"${aiTheme.name}" has been created and saved.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Generation failed",
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive",
+      });
+    } finally {
+      setAiLoading(false);
+    }
+  }, [aiPrompt, aiLoading, setConfig, savedThemes, toast]);
+
   const colorGroups = useMemo(() => {
     const keys = Object.keys(currentColors) as (keyof ThemeColors)[];
     return {
@@ -1551,6 +1629,81 @@ export function ThemeBuilder() {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* AI Theme Generation */}
+      <div>
+        <Label className="text-sm font-medium mb-3 block">AI Generation</Label>
+        <Dialog open={aiDialogOpen} onOpenChange={setAiDialogOpen}>
+          <DialogTrigger asChild>
+            <Button
+              variant="outline"
+              className="rounded-full gap-2 bg-gradient-to-r from-primary/10 to-accent/10 border-primary/20 hover:border-primary/40"
+            >
+              <Sparkles className="w-4 h-4" />
+              Generate with AI
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-primary" />
+                Generate Theme with AI
+              </DialogTitle>
+              <DialogDescription>
+                Describe the theme you want and AI will generate a complete color palette for both light and dark modes.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="ai-prompt">Theme Description</Label>
+                <Textarea
+                  id="ai-prompt"
+                  placeholder="e.g., Ocean blue professional theme with coral accents, warm sunset colors, minimalist dark forest theme..."
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  rows={4}
+                  className="resize-none"
+                  disabled={aiLoading}
+                />
+              </div>
+              <div className="text-xs text-muted-foreground">
+                <p className="font-medium mb-1">Tips for better results:</p>
+                <ul className="list-disc list-inside space-y-0.5">
+                  <li>Include mood or style (professional, playful, minimal)</li>
+                  <li>Mention primary colors you want</li>
+                  <li>Reference themes you like (cyberpunk, nature, etc.)</li>
+                </ul>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setAiDialogOpen(false)}
+                disabled={aiLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleAIGenerate}
+                disabled={!aiPrompt.trim() || aiLoading}
+                className="gap-2"
+              >
+                {aiLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Wand2 className="w-4 h-4" />
+                    Generate Theme
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Mode Toggle & Sync */}

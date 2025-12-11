@@ -36,6 +36,8 @@ export const AIActionSchema = z.enum([
   "AI_ASSISTANT_CHAT",
   // AI Chat
   "GENERATE_CONVERSATION_TITLE",
+  // Theme generation
+  "GENERATE_THEME",
 ]);
 
 export const AIStatusSchema = z.enum([
