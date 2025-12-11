@@ -1,0 +1,21 @@
+# HTTP Under the Hood
+
+HTTP has evolved significantly over the years. What started as simple text transfer has become a highly optimized binary protocol.
+
+## Protocol Versions
+
+### HTTP/1.1
+
+The classic version. It's text-based and readable by humans, but it has performance issues like "Head-of-Line Blocking" (one slow request slows down everything).
+
+### HTTP/2
+
+Introduced **Binary Framing**. Instead of text, data is chopped into binary chunks. This allows **Multiplexing**—sending multiple files at once over the same connection!
+
+### HTTPS (Secure)
+
+HTTP is sent in "clear text", meaning anyone can read it. **HTTPS** wraps HTTP in a secure **TLS** (Transport Layer Security) tunnel.
+
+<PacketInspector />
+
+<ProgressCheckpoint section="protocol-versions" xpReward={50} />

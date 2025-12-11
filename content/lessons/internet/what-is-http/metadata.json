@@ -1,0 +1,28 @@
+{
+  "id": "what-is-http",
+  "title": "What is HTTP?",
+  "description": "Learn the language of the web. Understand how clients and servers talk to each other.",
+  "milestone": "internet",
+  "order": 2,
+  "sections": [
+    "intro-conversation",
+    "request-structure",
+    "protocol-versions"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 5,
+      "xpReward": 20
+    },
+    "intermediate": {
+      "estimatedMinutes": 10,
+      "xpReward": 30
+    },
+    "advanced": {
+      "estimatedMinutes": 15,
+      "xpReward": 50
+    }
+  },
+  "prerequisites": ["how-does-the-internet-work"],
+  "tags": ["http", "web", "protocol", "network"]
+}

@@ -1,0 +1,24 @@
+{
+  "id": "what-is-a-domain-name",
+  "title": "What is a Domain Name?",
+  "description": "Learn how domain names work, from the basics of URLs to the complexities of DNS resolution.",
+  "milestone": "internet",
+  "order": 3,
+  "sections": ["intro-analogy", "url-breakdown", "dns-basics", "quiz"],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 5,
+      "xpReward": 50
+    },
+    "intermediate": {
+      "estimatedMinutes": 10,
+      "xpReward": 100
+    },
+    "advanced": {
+      "estimatedMinutes": 15,
+      "xpReward": 200
+    }
+  },
+  "prerequisites": ["internet/how-does-the-internet-work"],
+  "tags": ["internet", "dns", "web"]
+}

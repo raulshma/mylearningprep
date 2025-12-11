@@ -1,0 +1,70 @@
+# What is a Domain Name?
+
+At an advanced level, Domain Names are defined by **Resource Records**. These records are what actually control the behavior of the domain.
+
+## DNS Records
+
+A domain name isn't just a single pointer. It can point to many things at once: a web server, a mail server, a verification key, and more.
+
+Explore the different types of records below to see what they do:
+
+<DnsRecordExplorer />
+
+<ProgressCheckpoint section="dns-records" xpReward={20} />
+
+## The Zone File
+
+All these records for a single domain are stored in a text file called a **Zone File** on the Authoritative Nameserver.
+
+Here is what a simple Zone File looks like:
+
+```dns
+$ORIGIN example.com.
+$TTL 3600
+@       IN  SOA     ns1.example.com. hostmaster.example.com. (
+                        2023102401 ; serial
+                        7200       ; refresh
+                        3600       ; retry
+                        1209600    ; expire
+                        86400 )    ; minimum
+        IN  NS      ns1.example.com.
+        IN  NS      ns2.example.com.
+@       IN  A       93.184.216.34
+www     IN  CNAME   @
+mail    IN  MX  10  mail.example.com.
+```
+
+## Recursive vs Iterative Queries
+
+When we say "DNS Resolution", there are actually two ways to ask a question:
+
+<Comparison
+  leftTitle="Recursive Query"
+  rightTitle="Iterative Query"
+  leftContent="The client says: 'Find the answer for me'. The server takes full responsibility and won't return until it has the final answer (or an error)."
+  rightContent="The client says: 'Tell me who to ask next'. The server replies with the best referral it has (e.g., 'I don't know, but here is the .com server')."
+/>
+
+Your computer typically sends a **Recursive** query to your ISP's resolver. The ISP's resolver then sends **Iterative** queries to the Root, TLD, and Authoritative servers.
+
+<CodeExample
+  language="bash"
+  code="dig +trace example.com"
+  title="Trace a DNS Query"
+/>
+
+The `dig` command above forces your computer to perform the iterative queries itself, showing you every hop in the chain!
+
+<Quiz
+  question="Why might you use a CNAME record instead of an A record?"
+  options={[
+    "It is faster to resolve",
+    "To alias one name to another (like www to root) so IP changes only need to happen in one place",
+    "It provides better security",
+    "It allows for multiple IP addresses",
+  ]}
+  correctAnswer={1}
+  explanation="CNAMEs are aliases. If you point 'www' to 'example.com', and then change the IP of 'example.com', 'www' updates automatically."
+/>
+
+<ProgressCheckpoint section="quiz" xpReward={30} />

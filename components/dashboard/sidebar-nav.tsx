@@ -11,6 +11,7 @@ import {
   BarChart3,
   Activity,
   MessageSquare,
+  Map,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ViewTransitionLink } from "@/components/transitions/view-transition-link";
@@ -27,6 +28,12 @@ const navItems = [
     label: "New Interview",
     icon: Plus,
     description: "Start preparing",
+  },
+  {
+    href: "/roadmaps",
+    label: "Roadmaps",
+    icon: Map,
+    description: "Learning paths",
   },
   {
     href: "/settings",

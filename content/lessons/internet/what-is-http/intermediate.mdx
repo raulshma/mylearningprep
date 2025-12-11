@@ -1,0 +1,28 @@
+# Understanding HTTP Requests
+
+At a deeper level, HTTP is not just a casual conversation. It's a structured exchange of data. Every message has a **format** that both the browser and server understand.
+
+## The Request Structure
+
+A request consists of:
+
+- **Method**: What do you want to do? (GET, POST, etc.)
+- **Path**: What resource do you want? (`/home`, `/image.png`)
+- **Headers**: Extra info (like what language you speak).
+
+### Try it yourself!
+
+Build a request below and see what it looks like.
+
+<HttpRequestBuilder />
+
+## Common Methods
+
+| Method     | Description                         |
+| :--------- | :---------------------------------- |
+| **GET**    | Retrieve data (like loading a page) |
+| **POST**   | Send data (like submitting a form)  |
+| **PUT**    | Update data                         |
+| **DELETE** | Remove data                         |
+
+<ProgressCheckpoint section="request-structure" xpReward={30} />

@@ -15,6 +15,8 @@ export const COLLECTIONS = {
   WEAKNESS_ANALYSES: 'weakness_analyses',
   IMPROVEMENT_PLANS: 'improvement_plans',
   PROGRESS_HISTORY: 'progress_history',
+  ROADMAPS: 'roadmaps',
+  USER_ROADMAP_PROGRESS: 'user_roadmap_progress',
 } as const;
 
 // Type definitions for documents (will be replaced with Zod inferred types later)
@@ -31,6 +33,36 @@ export interface UserDocument extends Document {
   preferences: {
     theme: 'light' | 'dark';
     defaultAnalogy: 'professional' | 'construction' | 'simple';
+  };
+  gamification?: {
+    totalXp: number;
+    level: number;
+    currentStreak: number;
+    longestStreak: number;
+    lastActivityDate?: Date;
+    badges: Array<{
+      id: string;
+      earnedAt: Date;
+    }>;
+    completedLessons: Array<{
+      lessonId: string;
+      experienceLevel: 'beginner' | 'intermediate' | 'advanced';
+      sectionsCompleted: Array<{
+        sectionId: string;
+        completedAt: Date;
+        xpEarned: number;
+      }>;
+      quizAnswers: Array<{
+        questionId: string;
+        selectedAnswer: string;
+        isCorrect: boolean;
+        answeredAt: Date;
+      }>;
+      xpEarned: number;
+      startedAt?: Date;
+      completedAt?: Date;
+      timeSpentSeconds: number;
+    }>;
   };
   createdAt: Date;
   updatedAt: Date;
@@ -405,3 +437,84 @@ export async function getProgressHistoryCollection(): Promise<Collection<Progres
   const db = await getDb();
   return db.collection<ProgressHistoryDocument>(COLLECTIONS.PROGRESS_HISTORY);
 }
+
+// Roadmap feature documents
+export interface RoadmapDocument extends Document {
+  _id: string;
+  slug: string;
+  title: string;
+  description: string;
+  category: 'frontend' | 'backend' | 'devops' | 'mobile' | 'data-science' | 'system-design' | 'full-stack';
+  version: string;
+  parentRoadmapSlug?: string;
+  parentNodeId?: string;
+  nodes: Array<{
+    id: string;
+    title: string;
+    description?: string;
+    type: 'milestone' | 'topic' | 'checkpoint' | 'optional';
+    position: { x: number; y: number };
+    learningObjectives: string[];
+    resources: Array<{
+      title: string;
+      type: 'documentation' | 'article' | 'video' | 'practice' | 'book';
+      description: string;
+    }>;
+    estimatedMinutes: number;
+    difficulty?: number;
+    subRoadmapSlug?: string;
+    skillCluster?: string;
+    tags: string[];
+  }>;
+  edges: Array<{
+    id: string;
+    source: string;
+    target: string;
+    type: 'sequential' | 'optional' | 'recommended';
+    label?: string;
+  }>;
+  estimatedHours: number;
+  difficulty: number;
+  prerequisites: string[];
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface UserRoadmapProgressDocument extends Document {
+  _id: string;
+  userId: string;
+  roadmapId: string;
+  roadmapSlug: string;
+  nodeProgress: Array<{
+    nodeId: string;
+    status: 'locked' | 'available' | 'in-progress' | 'completed' | 'skipped';
+    startedAt?: Date;
+    completedAt?: Date;
+    activitiesCompleted: number;
+    timeSpentMinutes: number;
+    correctAnswers: number;
+    totalQuestions: number;
+  }>;
+  currentNodeId?: string;
+  overallProgress: number;
+  nodesCompleted: number;
+  totalNodes: number;
+  streak: number;
+  lastActivityAt?: Date;
+  startedAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export async function getRoadmapsCollection(): Promise<Collection<RoadmapDocument>> {
+  const db = await getDb();
+  return db.collection<RoadmapDocument>(COLLECTIONS.ROADMAPS);
+}
+
+export async function getUserRoadmapProgressCollection(): Promise<Collection<UserRoadmapProgressDocument>> {
+  const db = await getDb();
+  return db.collection<UserRoadmapProgressDocument>(COLLECTIONS.USER_ROADMAP_PROGRESS);
+}
+
+

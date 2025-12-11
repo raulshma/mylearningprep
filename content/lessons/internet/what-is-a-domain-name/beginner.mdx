@@ -1,0 +1,57 @@
+# What is a Domain Name?
+
+Have you ever wondered how your browser knows exactly where to go when you type a website address? It all starts with the **Domain Name**.
+
+In this lesson, we'll explore what domain names are, how they are structured, and why we need them.
+
+## The Address of the Internet
+
+Imagine if you had to memorize the GPS coordinates for every restaurant you wanted to visit. That would be impossible! Instead, we use street addresses like "123 Main St." or names like "Joe's Pizza".
+
+The Internet works the same way. Computers communicate using numbers called **IP Addresses** (like `93.184.216.34`), but humans are terrible at remembering long strings of numbers.
+
+**Domain Names** were invented to solve this problem. They are the "human-readable" labels for websites.
+
+<InfoBox
+  title="Did you know?"
+  content="Before domain names were invented in 1983, people had to manually download a text file called HOSTS.TXT that listed every computer on the internet!"
+  variant="info"
+/>
+
+<ProgressCheckpoint section="intro-analogy" xpReward={10} />
+
+## Deconstructing a URL
+
+A website address (URL) might look like a single string of text, but it's actually made up of several specific parts, each with a different job.
+
+Use the interactive tool below to explore the anatomy of a URL:
+
+<AddressBarDeconstruction />
+
+Understanding these parts helps you spot fake websites and understand how the web is organized.
+
+<KeyConcept title="Hierarchy" icon="network">
+  Domain names are hierarchical, read from right to left. 1. **.com**
+  (Top-Level) is the broadest category. 2. **google** (Second-Level) is the
+  specific organization. 3. **www** (Subdomain) is a specific server or service
+  within that organization.
+</KeyConcept>
+
+<ProgressCheckpoint section="url-breakdown" xpReward={20} />
+
+## Why do we need them?
+
+Besides being easier to remember, domain names provide flexibility.
+
+If "google.com" was hard-coded to a specific IP address, and Google moved their servers to a new building, everyone's bookmarks would break!
+
+With domain names, the IP address can change behind the scenes, but the name stays the same. It's like keeping your phone number even when you switch carriers.
+
+<Quiz
+  question="Which part of 'maps.google.com' is the Top-Level Domain (TLD)?"
+  options={["maps", "google", ".com", "google.com"]}
+  correctAnswer={2}
+  explanation=".com is the Top-Level Domain. It is the highest level in the hierarchy shown here."
+/>
+
+<ProgressCheckpoint section="quiz" xpReward={20} />

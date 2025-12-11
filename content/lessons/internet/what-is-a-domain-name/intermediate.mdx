@@ -1,0 +1,60 @@
+# What is a Domain Name?
+
+Now that we know what domain names are, let's look at how the internet actually figures out where they live. This process is called **DNS Resolution**.
+
+## The Domain Name System (DNS)
+
+The DNS is often called the "phonebook of the internet", but it's much more than a static list. It's a distributed database. No single computer has all the records.
+
+Instead, the information is spread across thousands of servers worldwide, organized in a hierarchy.
+
+<KeyConcept title="Distributed System" icon="server">
+  - **Root Servers**: The top of the hierarchy. They know where the TLD servers
+  are. - **TLD Servers**: They manage specific endings like `.com` or `.org`. -
+  **Authoritative Nameservers**: These hold the actual records for specific
+  domains like `google.com`.
+</KeyConcept>
+
+<ProgressCheckpoint section="dns-basics" xpReward={10} />
+
+## How Resolution Works
+
+When you type a URL, your computer doesn't know the IP address. It has to ask for help. This is called a **Recursive Query**.
+
+1. Your computer asks a **Recursive Resolver** (usually provided by your ISP).
+2. The Resolver does the hard work of hunting down the answer.
+
+Watch the journey of a DNS request below:
+
+<DnsResolutionFlow />
+
+Notice how the resolver hops from one server to another until it finds the answer? This entire process usually takes less than a few milliseconds!
+
+<InfoBox
+  title="Caching"
+  content="To speed things up, every step of this process 'remembers' the answer for a while. This is called Caching. If you visit a site twice, the second time is instant because your computer already knows the IP."
+  variant="success"
+/>
+
+<ProgressCheckpoint section="resolution-flow" xpReward={30} />
+
+## Registrars vs Registries
+
+You might own a domain name, but you don't really "own" it forever. You are leasing it.
+
+- **Registry**: The organization that manages the TLD (e.g., Verisign manages .com).
+- **Registrar**: The company you pay money to (e.g., GoDaddy, Namecheap). They are the middleman between you and the Registry.
+
+<Quiz
+  question="Who answers the question 'Where is google.com' with the final IP address?"
+  options={[
+    "The Root Server",
+    "The TLD Server (.com)",
+    "The Authoritative NameServer",
+    "Your Computer",
+  ]}
+  correctAnswer={2}
+  explanation="The Authoritative NameServer is the final authority. It holds the specific records for the domain and provides the actual IP address."
+/>
+
+<ProgressCheckpoint section="quiz" xpReward={20} />

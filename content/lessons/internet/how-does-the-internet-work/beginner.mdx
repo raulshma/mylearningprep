@@ -1,0 +1,162 @@
+# How Does the Internet Work? 🌐
+
+<InfoBox type="tip">
+  Think of the Internet as a giant postal system for computers! Instead of
+  letters, we send digital data.
+</InfoBox>
+
+## What is the Internet?
+
+The Internet is a **massive network of networks** that connects billions of devices around the world. When you watch a video, send a message, or visit a website, you're using the Internet!
+
+<AnimatedDiagram type="client-server" />
+
+<ProgressCheckpoint section="introduction" />
+
+---
+
+## Networks: Computers Talking to Each Other
+
+Imagine a neighborhood where all the houses are connected with string. If someone wants to send a message, they can pull on the string to reach their neighbor. That's basically how a network works!
+
+<KeyConcept title="What is a Network?">
+  A network is two or more computers connected together so they can share
+  information. Your home WiFi is a small network!
+</KeyConcept>
+
+### Types of Networks
+
+<Comparison
+  left={{
+    title: "Local Network (LAN)",
+    items: [
+      "Computers in your home or office",
+      "Usually connected by WiFi or cables",
+      "Fast and private",
+      "Example: Your home WiFi network",
+    ],
+    variant: "positive",
+  }}
+  right={{
+    title: "Wide Area Network (WAN)",
+    items: [
+      "Connects networks across cities or countries",
+      "Uses the Internet infrastructure",
+      "Connects businesses worldwide",
+      "Example: The Internet itself!",
+    ],
+    variant: "neutral",
+  }}
+/>
+
+<ProgressCheckpoint section="networks" />
+
+---
+
+## IP Addresses: Every Device Has an Address
+
+Just like your home has a street address, **every device on the Internet has a unique address** called an **IP Address**.
+
+<InfoBox type="fun-fact">
+  IP stands for "Internet Protocol" - it's like the language computers use to
+  find each other!
+</InfoBox>
+
+<InteractiveDemo type="ip-address-demo" />
+
+### What Does an IP Address Look Like?
+
+An IP address looks like four numbers separated by dots:
+
+```
+192.168.1.100
+```
+
+Each number can be from 0 to 255. This gives us billions of possible addresses!
+
+<Quiz id="ip-address-quiz">
+  <Question>What is an IP address used for?</Question>
+  <Answer correct>
+    To identify devices on the Internet, like a home address
+  </Answer>
+  <Answer>To store files on your computer</Answer>
+  <Answer>To make your computer faster</Answer>
+  <Answer>To create websites</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="ip-addresses" />
+
+---
+
+## Data Packets: Breaking Messages Into Pieces
+
+When you send a photo to a friend, the Internet doesn't send it all at once. Instead, it breaks the photo into tiny pieces called **packets**.
+
+<AnimatedDiagram type="packet-flow" />
+
+<KeyConcept title="Why Use Packets?">
+  Breaking data into packets is smart because: - If one packet gets lost, only
+  that small piece needs to be resent - Packets can take different routes to
+  their destination - Multiple people can share the same network wires
+</KeyConcept>
+
+### The Journey of a Packet
+
+1. 📤 Your computer breaks the data into packets
+2. 📬 Each packet gets an address label (the destination IP)
+3. 🔀 Packets travel through multiple routers
+4. 📥 The receiving computer puts the packets back together
+
+<Quiz id="packets-quiz">
+  <Question>What are packets?</Question>
+  <Answer correct>Small pieces of data that travel through the Internet</Answer>
+  <Answer>Large files stored on a server</Answer>
+  <Answer>Physical wires that connect computers</Answer>
+  <Answer>A type of computer virus</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="data-packets" />
+
+---
+
+## DNS: The Internet's Phone Book
+
+You probably don't remember IP addresses like `172.217.14.206`. Instead, you remember names like `google.com`. But computers need IP addresses to connect!
+
+The **Domain Name System (DNS)** translates friendly names into IP addresses.
+
+<AnimatedDiagram type="dns-lookup" />
+
+### How DNS Works (Simple Version)
+
+1. You type `google.com` in your browser
+2. Your computer asks a DNS server: "What's the IP for google.com?"
+3. The DNS server responds: "It's 172.217.14.206"
+4. Your browser connects to that IP address
+
+<InfoBox type="tip">
+  Think of DNS like your phone's contact list. You don't memorize phone numbers
+  - you just tap on "Mom" and your phone knows the number!
+</InfoBox>
+
+<ProgressCheckpoint section="dns" />
+
+---
+
+## Summary: Putting It All Together
+
+Let's recap what we learned about how the Internet works:
+
+<KeyConcept title="The Internet Journey">
+  1. **Networks** connect computers together 2. **IP Addresses** identify each
+  device uniquely 3. **Packets** break data into small, manageable pieces 4.
+  **DNS** translates website names to IP addresses 5. **Routers** guide packets
+  to their destination
+</KeyConcept>
+
+<InfoBox type="success">
+  🎉 **Congratulations!** You now understand the basics of how the Internet
+  works! This knowledge will help you as you learn more about web development.
+</InfoBox>
+
+<ProgressCheckpoint section="summary" />
