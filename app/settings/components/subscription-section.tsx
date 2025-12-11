@@ -97,7 +97,7 @@ export function SubscriptionSection({ profile, subscription }: SubscriptionSecti
                 <span className="text-sm font-medium text-foreground">Iterations</span>
               </div>
               <span className="text-xs font-mono font-medium text-muted-foreground bg-background/50 px-2 py-1 rounded-md border border-white/5">
-                {iterations.count} / {iterations.limit}
+                {Number(iterations.count.toFixed(2))} / {iterations.limit}
               </span>
             </div>
             <div className="h-2 bg-background/50 rounded-full overflow-hidden border border-white/5">
