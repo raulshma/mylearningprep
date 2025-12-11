@@ -247,16 +247,22 @@ export function useMultiModelAssistant(
       });
       abortControllersRef.current = controllers;
 
-      // Start all streams truly in parallel using Promise.all
+      // Start all streams truly simultaneously
       // Only the first model should increment the chat count
+      // Use setTimeout(0) to ensure all fetch calls are queued in the same event loop tick
       const streamPromises = models.map((model, index) => {
         const key = `${model.provider}:${model.id}`;
         const controller = controllers.get(key)!;
         const shouldIncrementCount = index === 0; // Only first model increments
-        return streamModelResponse(content, model, controller, shouldIncrementCount);
+        return new Promise<void>((resolve) => {
+          // Queue all fetches to start in the next microtask, ensuring they begin together
+          queueMicrotask(() => {
+            streamModelResponse(content, model, controller, shouldIncrementCount).then(resolve);
+          });
+        });
       });
 
-      // Don't await - let them run independently, but Promise.all ensures they all start
+      // Let them run independently
       Promise.all(streamPromises).catch(() => {
         // Individual errors are handled in streamModelResponse
       });
