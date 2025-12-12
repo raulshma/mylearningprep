@@ -1,0 +1,32 @@
+{
+  "id": "learn-fetch-api",
+  "title": "Learn Fetch API / Ajax",
+  "description": "Master asynchronous data fetching and HTTP requests from JavaScript",
+  "milestone": "javascript",
+  "order": 3,
+  "sections": [
+    "introduction",
+    "request-response",
+    "fetch-basics",
+    "http-methods",
+    "error-handling",
+    "headers-cors",
+    "summary"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 50
+    },
+    "intermediate": {
+      "estimatedMinutes": 25,
+      "xpReward": 100
+    },
+    "advanced": {
+      "estimatedMinutes": 38,
+      "xpReward": 200
+    }
+  },
+  "prerequisites": ["syntax-and-basic-constructs", "async-await-promises"],
+  "tags": ["javascript", "fetch", "ajax", "http", "api", "async"]
+}

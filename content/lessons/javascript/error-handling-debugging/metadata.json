@@ -1,0 +1,32 @@
+{
+  "id": "error-handling-debugging",
+  "title": "Error Handling and Debugging",
+  "description": "Learn to handle errors gracefully and debug JavaScript code effectively",
+  "milestone": "javascript",
+  "order": 7,
+  "sections": [
+    "introduction",
+    "error-types",
+    "try-catch",
+    "custom-errors",
+    "debugging-tools",
+    "stack-traces",
+    "summary"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 50
+    },
+    "intermediate": {
+      "estimatedMinutes": 25,
+      "xpReward": 100
+    },
+    "advanced": {
+      "estimatedMinutes": 38,
+      "xpReward": 200
+    }
+  },
+  "prerequisites": ["syntax-and-basic-constructs", "async-await-promises"],
+  "tags": ["javascript", "errors", "debugging", "try-catch", "devtools"]
+}

@@ -1,0 +1,32 @@
+{
+  "id": "async-await-promises",
+  "title": "Async/Await and Promises",
+  "description": "Master asynchronous JavaScript with Promises, async/await, and the event loop",
+  "milestone": "javascript",
+  "order": 6,
+  "sections": [
+    "introduction",
+    "callbacks",
+    "promises",
+    "promise-chaining",
+    "async-await",
+    "event-loop",
+    "summary"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 18,
+      "xpReward": 50
+    },
+    "intermediate": {
+      "estimatedMinutes": 30,
+      "xpReward": 100
+    },
+    "advanced": {
+      "estimatedMinutes": 45,
+      "xpReward": 200
+    }
+  },
+  "prerequisites": ["syntax-and-basic-constructs"],
+  "tags": ["javascript", "async", "await", "promises", "event-loop", "asynchronous"]
+}

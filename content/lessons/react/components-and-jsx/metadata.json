@@ -1,0 +1,32 @@
+{
+  "id": "components-and-jsx",
+  "title": "Components and JSX",
+  "description": "Learn React's component model and JSX syntax for building user interfaces",
+  "milestone": "react",
+  "order": 1,
+  "sections": [
+    "introduction",
+    "what-are-components",
+    "jsx-basics",
+    "component-composition",
+    "conditional-rendering",
+    "lists-and-keys",
+    "summary"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 18,
+      "xpReward": 50
+    },
+    "intermediate": {
+      "estimatedMinutes": 28,
+      "xpReward": 100
+    },
+    "advanced": {
+      "estimatedMinutes": 42,
+      "xpReward": 200
+    }
+  },
+  "prerequisites": ["syntax-and-basic-constructs", "es6-and-modular-javascript"],
+  "tags": ["react", "components", "jsx", "ui", "composition"]
+}

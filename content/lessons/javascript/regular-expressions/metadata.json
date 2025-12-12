@@ -1,0 +1,32 @@
+{
+  "id": "regular-expressions",
+  "title": "Regular Expressions",
+  "description": "Learn powerful text pattern matching and manipulation with regex",
+  "milestone": "javascript",
+  "order": 9,
+  "sections": [
+    "introduction",
+    "basic-patterns",
+    "character-classes",
+    "quantifiers",
+    "groups",
+    "regex-methods",
+    "summary"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 50
+    },
+    "intermediate": {
+      "estimatedMinutes": 25,
+      "xpReward": 100
+    },
+    "advanced": {
+      "estimatedMinutes": 40,
+      "xpReward": 200
+    }
+  },
+  "prerequisites": ["syntax-and-basic-constructs"],
+  "tags": ["javascript", "regex", "regular-expressions", "patterns", "text"]
+}

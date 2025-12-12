@@ -1,0 +1,32 @@
+{
+  "id": "state-and-props",
+  "title": "State and Props",
+  "description": "Master React's data management with state and props for dynamic applications",
+  "milestone": "react",
+  "order": 2,
+  "sections": [
+    "introduction",
+    "understanding-props",
+    "understanding-state",
+    "data-flow",
+    "lifting-state",
+    "controlled-components",
+    "summary"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 18,
+      "xpReward": 50
+    },
+    "intermediate": {
+      "estimatedMinutes": 30,
+      "xpReward": 100
+    },
+    "advanced": {
+      "estimatedMinutes": 45,
+      "xpReward": 200
+    }
+  },
+  "prerequisites": ["components-and-jsx"],
+  "tags": ["react", "state", "props", "data-flow", "controlled"]
+}

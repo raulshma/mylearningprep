@@ -1,0 +1,32 @@
+{
+  "id": "syntax-and-basic-constructs",
+  "title": "Syntax and Basic Constructs",
+  "description": "Master JavaScript fundamentals - variables, data types, operators, and control flow",
+  "milestone": "javascript",
+  "order": 1,
+  "sections": [
+    "introduction",
+    "variables",
+    "data-types",
+    "operators",
+    "control-flow",
+    "functions",
+    "summary"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 50
+    },
+    "intermediate": {
+      "estimatedMinutes": 25,
+      "xpReward": 100
+    },
+    "advanced": {
+      "estimatedMinutes": 35,
+      "xpReward": 200
+    }
+  },
+  "prerequisites": [],
+  "tags": ["javascript", "syntax", "variables", "data-types", "operators", "control-flow"]
+}

@@ -1,0 +1,32 @@
+{
+  "id": "forms-in-react",
+  "title": "Forms in React",
+  "description": "Master form handling, validation, and user input management in React",
+  "milestone": "react",
+  "order": 6,
+  "sections": [
+    "introduction",
+    "controlled-components",
+    "form-inputs",
+    "validation",
+    "form-submission",
+    "form-libraries",
+    "summary"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 18,
+      "xpReward": 50
+    },
+    "intermediate": {
+      "estimatedMinutes": 28,
+      "xpReward": 100
+    },
+    "advanced": {
+      "estimatedMinutes": 42,
+      "xpReward": 200
+    }
+  },
+  "prerequisites": ["state-and-props", "hooks-usestate-useeffect"],
+  "tags": ["react", "forms", "validation", "input", "controlled"]
+}

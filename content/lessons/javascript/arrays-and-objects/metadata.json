@@ -1,0 +1,32 @@
+{
+  "id": "arrays-and-objects",
+  "title": "Working with Arrays and Objects",
+  "description": "Master array methods and object manipulation for effective data handling",
+  "milestone": "javascript",
+  "order": 8,
+  "sections": [
+    "introduction",
+    "array-basics",
+    "array-methods",
+    "method-chaining",
+    "object-basics",
+    "object-methods",
+    "summary"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 18,
+      "xpReward": 50
+    },
+    "intermediate": {
+      "estimatedMinutes": 28,
+      "xpReward": 100
+    },
+    "advanced": {
+      "estimatedMinutes": 42,
+      "xpReward": 200
+    }
+  },
+  "prerequisites": ["syntax-and-basic-constructs"],
+  "tags": ["javascript", "arrays", "objects", "map", "filter", "reduce"]
+}

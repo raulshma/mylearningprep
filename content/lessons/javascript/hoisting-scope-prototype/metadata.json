@@ -1,0 +1,32 @@
+{
+  "id": "hoisting-scope-prototype",
+  "title": "Hoisting, Scope, and Prototype",
+  "description": "Deep dive into JavaScript's core concepts - hoisting, scope chain, and prototype inheritance",
+  "milestone": "javascript",
+  "order": 5,
+  "sections": [
+    "introduction",
+    "hoisting",
+    "scope-chain",
+    "closures",
+    "prototype-chain",
+    "event-bubbling",
+    "summary"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 20,
+      "xpReward": 50
+    },
+    "intermediate": {
+      "estimatedMinutes": 32,
+      "xpReward": 100
+    },
+    "advanced": {
+      "estimatedMinutes": 48,
+      "xpReward": 200
+    }
+  },
+  "prerequisites": ["syntax-and-basic-constructs", "es6-and-modular-javascript"],
+  "tags": ["javascript", "hoisting", "scope", "prototype", "closures", "inheritance"]
+}

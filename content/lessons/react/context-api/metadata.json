@@ -1,0 +1,32 @@
+{
+  "id": "context-api",
+  "title": "Context API",
+  "description": "Learn to share data across components without prop drilling using React Context",
+  "milestone": "react",
+  "order": 4,
+  "sections": [
+    "introduction",
+    "creating-context",
+    "provider-consumer",
+    "usecontext-hook",
+    "context-patterns",
+    "performance",
+    "summary"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 50
+    },
+    "intermediate": {
+      "estimatedMinutes": 25,
+      "xpReward": 100
+    },
+    "advanced": {
+      "estimatedMinutes": 40,
+      "xpReward": 200
+    }
+  },
+  "prerequisites": ["hooks-usestate-useeffect"],
+  "tags": ["react", "context", "state-management", "provider", "consumer"]
+}

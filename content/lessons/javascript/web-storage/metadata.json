@@ -1,0 +1,32 @@
+{
+  "id": "web-storage",
+  "title": "Web Storage",
+  "description": "Understand browser storage options for persisting data on the client side",
+  "milestone": "javascript",
+  "order": 10,
+  "sections": [
+    "introduction",
+    "local-storage",
+    "session-storage",
+    "cookies",
+    "indexed-db",
+    "storage-comparison",
+    "summary"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 12,
+      "xpReward": 50
+    },
+    "intermediate": {
+      "estimatedMinutes": 22,
+      "xpReward": 100
+    },
+    "advanced": {
+      "estimatedMinutes": 35,
+      "xpReward": 200
+    }
+  },
+  "prerequisites": ["syntax-and-basic-constructs"],
+  "tags": ["javascript", "storage", "localStorage", "sessionStorage", "cookies", "indexedDB"]
+}

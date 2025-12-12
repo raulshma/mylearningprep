@@ -1,0 +1,32 @@
+{
+  "id": "hooks-usestate-useeffect",
+  "title": "Hooks (useState, useEffect)",
+  "description": "Master React Hooks for state management and side effects in functional components",
+  "milestone": "react",
+  "order": 3,
+  "sections": [
+    "introduction",
+    "usestate-basics",
+    "useeffect-basics",
+    "dependency-arrays",
+    "cleanup-functions",
+    "custom-hooks",
+    "summary"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 20,
+      "xpReward": 50
+    },
+    "intermediate": {
+      "estimatedMinutes": 32,
+      "xpReward": 100
+    },
+    "advanced": {
+      "estimatedMinutes": 48,
+      "xpReward": 200
+    }
+  },
+  "prerequisites": ["state-and-props"],
+  "tags": ["react", "hooks", "useState", "useEffect", "functional"]
+}

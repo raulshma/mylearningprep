@@ -1,0 +1,32 @@
+{
+  "id": "error-boundaries",
+  "title": "Error Boundaries",
+  "description": "Handle errors gracefully in React applications to prevent crashes",
+  "milestone": "react",
+  "order": 8,
+  "sections": [
+    "introduction",
+    "error-boundary-concept",
+    "creating-boundaries",
+    "error-handling-methods",
+    "fallback-ui",
+    "error-reporting",
+    "summary"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 12,
+      "xpReward": 50
+    },
+    "intermediate": {
+      "estimatedMinutes": 22,
+      "xpReward": 100
+    },
+    "advanced": {
+      "estimatedMinutes": 35,
+      "xpReward": 200
+    }
+  },
+  "prerequisites": ["components-and-jsx", "hooks-usestate-useeffect"],
+  "tags": ["react", "errors", "boundaries", "fallback", "error-handling"]
+}

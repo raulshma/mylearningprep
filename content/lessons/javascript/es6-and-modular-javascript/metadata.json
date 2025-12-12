@@ -1,0 +1,32 @@
+{
+  "id": "es6-and-modular-javascript",
+  "title": "ES6+ and Modular JavaScript",
+  "description": "Learn modern JavaScript features and module systems for clean, maintainable code",
+  "milestone": "javascript",
+  "order": 4,
+  "sections": [
+    "introduction",
+    "let-const",
+    "arrow-functions",
+    "destructuring",
+    "spread-rest",
+    "modules",
+    "summary"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 18,
+      "xpReward": 50
+    },
+    "intermediate": {
+      "estimatedMinutes": 30,
+      "xpReward": 100
+    },
+    "advanced": {
+      "estimatedMinutes": 45,
+      "xpReward": 200
+    }
+  },
+  "prerequisites": ["syntax-and-basic-constructs"],
+  "tags": ["javascript", "es6", "modules", "modern", "arrow-functions", "destructuring"]
+}

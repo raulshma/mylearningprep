@@ -1,0 +1,32 @@
+{
+  "id": "react-router",
+  "title": "React Router (Navigation)",
+  "description": "Build multi-page applications with client-side routing in React",
+  "milestone": "react",
+  "order": 5,
+  "sections": [
+    "introduction",
+    "basic-routing",
+    "route-parameters",
+    "nested-routes",
+    "navigation",
+    "route-guards",
+    "summary"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 18,
+      "xpReward": 50
+    },
+    "intermediate": {
+      "estimatedMinutes": 28,
+      "xpReward": 100
+    },
+    "advanced": {
+      "estimatedMinutes": 42,
+      "xpReward": 200
+    }
+  },
+  "prerequisites": ["components-and-jsx", "hooks-usestate-useeffect"],
+  "tags": ["react", "router", "navigation", "routing", "spa"]
+}

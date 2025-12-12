@@ -1,0 +1,32 @@
+{
+  "id": "server-components",
+  "title": "Server Components Basics",
+  "description": "Understand React Server Components and the server/client boundary",
+  "milestone": "react",
+  "order": 9,
+  "sections": [
+    "introduction",
+    "server-vs-client",
+    "use-client-directive",
+    "data-fetching",
+    "streaming",
+    "server-actions",
+    "summary"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 50
+    },
+    "intermediate": {
+      "estimatedMinutes": 28,
+      "xpReward": 100
+    },
+    "advanced": {
+      "estimatedMinutes": 45,
+      "xpReward": 200
+    }
+  },
+  "prerequisites": ["components-and-jsx", "hooks-usestate-useeffect"],
+  "tags": ["react", "server-components", "rsc", "streaming", "next.js"]
+}

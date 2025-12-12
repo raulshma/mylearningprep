@@ -1,0 +1,32 @@
+{
+  "id": "performance-optimization",
+  "title": "Performance Optimization",
+  "description": "Learn techniques to build fast and efficient React applications",
+  "milestone": "react",
+  "order": 7,
+  "sections": [
+    "introduction",
+    "re-renders",
+    "react-memo",
+    "usememo-usecallback",
+    "profiler",
+    "code-splitting",
+    "summary"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 50
+    },
+    "intermediate": {
+      "estimatedMinutes": 28,
+      "xpReward": 100
+    },
+    "advanced": {
+      "estimatedMinutes": 45,
+      "xpReward": 200
+    }
+  },
+  "prerequisites": ["hooks-usestate-useeffect", "context-api"],
+  "tags": ["react", "performance", "optimization", "memo", "profiler"]
+}
