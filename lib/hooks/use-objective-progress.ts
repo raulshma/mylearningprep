@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import type { UserGamification } from '@/lib/db/schemas/user';
 
 /**
@@ -124,16 +124,28 @@ export function useObjectiveProgress(
   objectives: Array<{ lessonId: string; objective: string }>,
   gamification: UserGamification | null
 ) {
-  // Initialize progress map from localStorage/gamification on first render
-  const [progressMap, setProgressMap] = useState<Record<string, ObjectiveProgressData>>(() => {
-    if (typeof window === 'undefined') return {};
-    
-    // Sync gamification to localStorage first
+  // Track locally added completions with the nodeId they belong to
+  const [localMutations, setLocalMutations] = useState<{
+    nodeId: string;
+    data: Record<string, ObjectiveProgressData>;
+  }>({ nodeId, data: {} });
+  
+  // Get the current mutations (only if nodeId matches, otherwise treat as empty)
+  const currentMutations = useMemo(() => {
+    return localMutations.nodeId === nodeId ? localMutations.data : {};
+  }, [localMutations, nodeId]);
+  
+  // Sync gamification to localStorage (side effect, no setState)
+  useEffect(() => {
     if (gamification) {
       syncGamificationToLocalStorage(gamification, nodeId);
     }
+  }, [nodeId, gamification]);
+  
+  // Derive progress from localStorage (computed during render, not in effect)
+  const serverProgress = useMemo(() => {
+    if (typeof window === 'undefined') return {};
     
-    // Load from localStorage
     const progress: Record<string, ObjectiveProgressData> = {};
     for (const obj of objectives) {
       const stored = getObjectiveProgress(nodeId, obj.lessonId);
@@ -142,39 +154,12 @@ export function useObjectiveProgress(
       }
     }
     return progress;
-  });
+  }, [nodeId, objectives]);
   
-  // Re-sync when gamification or objectives change
-  useEffect(() => {
-    // Sync gamification to localStorage
-    if (gamification) {
-      syncGamificationToLocalStorage(gamification, nodeId);
-    }
-    
-    // Reload from localStorage
-    const progress: Record<string, ObjectiveProgressData> = {};
-    for (const obj of objectives) {
-      const stored = getObjectiveProgress(nodeId, obj.lessonId);
-      if (stored) {
-        progress[obj.objective] = stored;
-      }
-    }
-    
-    // Only update if there are actual changes
-    setProgressMap(prev => {
-      const prevKeys = Object.keys(prev).sort().join(',');
-      const newKeys = Object.keys(progress).sort().join(',');
-      if (prevKeys !== newKeys) return progress;
-      
-      // Check if any values changed
-      for (const key of Object.keys(progress)) {
-        if (prev[key]?.completedAt !== progress[key]?.completedAt) {
-          return progress;
-        }
-      }
-      return prev;
-    });
-  }, [nodeId, objectives, gamification]);
+  // Merge server progress with local mutations
+  const progressMap = useMemo(() => {
+    return { ...serverProgress, ...currentMutations };
+  }, [serverProgress, currentMutations]);
   
   // Mark objective as complete
   const markComplete = useCallback((
@@ -185,13 +170,16 @@ export function useObjectiveProgress(
   ) => {
     saveObjectiveProgress(nodeId, lessonId, level, xpEarned);
     
-    setProgressMap(prev => ({
-      ...prev,
-      [objective]: {
-        completedAt: new Date().toISOString(),
-        level,
-        xpEarned,
-        lessonId,
+    setLocalMutations(prev => ({
+      nodeId,
+      data: {
+        ...prev.data,
+        [objective]: {
+          completedAt: new Date().toISOString(),
+          level,
+          xpEarned,
+          lessonId,
+        },
       },
     }));
   }, [nodeId]);
@@ -200,10 +188,10 @@ export function useObjectiveProgress(
   const resetObjective = useCallback((objective: string, lessonId: string) => {
     clearObjectiveProgress(nodeId, lessonId);
     
-    setProgressMap(prev => {
-      const next = { ...prev };
+    setLocalMutations(prev => {
+      const next = { ...prev.data };
       delete next[objective];
-      return next;
+      return { nodeId, data: next };
     });
   }, [nodeId]);
   

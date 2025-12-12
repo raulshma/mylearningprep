@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles } from 'lucide-react';
 
@@ -13,38 +13,93 @@ interface XPAwardAnimationProps {
  * Animated XP award notification that appears when XP is earned
  * Shows a floating "+X XP" animation with sparkle effect
  * Auto-dismisses after the animation completes
+ * 
+ * Design: The animation is driven by the `amount` prop.
+ * - When amount is a positive number, show the animation
+ * - The component manages auto-dismiss via setTimeout
+ * - Uses a tracked "lastTriggeredAmount" to detect new amounts
  */
 export function XPAwardAnimation({ amount, onComplete }: XPAwardAnimationProps) {
-  const [isVisible, setIsVisible] = useState(false);
-  const [displayAmount, setDisplayAmount] = useState<number | null>(null);
+  // State to track if we're in the dismiss phase
+  const [isDismissing, setIsDismissing] = useState(false);
+  // Track the last amount we triggered for (to detect new amounts)
+  const [triggeredFor, setTriggeredFor] = useState<number | null>(null);
+  
+  // Refs for timeout and callback (only accessed in effects)
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const hasTriggeredRef = useRef(false);
-
-  // Handle amount changes - show animation when amount becomes non-null
+  const onCompleteRef = useRef(onComplete);
+  
+  // Update onComplete ref in effect
   useEffect(() => {
-    if (amount !== null && amount > 0 && !hasTriggeredRef.current) {
-      // New XP award - show animation
-      hasTriggeredRef.current = true;
-      setDisplayAmount(amount);
-      setIsVisible(true);
-      
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+  
+  // Derive if we should show based on amount and state
+  // Show when: amount > 0 AND we haven't dismissed OR it's a new amount
+  const isNewAmount = amount !== null && amount > 0 && amount !== triggeredFor;
+  
+  // Compute visibility: we're visible if we have a valid amount and not dismissing
+  // Also reset dismissing state when we get a new amount
+  const isVisible = useMemo(() => {
+    if (isNewAmount) {
+      return true; // New amount always shows
+    }
+    if (amount !== null && amount > 0 && !isDismissing) {
+      return true; // Valid amount that hasn't been dismissed
+    }
+    return false;
+  }, [amount, isDismissing, isNewAmount]);
+  
+  // Display amount is the current valid amount or the triggered amount
+  const displayAmount = amount !== null && amount > 0 ? amount : triggeredFor;
+  
+  // Handle dismiss timer and new amount detection
+  useEffect(() => {
+    // If we have a new valid amount, set up the auto-dismiss
+    if (amount !== null && amount > 0) {
       // Clear any existing timeout
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
       
-      // Auto-dismiss after 2.5 seconds (animation + display time)
+      // If this is a new amount, reset dismiss state via timeout (async)
+      if (amount !== triggeredFor) {
+        // Use a microtask to update state (not synchronous in effect)
+        const resetTimeout = setTimeout(() => {
+          setIsDismissing(false);
+          setTriggeredFor(amount);
+        }, 0);
+        
+        // Set up auto-dismiss after 2.5 seconds
+        timeoutRef.current = setTimeout(() => {
+          setIsDismissing(true);
+          // Call onComplete after exit animation
+          setTimeout(() => {
+            onCompleteRef.current?.();
+          }, 300);
+        }, 2500);
+        
+        return () => {
+          clearTimeout(resetTimeout);
+          if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
+          }
+        };
+      }
+      
+      // Same amount, just set up dismiss timer
       timeoutRef.current = setTimeout(() => {
-        setIsVisible(false);
-        // Call onComplete after exit animation
+        setIsDismissing(true);
         setTimeout(() => {
-          onComplete?.();
-          hasTriggeredRef.current = false;
+          onCompleteRef.current?.();
         }, 300);
       }, 2500);
-    } else if (amount === null) {
-      // Reset for next animation
-      hasTriggeredRef.current = false;
+    } else if (amount === null && triggeredFor !== null) {
+      // Amount reset to null, prepare for next animation via timeout
+      setTimeout(() => {
+        setTriggeredFor(null);
+        setIsDismissing(false);
+      }, 0);
     }
     
     return () => {
@@ -52,7 +107,7 @@ export function XPAwardAnimation({ amount, onComplete }: XPAwardAnimationProps) 
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [amount, onComplete]);
+  }, [amount, triggeredFor]);
 
   return (
     <AnimatePresence>
@@ -66,7 +121,7 @@ export function XPAwardAnimation({ amount, onComplete }: XPAwardAnimationProps) 
           className="fixed bottom-8 right-8 z-50"
         >
           <motion.div
-            className="flex items-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/40 shadow-lg backdrop-blur-sm"
+            className="flex items-center gap-2 px-4 py-3 rounded-xl bg-linear-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/40 shadow-lg backdrop-blur-sm"
             animate={{
               boxShadow: [
                 '0 0 0 0 rgba(234, 179, 8, 0)',

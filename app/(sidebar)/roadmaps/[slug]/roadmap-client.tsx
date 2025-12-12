@@ -153,7 +153,7 @@ export function RoadmapClient({
         });
       }
     });
-  }, [selectedNodeId, roadmap.slug, progress, selectedNode?.title]);
+  }, [selectedNodeId, roadmap.slug, progress, selectedNode]);
   
   const handleMarkComplete = useCallback(async () => {
     if (!selectedNodeId) return;
@@ -197,7 +197,7 @@ export function RoadmapClient({
         });
       }
     });
-  }, [selectedNodeId, roadmap.slug, roadmap.nodes.length, selectedNode?.title]);
+  }, [selectedNodeId, roadmap.slug, roadmap.nodes.length, selectedNode]);
   
   return (
     <div className="flex flex-col md:flex-row gap-6 min-h-full">
