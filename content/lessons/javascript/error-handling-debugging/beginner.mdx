@@ -1,0 +1,250 @@
+# Error Handling and Debugging
+
+Welcome to one of the most practical skills in programming! Errors happen to everyone — even the best developers. The key is knowing how to handle them gracefully and find the bugs in your code. Let's learn how!
+
+<InfoBox type="tip" title="Why This Matters">
+Every program will encounter errors at some point. Learning to handle errors properly means your apps won't crash unexpectedly, and you'll be able to fix bugs much faster!
+</InfoBox>
+
+<ProgressCheckpoint section="introduction" xpReward={15} />
+
+## What Are Errors?
+
+Think of errors like warning lights on a car dashboard. They tell you something went wrong and often give you a hint about what the problem is.
+
+In JavaScript, when something goes wrong, the program "throws" an error. If you don't "catch" it, your program stops running!
+
+```javascript
+// This will cause an error and stop your program
+const user = null;
+console.log(user.name);  // 💥 TypeError!
+// Nothing after this line runs...
+```
+
+<KeyConcept title="Errors vs Bugs">
+- **Error**: Something unexpected happened (like trying to read a file that doesn't exist)
+- **Bug**: A mistake in your code logic (like adding instead of subtracting)
+
+Both need to be handled, but in different ways!
+</KeyConcept>
+
+<ProgressCheckpoint section="error-types" xpReward={15} />
+
+## Common Error Types
+
+JavaScript has several built-in error types. Each one tells you something different about what went wrong:
+
+<ErrorTypeExplorer initialErrorType="type-error" />
+
+The most common errors you'll see are:
+
+1. **TypeError** - You tried to use something the wrong way (like calling `.map()` on `null`)
+2. **ReferenceError** - You used a variable that doesn't exist
+3. **SyntaxError** - Your code has a typo or missing bracket
+
+<InfoBox type="info" title="Reading Error Messages">
+Error messages might look scary, but they're actually helpful! They tell you:
+- **What** went wrong (the error type)
+- **Where** it happened (file and line number)
+- **Why** it happened (the error message)
+</InfoBox>
+
+<ProgressCheckpoint section="try-catch" xpReward={15} />
+
+## Try/Catch: Your Safety Net
+
+The `try/catch` statement is like a safety net for your code. You "try" to run some code, and if it fails, you "catch" the error instead of crashing.
+
+```javascript
+try {
+  // Code that might fail goes here
+  const user = null;
+  console.log(user.name);  // This will throw an error
+} catch (error) {
+  // This runs if an error occurs
+  console.log("Oops! Something went wrong:", error.message);
+}
+
+// Your program keeps running! 🎉
+console.log("Program continues...");
+```
+
+<KeyConcept title="Try/Catch Structure">
+```javascript
+try {
+  // Risky code here
+} catch (error) {
+  // Handle the error here
+} finally {
+  // This ALWAYS runs (optional)
+}
+```
+</KeyConcept>
+
+Try it yourself:
+
+<CodePlayground
+  initialCode={`// Try/Catch example
+function getUserName(user) {
+  try {
+    // This might fail if user is null
+    return user.name;
+  } catch (error) {
+    console.log("Error caught:", error.message);
+    return "Unknown User";
+  }
+}
+
+// Test with a valid user
+const validUser = { name: "Alice" };
+console.log("Valid:", getUserName(validUser));
+
+// Test with null (would normally crash!)
+const invalidUser = null;
+console.log("Invalid:", getUserName(invalidUser));
+
+console.log("✅ Program didn't crash!");`}
+/>
+
+<ProgressCheckpoint section="debugging-tools" xpReward={15} />
+
+## Console Methods: Your Debugging Friends
+
+The `console` object has several methods to help you understand what's happening in your code:
+
+```javascript
+// Basic logging
+console.log("Hello!");           // General output
+
+// Different log levels
+console.info("FYI: User logged in");    // Information
+console.warn("Warning: Low memory");     // Warnings (yellow)
+console.error("Error: Connection lost"); // Errors (red)
+
+// Inspect objects
+const user = { name: "Bob", age: 25 };
+console.log(user);              // Shows the object
+console.table(user);            // Shows as a table!
+
+// Track time
+console.time("myTimer");
+// ... some code ...
+console.timeEnd("myTimer");     // Shows how long it took
+```
+
+<CodePlayground
+  initialCode={`// Console methods demo
+console.log("📝 Regular log message");
+console.info("ℹ️ Info message");
+console.warn("⚠️ Warning message");
+console.error("❌ Error message");
+
+// Logging objects
+const person = {
+  name: "Alice",
+  age: 30,
+  hobbies: ["reading", "coding"]
+};
+
+console.log("Person object:", person);
+
+// Timing code
+console.time("Loop time");
+let sum = 0;
+for (let i = 0; i < 1000; i++) {
+  sum += i;
+}
+console.timeEnd("Loop time");
+console.log("Sum:", sum);`}
+/>
+
+<InfoBox type="tip" title="Pro Tip: console.log() Everything!">
+When you're confused about what's happening, add `console.log()` statements to see the values of variables at different points. It's the simplest debugging technique!
+</InfoBox>
+
+<ProgressCheckpoint section="stack-traces" xpReward={15} />
+
+## Reading Stack Traces
+
+When an error occurs, JavaScript shows you a "stack trace" — a list of all the functions that were running when the error happened.
+
+<StackTraceAnalyzer />
+
+Think of it like a trail of breadcrumbs:
+- The **top** of the stack is where the error happened
+- Each line below shows what called that function
+- Follow the trail to understand how you got there!
+
+```javascript
+// Example that creates a stack trace
+function third() {
+  throw new Error("Something went wrong!");
+}
+
+function second() {
+  third();  // Calls third
+}
+
+function first() {
+  second();  // Calls second
+}
+
+first();  // Calls first
+// Stack trace shows: third → second → first
+```
+
+<ProgressCheckpoint section="summary" xpReward={10} />
+
+## Key Takeaways
+
+<KeyConcept title="Try/Catch">
+Wrap risky code in `try/catch` to prevent crashes. The `catch` block receives the error object with details about what went wrong.
+</KeyConcept>
+
+<KeyConcept title="Error Types">
+Different error types (TypeError, ReferenceError, SyntaxError) tell you what kind of problem occurred. Read the error message carefully!
+</KeyConcept>
+
+<KeyConcept title="Console Methods">
+Use `console.log()`, `console.warn()`, and `console.error()` to output information while debugging. `console.table()` is great for objects!
+</KeyConcept>
+
+<KeyConcept title="Stack Traces">
+Read stack traces from top to bottom. The top shows where the error occurred, and each line below shows what called it.
+</KeyConcept>
+
+## Quick Quiz
+
+<Quiz>
+  <Question text="What does try/catch do?">
+    <Answer>Makes code run faster</Answer>
+    <Answer correct>Catches errors so your program doesn't crash</Answer>
+    <Answer>Automatically fixes bugs</Answer>
+    <Answer>Prevents all errors from happening</Answer>
+  </Question>
+  
+  <Question text="Which error type occurs when you use a variable that doesn't exist?">
+    <Answer>TypeError</Answer>
+    <Answer correct>ReferenceError</Answer>
+    <Answer>SyntaxError</Answer>
+    <Answer>RangeError</Answer>
+  </Question>
+  
+  <Question text="What console method shows output in red as an error?">
+    <Answer>console.log()</Answer>
+    <Answer>console.warn()</Answer>
+    <Answer correct>console.error()</Answer>
+    <Answer>console.info()</Answer>
+  </Question>
+  
+  <Question text="In a stack trace, where did the error actually occur?">
+    <Answer>At the bottom of the stack</Answer>
+    <Answer correct>At the top of the stack</Answer>
+    <Answer>In the middle of the stack</Answer>
+    <Answer>Stack traces don't show where errors occur</Answer>
+  </Question>
+</Quiz>
+
+---
+
+**Great job!** 🎉 You've learned the basics of error handling and debugging. In the intermediate level, we'll explore custom errors, browser DevTools, and more advanced debugging techniques.

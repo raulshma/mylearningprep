@@ -1,0 +1,456 @@
+# Error Handling and Debugging
+
+Welcome to advanced error handling! In this lesson, we'll explore async error patterns, source maps, performance profiling, and production-grade error tracking strategies used by professional development teams.
+
+<InfoBox type="tip" title="Production-Ready Skills">
+These techniques are essential for building reliable applications that can gracefully handle failures and provide meaningful error reports in production.
+</InfoBox>
+
+<ProgressCheckpoint section="introduction" xpReward={15} />
+
+## Async Error Handling
+
+Asynchronous code requires special attention for error handling. Errors in async code can be tricky to catch!
+
+### Promises and .catch()
+
+```javascript
+// Promise chain error handling
+fetchUser(userId)
+  .then(user => fetchOrders(user.id))
+  .then(orders => processOrders(orders))
+  .catch(error => {
+    // Catches errors from ANY step in the chain
+    console.error("Pipeline failed:", error);
+  })
+  .finally(() => {
+    // Cleanup regardless of success/failure
+    hideLoadingSpinner();
+  });
+```
+
+### Async/Await Error Handling
+
+```javascript
+async function fetchUserData(userId) {
+  try {
+    const user = await fetchUser(userId);
+    const orders = await fetchOrders(user.id);
+    const processed = await processOrders(orders);
+    return processed;
+  } catch (error) {
+    // Handle errors from any await
+    if (error instanceof NetworkError) {
+      return handleNetworkError(error);
+    }
+    throw error;  // Re-throw unknown errors
+  }
+}
+```
+
+<KeyConcept title="Unhandled Promise Rejections">
+Unhandled promise rejections can crash Node.js applications and cause silent failures in browsers. Always handle them!
+
+```javascript
+// Global handler for unhandled rejections
+window.addEventListener('unhandledrejection', event => {
+  console.error('Unhandled rejection:', event.reason);
+  // Report to error tracking service
+  errorTracker.capture(event.reason);
+});
+```
+</KeyConcept>
+
+<CodePlayground
+  initialCode={`// Async error handling patterns
+
+// Simulate async operations
+const fetchData = (shouldFail) => new Promise((resolve, reject) => {
+  setTimeout(() => {
+    if (shouldFail) {
+      reject(new Error("Network request failed"));
+    } else {
+      resolve({ data: "Success!" });
+    }
+  }, 500);
+});
+
+// Pattern 1: Try/catch with async/await
+async function pattern1() {
+  console.log("Pattern 1: try/catch");
+  try {
+    const result = await fetchData(true);
+    console.log("Result:", result);
+  } catch (error) {
+    console.log("Caught:", error.message);
+  }
+}
+
+// Pattern 2: Promise.catch()
+function pattern2() {
+  console.log("\\nPattern 2: .catch()");
+  fetchData(true)
+    .then(result => console.log("Result:", result))
+    .catch(error => console.log("Caught:", error.message));
+}
+
+// Pattern 3: Handle multiple promises
+async function pattern3() {
+  console.log("\\nPattern 3: Promise.allSettled");
+  const results = await Promise.allSettled([
+    fetchData(false),
+    fetchData(true),
+    fetchData(false)
+  ]);
+  
+  results.forEach((result, i) => {
+    if (result.status === "fulfilled") {
+      console.log(\`Promise \${i}: ✅\`, result.value);
+    } else {
+      console.log(\`Promise \${i}: ❌\`, result.reason.message);
+    }
+  });
+}
+
+// Run patterns
+await pattern1();
+pattern2();
+setTimeout(() => pattern3(), 600);`}
+/>
+
+<ProgressCheckpoint section="error-types" xpReward={15} />
+
+## Error Boundaries and Recovery
+
+In complex applications, you need strategies for graceful degradation and recovery.
+
+### Circuit Breaker Pattern
+
+```javascript
+class CircuitBreaker {
+  constructor(threshold = 5, resetTimeout = 30000) {
+    this.failures = 0;
+    this.threshold = threshold;
+    this.resetTimeout = resetTimeout;
+    this.state = 'CLOSED';  // CLOSED, OPEN, HALF_OPEN
+    this.nextAttempt = Date.now();
+  }
+
+  async execute(fn) {
+    if (this.state === 'OPEN') {
+      if (Date.now() < this.nextAttempt) {
+        throw new Error('Circuit breaker is OPEN');
+      }
+      this.state = 'HALF_OPEN';
+    }
+
+    try {
+      const result = await fn();
+      this.onSuccess();
+      return result;
+    } catch (error) {
+      this.onFailure();
+      throw error;
+    }
+  }
+
+  onSuccess() {
+    this.failures = 0;
+    this.state = 'CLOSED';
+  }
+
+  onFailure() {
+    this.failures++;
+    if (this.failures >= this.threshold) {
+      this.state = 'OPEN';
+      this.nextAttempt = Date.now() + this.resetTimeout;
+    }
+  }
+}
+```
+
+### Retry with Exponential Backoff
+
+```javascript
+async function retryWithBackoff(fn, maxRetries = 3, baseDelay = 1000) {
+  let lastError;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      
+      if (attempt < maxRetries - 1) {
+        const delay = baseDelay * Math.pow(2, attempt);
+        console.log(`Retry ${attempt + 1} in ${delay}ms...`);
+        await new Promise(r => setTimeout(r, delay));
+      }
+    }
+  }
+  
+  throw lastError;
+}
+
+// Usage
+const data = await retryWithBackoff(
+  () => fetch('/api/data').then(r => r.json()),
+  3,  // max retries
+  1000  // base delay
+);
+```
+
+<ProgressCheckpoint section="try-catch" xpReward={15} />
+
+## Source Maps and Production Debugging
+
+In production, your code is minified and bundled. Source maps help you debug the original code.
+
+### How Source Maps Work
+
+```
+Original Code (readable)     →  Bundled Code (minified)
+                             ↓
+                        Source Map
+                             ↓
+                    DevTools shows original
+```
+
+### Configuring Source Maps
+
+```javascript
+// webpack.config.js
+module.exports = {
+  devtool: process.env.NODE_ENV === 'production' 
+    ? 'source-map'      // Separate .map files
+    : 'eval-source-map' // Faster for development
+};
+
+// vite.config.js
+export default {
+  build: {
+    sourcemap: true  // Generate source maps
+  }
+};
+```
+
+<InfoBox type="warning" title="Source Map Security">
+Source maps expose your original code. In production:
+- Host source maps on a private server
+- Use error tracking services that support private source maps
+- Consider not deploying source maps to public servers
+</InfoBox>
+
+<ProgressCheckpoint section="debugging-tools" xpReward={15} />
+
+## Performance Profiling
+
+The Performance panel in DevTools helps identify bottlenecks and memory issues.
+
+### CPU Profiling
+
+```javascript
+// Mark performance timeline
+performance.mark('start-operation');
+
+// Your code here
+processLargeDataset(data);
+
+performance.mark('end-operation');
+performance.measure('operation-duration', 'start-operation', 'end-operation');
+
+// Get measurements
+const measures = performance.getEntriesByName('operation-duration');
+console.log(`Operation took ${measures[0].duration}ms`);
+```
+
+### Memory Profiling
+
+```javascript
+// Check memory usage (Chrome only)
+if (performance.memory) {
+  console.log('Used JS Heap:', 
+    Math.round(performance.memory.usedJSHeapSize / 1048576) + ' MB');
+  console.log('Total JS Heap:', 
+    Math.round(performance.memory.totalJSHeapSize / 1048576) + ' MB');
+}
+
+// Force garbage collection (DevTools must be open)
+// Click the trash can icon in the Memory panel
+```
+
+### Common Performance Issues
+
+1. **Memory Leaks**: Event listeners not removed, closures holding references
+2. **Forced Synchronous Layouts**: Reading layout properties after DOM changes
+3. **Long Tasks**: Operations blocking the main thread > 50ms
+
+<CodePlayground
+  initialCode={`// Performance measurement example
+
+// Measure function execution time
+function measureTime(fn, label) {
+  const start = performance.now();
+  const result = fn();
+  const end = performance.now();
+  console.log(\`\${label}: \${(end - start).toFixed(2)}ms\`);
+  return result;
+}
+
+// Compare different approaches
+const data = Array.from({ length: 10000 }, (_, i) => i);
+
+// Approach 1: forEach
+measureTime(() => {
+  let sum = 0;
+  data.forEach(n => sum += n);
+  return sum;
+}, "forEach");
+
+// Approach 2: for loop
+measureTime(() => {
+  let sum = 0;
+  for (let i = 0; i < data.length; i++) {
+    sum += data[i];
+  }
+  return sum;
+}, "for loop");
+
+// Approach 3: reduce
+measureTime(() => {
+  return data.reduce((sum, n) => sum + n, 0);
+}, "reduce");
+
+console.log("\\n✅ Performance comparison complete!");`}
+/>
+
+<ProgressCheckpoint section="stack-traces" xpReward={15} />
+
+## Production Error Tracking
+
+In production, you need systematic error tracking and reporting.
+
+### Error Tracking Service Integration
+
+```javascript
+// Initialize error tracking (e.g., Sentry, Bugsnag)
+import * as Sentry from '@sentry/browser';
+
+Sentry.init({
+  dsn: 'YOUR_DSN_HERE',
+  environment: process.env.NODE_ENV,
+  release: process.env.APP_VERSION,
+  
+  // Filter sensitive data
+  beforeSend(event) {
+    // Remove PII
+    if (event.user) {
+      delete event.user.email;
+    }
+    return event;
+  }
+});
+
+// Capture errors with context
+try {
+  processOrder(order);
+} catch (error) {
+  Sentry.captureException(error, {
+    tags: { module: 'orders' },
+    extra: { orderId: order.id }
+  });
+  throw error;
+}
+```
+
+### Structured Error Logging
+
+```javascript
+class AppError extends Error {
+  constructor(message, { code, context, recoverable = false } = {}) {
+    super(message);
+    this.name = 'AppError';
+    this.code = code;
+    this.context = context;
+    this.recoverable = recoverable;
+    this.timestamp = new Date().toISOString();
+  }
+
+  toJSON() {
+    return {
+      name: this.name,
+      message: this.message,
+      code: this.code,
+      context: this.context,
+      recoverable: this.recoverable,
+      timestamp: this.timestamp,
+      stack: this.stack
+    };
+  }
+}
+
+// Usage
+throw new AppError('Payment processing failed', {
+  code: 'PAYMENT_FAILED',
+  context: { orderId: '123', amount: 99.99 },
+  recoverable: true
+});
+```
+
+<ErrorTypeExplorer />
+
+<ProgressCheckpoint section="summary" xpReward={10} />
+
+## Key Takeaways
+
+<KeyConcept title="Async Error Handling">
+Use try/catch with async/await, handle unhandled rejections globally, and use Promise.allSettled for multiple operations.
+</KeyConcept>
+
+<KeyConcept title="Recovery Patterns">
+Implement circuit breakers and retry with exponential backoff for resilient applications.
+</KeyConcept>
+
+<KeyConcept title="Source Maps">
+Configure source maps for debugging minified code. Keep production source maps private.
+</KeyConcept>
+
+<KeyConcept title="Error Tracking">
+Use error tracking services in production. Include context, filter sensitive data, and structure errors consistently.
+</KeyConcept>
+
+## Quick Quiz
+
+<Quiz>
+  <Question text="What's the purpose of Promise.allSettled()?">
+    <Answer>To run promises in sequence</Answer>
+    <Answer>To cancel all promises if one fails</Answer>
+    <Answer correct>To get results of all promises, whether they succeed or fail</Answer>
+    <Answer>To make promises run faster</Answer>
+  </Question>
+  
+  <Question text="What does a circuit breaker pattern do?">
+    <Answer>Encrypts error messages</Answer>
+    <Answer correct>Prevents repeated calls to a failing service</Answer>
+    <Answer>Automatically fixes bugs</Answer>
+    <Answer>Compresses error logs</Answer>
+  </Question>
+  
+  <Question text="Why should source maps be kept private in production?">
+    <Answer>They slow down the application</Answer>
+    <Answer>They contain passwords</Answer>
+    <Answer correct>They expose your original source code</Answer>
+    <Answer>They're too large to deploy</Answer>
+  </Question>
+  
+  <Question text="What's exponential backoff used for?">
+    <Answer>Making code run faster</Answer>
+    <Answer correct>Increasing delay between retry attempts</Answer>
+    <Answer>Reducing memory usage</Answer>
+    <Answer>Compressing error messages</Answer>
+  </Question>
+</Quiz>
+
+---
+
+**Congratulations!** 🎉 You've mastered advanced error handling and debugging techniques. These skills will help you build robust, production-ready applications and debug issues efficiently.

@@ -1,0 +1,473 @@
+# Hoisting, Scope, and Prototype - Advanced
+
+Welcome to the deep dive into JavaScript's execution model. We'll explore execution contexts, lexical environments, and the internal mechanics that power hoisting, scope, and prototypes.
+
+<InfoBox type="tip" title="Under the Hood">
+Understanding these internals will help you predict JavaScript's behavior in edge cases and write more performant code.
+</InfoBox>
+
+<ProgressCheckpoint section="introduction" xpReward={30} />
+
+## Execution Context Internals
+
+Every time JavaScript runs code, it creates an **Execution Context**. Each context has two phases:
+
+### 1. Creation Phase
+- Create the Variable Environment (VE)
+- Create the Lexical Environment (LE)
+- Determine the value of `this`
+- Set up the scope chain
+
+### 2. Execution Phase
+- Execute code line by line
+- Assign values to variables
+- Execute function calls
+
+```javascript
+// When this code runs:
+var a = 1;
+let b = 2;
+const c = 3;
+
+function foo() {
+  var d = 4;
+  return a + b + c + d;
+}
+
+foo();
+
+// JavaScript creates:
+// Global Execution Context {
+//   VariableEnvironment: { a: undefined, foo: <function> }
+//   LexicalEnvironment: { b: <uninitialized>, c: <uninitialized> }
+//   ThisBinding: window/global
+// }
+```
+
+<KeyConcept title="Variable vs Lexical Environment">
+- **Variable Environment**: Stores `var` declarations and function declarations
+- **Lexical Environment**: Stores `let` and `const` declarations (with TDZ)
+</KeyConcept>
+
+<HoistingSimulator showPhases={true} />
+
+<ProgressCheckpoint section="hoisting" xpReward={30} />
+
+## Lexical Environment Deep Dive
+
+A Lexical Environment consists of:
+1. **Environment Record**: Stores variable and function declarations
+2. **Outer Reference**: Link to the parent lexical environment
+
+```javascript
+// Lexical Environment visualization
+function outer() {
+  let x = 10;
+  
+  function inner() {
+    let y = 20;
+    console.log(x + y);  // 30
+  }
+  
+  inner();
+}
+
+outer();
+
+// inner's Lexical Environment:
+// {
+//   EnvironmentRecord: { y: 20 },
+//   OuterReference: → outer's Lexical Environment
+// }
+
+// outer's Lexical Environment:
+// {
+//   EnvironmentRecord: { x: 10, inner: <function> },
+//   OuterReference: → Global Lexical Environment
+// }
+```
+
+### Scope Chain Resolution Algorithm
+
+When resolving a variable:
+
+```javascript
+function resolveVariable(name, currentEnv) {
+  // 1. Check current environment
+  if (currentEnv.environmentRecord.has(name)) {
+    return currentEnv.environmentRecord.get(name);
+  }
+  
+  // 2. Check outer environment (recursively)
+  if (currentEnv.outerReference !== null) {
+    return resolveVariable(name, currentEnv.outerReference);
+  }
+  
+  // 3. Not found anywhere
+  throw new ReferenceError(`${name} is not defined`);
+}
+```
+
+<ScopeChainVisualizer showClosures={true} animated={true} />
+
+<ProgressCheckpoint section="scope-chain" xpReward={30} />
+
+## Closure Memory Implications
+
+Closures keep their outer scope alive, which has memory implications:
+
+```javascript
+function createHeavyObject() {
+  const hugeArray = new Array(1000000).fill('data');
+  
+  return function() {
+    // This closure keeps hugeArray in memory!
+    return hugeArray.length;
+  };
+}
+
+const getLength = createHeavyObject();
+// hugeArray is still in memory because getLength references it
+
+// To free memory, set getLength to null
+// getLength = null;
+```
+
+### Optimizing Closures
+
+```javascript
+// Bad: Captures entire scope
+function createProcessor(data) {
+  const config = { /* large config object */ };
+  const cache = { /* large cache */ };
+  
+  return function process(item) {
+    // Only uses 'data', but captures config and cache too!
+    return data.includes(item);
+  };
+}
+
+// Better: Only capture what you need
+function createProcessor(data) {
+  const config = { /* large config object */ };
+  const cache = { /* large cache */ };
+  
+  // Extract only what the closure needs
+  const dataSet = new Set(data);
+  
+  return function process(item) {
+    return dataSet.has(item);
+  };
+  // config and cache can be garbage collected
+}
+```
+
+<CodePlayground
+  initialCode={`// Memory-efficient closure pattern
+function createCounter() {
+  // Only capture what's needed
+  let count = 0;
+  
+  // These won't be captured by the returned function
+  const metadata = { created: Date.now() };
+  console.log("Counter created at:", metadata.created);
+  
+  return {
+    increment() { return ++count; },
+    decrement() { return --count; },
+    get() { return count; }
+  };
+}
+
+const counter = createCounter();
+console.log(counter.increment()); // 1
+console.log(counter.increment()); // 2
+console.log(counter.get());       // 2`}
+/>
+
+<ProgressCheckpoint section="closures" xpReward={30} />
+
+## Prototype Internals
+
+Every object has an internal `[[Prototype]]` slot (accessible via `__proto__` or `Object.getPrototypeOf()`).
+
+### The Prototype Chain Algorithm
+
+```javascript
+// Internal property lookup algorithm
+function getProperty(object, propertyName) {
+  // 1. Check own properties
+  if (Object.prototype.hasOwnProperty.call(object, propertyName)) {
+    return object[propertyName];
+  }
+  
+  // 2. Get prototype
+  const proto = Object.getPrototypeOf(object);
+  
+  // 3. End of chain
+  if (proto === null) {
+    return undefined;
+  }
+  
+  // 4. Recurse up the chain
+  return getProperty(proto, propertyName);
+}
+```
+
+### Prototype Pollution Vulnerability
+
+Be careful when modifying prototypes:
+
+```javascript
+// DANGEROUS: Prototype pollution
+const userInput = JSON.parse('{"__proto__": {"isAdmin": true}}');
+
+// This could affect ALL objects!
+const obj = {};
+console.log(obj.isAdmin);  // Could be true if polluted!
+
+// SAFE: Use Object.create(null) for dictionaries
+const safeDict = Object.create(null);
+safeDict.__proto__ = "safe";  // Just a regular property
+console.log(Object.getPrototypeOf(safeDict));  // null
+```
+
+<PrototypeChainExplorer showMethods={true} interactive={true} />
+
+### Performance: Own vs Inherited Properties
+
+```javascript
+// Own property access is faster
+const obj = { ownProp: 1 };
+
+// Inherited property requires chain traversal
+Object.prototype.inheritedProp = 2;
+
+// Benchmark (own is faster)
+console.time('own');
+for (let i = 0; i < 1000000; i++) obj.ownProp;
+console.timeEnd('own');
+
+console.time('inherited');
+for (let i = 0; i < 1000000; i++) obj.inheritedProp;
+console.timeEnd('inherited');
+
+// Clean up
+delete Object.prototype.inheritedProp;
+```
+
+<ProgressCheckpoint section="prototype-chain" xpReward={30} />
+
+## Event Loop and Propagation Internals
+
+Event propagation involves the browser's event dispatch algorithm:
+
+```javascript
+// Simplified event dispatch algorithm
+function dispatchEvent(target, event) {
+  // Build propagation path
+  const path = [];
+  let node = target;
+  while (node) {
+    path.unshift(node);
+    node = node.parentNode;
+  }
+  
+  // 1. Capturing phase (window → target)
+  event.eventPhase = Event.CAPTURING_PHASE;
+  for (const node of path.slice(0, -1)) {
+    if (event.propagationStopped) break;
+    invokeListeners(node, event, true);
+  }
+  
+  // 2. Target phase
+  event.eventPhase = Event.AT_TARGET;
+  if (!event.propagationStopped) {
+    invokeListeners(target, event, false);
+  }
+  
+  // 3. Bubbling phase (target → window)
+  event.eventPhase = Event.BUBBLING_PHASE;
+  for (const node of path.slice(0, -1).reverse()) {
+    if (event.propagationStopped) break;
+    invokeListeners(node, event, false);
+  }
+}
+```
+
+### Event Delegation Performance
+
+```javascript
+// Inefficient: Many listeners
+function setupButtons() {
+  const buttons = document.querySelectorAll('.btn');
+  buttons.forEach(btn => {
+    btn.addEventListener('click', handleClick);
+  });
+}
+// Memory: O(n) listeners
+// Setup time: O(n)
+
+// Efficient: Single delegated listener
+function setupButtonsDelegated() {
+  document.body.addEventListener('click', (e) => {
+    if (e.target.matches('.btn')) {
+      handleClick(e);
+    }
+  });
+}
+// Memory: O(1) listener
+// Setup time: O(1)
+// Works for dynamically added buttons!
+```
+
+<EventBubblingPlayground showPath={true} allowStopPropagation={true} />
+
+<ProgressCheckpoint section="event-bubbling" xpReward={30} />
+
+## Advanced Patterns
+
+### Module Pattern with Closures
+
+```javascript
+const Module = (function() {
+  // Private state
+  let privateCounter = 0;
+  const privateMethod = () => console.log('Private!');
+  
+  // Public API
+  return {
+    increment() {
+      privateCounter++;
+      return this;
+    },
+    getCount() {
+      return privateCounter;
+    },
+    // Revealing module pattern
+    publicMethod: privateMethod
+  };
+})();
+
+Module.increment().increment();
+console.log(Module.getCount());  // 2
+```
+
+### Prototype-based Inheritance
+
+```javascript
+// ES5 style (understanding the mechanics)
+function Animal(name) {
+  this.name = name;
+}
+
+Animal.prototype.speak = function() {
+  console.log(`${this.name} makes a sound`);
+};
+
+function Dog(name, breed) {
+  Animal.call(this, name);  // Call parent constructor
+  this.breed = breed;
+}
+
+// Set up prototype chain
+Dog.prototype = Object.create(Animal.prototype);
+Dog.prototype.constructor = Dog;
+
+Dog.prototype.bark = function() {
+  console.log(`${this.name} barks!`);
+};
+
+const dog = new Dog('Buddy', 'Golden Retriever');
+dog.speak();  // "Buddy makes a sound" (inherited)
+dog.bark();   // "Buddy barks!" (own method)
+```
+
+<CodePlayground
+  initialCode={`// Modern class syntax (syntactic sugar over prototypes)
+class Animal {
+  constructor(name) {
+    this.name = name;
+  }
+  
+  speak() {
+    console.log(\`\${this.name} makes a sound\`);
+  }
+}
+
+class Dog extends Animal {
+  constructor(name, breed) {
+    super(name);
+    this.breed = breed;
+  }
+  
+  bark() {
+    console.log(\`\${this.name} barks!\`);
+  }
+}
+
+const dog = new Dog('Buddy', 'Golden Retriever');
+dog.speak();
+dog.bark();
+
+// Verify prototype chain
+console.log(dog instanceof Dog);     // true
+console.log(dog instanceof Animal);  // true
+console.log(Object.getPrototypeOf(Dog.prototype) === Animal.prototype);  // true`}
+/>
+
+<ProgressCheckpoint section="summary" xpReward={20} />
+
+## Key Takeaways
+
+<KeyConcept title="Execution Context">
+Each context has creation and execution phases. Variable Environment holds `var`, Lexical Environment holds `let`/`const` with TDZ.
+</KeyConcept>
+
+<KeyConcept title="Closure Memory">
+Closures keep their outer scope alive. Optimize by only capturing necessary variables to prevent memory leaks.
+</KeyConcept>
+
+<KeyConcept title="Prototype Performance">
+Own property access is faster than inherited. Use `Object.create(null)` for dictionaries to avoid prototype pollution.
+</KeyConcept>
+
+<KeyConcept title="Event Delegation">
+Single delegated listener is more efficient than many individual listeners. Works for dynamic elements too.
+</KeyConcept>
+
+## Quick Quiz
+
+<Quiz>
+  <Question text="What are the two phases of an Execution Context?">
+    <Answer>Compile and Run</Answer>
+    <Answer correct>Creation and Execution</Answer>
+    <Answer>Parse and Execute</Answer>
+    <Answer>Load and Render</Answer>
+  </Question>
+  
+  <Question text="Why might closures cause memory issues?">
+    <Answer>They use too much CPU</Answer>
+    <Answer correct>They keep outer scope variables alive in memory</Answer>
+    <Answer>They create infinite loops</Answer>
+    <Answer>They block the event loop</Answer>
+  </Question>
+  
+  <Question text="What is prototype pollution?">
+    <Answer>Adding too many methods to an object</Answer>
+    <Answer correct>Maliciously modifying Object.prototype affecting all objects</Answer>
+    <Answer>Creating too many prototype chains</Answer>
+    <Answer>Using deprecated prototype methods</Answer>
+  </Question>
+  
+  <Question text="Why is event delegation more efficient?">
+    <Answer>It uses less CPU</Answer>
+    <Answer>It makes events faster</Answer>
+    <Answer correct>It uses O(1) memory instead of O(n) for listeners</Answer>
+    <Answer>It prevents event bubbling</Answer>
+  </Question>
+</Quiz>
+
+---
+
+**Congratulations!** 🎉 You've mastered the internals of JavaScript's execution model. This deep understanding will help you write more efficient code and debug complex issues with confidence.

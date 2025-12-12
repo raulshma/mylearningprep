@@ -1,0 +1,371 @@
+# Error Handling and Debugging
+
+Now that you understand the basics, let's dive deeper into professional error handling patterns and powerful debugging tools. These skills will make you much more efficient at finding and fixing bugs!
+
+<InfoBox type="tip" title="Level Up Your Debugging">
+Professional developers spend a significant amount of time debugging. The techniques in this lesson will help you debug faster and write more robust code.
+</InfoBox>
+
+<ProgressCheckpoint section="introduction" xpReward={15} />
+
+## Custom Error Classes
+
+JavaScript lets you create your own error types for specific situations. This makes your error handling more precise and informative.
+
+```javascript
+// Create a custom error class
+class ValidationError extends Error {
+  constructor(field, message) {
+    super(message);
+    this.name = "ValidationError";
+    this.field = field;
+  }
+}
+
+class NetworkError extends Error {
+  constructor(statusCode, message) {
+    super(message);
+    this.name = "NetworkError";
+    this.statusCode = statusCode;
+  }
+}
+
+// Use custom errors
+function validateUser(user) {
+  if (!user.email) {
+    throw new ValidationError("email", "Email is required");
+  }
+  if (!user.email.includes("@")) {
+    throw new ValidationError("email", "Invalid email format");
+  }
+}
+```
+
+<KeyConcept title="Why Custom Errors?">
+Custom errors let you:
+- Add extra information (like which field failed validation)
+- Catch specific error types separately
+- Make error messages more meaningful
+- Create a consistent error handling pattern
+</KeyConcept>
+
+<CodePlayground
+  initialCode={`// Custom Error Classes
+class ValidationError extends Error {
+  constructor(field, message) {
+    super(message);
+    this.name = "ValidationError";
+    this.field = field;
+  }
+}
+
+function validateAge(age) {
+  if (typeof age !== "number") {
+    throw new ValidationError("age", "Age must be a number");
+  }
+  if (age < 0 || age > 150) {
+    throw new ValidationError("age", "Age must be between 0 and 150");
+  }
+  return true;
+}
+
+// Test the validation
+try {
+  validateAge("twenty");  // Wrong type
+} catch (error) {
+  if (error instanceof ValidationError) {
+    console.log("Validation failed!");
+    console.log("Field:", error.field);
+    console.log("Message:", error.message);
+  } else {
+    throw error;  // Re-throw unknown errors
+  }
+}
+
+try {
+  validateAge(25);  // Valid
+  console.log("✅ Age is valid!");
+} catch (error) {
+  console.log("Error:", error.message);
+}`}
+/>
+
+<ProgressCheckpoint section="error-types" xpReward={15} />
+
+## Error Propagation and Re-throwing
+
+Sometimes you want to catch an error, do something with it, and then let it continue up the call stack. This is called "re-throwing."
+
+```javascript
+function processData(data) {
+  try {
+    return JSON.parse(data);
+  } catch (error) {
+    // Log the error for debugging
+    console.error("Failed to parse data:", error.message);
+    
+    // Re-throw with more context
+    throw new Error(`Data processing failed: ${error.message}`);
+  }
+}
+
+function handleRequest(rawData) {
+  try {
+    const data = processData(rawData);
+    return { success: true, data };
+  } catch (error) {
+    // Handle the re-thrown error
+    return { success: false, error: error.message };
+  }
+}
+```
+
+<InfoBox type="warning" title="Don't Swallow Errors">
+Avoid catching errors and doing nothing with them. This hides bugs and makes debugging much harder!
+
+```javascript
+// ❌ Bad - error is swallowed
+try {
+  riskyOperation();
+} catch (error) {
+  // Silent failure - very bad!
+}
+
+// ✅ Good - error is handled or re-thrown
+try {
+  riskyOperation();
+} catch (error) {
+  console.error("Operation failed:", error);
+  throw error;  // Or handle it properly
+}
+```
+</InfoBox>
+
+<ProgressCheckpoint section="try-catch" xpReward={15} />
+
+## The Finally Block
+
+The `finally` block runs whether or not an error occurred. It's perfect for cleanup operations.
+
+```javascript
+async function fetchUserData(userId) {
+  const connection = await openDatabase();
+  
+  try {
+    const user = await connection.query(`SELECT * FROM users WHERE id = ${userId}`);
+    return user;
+  } catch (error) {
+    console.error("Query failed:", error);
+    throw error;
+  } finally {
+    // This ALWAYS runs - even if there's an error
+    // Perfect for cleanup!
+    await connection.close();
+    console.log("Connection closed");
+  }
+}
+```
+
+<KeyConcept title="Finally Use Cases">
+Use `finally` for:
+- Closing database connections
+- Releasing file handles
+- Stopping loading spinners
+- Cleaning up temporary resources
+- Resetting state
+</KeyConcept>
+
+<CodePlayground
+  initialCode={`// Finally block example
+function processWithCleanup(data) {
+  console.log("🚀 Starting process...");
+  let resource = "allocated";
+  
+  try {
+    if (!data) {
+      throw new Error("No data provided");
+    }
+    console.log("✅ Processing:", data);
+    return data.toUpperCase();
+  } catch (error) {
+    console.log("❌ Error:", error.message);
+    return null;
+  } finally {
+    // Cleanup always runs
+    resource = "released";
+    console.log("🧹 Cleanup complete, resource:", resource);
+  }
+}
+
+// Test with valid data
+console.log("Result 1:", processWithCleanup("hello"));
+console.log("---");
+
+// Test with invalid data
+console.log("Result 2:", processWithCleanup(null));`}
+/>
+
+<ProgressCheckpoint section="debugging-tools" xpReward={15} />
+
+## Browser DevTools Debugging
+
+The browser's Developer Tools are incredibly powerful for debugging. Let's explore the key features:
+
+### Setting Breakpoints
+
+Breakpoints pause your code at a specific line so you can inspect variables and step through execution.
+
+<DebugSimulator />
+
+### DevTools Features
+
+1. **Sources Panel**: View and edit your code, set breakpoints
+2. **Console Panel**: Run JavaScript, see logs and errors
+3. **Network Panel**: Monitor API calls and responses
+4. **Elements Panel**: Inspect and modify the DOM
+
+<InfoBox type="tip" title="Keyboard Shortcuts">
+- **F12** or **Cmd+Option+I**: Open DevTools
+- **F8**: Pause/Resume execution
+- **F10**: Step over (next line)
+- **F11**: Step into (enter function)
+- **Shift+F11**: Step out (exit function)
+</InfoBox>
+
+### The debugger Statement
+
+You can add `debugger;` to your code to create a breakpoint programmatically:
+
+```javascript
+function calculateTotal(items) {
+  let total = 0;
+  
+  for (const item of items) {
+    debugger;  // Execution pauses here when DevTools is open
+    total += item.price * item.quantity;
+  }
+  
+  return total;
+}
+```
+
+<ProgressCheckpoint section="stack-traces" xpReward={15} />
+
+## Advanced Console Techniques
+
+Beyond basic logging, the console has powerful features for debugging:
+
+```javascript
+// Group related logs
+console.group("User Authentication");
+console.log("Checking credentials...");
+console.log("User found");
+console.log("Password verified");
+console.groupEnd();
+
+// Conditional logging
+console.assert(user.age >= 18, "User must be 18 or older");
+
+// Count occurrences
+for (let i = 0; i < 5; i++) {
+  console.count("Loop iteration");
+}
+
+// Trace the call stack
+function a() { b(); }
+function b() { c(); }
+function c() { console.trace("Trace from c"); }
+a();
+```
+
+<CodePlayground
+  initialCode={`// Advanced console techniques
+
+// Grouping logs
+console.group("📦 Order Processing");
+console.log("Order ID: 12345");
+console.log("Items: 3");
+console.log("Total: $99.99");
+console.groupEnd();
+
+// Assertions (only logs if condition is false)
+const age = 15;
+console.assert(age >= 18, "User is underage!", { age });
+
+// Counting
+const fruits = ["apple", "banana", "apple", "orange", "apple"];
+fruits.forEach(fruit => {
+  console.count(fruit);
+});
+
+// Styled console output
+console.log(
+  "%c🎉 Success! %cOperation completed",
+  "color: green; font-size: 16px; font-weight: bold",
+  "color: gray"
+);
+
+// Table for arrays/objects
+const users = [
+  { name: "Alice", role: "Admin" },
+  { name: "Bob", role: "User" },
+  { name: "Charlie", role: "User" }
+];
+console.table(users);`}
+/>
+
+<ProgressCheckpoint section="summary" xpReward={10} />
+
+## Key Takeaways
+
+<KeyConcept title="Custom Errors">
+Create custom error classes to add context and enable specific error handling. Extend the built-in `Error` class.
+</KeyConcept>
+
+<KeyConcept title="Error Propagation">
+Re-throw errors when you need to log them but can't handle them. Never silently swallow errors.
+</KeyConcept>
+
+<KeyConcept title="Finally Block">
+Use `finally` for cleanup code that must run regardless of success or failure.
+</KeyConcept>
+
+<KeyConcept title="DevTools">
+Master browser DevTools for efficient debugging. Use breakpoints, step through code, and inspect variables.
+</KeyConcept>
+
+## Quick Quiz
+
+<Quiz>
+  <Question text="Why would you create a custom error class?">
+    <Answer>To make errors run faster</Answer>
+    <Answer correct>To add extra context and enable specific error handling</Answer>
+    <Answer>To prevent all errors</Answer>
+    <Answer>Custom errors are not recommended</Answer>
+  </Question>
+  
+  <Question text="When does the 'finally' block run?">
+    <Answer>Only when there's an error</Answer>
+    <Answer>Only when there's no error</Answer>
+    <Answer correct>Always, whether there's an error or not</Answer>
+    <Answer>Only when you call it explicitly</Answer>
+  </Question>
+  
+  <Question text="What does the 'debugger' statement do?">
+    <Answer>Fixes bugs automatically</Answer>
+    <Answer>Logs errors to the console</Answer>
+    <Answer correct>Pauses execution when DevTools is open</Answer>
+    <Answer>Removes all breakpoints</Answer>
+  </Question>
+  
+  <Question text="What does console.assert() do?">
+    <Answer>Always logs a message</Answer>
+    <Answer correct>Only logs if the condition is false</Answer>
+    <Answer>Throws an error if condition is false</Answer>
+    <Answer>Counts how many times it's called</Answer>
+  </Question>
+</Quiz>
+
+---
+
+**Excellent work!** 🎉 You now have professional-level debugging skills. In the advanced level, we'll cover async error handling, source maps, and production error tracking strategies.

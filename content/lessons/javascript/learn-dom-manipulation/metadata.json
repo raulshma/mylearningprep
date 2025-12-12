@@ -1,7 +1,7 @@
 {
   "id": "learn-dom-manipulation",
   "title": "Learn DOM Manipulation",
-  "description": "Understand how JavaScript interacts with HTML to create dynamic web pages",
+  "description": "Master how JavaScript interacts with HTML to create dynamic, interactive web pages",
   "milestone": "javascript",
   "order": 2,
   "sections": [
@@ -9,17 +9,17 @@
     "dom-tree",
     "selecting-elements",
     "modifying-elements",
-    "event-handling",
+    "events",
     "event-flow",
     "summary"
   ],
   "levels": {
     "beginner": {
-      "estimatedMinutes": 18,
+      "estimatedMinutes": 20,
       "xpReward": 50
     },
     "intermediate": {
-      "estimatedMinutes": 28,
+      "estimatedMinutes": 30,
       "xpReward": 100
     },
     "advanced": {
@@ -28,5 +28,5 @@
     }
   },
   "prerequisites": ["syntax-and-basic-constructs"],
-  "tags": ["javascript", "dom", "events", "manipulation", "dynamic"]
+  "tags": ["javascript", "dom", "events", "manipulation", "interactive"]
 }

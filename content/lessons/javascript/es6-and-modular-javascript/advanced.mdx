@@ -1,0 +1,560 @@
+# ES6+ and Modular JavaScript
+
+Welcome to the advanced features of modern JavaScript. These powerful tools enable metaprogramming, lazy evaluation, and sophisticated code organization patterns used in professional applications and frameworks.
+
+<InfoBox type="warning" title="Advanced Content">
+This lesson covers advanced concepts like Symbols, generators, Proxy, and Reflect. Make sure you're comfortable with classes, modules, and destructuring before proceeding.
+</InfoBox>
+
+<ProgressCheckpoint section="introduction" xpReward={20} />
+
+## Symbols: Unique Identifiers
+
+Symbols are a primitive type that creates unique, immutable identifiers. They're useful for creating "hidden" properties and avoiding naming collisions.
+
+### Creating Symbols
+
+```javascript
+// Each Symbol is unique
+const sym1 = Symbol('description');
+const sym2 = Symbol('description');
+console.log(sym1 === sym2);  // false - always unique!
+
+// Symbols as object keys
+const id = Symbol('id');
+const user = {
+  name: "Alice",
+  [id]: 12345  // Symbol as property key
+};
+
+console.log(user.name);   // "Alice"
+console.log(user[id]);    // 12345
+console.log(Object.keys(user));  // ["name"] - Symbol not included!
+```
+
+### Well-Known Symbols
+
+JavaScript has built-in Symbols that let you customize object behavior:
+
+```javascript
+// Symbol.iterator - make objects iterable
+const range = {
+  start: 1,
+  end: 5,
+  [Symbol.iterator]() {
+    let current = this.start;
+    const end = this.end;
+    return {
+      next() {
+        if (current <= end) {
+          return { value: current++, done: false };
+        }
+        return { done: true };
+      }
+    };
+  }
+};
+
+for (const num of range) {
+  console.log(num);  // 1, 2, 3, 4, 5
+}
+
+// Symbol.toStringTag - customize Object.prototype.toString
+class MyClass {
+  get [Symbol.toStringTag]() {
+    return 'MyClass';
+  }
+}
+console.log(Object.prototype.toString.call(new MyClass()));  // "[object MyClass]"
+```
+
+<CodePlayground
+  initialCode={`// Symbols for private-like properties
+const _balance = Symbol('balance');
+const _transactions = Symbol('transactions');
+
+class BankAccount {
+  constructor(initialBalance) {
+    this[_balance] = initialBalance;
+    this[_transactions] = [];
+  }
+
+  deposit(amount) {
+    this[_balance] += amount;
+    this[_transactions].push({ type: 'deposit', amount });
+  }
+
+  withdraw(amount) {
+    if (amount > this[_balance]) {
+      throw new Error('Insufficient funds');
+    }
+    this[_balance] -= amount;
+    this[_transactions].push({ type: 'withdraw', amount });
+  }
+
+  get balance() {
+    return this[_balance];
+  }
+}
+
+const account = new BankAccount(100);
+account.deposit(50);
+account.withdraw(30);
+console.log("Balance:", account.balance);
+console.log("Keys:", Object.keys(account));  // Empty - symbols hidden!`}
+/>
+
+<ProgressCheckpoint section="let-const" xpReward={20} />
+
+## Iterators and Generators
+
+Generators are functions that can pause and resume, producing a sequence of values on demand.
+
+### Generator Functions
+
+```javascript
+// Generator function (note the *)
+function* numberGenerator() {
+  yield 1;
+  yield 2;
+  yield 3;
+}
+
+const gen = numberGenerator();
+console.log(gen.next());  // { value: 1, done: false }
+console.log(gen.next());  // { value: 2, done: false }
+console.log(gen.next());  // { value: 3, done: false }
+console.log(gen.next());  // { value: undefined, done: true }
+
+// Generators are iterable
+for (const num of numberGenerator()) {
+  console.log(num);  // 1, 2, 3
+}
+```
+
+### Infinite Sequences
+
+```javascript
+function* infiniteSequence() {
+  let i = 0;
+  while (true) {
+    yield i++;
+  }
+}
+
+const sequence = infiniteSequence();
+console.log(sequence.next().value);  // 0
+console.log(sequence.next().value);  // 1
+console.log(sequence.next().value);  // 2
+// Can continue forever!
+```
+
+### Generator Delegation
+
+```javascript
+function* inner() {
+  yield 'a';
+  yield 'b';
+}
+
+function* outer() {
+  yield 1;
+  yield* inner();  // Delegate to another generator
+  yield 2;
+}
+
+console.log([...outer()]);  // [1, 'a', 'b', 2]
+```
+
+<CodePlayground
+  initialCode={`// Practical generator examples
+function* fibonacci(limit = 10) {
+  let [prev, curr] = [0, 1];
+  let count = 0;
+  
+  while (count < limit) {
+    yield curr;
+    [prev, curr] = [curr, prev + curr];
+    count++;
+  }
+}
+
+console.log("Fibonacci sequence:");
+console.log([...fibonacci(10)]);
+
+// Generator for pagination
+function* paginate(items, pageSize) {
+  for (let i = 0; i < items.length; i += pageSize) {
+    yield items.slice(i, i + pageSize);
+  }
+}
+
+const items = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+const pages = paginate(items, 3);
+
+console.log("\\nPaginated:");
+for (const page of pages) {
+  console.log("Page:", page);
+}`}
+/>
+
+<ProgressCheckpoint section="arrow-functions" xpReward={20} />
+
+## Proxy and Reflect
+
+Proxy lets you intercept and customize operations on objects. Reflect provides methods for interceptable JavaScript operations.
+
+### Basic Proxy
+
+```javascript
+const target = { name: "Alice", age: 25 };
+
+const handler = {
+  get(target, prop) {
+    console.log(`Getting ${prop}`);
+    return target[prop];
+  },
+  set(target, prop, value) {
+    console.log(`Setting ${prop} to ${value}`);
+    target[prop] = value;
+    return true;
+  }
+};
+
+const proxy = new Proxy(target, handler);
+proxy.name;        // Logs: "Getting name"
+proxy.age = 26;    // Logs: "Setting age to 26"
+```
+
+### Validation with Proxy
+
+```javascript
+const validator = {
+  set(target, prop, value) {
+    if (prop === 'age') {
+      if (typeof value !== 'number') {
+        throw new TypeError('Age must be a number');
+      }
+      if (value < 0 || value > 150) {
+        throw new RangeError('Age must be between 0 and 150');
+      }
+    }
+    target[prop] = value;
+    return true;
+  }
+};
+
+const person = new Proxy({}, validator);
+person.name = "Alice";  // OK
+person.age = 25;        // OK
+// person.age = -5;     // RangeError!
+// person.age = "old";  // TypeError!
+```
+
+### Reflect API
+
+```javascript
+const obj = { x: 1, y: 2 };
+
+// Reflect provides cleaner alternatives to Object methods
+Reflect.has(obj, 'x');           // true (like 'x' in obj)
+Reflect.get(obj, 'x');           // 1 (like obj.x)
+Reflect.set(obj, 'z', 3);        // true (like obj.z = 3)
+Reflect.deleteProperty(obj, 'y'); // true (like delete obj.y)
+Reflect.ownKeys(obj);            // ['x', 'z']
+```
+
+<CodePlayground
+  initialCode={`// Proxy for observable objects
+function createObservable(target, onChange) {
+  return new Proxy(target, {
+    set(obj, prop, value) {
+      const oldValue = obj[prop];
+      obj[prop] = value;
+      onChange(prop, oldValue, value);
+      return true;
+    },
+    deleteProperty(obj, prop) {
+      const oldValue = obj[prop];
+      delete obj[prop];
+      onChange(prop, oldValue, undefined);
+      return true;
+    }
+  });
+}
+
+const state = createObservable(
+  { count: 0, name: "App" },
+  (prop, oldVal, newVal) => {
+    console.log(\`\${prop} changed: \${oldVal} → \${newVal}\`);
+  }
+);
+
+state.count = 1;
+state.count = 2;
+state.name = "MyApp";
+delete state.name;`}
+/>
+
+<ProgressCheckpoint section="destructuring" xpReward={20} />
+
+## Advanced Module Patterns
+
+### Dynamic Imports
+
+```javascript
+// Static import (top of file)
+import { utils } from './utils.js';
+
+// Dynamic import (anywhere, returns Promise)
+async function loadModule() {
+  const module = await import('./heavy-module.js');
+  module.doSomething();
+}
+
+// Conditional loading
+if (needsFeature) {
+  const { feature } = await import('./feature.js');
+  feature.init();
+}
+
+// Code splitting in React
+const LazyComponent = React.lazy(() => import('./HeavyComponent'));
+```
+
+### Module Patterns
+
+```javascript
+// Singleton pattern
+// config.js
+let instance = null;
+
+class Config {
+  constructor() {
+    if (instance) return instance;
+    this.settings = {};
+    instance = this;
+  }
+}
+
+export default new Config();
+
+// Factory pattern
+// logger.js
+export function createLogger(prefix) {
+  return {
+    log: (msg) => console.log(`[${prefix}] ${msg}`),
+    error: (msg) => console.error(`[${prefix}] ERROR: ${msg}`)
+  };
+}
+
+// Facade pattern
+// api.js
+import { httpClient } from './http';
+import { cache } from './cache';
+import { auth } from './auth';
+
+export const api = {
+  async get(url) {
+    const cached = cache.get(url);
+    if (cached) return cached;
+    
+    const response = await httpClient.get(url, {
+      headers: auth.getHeaders()
+    });
+    cache.set(url, response);
+    return response;
+  }
+};
+```
+
+<ES6FeatureExplorer showCategories={true} />
+
+<ProgressCheckpoint section="spread-rest" xpReward={20} />
+
+## Module Bundling Concepts
+
+Modern JavaScript applications use bundlers to combine modules for production.
+
+### Why Bundle?
+
+1. **Fewer HTTP requests**: Combine many files into one
+2. **Tree shaking**: Remove unused code
+3. **Transpilation**: Convert ES6+ to ES5 for older browsers
+4. **Minification**: Reduce file size
+
+### How Bundlers Work
+
+```javascript
+// Before bundling: Multiple files
+// math.js
+export const add = (a, b) => a + b;
+export const unused = () => "never called";
+
+// app.js
+import { add } from './math.js';
+console.log(add(1, 2));
+
+// After bundling: Single file (simplified)
+const add = (a, b) => a + b;  // unused is removed (tree shaking)
+console.log(add(1, 2));
+```
+
+### ES Modules vs CommonJS
+
+```javascript
+// ES Modules (ESM) - Modern standard
+import { something } from './module.js';
+export const value = 42;
+
+// CommonJS (CJS) - Node.js traditional
+const { something } = require('./module');
+module.exports = { value: 42 };
+
+// Key differences:
+// - ESM: Static analysis, tree-shakeable, async loading
+// - CJS: Dynamic, synchronous, no tree shaking
+```
+
+<SyntaxTransformer />
+
+<ProgressCheckpoint section="modules" xpReward={20} />
+
+## Practical Patterns
+
+### Private Fields (ES2022)
+
+```javascript
+class Counter {
+  #count = 0;  // Private field
+
+  increment() {
+    this.#count++;
+  }
+
+  get value() {
+    return this.#count;
+  }
+}
+
+const counter = new Counter();
+counter.increment();
+console.log(counter.value);  // 1
+// console.log(counter.#count);  // SyntaxError!
+```
+
+### Optional Chaining and Nullish Coalescing
+
+```javascript
+const user = {
+  name: "Alice",
+  address: {
+    city: "NYC"
+  }
+};
+
+// Optional chaining (?.)
+console.log(user?.address?.city);     // "NYC"
+console.log(user?.contact?.email);    // undefined (no error!)
+
+// Nullish coalescing (??)
+const value = null ?? "default";      // "default"
+const zero = 0 ?? "default";          // 0 (only null/undefined trigger default)
+const empty = "" || "default";        // "default" (|| treats "" as falsy)
+const emptyNullish = "" ?? "default"; // "" (?? only checks null/undefined)
+```
+
+<CodePlayground
+  initialCode={`// Modern JavaScript patterns
+class EventEmitter {
+  #listeners = new Map();
+
+  on(event, callback) {
+    if (!this.#listeners.has(event)) {
+      this.#listeners.set(event, []);
+    }
+    this.#listeners.get(event).push(callback);
+    return this;
+  }
+
+  emit(event, ...args) {
+    const callbacks = this.#listeners.get(event) ?? [];
+    callbacks.forEach(cb => cb(...args));
+    return this;
+  }
+
+  off(event, callback) {
+    const callbacks = this.#listeners.get(event);
+    if (callbacks) {
+      const index = callbacks.indexOf(callback);
+      if (index > -1) callbacks.splice(index, 1);
+    }
+    return this;
+  }
+}
+
+const emitter = new EventEmitter();
+
+emitter
+  .on('message', (msg) => console.log('Received:', msg))
+  .on('message', (msg) => console.log('Also got:', msg));
+
+emitter.emit('message', 'Hello!');
+emitter.emit('message', 'World!');`}
+/>
+
+<ProgressCheckpoint section="summary" xpReward={15} />
+
+## Key Takeaways
+
+<KeyConcept title="Symbols">
+Unique identifiers for "hidden" properties and customizing object behavior via well-known Symbols.
+</KeyConcept>
+
+<KeyConcept title="Generators">
+Functions that can pause (yield) and resume, enabling lazy evaluation and infinite sequences.
+</KeyConcept>
+
+<KeyConcept title="Proxy/Reflect">
+Intercept and customize object operations for validation, logging, and reactive programming.
+</KeyConcept>
+
+<KeyConcept title="Module Bundling">
+Combine modules, tree-shake unused code, and transpile for production deployment.
+</KeyConcept>
+
+## Quick Quiz
+
+<Quiz>
+  <Question text="What makes each Symbol unique?">
+    <Answer>Its description string</Answer>
+    <Answer correct>Every Symbol() call creates a new unique value</Answer>
+    <Answer>Its memory address</Answer>
+    <Answer>Its creation timestamp</Answer>
+  </Question>
+  
+  <Question text="What keyword is used to pause a generator function?">
+    <Answer>pause</Answer>
+    <Answer>return</Answer>
+    <Answer correct>yield</Answer>
+    <Answer>await</Answer>
+  </Question>
+  
+  <Question text="What does a Proxy's 'get' trap intercept?">
+    <Answer>Function calls</Answer>
+    <Answer correct>Property access</Answer>
+    <Answer>Object creation</Answer>
+    <Answer>Array iteration</Answer>
+  </Question>
+  
+  <Question text="What is tree shaking?">
+    <Answer>Randomizing code order</Answer>
+    <Answer>Compressing images</Answer>
+    <Answer correct>Removing unused code during bundling</Answer>
+    <Answer>Encrypting source code</Answer>
+  </Question>
+</Quiz>
+
+---
+
+**Outstanding work!** 🎉 You've mastered advanced ES6+ features. These concepts are used extensively in modern frameworks like React, Vue, and in build tools. Continue practicing by building projects that leverage these powerful features!

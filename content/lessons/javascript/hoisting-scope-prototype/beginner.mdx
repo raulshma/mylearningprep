@@ -1,0 +1,256 @@
+# Hoisting, Scope, and Prototype
+
+Welcome to one of the most important lessons in JavaScript! Understanding hoisting, scope, and prototypes will help you write better code and debug issues faster. Don't worry — we'll use simple analogies to make these concepts crystal clear!
+
+<InfoBox type="tip" title="Why This Matters">
+These concepts explain how JavaScript "thinks" behind the scenes. Once you understand them, many confusing behaviors will suddenly make sense!
+</InfoBox>
+
+<ProgressCheckpoint section="introduction" xpReward={15} />
+
+## What is Scope?
+
+Think of scope like **nested boxes** or **rooms in a house**. Each box (or room) can see what's inside it and what's in the boxes around it, but not what's in boxes inside other boxes.
+
+### The Nested Boxes Analogy
+
+Imagine you have:
+- A **big box** (global scope) - everyone can see what's in here
+- A **medium box** inside the big box (function scope)
+- A **small box** inside the medium box (block scope)
+
+```javascript
+// Big box (Global Scope)
+const globalTreasure = "Gold coin";
+
+function mediumBox() {
+  // Medium box (Function Scope)
+  const functionTreasure = "Silver ring";
+  
+  if (true) {
+    // Small box (Block Scope)
+    const blockTreasure = "Bronze medal";
+    
+    // Can see everything above!
+    console.log(globalTreasure);    // ✅ "Gold coin"
+    console.log(functionTreasure);  // ✅ "Silver ring"
+    console.log(blockTreasure);     // ✅ "Bronze medal"
+  }
+  
+  // Can't see inside the small box
+  // console.log(blockTreasure);  // ❌ Error!
+}
+```
+
+<KeyConcept title="Scope Rule">
+You can always look **outward** (to parent scopes) but never **inward** (to child scopes). It's like being able to see out of your room but not into other rooms!
+</KeyConcept>
+
+<ScopeChainVisualizer />
+
+<ProgressCheckpoint section="scope-chain" xpReward={15} />
+
+## What is Hoisting?
+
+Hoisting is like JavaScript **reading your code twice**:
+1. **First pass**: JavaScript scans for all declarations and "lifts" them to the top
+2. **Second pass**: JavaScript runs your code line by line
+
+### The Moving Day Analogy
+
+Imagine you're moving into a new apartment. Before you can use your furniture, the movers need to bring it in first. JavaScript does something similar — it "moves" your declarations to the top before running your code.
+
+```javascript
+// What you write:
+console.log(myName);  // undefined (not an error!)
+var myName = "Alice";
+
+// What JavaScript sees:
+var myName;           // Declaration moved to top
+console.log(myName);  // undefined
+myName = "Alice";     // Assignment stays in place
+```
+
+### var vs let/const Hoisting
+
+Here's where it gets interesting:
+
+```javascript
+// var is hoisted AND initialized to undefined
+console.log(x);  // undefined
+var x = 5;
+
+// let/const are hoisted but NOT initialized
+console.log(y);  // ❌ ReferenceError!
+let y = 10;
+```
+
+<InfoBox type="warning" title="Temporal Dead Zone (TDZ)">
+The time between when `let`/`const` are hoisted and when they're initialized is called the "Temporal Dead Zone". Accessing them during this time causes an error!
+</InfoBox>
+
+<HoistingSimulator />
+
+<ProgressCheckpoint section="hoisting" xpReward={15} />
+
+## Functions are Special!
+
+Function declarations are **fully hoisted** — both the name AND the code!
+
+```javascript
+// This works!
+sayHello();  // "Hello!"
+
+function sayHello() {
+  console.log("Hello!");
+}
+
+// But function expressions are NOT fully hoisted
+sayGoodbye();  // ❌ TypeError!
+
+var sayGoodbye = function() {
+  console.log("Goodbye!");
+};
+```
+
+<KeyConcept title="Function Hoisting">
+- **Function declarations** (`function name() {}`) are fully hoisted
+- **Function expressions** (`var name = function() {}`) only hoist the variable, not the function
+</KeyConcept>
+
+<CodePlayground
+  initialCode={`// Try these examples!
+
+// Function declaration - works!
+greet();
+
+function greet() {
+  console.log("Hello from a function declaration!");
+}
+
+// What about this?
+// Uncomment to see the error:
+// farewell();
+// var farewell = function() {
+//   console.log("Goodbye!");
+// };`}
+/>
+
+<ProgressCheckpoint section="closures" xpReward={15} />
+
+## What is a Prototype?
+
+Every JavaScript object has a hidden link to another object called its **prototype**. Think of it like a **family tree** or **inheritance chain**.
+
+### The Family Recipe Analogy
+
+Imagine your family has recipes passed down through generations:
+- **You** know how to make your own special dish
+- **Your parent** taught you some recipes
+- **Your grandparent** taught your parent even more recipes
+- You can use ANY recipe from your family tree!
+
+```javascript
+// Creating a simple object
+const dog = {
+  name: "Buddy",
+  bark: function() {
+    console.log("Woof!");
+  }
+};
+
+// dog can use methods from Object.prototype
+console.log(dog.toString());  // "[object Object]"
+// Where did toString come from? The prototype chain!
+```
+
+<PrototypeChainExplorer />
+
+<ProgressCheckpoint section="prototype-chain" xpReward={15} />
+
+## Event Bubbling: Events Travel Up!
+
+When you click a button inside a div, the click event doesn't just fire on the button — it "bubbles up" through all parent elements!
+
+### The Ripple Effect Analogy
+
+Think of dropping a stone in water. The ripples spread outward from where the stone landed. Similarly, events start at the clicked element and ripple up through its parents.
+
+```javascript
+// HTML structure:
+// <div id="outer">
+//   <div id="middle">
+//     <button id="inner">Click me!</button>
+//   </div>
+// </div>
+
+// If you click the button, events fire in this order:
+// 1. button (target)
+// 2. middle div (bubbling)
+// 3. outer div (bubbling)
+// 4. body, html, document, window (bubbling continues!)
+```
+
+<EventBubblingPlayground />
+
+<InfoBox type="info" title="Stopping the Bubble">
+You can stop event bubbling with `event.stopPropagation()`. This is useful when you don't want parent elements to react to the event.
+</InfoBox>
+
+<ProgressCheckpoint section="event-bubbling" xpReward={15} />
+
+## Key Takeaways
+
+<KeyConcept title="Scope">
+Variables live in "boxes" (scopes). You can see outward to parent scopes, but not inward to child scopes.
+</KeyConcept>
+
+<KeyConcept title="Hoisting">
+JavaScript moves declarations to the top. `var` gets `undefined`, but `let`/`const` stay in the "Temporal Dead Zone" until initialized.
+</KeyConcept>
+
+<KeyConcept title="Prototype">
+Objects inherit properties and methods from their prototype chain — like a family tree of capabilities.
+</KeyConcept>
+
+<KeyConcept title="Event Bubbling">
+Events start at the target element and bubble up through all parent elements.
+</KeyConcept>
+
+<ProgressCheckpoint section="summary" xpReward={10} />
+
+## Quick Quiz
+
+<Quiz>
+  <Question text="What happens when you access a var variable before its declaration?">
+    <Answer>ReferenceError</Answer>
+    <Answer correct>undefined</Answer>
+    <Answer>null</Answer>
+    <Answer>The actual value</Answer>
+  </Question>
+  
+  <Question text="What is the 'Temporal Dead Zone'?">
+    <Answer>A place where deleted variables go</Answer>
+    <Answer correct>The time between let/const hoisting and initialization</Answer>
+    <Answer>A JavaScript error type</Answer>
+    <Answer>A scope outside all functions</Answer>
+  </Question>
+  
+  <Question text="In scope, which direction can you look to find variables?">
+    <Answer>Only inward (to child scopes)</Answer>
+    <Answer correct>Only outward (to parent scopes)</Answer>
+    <Answer>Both directions</Answer>
+    <Answer>Neither direction</Answer>
+  </Question>
+  
+  <Question text="What is event bubbling?">
+    <Answer>Events only fire on the clicked element</Answer>
+    <Answer>Events fire from parent to child</Answer>
+    <Answer correct>Events fire from target up through parent elements</Answer>
+    <Answer>Events are deleted after firing</Answer>
+  </Question>
+</Quiz>
+
+---
+
+**Great job!** 🎉 You've learned the fundamentals of hoisting, scope, and prototypes. In the intermediate level, we'll dive deeper into closures, the temporal dead zone, and prototype chain traversal.

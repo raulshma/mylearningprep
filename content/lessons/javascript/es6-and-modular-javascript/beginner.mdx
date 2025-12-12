@@ -1,0 +1,402 @@
+# ES6+ and Modular JavaScript
+
+Welcome to modern JavaScript! ES6 (also called ES2015) brought exciting new features that make JavaScript easier to write and read. Think of it as JavaScript getting a major upgrade — like going from a flip phone to a smartphone!
+
+<InfoBox type="tip" title="Why Learn ES6+?">
+ES6+ features are now standard in all modern browsers and are used in every professional JavaScript project. Learning these features will make your code cleaner, shorter, and more powerful!
+</InfoBox>
+
+<ProgressCheckpoint section="introduction" xpReward={15} />
+
+## let and const: Better Variables
+
+Remember how we used `var` to create variables? ES6 gives us two better options: `let` and `const`.
+
+Think of it like organizing your room:
+- **const** = A permanent shelf that never moves (for things that won't change)
+- **let** = A movable box (for things that might change)
+- **var** = The old messy way (avoid this!)
+
+### const: For Things That Don't Change
+
+```javascript
+const PI = 3.14159;        // Mathematical constant
+const APP_NAME = "MyApp";  // App configuration
+const birthday = "1990-01-15";  // Your birthday won't change!
+
+// This will cause an error:
+// PI = 3.14;  // ❌ Can't reassign a const!
+```
+
+### let: For Things That Change
+
+```javascript
+let score = 0;
+score = 10;  // ✅ This works!
+score = score + 5;  // ✅ Now score is 15
+
+let userName = "Guest";
+userName = "Alice";  // ✅ Can change
+```
+
+<KeyConcept title="When to Use Which?">
+- Use **const** by default — it's safer!
+- Use **let** only when you need to change the value
+- Never use **var** in modern code
+</KeyConcept>
+
+<CodePlayground
+  initialCode={`// Try using let and const
+const greeting = "Hello";
+let count = 0;
+
+console.log(greeting);
+console.log("Count:", count);
+
+// Change count
+count = count + 1;
+console.log("New count:", count);
+
+// Try uncommenting this line - it will error!
+// greeting = "Hi";`}
+/>
+
+<ProgressCheckpoint section="let-const" xpReward={15} />
+
+## Arrow Functions: Shorter Function Syntax
+
+Arrow functions are a shorter way to write functions. They use the `=>` symbol (which looks like an arrow!).
+
+### The Old Way vs The New Way
+
+```javascript
+// Old way (ES5)
+function add(a, b) {
+  return a + b;
+}
+
+// New way (ES6) - Arrow function
+const add = (a, b) => a + b;
+```
+
+Both do the same thing, but the arrow function is much shorter!
+
+### Different Arrow Function Styles
+
+```javascript
+// One parameter - no parentheses needed
+const double = n => n * 2;
+
+// Multiple parameters - need parentheses
+const add = (a, b) => a + b;
+
+// No parameters - empty parentheses
+const sayHello = () => "Hello!";
+
+// Multiple lines - need curly braces and return
+const greet = (name) => {
+  const message = `Hello, ${name}!`;
+  return message;
+};
+```
+
+<InfoBox type="info" title="When to Use Arrow Functions">
+Arrow functions are great for:
+- Short, simple functions
+- Callbacks (functions passed to other functions)
+- Array methods like map, filter, reduce
+</InfoBox>
+
+<CodePlayground
+  initialCode={`// Arrow functions in action
+const numbers = [1, 2, 3, 4, 5];
+
+// Double each number
+const doubled = numbers.map(n => n * 2);
+console.log("Doubled:", doubled);
+
+// Filter even numbers
+const evens = numbers.filter(n => n % 2 === 0);
+console.log("Evens:", evens);
+
+// Sum all numbers
+const sum = numbers.reduce((total, n) => total + n, 0);
+console.log("Sum:", sum);`}
+/>
+
+<ProgressCheckpoint section="arrow-functions" xpReward={15} />
+
+## Template Literals: Easy String Building
+
+Template literals use backticks (\`) instead of quotes and let you embed variables directly in strings!
+
+### The Old Way vs The New Way
+
+```javascript
+// Old way - messy string concatenation
+const name = "Alice";
+const age = 25;
+const message = "Hello, " + name + "! You are " + age + " years old.";
+
+// New way - clean template literal
+const message = `Hello, ${name}! You are ${age} years old.`;
+```
+
+### Multi-line Strings
+
+```javascript
+// Old way - awkward
+const html = "<div>\n" +
+  "  <h1>Title</h1>\n" +
+  "</div>";
+
+// New way - natural
+const html = `
+  <div>
+    <h1>Title</h1>
+  </div>
+`;
+```
+
+<KeyConcept title="Template Literal Rules">
+- Use backticks (\`) not regular quotes
+- Put variables inside `${...}`
+- You can put any expression inside `${...}`, not just variables!
+</KeyConcept>
+
+<CodePlayground
+  initialCode={`// Template literals make strings easy!
+const product = "JavaScript Course";
+const price = 29.99;
+const discount = 0.2;
+
+// Calculate final price
+const finalPrice = price * (1 - discount);
+
+// Build a nice message
+const message = \`
+🎉 Special Offer!
+Product: \${product}
+Original Price: $\${price}
+Discount: \${discount * 100}%
+Final Price: $\${finalPrice.toFixed(2)}
+\`;
+
+console.log(message);`}
+/>
+
+<ProgressCheckpoint section="destructuring" xpReward={15} />
+
+## Destructuring: Unpacking Made Easy
+
+Destructuring lets you "unpack" values from arrays and objects into separate variables. It's like opening a gift box and taking out each item!
+
+### Object Destructuring
+
+```javascript
+// Without destructuring
+const person = { name: "Alice", age: 25, city: "NYC" };
+const name = person.name;
+const age = person.age;
+
+// With destructuring - much cleaner!
+const { name, age, city } = person;
+console.log(name);  // "Alice"
+console.log(age);   // 25
+```
+
+### Array Destructuring
+
+```javascript
+// Without destructuring
+const colors = ["red", "green", "blue"];
+const first = colors[0];
+const second = colors[1];
+
+// With destructuring
+const [first, second, third] = colors;
+console.log(first);   // "red"
+console.log(second);  // "green"
+```
+
+<CodePlayground
+  initialCode={`// Destructuring in action
+const user = {
+  name: "Alice",
+  email: "alice@example.com",
+  age: 25
+};
+
+// Object destructuring
+const { name, email } = user;
+console.log("Name:", name);
+console.log("Email:", email);
+
+// Array destructuring
+const scores = [95, 87, 92, 78];
+const [first, second, ...rest] = scores;
+console.log("Top score:", first);
+console.log("Second:", second);
+console.log("Others:", rest);`}
+/>
+
+<ProgressCheckpoint section="spread-rest" xpReward={15} />
+
+## Spread and Rest: The Three Dots
+
+The `...` operator has two uses:
+- **Spread**: Expands an array or object
+- **Rest**: Collects multiple items into one
+
+### Spread Operator
+
+```javascript
+// Copying arrays
+const original = [1, 2, 3];
+const copy = [...original];
+
+// Combining arrays
+const arr1 = [1, 2];
+const arr2 = [3, 4];
+const combined = [...arr1, ...arr2];  // [1, 2, 3, 4]
+
+// Copying objects
+const user = { name: "Alice", age: 25 };
+const userCopy = { ...user };
+
+// Extending objects
+const extended = { ...user, city: "NYC" };
+```
+
+### Rest Parameters
+
+```javascript
+// Collect remaining arguments
+function sum(...numbers) {
+  return numbers.reduce((a, b) => a + b, 0);
+}
+
+sum(1, 2);        // 3
+sum(1, 2, 3, 4);  // 10
+```
+
+<CodePlayground
+  initialCode={`// Spread and rest operators
+const fruits = ["apple", "banana"];
+const vegetables = ["carrot", "broccoli"];
+
+// Spread: combine arrays
+const food = [...fruits, ...vegetables];
+console.log("All food:", food);
+
+// Spread: copy and extend object
+const settings = { theme: "dark", fontSize: 14 };
+const newSettings = { ...settings, language: "en" };
+console.log("Settings:", newSettings);
+
+// Rest: collect arguments
+const logAll = (...items) => {
+  items.forEach(item => console.log("Item:", item));
+};
+logAll("a", "b", "c");`}
+/>
+
+<ProgressCheckpoint section="modules" xpReward={15} />
+
+## ES Modules: Organizing Your Code
+
+As your code grows, you'll want to split it into separate files. ES modules let you share code between files using `import` and `export`.
+
+### Exporting Code
+
+```javascript
+// math.js - Export functions and values
+export const PI = 3.14159;
+
+export function add(a, b) {
+  return a + b;
+}
+
+export function multiply(a, b) {
+  return a * b;
+}
+
+// Default export (one per file)
+export default class Calculator {
+  // ...
+}
+```
+
+### Importing Code
+
+```javascript
+// main.js - Import what you need
+import Calculator, { PI, add } from './math.js';
+
+console.log(PI);        // 3.14159
+console.log(add(2, 3)); // 5
+```
+
+<ES6FeatureExplorer initialFeature="modules" />
+
+<InfoBox type="tip" title="Module Benefits">
+- **Organization**: Keep related code together
+- **Reusability**: Use the same code in multiple places
+- **Encapsulation**: Hide internal details, expose only what's needed
+</InfoBox>
+
+<ProgressCheckpoint section="summary" xpReward={10} />
+
+## Key Takeaways
+
+<KeyConcept title="const and let">
+Use `const` for values that don't change, `let` for values that do. Forget about `var`!
+</KeyConcept>
+
+<KeyConcept title="Arrow Functions">
+Shorter syntax for functions: `const add = (a, b) => a + b;`
+</KeyConcept>
+
+<KeyConcept title="Template Literals">
+Use backticks and `${...}` for easy string building: `` `Hello, ${name}!` ``
+</KeyConcept>
+
+<KeyConcept title="Destructuring">
+Unpack values easily: `const { name, age } = person;`
+</KeyConcept>
+
+## Quick Quiz
+
+<Quiz>
+  <Question text="Which keyword should you use for a value that will never change?">
+    <Answer>let</Answer>
+    <Answer correct>const</Answer>
+    <Answer>var</Answer>
+    <Answer>static</Answer>
+  </Question>
+  
+  <Question text="What symbol is used in arrow functions?">
+    <Answer>-></Answer>
+    <Answer correct>=></Answer>
+    <Answer>>></Answer>
+    <Answer>~></Answer>
+  </Question>
+  
+  <Question text="Which characters surround template literals?">
+    <Answer>Single quotes (')</Answer>
+    <Answer>Double quotes (")</Answer>
+    <Answer correct>Backticks (`)</Answer>
+    <Answer>Parentheses ()</Answer>
+  </Question>
+  
+  <Question text="What does the spread operator (...) do with arrays?">
+    <Answer>Deletes the array</Answer>
+    <Answer correct>Expands the array into individual elements</Answer>
+    <Answer>Reverses the array</Answer>
+    <Answer>Sorts the array</Answer>
+  </Question>
+</Quiz>
+
+---
+
+**Great job!** 🎉 You've learned the essential ES6+ features. In the intermediate level, we'll explore more advanced features like classes, default parameters, and module patterns.

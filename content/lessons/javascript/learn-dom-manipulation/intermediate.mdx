@@ -1,0 +1,385 @@
+# DOM Manipulation: Intermediate
+
+Now that you understand the basics, let's dive deeper into DOM manipulation. You'll learn how to traverse the DOM tree, create and remove elements dynamically, and use powerful patterns like event delegation.
+
+<InfoBox type="tip" title="Level Up Your Skills">
+This level focuses on practical patterns you'll use daily as a web developer. Master these, and you'll be able to build truly interactive applications!
+</InfoBox>
+
+<ProgressCheckpoint section="introduction" xpReward={15} />
+
+## DOM Traversal: Navigating the Tree
+
+Sometimes you need to find elements relative to other elements — parents, children, or siblings. The DOM provides properties for this.
+
+### Parent, Children, and Siblings
+
+```javascript
+const element = document.querySelector('.item');
+
+// Going UP
+element.parentElement;        // Direct parent
+element.closest('.container'); // Nearest ancestor matching selector
+
+// Going DOWN
+element.children;             // Direct children (HTMLCollection)
+element.firstElementChild;    // First child element
+element.lastElementChild;     // Last child element
+
+// Going SIDEWAYS
+element.nextElementSibling;   // Next sibling
+element.previousElementSibling; // Previous sibling
+```
+
+<DomTreeVisualizer 
+  html={`<div class="container">
+  <header>
+    <h1>Title</h1>
+  </header>
+  <main>
+    <article class="item">
+      <h2>Article 1</h2>
+      <p>Content here</p>
+    </article>
+    <article class="item">
+      <h2>Article 2</h2>
+      <p>More content</p>
+    </article>
+  </main>
+  <footer>
+    <p>Footer text</p>
+  </footer>
+</div>`}
+  showAttributes={true}
+  interactive={true}
+/>
+
+### Practical Traversal Example
+
+```javascript
+// Find all items and their titles
+const items = document.querySelectorAll('.item');
+
+items.forEach(item => {
+  const title = item.firstElementChild; // The h2
+  const content = title.nextElementSibling; // The p
+  console.log(title.textContent, content.textContent);
+});
+```
+
+<KeyConcept title="Element vs Node">
+- `parentElement`, `children` — Only element nodes
+- `parentNode`, `childNodes` — All nodes (including text, comments)
+- Prefer the "Element" versions for cleaner code!
+</KeyConcept>
+
+<ProgressCheckpoint section="dom-tree" xpReward={15} />
+
+## Creating and Removing Elements
+
+Building dynamic UIs means creating elements on the fly!
+
+### Creating Elements
+
+```javascript
+// 1. Create the element
+const newDiv = document.createElement('div');
+
+// 2. Add content and attributes
+newDiv.textContent = 'Hello, I am new!';
+newDiv.className = 'card';
+newDiv.id = 'new-card';
+newDiv.setAttribute('data-id', '123');
+
+// 3. Add to the DOM
+document.body.appendChild(newDiv);
+```
+
+### Different Ways to Insert
+
+```javascript
+const container = document.querySelector('.container');
+const newElement = document.createElement('p');
+newElement.textContent = 'New paragraph';
+
+// At the end
+container.appendChild(newElement);
+
+// At the beginning
+container.prepend(newElement);
+
+// Before another element
+const reference = container.querySelector('.existing');
+container.insertBefore(newElement, reference);
+
+// Using insertAdjacentHTML (powerful!)
+container.insertAdjacentHTML('beforeend', '<p>HTML string</p>');
+// Positions: 'beforebegin', 'afterbegin', 'beforeend', 'afterend'
+```
+
+### Removing Elements
+
+```javascript
+// Modern way
+element.remove();
+
+// Old way (still works)
+element.parentElement.removeChild(element);
+
+// Clear all children
+container.innerHTML = '';
+// Or more safely:
+while (container.firstChild) {
+  container.removeChild(container.firstChild);
+}
+```
+
+<DomManipulationSandbox
+  initialHtml={`<div id="container">
+  <h2>Todo List</h2>
+  <ul id="list">
+    <li>Learn JavaScript</li>
+    <li>Practice DOM</li>
+  </ul>
+  <button id="addBtn">Add Item</button>
+</div>`}
+  initialJs={`// Create and add new elements
+const list = document.getElementById('list');
+const addBtn = document.getElementById('addBtn');
+
+// Create a new list item
+const newItem = document.createElement('li');
+newItem.textContent = 'New task added!';
+newItem.style.color = '#22c55e';
+
+// Add it to the list
+list.appendChild(newItem);
+
+// Try: Create more items, remove items, etc.`}
+/>
+
+<ProgressCheckpoint section="selecting-elements" xpReward={15} />
+
+## Event Delegation: One Handler, Many Elements
+
+Instead of adding event listeners to every element, add ONE listener to a parent and let events bubble up!
+
+### The Problem
+
+```javascript
+// ❌ Bad: Adding listeners to each button
+document.querySelectorAll('.btn').forEach(btn => {
+  btn.addEventListener('click', handleClick);
+});
+// What about buttons added later? They won't have listeners!
+```
+
+### The Solution: Event Delegation
+
+```javascript
+// ✅ Good: One listener on the parent
+document.querySelector('.button-container').addEventListener('click', (e) => {
+  // Check if the clicked element is a button
+  if (e.target.matches('.btn')) {
+    handleClick(e);
+  }
+});
+// Works for existing AND future buttons!
+```
+
+### Real-World Example: Todo List
+
+```javascript
+const todoList = document.getElementById('todo-list');
+
+todoList.addEventListener('click', (e) => {
+  // Handle delete button clicks
+  if (e.target.matches('.delete-btn')) {
+    const todoItem = e.target.closest('.todo-item');
+    todoItem.remove();
+  }
+  
+  // Handle checkbox clicks
+  if (e.target.matches('.checkbox')) {
+    const todoItem = e.target.closest('.todo-item');
+    todoItem.classList.toggle('completed');
+  }
+});
+```
+
+<KeyConcept title="Why Event Delegation?">
+1. **Performance**: One listener instead of hundreds
+2. **Dynamic elements**: Works for elements added later
+3. **Memory**: Less memory used for event handlers
+4. **Cleaner code**: Centralized event handling
+</KeyConcept>
+
+<CodePlayground
+  initialCode={`// Event delegation pattern
+function setupTodoList() {
+  // Simulating event delegation logic
+  const events = [
+    { target: 'delete-btn', action: 'Delete item' },
+    { target: 'checkbox', action: 'Toggle complete' },
+    { target: 'edit-btn', action: 'Edit item' },
+  ];
+  
+  events.forEach(event => {
+    console.log(\`If clicked on .\${event.target}: \${event.action}\`);
+  });
+  
+  console.log("\\nAll handled by ONE event listener on the parent!");
+}
+
+setupTodoList();`}
+/>
+
+<ProgressCheckpoint section="modifying-elements" xpReward={15} />
+
+## Working with Attributes and Data
+
+### Standard Attributes
+
+```javascript
+const link = document.querySelector('a');
+
+// Get/Set attributes
+link.getAttribute('href');
+link.setAttribute('href', 'https://example.com');
+link.removeAttribute('target');
+link.hasAttribute('rel'); // true/false
+```
+
+### Data Attributes
+
+Custom data storage on elements using `data-*` attributes:
+
+```javascript
+// HTML: <div data-user-id="123" data-role="admin">
+const element = document.querySelector('[data-user-id]');
+
+// Access via dataset
+console.log(element.dataset.userId);  // "123"
+console.log(element.dataset.role);    // "admin"
+
+// Set data attributes
+element.dataset.status = 'active';
+// Creates: data-status="active"
+```
+
+### Practical Use Case
+
+```javascript
+// Product cards with data attributes
+document.querySelector('.products').addEventListener('click', (e) => {
+  const card = e.target.closest('.product-card');
+  if (card) {
+    const productId = card.dataset.productId;
+    const price = card.dataset.price;
+    addToCart(productId, price);
+  }
+});
+```
+
+<ProgressCheckpoint section="events" xpReward={15} />
+
+## Event Flow Deep Dive
+
+Let's explore capturing and bubbling in more detail.
+
+<EventFlowSimulator showPhases={true} interactive={true} />
+
+### Capturing Phase
+
+By default, listeners fire during bubbling. To listen during capturing:
+
+```javascript
+element.addEventListener('click', handler, true);
+// or
+element.addEventListener('click', handler, { capture: true });
+```
+
+### Controlling Event Flow
+
+```javascript
+element.addEventListener('click', (e) => {
+  e.stopPropagation();      // Stop bubbling/capturing
+  e.stopImmediatePropagation(); // Stop + prevent other handlers on same element
+  e.preventDefault();        // Prevent default action (form submit, link navigation)
+});
+```
+
+### Event Delegation with Phases
+
+```javascript
+// Capture phase: handle before children
+document.addEventListener('click', (e) => {
+  console.log('Document captured click');
+}, true);
+
+// Bubble phase: handle after children
+document.addEventListener('click', (e) => {
+  console.log('Document received bubbled click');
+});
+```
+
+<KeyConcept title="When to Use Capturing">
+Capturing is rarely needed, but useful for:
+- Intercepting events before they reach targets
+- Implementing focus management
+- Creating modal overlays that catch all clicks
+</KeyConcept>
+
+<ProgressCheckpoint section="event-flow" xpReward={10} />
+
+## Key Takeaways
+
+<KeyConcept title="DOM Traversal">
+Navigate the tree with `parentElement`, `children`, `nextElementSibling`, and `closest()`.
+</KeyConcept>
+
+<KeyConcept title="Dynamic Elements">
+Create with `createElement()`, insert with `appendChild()` or `insertAdjacentHTML()`, remove with `remove()`.
+</KeyConcept>
+
+<KeyConcept title="Event Delegation">
+Add one listener to a parent, use `e.target.matches()` to handle specific children. Works for dynamic content!
+</KeyConcept>
+
+<ProgressCheckpoint section="summary" xpReward={10} />
+
+## Quick Quiz
+
+<Quiz>
+  <Question text="Which method finds the nearest ancestor matching a selector?">
+    <Answer>parentElement</Answer>
+    <Answer>querySelector</Answer>
+    <Answer correct>closest</Answer>
+    <Answer>findParent</Answer>
+  </Question>
+  
+  <Question text="What's the main benefit of event delegation?">
+    <Answer>Faster event handling</Answer>
+    <Answer correct>Works for dynamically added elements</Answer>
+    <Answer>Simpler syntax</Answer>
+    <Answer>Better browser support</Answer>
+  </Question>
+  
+  <Question text="How do you access data-user-id attribute via JavaScript?">
+    <Answer>element.data.userId</Answer>
+    <Answer correct>element.dataset.userId</Answer>
+    <Answer>element.getAttribute('userId')</Answer>
+    <Answer>element.userData.id</Answer>
+  </Question>
+  
+  <Question text="Which method stops an event from reaching parent elements?">
+    <Answer>preventDefault()</Answer>
+    <Answer correct>stopPropagation()</Answer>
+    <Answer>cancelBubble()</Answer>
+    <Answer>stopEvent()</Answer>
+  </Question>
+</Quiz>
+
+---
+
+**Excellent progress!** 🎉 You've mastered intermediate DOM manipulation. In the advanced level, we'll explore MutationObserver, Shadow DOM, and performance optimization techniques.

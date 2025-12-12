@@ -1,0 +1,404 @@
+# JavaScript Syntax and Basic Constructs
+
+Welcome to the intermediate level! Now that you understand the basics, let's dive deeper into JavaScript's behavior. We'll explore type coercion, truthy/falsy values, and more sophisticated patterns that will make you a more confident JavaScript developer.
+
+<InfoBox type="info" title="What You'll Learn">
+This level covers the "quirks" of JavaScript that often trip up developers. Understanding these concepts will help you write more predictable code and debug issues faster.
+</InfoBox>
+
+<ProgressCheckpoint section="introduction" xpReward={20} />
+
+## Type Coercion: JavaScript's Automatic Conversions
+
+JavaScript is a **dynamically typed** language, which means it can automatically convert values from one type to another. This is called **type coercion**.
+
+### Implicit Coercion
+
+JavaScript automatically converts types in certain situations:
+
+```javascript
+// String concatenation wins over addition
+console.log("5" + 3);      // "53" (number becomes string)
+console.log(3 + "5");      // "35" (number becomes string)
+
+// Other operators convert to numbers
+console.log("5" - 3);      // 2 (string becomes number)
+console.log("5" * 2);      // 10 (string becomes number)
+console.log("10" / 2);     // 5 (string becomes number)
+```
+
+<KeyConcept title="The + Operator is Special">
+The `+` operator prefers string concatenation when one operand is a string. All other math operators (`-`, `*`, `/`, `%`) convert strings to numbers.
+</KeyConcept>
+
+### Explicit Coercion
+
+You can manually convert types using built-in functions:
+
+```javascript
+// Convert to Number
+Number("42");        // 42
+parseInt("42px");    // 42 (stops at non-numeric)
+parseFloat("3.14");  // 3.14
+
+// Convert to String
+String(42);          // "42"
+(42).toString();     // "42"
+
+// Convert to Boolean
+Boolean(1);          // true
+Boolean(0);          // false
+Boolean("");         // false
+Boolean("hello");    // true
+```
+
+<CodePlayground
+  initialCode={`// Explore type coercion
+console.log("Type Coercion Examples:");
+console.log("'5' + 3 =", "5" + 3);
+console.log("'5' - 3 =", "5" - 3);
+console.log("'5' * '2' =", "5" * "2");
+
+console.log("\\nExplicit Conversion:");
+console.log("Number('42') =", Number("42"));
+console.log("String(42) =", String(42));
+console.log("Boolean(0) =", Boolean(0));
+console.log("Boolean('hello') =", Boolean("hello"));
+
+// What happens with these?
+console.log("\\nTricky cases:");
+console.log("'5' + + '3' =", "5" + + "3");
+console.log("[] + [] =", [] + []);
+console.log("[] + {} =", [] + {});`}
+/>
+
+<ProgressCheckpoint section="type-coercion" xpReward={20} />
+
+## Truthy and Falsy Values
+
+In JavaScript, every value has an inherent "truthiness" or "falsiness" when used in a boolean context (like an `if` statement).
+
+### Falsy Values (Only 6!)
+
+These are the ONLY values that are considered `false`:
+
+```javascript
+false      // The boolean false
+0          // The number zero
+-0         // Negative zero
+""         // Empty string
+null       // Null value
+undefined  // Undefined value
+NaN        // Not a Number
+```
+
+### Everything Else is Truthy
+
+```javascript
+// All of these are truthy!
+true
+42
+-42
+"hello"
+"0"        // String with zero (not empty!)
+"false"    // String with "false" (not empty!)
+[]         // Empty array
+{}         // Empty object
+function() {} // Functions
+```
+
+<InfoBox type="warning" title="Common Gotcha">
+Empty arrays `[]` and empty objects `{}` are truthy! This surprises many developers. To check if an array is empty, use `array.length === 0`.
+</InfoBox>
+
+<CodePlayground
+  initialCode={`// Test truthy and falsy values
+function checkTruthy(value, label) {
+  if (value) {
+    console.log(label + " is TRUTHY");
+  } else {
+    console.log(label + " is FALSY");
+  }
+}
+
+// Falsy values
+checkTruthy(false, "false");
+checkTruthy(0, "0");
+checkTruthy("", '""');
+checkTruthy(null, "null");
+checkTruthy(undefined, "undefined");
+checkTruthy(NaN, "NaN");
+
+console.log("---");
+
+// Truthy values (some surprising ones!)
+checkTruthy("0", '"0"');
+checkTruthy("false", '"false"');
+checkTruthy([], "[]");
+checkTruthy({}, "{}");`}
+/>
+
+<ProgressCheckpoint section="truthy-falsy" xpReward={20} />
+
+## Comparison Operators Deep Dive
+
+### Loose Equality (==) vs Strict Equality (===)
+
+```javascript
+// Loose equality performs type coercion
+console.log(5 == "5");     // true (string converted to number)
+console.log(0 == false);   // true (false converted to 0)
+console.log(null == undefined); // true (special case)
+
+// Strict equality checks type AND value
+console.log(5 === "5");    // false (different types)
+console.log(0 === false);  // false (different types)
+console.log(null === undefined); // false (different types)
+```
+
+<KeyConcept title="Always Use === and !==">
+Strict equality (`===`) and strict inequality (`!==`) are more predictable. They don't perform type coercion, so you always know exactly what you're comparing.
+</KeyConcept>
+
+### Comparison with Different Types
+
+```javascript
+// Comparing strings (lexicographic order)
+console.log("apple" < "banana");  // true
+console.log("10" < "9");          // true (string comparison!)
+
+// Comparing with null and undefined
+console.log(null == undefined);   // true
+console.log(null === undefined);  // false
+console.log(null > 0);            // false
+console.log(null == 0);           // false
+console.log(null >= 0);           // true (!)
+```
+
+<CodePlayground
+  initialCode={`// Comparison operators exploration
+console.log("Loose vs Strict Equality:");
+console.log('5 == "5":', 5 == "5");
+console.log('5 === "5":', 5 === "5");
+console.log('0 == false:', 0 == false);
+console.log('0 === false:', 0 === false);
+
+console.log("\\nString Comparisons:");
+console.log('"apple" < "banana":', "apple" < "banana");
+console.log('"10" < "9":', "10" < "9");
+console.log('"10" < 9:', "10" < 9);
+
+console.log("\\nNull/Undefined Quirks:");
+console.log('null == undefined:', null == undefined);
+console.log('null === undefined:', null === undefined);`}
+/>
+
+<ProgressCheckpoint section="comparison-operators" xpReward={20} />
+
+## Advanced Control Flow
+
+### Short-Circuit Evaluation
+
+Logical operators `&&` and `||` don't always return `true` or `false`. They return one of their operands!
+
+```javascript
+// || returns the first truthy value (or the last value)
+console.log("hello" || "world");  // "hello"
+console.log(0 || "default");      // "default"
+console.log(null || undefined || "fallback"); // "fallback"
+
+// && returns the first falsy value (or the last value)
+console.log("hello" && "world");  // "world"
+console.log(0 && "hello");        // 0
+console.log("a" && "b" && "c");   // "c"
+```
+
+### Default Values Pattern
+
+```javascript
+// Old way (before ES6)
+function greet(name) {
+  name = name || "Guest";
+  console.log("Hello, " + name);
+}
+
+// Modern way (ES6+)
+function greetModern(name = "Guest") {
+  console.log("Hello, " + name);
+}
+```
+
+### Nullish Coalescing (??)
+
+The `??` operator only falls back for `null` or `undefined`:
+
+```javascript
+// || treats 0 and "" as falsy
+console.log(0 || "default");    // "default"
+console.log("" || "default");   // "default"
+
+// ?? only checks for null/undefined
+console.log(0 ?? "default");    // 0
+console.log("" ?? "default");   // ""
+console.log(null ?? "default"); // "default"
+```
+
+<CodePlayground
+  initialCode={`// Short-circuit evaluation
+console.log("OR (||) - returns first truthy:");
+console.log('0 || "default":', 0 || "default");
+console.log('"hello" || "world":', "hello" || "world");
+
+console.log("\\nAND (&&) - returns first falsy:");
+console.log('"hello" && "world":', "hello" && "world");
+console.log('0 && "hello":', 0 && "hello");
+
+console.log("\\nNullish Coalescing (??):");
+console.log('0 ?? "default":', 0 ?? "default");
+console.log('null ?? "default":', null ?? "default");
+
+// Practical example
+let userInput = "";
+console.log("\\nPractical difference:");
+console.log('userInput || "No input":', userInput || "No input");
+console.log('userInput ?? "No input":', userInput ?? "No input");`}
+/>
+
+<ProgressCheckpoint section="advanced-control-flow" xpReward={20} />
+
+## Switch Statements
+
+For multiple conditions based on a single value:
+
+```javascript
+let day = "Monday";
+
+switch (day) {
+  case "Monday":
+  case "Tuesday":
+  case "Wednesday":
+  case "Thursday":
+  case "Friday":
+    console.log("Weekday");
+    break;
+  case "Saturday":
+  case "Sunday":
+    console.log("Weekend!");
+    break;
+  default:
+    console.log("Invalid day");
+}
+```
+
+<InfoBox type="warning" title="Don't Forget break!">
+Without `break`, execution "falls through" to the next case. This can be useful intentionally (like grouping Monday-Friday above), but often causes bugs.
+</InfoBox>
+
+<CodePlayground
+  initialCode={`// Switch statement example
+let fruit = "apple";
+
+switch (fruit) {
+  case "apple":
+    console.log("Apples are $1.50/lb");
+    break;
+  case "banana":
+    console.log("Bananas are $0.75/lb");
+    break;
+  case "orange":
+  case "tangerine":
+    console.log("Citrus fruits are $2.00/lb");
+    break;
+  default:
+    console.log("We don't have that fruit");
+}
+
+// Try changing the fruit variable!`}
+/>
+
+<ProgressCheckpoint section="switch-statements" xpReward={15} />
+
+## Ternary Operator
+
+A concise way to write simple if-else statements:
+
+```javascript
+// Instead of:
+let message;
+if (age >= 18) {
+  message = "Adult";
+} else {
+  message = "Minor";
+}
+
+// You can write:
+let message = age >= 18 ? "Adult" : "Minor";
+```
+
+### Nested Ternaries (Use Sparingly!)
+
+```javascript
+let score = 85;
+let grade = score >= 90 ? "A" 
+          : score >= 80 ? "B"
+          : score >= 70 ? "C"
+          : "F";
+```
+
+<KeyConcept title="Readability First">
+While nested ternaries are possible, they can be hard to read. Use them for simple conditions only. For complex logic, stick with if-else statements.
+</KeyConcept>
+
+<ProgressCheckpoint section="ternary" xpReward={10} />
+
+## Key Takeaways
+
+<KeyConcept title="Type Coercion is Automatic">
+JavaScript converts types automatically. The `+` operator prefers strings, while `-`, `*`, `/` convert to numbers.
+</KeyConcept>
+
+<KeyConcept title="Know Your Falsy Values">
+Only 6 values are falsy: `false`, `0`, `""`, `null`, `undefined`, `NaN`. Everything else is truthy!
+</KeyConcept>
+
+<KeyConcept title="Use Strict Equality">
+Always use `===` and `!==` to avoid unexpected type coercion in comparisons.
+</KeyConcept>
+
+<ProgressCheckpoint section="summary" xpReward={10} />
+
+## Quick Quiz
+
+<Quiz>
+  <Question text="What is the result of '5' + 3 in JavaScript?">
+    <Answer>8</Answer>
+    <Answer correct>"53"</Answer>
+    <Answer>Error</Answer>
+    <Answer>NaN</Answer>
+  </Question>
+  
+  <Question text="Which of these values is truthy?">
+    <Answer>0</Answer>
+    <Answer>""</Answer>
+    <Answer correct>[]</Answer>
+    <Answer>null</Answer>
+  </Question>
+  
+  <Question text="What does 0 || 'default' return?">
+    <Answer>0</Answer>
+    <Answer correct>"default"</Answer>
+    <Answer>true</Answer>
+    <Answer>false</Answer>
+  </Question>
+  
+  <Question text="What does 0 ?? 'default' return?">
+    <Answer correct>0</Answer>
+    <Answer>"default"</Answer>
+    <Answer>null</Answer>
+    <Answer>undefined</Answer>
+  </Question>
+</Quiz>
+
+---
+
+**Great progress!** 🎉 You now understand JavaScript's type system and control flow at a deeper level. In the advanced level, we'll explore the JavaScript specification, operator precedence, and bitwise operations.

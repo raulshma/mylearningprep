@@ -1,0 +1,283 @@
+# Async/Await and Promises
+
+Welcome to one of the most important concepts in JavaScript! Understanding asynchronous programming will help you build applications that can do multiple things at once without freezing. Don't worry — we'll use a simple coffee shop analogy to make this crystal clear!
+
+<InfoBox type="tip" title="Why This Matters">
+Almost everything in modern web apps is asynchronous: fetching data, loading images, waiting for user input. Master this, and you'll be able to build responsive, fast applications!
+</InfoBox>
+
+<ProgressCheckpoint section="introduction" xpReward={15} />
+
+## The Coffee Shop Analogy
+
+Imagine you're at a busy coffee shop. When you order a coffee:
+
+1. **You place your order** (make a request)
+2. **You get a ticket/receipt** (get a Promise)
+3. **You wait** (the Promise is "pending")
+4. **Your name is called** (the Promise "resolves")
+5. **You get your coffee!** (you receive the result)
+
+The key insight: **You don't stand frozen at the counter waiting!** You can check your phone, chat with friends, or do other things while waiting.
+
+```javascript
+// This is like ordering coffee
+const coffeePromise = orderCoffee("latte");
+
+// You get a "ticket" (Promise) immediately
+// The actual coffee comes later!
+```
+
+<KeyConcept title="Asynchronous = Non-Blocking">
+Asynchronous code lets your program continue doing other things while waiting for slow operations (like fetching data from a server) to complete.
+</KeyConcept>
+
+<ProgressCheckpoint section="callbacks" xpReward={15} />
+
+## The Problem: Callback Hell
+
+Before Promises, we used "callbacks" — functions that run when something finishes. But they got messy fast:
+
+```javascript
+// 😱 Callback Hell - hard to read and maintain!
+getUser(userId, function(user) {
+  getOrders(user.id, function(orders) {
+    getOrderDetails(orders[0].id, function(details) {
+      getShippingInfo(details.shippingId, function(shipping) {
+        console.log(shipping);
+        // This keeps going deeper and deeper...
+      });
+    });
+  });
+});
+```
+
+This pyramid of doom is hard to read, hard to debug, and easy to mess up!
+
+<InfoBox type="warning" title="The Pyramid of Doom">
+Nested callbacks create code that's hard to follow. Each level of nesting makes it harder to understand what's happening and when.
+</InfoBox>
+
+<ProgressCheckpoint section="promises" xpReward={15} />
+
+## Enter Promises: Your Coffee Ticket
+
+A **Promise** is like that coffee ticket — it represents a value that will arrive in the future.
+
+A Promise can be in one of three states:
+- **Pending**: Still waiting (coffee is being made)
+- **Fulfilled/Resolved**: Success! (coffee is ready)
+- **Rejected**: Something went wrong (they're out of oat milk)
+
+```javascript
+// Creating a Promise
+const myPromise = new Promise((resolve, reject) => {
+  // Simulate making coffee (takes 2 seconds)
+  setTimeout(() => {
+    const success = true;
+    
+    if (success) {
+      resolve("☕ Your latte is ready!");  // Success!
+    } else {
+      reject("Sorry, we're out of coffee");  // Error!
+    }
+  }, 2000);
+});
+```
+
+<KeyConcept title="Promise States">
+- **Pending** → Waiting for result
+- **Fulfilled** → Got the result successfully
+- **Rejected** → Something went wrong
+</KeyConcept>
+
+<ProgressCheckpoint section="promise-chaining" xpReward={15} />
+
+## Using Promises with .then() and .catch()
+
+Once you have a Promise, you use `.then()` to handle success and `.catch()` to handle errors:
+
+```javascript
+// Using the Promise
+myPromise
+  .then(result => {
+    console.log(result);  // "☕ Your latte is ready!"
+  })
+  .catch(error => {
+    console.log(error);   // Only runs if something went wrong
+  });
+
+console.log("Waiting for coffee...");  // This runs FIRST!
+```
+
+<InfoBox type="info" title="Order of Execution">
+Notice that "Waiting for coffee..." prints FIRST, even though it's written after the Promise code. That's because the Promise is asynchronous — JavaScript doesn't wait for it!
+</InfoBox>
+
+Try it yourself:
+
+<CodePlayground
+  initialCode={`// Create a simple Promise
+const coffeePromise = new Promise((resolve, reject) => {
+  console.log("☕ Making your coffee...");
+  
+  // Simulate 1 second delay
+  setTimeout(() => {
+    resolve("Your latte is ready!");
+  }, 1000);
+});
+
+// Use the Promise
+coffeePromise
+  .then(result => {
+    console.log("✅ " + result);
+  })
+  .catch(error => {
+    console.log("❌ " + error);
+  });
+
+console.log("⏳ Waiting for coffee...");`}
+/>
+
+<PromiseChainBuilder />
+
+<ProgressCheckpoint section="async-await" xpReward={15} />
+
+## Async/Await: Making Promises Even Easier
+
+`async/await` is syntactic sugar that makes Promises look like regular, synchronous code:
+
+```javascript
+// The old way with .then()
+function getDataOldWay() {
+  fetch('/api/data')
+    .then(response => response.json())
+    .then(data => console.log(data))
+    .catch(error => console.log(error));
+}
+
+// The new way with async/await ✨
+async function getDataNewWay() {
+  try {
+    const response = await fetch('/api/data');
+    const data = await response.json();
+    console.log(data);
+  } catch (error) {
+    console.log(error);
+  }
+}
+```
+
+<KeyConcept title="async/await Rules">
+- `async` goes before the function keyword
+- `await` can only be used inside an `async` function
+- `await` pauses execution until the Promise resolves
+- Use `try/catch` for error handling
+</KeyConcept>
+
+```javascript
+// async function example
+async function orderCoffee() {
+  console.log("Ordering...");
+  
+  // await pauses here until the Promise resolves
+  const coffee = await makeCoffee("latte");
+  
+  console.log("Got my " + coffee);
+  return coffee;
+}
+```
+
+<CodePlayground
+  initialCode={`// Async/await example
+async function getCoffee() {
+  console.log("1. Placing order...");
+  
+  // Simulate waiting for coffee
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  console.log("2. Coffee is ready!");
+  return "☕ Latte";
+}
+
+// Call the async function
+getCoffee().then(coffee => {
+  console.log("3. Enjoying my " + coffee);
+});
+
+console.log("0. Order placed, doing other things...");`}
+/>
+
+<ProgressCheckpoint section="event-loop" xpReward={15} />
+
+## How JavaScript Handles Async Code
+
+JavaScript uses an **Event Loop** to manage asynchronous operations. Think of it like a restaurant manager:
+
+1. **Call Stack**: The chef's current task (what's being executed now)
+2. **Callback Queue**: Orders waiting to be cooked (setTimeout callbacks)
+3. **Microtask Queue**: VIP orders (Promise callbacks - they go first!)
+
+<EventLoopVisualizer />
+
+<InfoBox type="tip" title="Microtasks vs Macrotasks">
+Promise callbacks (microtasks) always run before setTimeout callbacks (macrotasks). This is why Promise.then() runs before setTimeout, even with a 0ms delay!
+</InfoBox>
+
+<AsyncTimeline />
+
+<ProgressCheckpoint section="summary" xpReward={10} />
+
+## Key Takeaways
+
+<KeyConcept title="Promises">
+A Promise is like a coffee ticket — it represents a future value. It can be pending, fulfilled, or rejected.
+</KeyConcept>
+
+<KeyConcept title="async/await">
+Makes asynchronous code look synchronous. Use `async` before functions and `await` before Promises.
+</KeyConcept>
+
+<KeyConcept title="Error Handling">
+Use `.catch()` with Promises or `try/catch` with async/await to handle errors gracefully.
+</KeyConcept>
+
+<KeyConcept title="Event Loop">
+JavaScript processes microtasks (Promises) before macrotasks (setTimeout), ensuring Promise callbacks run as soon as possible.
+</KeyConcept>
+
+## Quick Quiz
+
+<Quiz>
+  <Question text="What is a Promise in JavaScript?">
+    <Answer>A guarantee that code will run</Answer>
+    <Answer correct>An object representing a future value</Answer>
+    <Answer>A type of callback function</Answer>
+    <Answer>A way to pause code execution</Answer>
+  </Question>
+  
+  <Question text="What are the three states of a Promise?">
+    <Answer>Start, Middle, End</Answer>
+    <Answer>Loading, Success, Error</Answer>
+    <Answer correct>Pending, Fulfilled, Rejected</Answer>
+    <Answer>Waiting, Running, Done</Answer>
+  </Question>
+  
+  <Question text="Where can you use the 'await' keyword?">
+    <Answer>Anywhere in your code</Answer>
+    <Answer>Only in .then() callbacks</Answer>
+    <Answer correct>Only inside async functions</Answer>
+    <Answer>Only with setTimeout</Answer>
+  </Question>
+  
+  <Question text="Which runs first: Promise.then() or setTimeout(..., 0)?">
+    <Answer>setTimeout runs first</Answer>
+    <Answer correct>Promise.then() runs first</Answer>
+    <Answer>They run at the same time</Answer>
+    <Answer>It's random</Answer>
+  </Question>
+</Quiz>
+
+---
+
+**Great job!** 🎉 You've learned the fundamentals of asynchronous JavaScript. In the intermediate level, we'll dive deeper into Promise chaining, error handling patterns, and more advanced async/await techniques.

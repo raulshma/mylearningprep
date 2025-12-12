@@ -1,0 +1,257 @@
+# Learn Fetch API
+
+Welcome to the world of fetching data! This is where your web pages learn to talk to servers and get information from the internet. It's like giving your website a phone to call for help!
+
+<InfoBox type="tip" title="What is the Fetch API?">
+The Fetch API is JavaScript's way of making HTTP requests — asking servers for data or sending data to them. It's how modern web apps get information without reloading the page!
+</InfoBox>
+
+<ProgressCheckpoint section="introduction" xpReward={15} />
+
+## The Restaurant Analogy 🍽️
+
+Imagine you're at a restaurant. Here's how ordering food is just like fetching data:
+
+1. **You (the browser)** look at the menu and decide what you want
+2. **You place an order** (make a request) with the waiter
+3. **The waiter goes to the kitchen** (the server) with your order
+4. **The kitchen prepares your food** (processes the request)
+5. **The waiter brings back your food** (the response)
+6. **You enjoy your meal** (use the data)
+
+<KeyConcept title="Request and Response">
+- **Request**: What you ask for (like ordering food)
+- **Response**: What you get back (like receiving your meal)
+- **Server**: The kitchen that prepares what you asked for
+</KeyConcept>
+
+Just like at a restaurant, sometimes things go wrong:
+- The kitchen might be out of an ingredient (404 - Not Found)
+- The kitchen might be too busy (503 - Service Unavailable)
+- You might order something that doesn't exist (400 - Bad Request)
+
+<ProgressCheckpoint section="request-response" xpReward={15} />
+
+## Your First Fetch Request
+
+Let's make our first request! The `fetch()` function is your waiter — you tell it what you want, and it goes to get it.
+
+```javascript
+// The simplest fetch request
+fetch('https://api.example.com/data')
+  .then(response => response.json())
+  .then(data => {
+    console.log('Got the data!', data);
+  });
+```
+
+Let's break this down:
+
+1. **`fetch(url)`** - Place your order (make the request)
+2. **`.then(response => response.json())`** - Wait for the response and convert it to usable data
+3. **`.then(data => { ... })`** - Do something with the data you received
+
+<InfoBox type="info" title="Why .then()?">
+Fetching data takes time (like waiting for food). The `.then()` method says "when the data arrives, do this." This is called a **Promise** — a promise that data will come eventually!
+</InfoBox>
+
+<CodePlayground
+  initialCode={`// Let's simulate a fetch request!
+// (We'll use a real API in the interactive demo below)
+
+console.log("1. Starting to fetch data...");
+
+// Simulating what happens during a fetch
+console.log("2. Request sent to server...");
+console.log("3. Waiting for response...");
+
+// In real code, this would be the response
+const mockData = {
+  id: 1,
+  title: "Hello from the server!",
+  completed: true
+};
+
+console.log("4. Response received!");
+console.log("5. Here's the data:", mockData);`}
+/>
+
+<ProgressCheckpoint section="fetch-basics" xpReward={15} />
+
+## Understanding HTTP Methods
+
+When you order at a restaurant, you might:
+- **Ask to see the menu** (GET - retrieve data)
+- **Place a new order** (POST - send new data)
+- **Change your order** (PUT - update existing data)
+- **Cancel your order** (DELETE - remove data)
+
+These are called **HTTP methods**, and they tell the server what you want to do:
+
+| Method | What it does | Restaurant Example |
+|--------|--------------|-------------------|
+| GET | Retrieve data | "Can I see the menu?" |
+| POST | Send new data | "I'd like to order this" |
+| PUT | Update data | "Actually, change my order to..." |
+| DELETE | Remove data | "Cancel my order please" |
+
+### GET Request (Default)
+
+```javascript
+// GET is the default - just fetching data
+fetch('https://api.example.com/users')
+  .then(response => response.json())
+  .then(users => console.log(users));
+```
+
+### POST Request
+
+```javascript
+// POST sends data to the server
+fetch('https://api.example.com/users', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    name: 'John',
+    email: 'john@example.com'
+  })
+})
+  .then(response => response.json())
+  .then(newUser => console.log('Created:', newUser));
+```
+
+<KeyConcept title="The Second Argument">
+When you need to do more than just GET data, you pass a second argument to `fetch()` with options like:
+- `method`: GET, POST, PUT, DELETE
+- `headers`: Extra information about your request
+- `body`: The data you're sending
+</KeyConcept>
+
+<ProgressCheckpoint section="http-methods" xpReward={15} />
+
+## Try It Yourself!
+
+Use the API Request Builder below to experiment with different requests. Try:
+1. Making a GET request to `/posts`
+2. Making a POST request with some data
+3. Looking at the generated code
+
+<ApiRequestBuilder />
+
+<ProgressCheckpoint section="error-handling" xpReward={15} />
+
+## Handling Errors
+
+Sometimes things go wrong. Maybe the server is down, or you asked for something that doesn't exist. Good code handles these situations gracefully!
+
+```javascript
+fetch('https://api.example.com/data')
+  .then(response => {
+    // Check if the response was successful
+    if (!response.ok) {
+      throw new Error('Something went wrong!');
+    }
+    return response.json();
+  })
+  .then(data => {
+    console.log('Success!', data);
+  })
+  .catch(error => {
+    // This runs if anything goes wrong
+    console.log('Error:', error.message);
+  });
+```
+
+<InfoBox type="warning" title="Important!">
+`fetch()` only throws an error for network failures. A 404 or 500 response is still considered "successful" by fetch — you need to check `response.ok` yourself!
+</InfoBox>
+
+### Common HTTP Status Codes
+
+| Code | Meaning | What to do |
+|------|---------|------------|
+| 200 | OK - Success! | Use the data |
+| 201 | Created | Your new item was created |
+| 400 | Bad Request | Check your request format |
+| 401 | Unauthorized | You need to log in |
+| 404 | Not Found | The resource doesn't exist |
+| 500 | Server Error | The server had a problem |
+
+<CodePlayground
+  initialCode={`// Handling different scenarios
+function handleResponse(status) {
+  if (status >= 200 && status < 300) {
+    console.log("✅ Success! Status:", status);
+  } else if (status === 404) {
+    console.log("❌ Not found! The resource doesn't exist.");
+  } else if (status === 401) {
+    console.log("🔒 Unauthorized! You need to log in.");
+  } else if (status >= 500) {
+    console.log("💥 Server error! Try again later.");
+  } else {
+    console.log("⚠️ Unexpected status:", status);
+  }
+}
+
+// Test different status codes
+handleResponse(200);
+handleResponse(404);
+handleResponse(401);
+handleResponse(500);`}
+/>
+
+<ProgressCheckpoint section="headers-cors" xpReward={10} />
+
+## Key Takeaways
+
+<KeyConcept title="Fetch = Your Data Waiter">
+`fetch()` is how JavaScript asks servers for data. It returns a Promise that resolves when the data arrives.
+</KeyConcept>
+
+<KeyConcept title="Request → Response">
+Every fetch has two parts: the request (what you ask for) and the response (what you get back).
+</KeyConcept>
+
+<KeyConcept title="Always Handle Errors">
+Use `.catch()` and check `response.ok` to handle problems gracefully.
+</KeyConcept>
+
+<ProgressCheckpoint section="summary" xpReward={10} />
+
+## Quick Quiz
+
+<Quiz>
+  <Question text="What does the Fetch API do?">
+    <Answer>Styles web pages</Answer>
+    <Answer correct>Makes HTTP requests to servers</Answer>
+    <Answer>Creates HTML elements</Answer>
+    <Answer>Stores data locally</Answer>
+  </Question>
+  
+  <Question text="Which HTTP method is used to retrieve data?">
+    <Answer correct>GET</Answer>
+    <Answer>POST</Answer>
+    <Answer>DELETE</Answer>
+    <Answer>PUT</Answer>
+  </Question>
+  
+  <Question text="What does a 404 status code mean?">
+    <Answer>Success</Answer>
+    <Answer>Server error</Answer>
+    <Answer correct>Not found</Answer>
+    <Answer>Unauthorized</Answer>
+  </Question>
+  
+  <Question text="What method do you use to handle errors in fetch?">
+    <Answer>.then()</Answer>
+    <Answer correct>.catch()</Answer>
+    <Answer>.finally()</Answer>
+    <Answer>.error()</Answer>
+  </Question>
+</Quiz>
+
+---
+
+**Great job!** 🎉 You now understand the basics of fetching data. In the intermediate level, we'll dive deeper into Fetch syntax, error handling patterns, and working with different HTTP methods.

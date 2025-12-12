@@ -1,0 +1,314 @@
+# Learn DOM Manipulation
+
+Welcome to the world of DOM manipulation! This is where JavaScript becomes truly powerful — you'll learn how to make web pages come alive by changing content, styles, and responding to user actions.
+
+Think of a web page as a **living document**. With JavaScript, you can reach into that document and change anything you want!
+
+<InfoBox type="tip" title="What is the DOM?">
+DOM stands for **Document Object Model**. It's how the browser represents your HTML as a tree of objects that JavaScript can interact with. Every element on the page becomes an object you can manipulate!
+</InfoBox>
+
+<ProgressCheckpoint section="introduction" xpReward={15} />
+
+## The Document as a Tree
+
+Imagine your HTML document as a **family tree**. At the top is the `<html>` element (the great-grandparent), and it has children like `<head>` and `<body>`. Those have their own children, and so on.
+
+This tree structure is called the **DOM Tree**. Every element, text, and attribute in your HTML becomes a "node" in this tree.
+
+<DomTreeVisualizer showAttributes={true} interactive={true} />
+
+### Understanding the Tree Structure
+
+```html
+<html>
+  <head>
+    <title>My Page</title>
+  </head>
+  <body>
+    <h1>Hello!</h1>
+    <p>Welcome to my page.</p>
+  </body>
+</html>
+```
+
+In this example:
+- `<html>` is the **root** (top of the tree)
+- `<head>` and `<body>` are **children** of `<html>`
+- `<title>` is a **child** of `<head>`
+- `<h1>` and `<p>` are **children** of `<body>`
+
+<KeyConcept title="Parent, Child, Sibling">
+- **Parent**: The element that contains another element
+- **Child**: An element inside another element
+- **Sibling**: Elements at the same level (same parent)
+</KeyConcept>
+
+<ProgressCheckpoint section="dom-tree" xpReward={15} />
+
+## Selecting Elements: Finding What You Need
+
+Before you can change something on the page, you need to **find it** first. JavaScript gives you several ways to select elements.
+
+### By ID (Most Specific)
+
+Every element can have a unique `id`. Use `getElementById` to find it:
+
+```javascript
+// HTML: <h1 id="title">Hello</h1>
+const title = document.getElementById('title');
+```
+
+### By Class Name
+
+Multiple elements can share a class. Use `getElementsByClassName`:
+
+```javascript
+// HTML: <p class="intro">...</p> <p class="intro">...</p>
+const intros = document.getElementsByClassName('intro');
+```
+
+### By CSS Selector (Most Flexible)
+
+Use `querySelector` for any CSS selector:
+
+```javascript
+// Select the first match
+const firstButton = document.querySelector('button');
+const header = document.querySelector('.header');
+const mainTitle = document.querySelector('#main-title');
+
+// Select ALL matches
+const allButtons = document.querySelectorAll('button');
+```
+
+<InfoBox type="info" title="querySelector vs querySelectorAll">
+- `querySelector` returns the **first** matching element (or null)
+- `querySelectorAll` returns **all** matching elements as a list
+</InfoBox>
+
+<CodePlayground
+  initialCode={`// Selecting elements (imagine this HTML exists)
+// <h1 id="title">Hello</h1>
+// <p class="text">Paragraph 1</p>
+// <p class="text">Paragraph 2</p>
+
+// These would work on a real page:
+console.log("getElementById: finds one element by its unique ID");
+console.log("querySelector: finds first match using CSS selectors");
+console.log("querySelectorAll: finds ALL matches");
+
+// Example selectors:
+console.log("By ID: document.getElementById('title')");
+console.log("By class: document.querySelector('.text')");
+console.log("By tag: document.querySelectorAll('p')");`}
+/>
+
+<ProgressCheckpoint section="selecting-elements" xpReward={15} />
+
+## Modifying Elements: Making Changes
+
+Once you've selected an element, you can change it! Here are the most common modifications:
+
+### Changing Text Content
+
+```javascript
+const title = document.getElementById('title');
+title.textContent = 'New Title!';
+```
+
+### Changing HTML Content
+
+```javascript
+const container = document.getElementById('container');
+container.innerHTML = '<strong>Bold text!</strong>';
+```
+
+### Changing Styles
+
+```javascript
+const box = document.getElementById('box');
+box.style.backgroundColor = 'blue';
+box.style.color = 'white';
+box.style.padding = '20px';
+```
+
+### Adding/Removing Classes
+
+```javascript
+const element = document.getElementById('myElement');
+element.classList.add('active');
+element.classList.remove('hidden');
+element.classList.toggle('selected');
+```
+
+<KeyConcept title="textContent vs innerHTML">
+- **textContent**: Safe! Only changes text, ignores HTML tags
+- **innerHTML**: Powerful but risky! Can insert HTML (be careful with user input)
+</KeyConcept>
+
+<DomManipulationSandbox />
+
+<ProgressCheckpoint section="modifying-elements" xpReward={15} />
+
+## Events: Responding to User Actions
+
+Events are things that happen on the page — clicks, key presses, mouse movements, form submissions. You can write code that runs when these events occur!
+
+### Adding Event Listeners
+
+```javascript
+const button = document.getElementById('myButton');
+
+button.addEventListener('click', function() {
+  console.log('Button was clicked!');
+});
+```
+
+### Common Events
+
+| Event | When it fires |
+|-------|---------------|
+| `click` | User clicks an element |
+| `mouseover` | Mouse enters an element |
+| `mouseout` | Mouse leaves an element |
+| `keydown` | User presses a key |
+| `submit` | Form is submitted |
+| `load` | Page finishes loading |
+
+### The Event Object
+
+When an event fires, you get information about it:
+
+```javascript
+button.addEventListener('click', function(event) {
+  console.log('Clicked at:', event.clientX, event.clientY);
+  console.log('Target element:', event.target);
+});
+```
+
+<CodePlayground
+  initialCode={`// Events in action!
+// In a real page, you'd attach this to actual elements
+
+function handleClick() {
+  console.log("🖱️ Click detected!");
+}
+
+function handleKeyPress(key) {
+  console.log("⌨️ Key pressed:", key);
+}
+
+// Simulate some events
+console.log("Simulating events...");
+handleClick();
+handleKeyPress("Enter");
+handleKeyPress("Space");
+
+console.log("\\nIn real code, you'd use:");
+console.log("element.addEventListener('click', handleClick);");`}
+/>
+
+<ProgressCheckpoint section="events" xpReward={15} />
+
+## Event Flow: How Events Travel
+
+When you click a button inside a div inside the body, which element's event handler runs first? This is where **event flow** comes in!
+
+Events travel through the DOM in three phases:
+
+1. **Capturing Phase**: Event travels DOWN from the root to the target
+2. **Target Phase**: Event reaches the clicked element
+3. **Bubbling Phase**: Event travels UP from the target to the root
+
+<EventFlowSimulator showPhases={true} interactive={true} />
+
+### Event Bubbling (Default)
+
+By default, events "bubble up" from the target to its ancestors:
+
+```javascript
+// If you click the button, both handlers fire!
+document.getElementById('parent').addEventListener('click', () => {
+  console.log('Parent clicked!');
+});
+
+document.getElementById('child').addEventListener('click', () => {
+  console.log('Child clicked!');
+});
+// Output: "Child clicked!" then "Parent clicked!"
+```
+
+### Stopping Propagation
+
+You can stop the event from traveling further:
+
+```javascript
+child.addEventListener('click', (event) => {
+  event.stopPropagation();  // Stop bubbling!
+  console.log('Only child handles this');
+});
+```
+
+<KeyConcept title="Why Event Flow Matters">
+Understanding event flow helps you:
+- Avoid unexpected behavior when nesting clickable elements
+- Use event delegation (one handler for many elements)
+- Debug why events fire multiple times
+</KeyConcept>
+
+<ProgressCheckpoint section="event-flow" xpReward={10} />
+
+## Key Takeaways
+
+<KeyConcept title="DOM = Document as Objects">
+The browser turns your HTML into a tree of JavaScript objects you can manipulate.
+</KeyConcept>
+
+<KeyConcept title="Select → Modify → Listen">
+1. Select elements with `querySelector` or `getElementById`
+2. Modify them with `textContent`, `style`, or `classList`
+3. Listen for events with `addEventListener`
+</KeyConcept>
+
+<KeyConcept title="Events Bubble Up">
+By default, events travel from the target element up to its ancestors. Use `stopPropagation()` to prevent this.
+</KeyConcept>
+
+<ProgressCheckpoint section="summary" xpReward={10} />
+
+## Quick Quiz
+
+<Quiz>
+  <Question text="What does DOM stand for?">
+    <Answer>Document Order Model</Answer>
+    <Answer correct>Document Object Model</Answer>
+    <Answer>Data Object Method</Answer>
+    <Answer>Dynamic Object Manager</Answer>
+  </Question>
+  
+  <Question text="Which method selects an element by its unique ID?">
+    <Answer>querySelector</Answer>
+    <Answer correct>getElementById</Answer>
+    <Answer>getElementsByClassName</Answer>
+    <Answer>selectById</Answer>
+  </Question>
+  
+  <Question text="What property would you use to safely change an element's text?">
+    <Answer>innerHTML</Answer>
+    <Answer correct>textContent</Answer>
+    <Answer>innerText</Answer>
+    <Answer>value</Answer>
+  </Question>
+  
+  <Question text="In which direction do events travel during the bubbling phase?">
+    <Answer>Down from root to target</Answer>
+    <Answer correct>Up from target to root</Answer>
+    <Answer>Sideways to siblings</Answer>
+    <Answer>They don't travel</Answer>
+  </Question>
+</Quiz>
+
+---
+
+**Great job!** 🎉 You now understand the basics of DOM manipulation. In the intermediate level, we'll explore DOM traversal, creating elements dynamically, and event delegation patterns.

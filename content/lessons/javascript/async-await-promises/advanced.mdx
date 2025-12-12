@@ -1,0 +1,545 @@
+# Async/Await and Promises - Advanced
+
+Welcome to the deep dive into JavaScript's asynchronous internals. We'll explore the event loop mechanics, understand microtasks vs macrotasks, and learn advanced patterns like async iterators and generators.
+
+<InfoBox type="tip" title="Under the Hood">
+Understanding these internals will help you debug tricky async issues, optimize performance, and write more predictable asynchronous code.
+</InfoBox>
+
+<ProgressCheckpoint section="introduction" xpReward={15} />
+
+## The Event Loop Deep Dive
+
+JavaScript is single-threaded, but it handles async operations through the **event loop**. Let's understand exactly how it works:
+
+### The Components
+
+1. **Call Stack**: Where synchronous code executes (LIFO - Last In, First Out)
+2. **Web APIs**: Browser-provided async operations (setTimeout, fetch, DOM events)
+3. **Callback Queue (Macrotask Queue)**: setTimeout, setInterval, I/O callbacks
+4. **Microtask Queue**: Promise callbacks, queueMicrotask, MutationObserver
+
+### The Event Loop Algorithm
+
+```javascript
+// Simplified event loop pseudocode
+while (true) {
+  // 1. Execute all synchronous code in call stack
+  executeCallStack();
+  
+  // 2. Process ALL microtasks (until queue is empty)
+  while (microtaskQueue.length > 0) {
+    executeMicrotask(microtaskQueue.shift());
+  }
+  
+  // 3. Process ONE macrotask (if any)
+  if (macrotaskQueue.length > 0) {
+    executeMacrotask(macrotaskQueue.shift());
+  }
+  
+  // 4. Render updates (if needed)
+  if (needsRender) {
+    render();
+  }
+  
+  // Repeat...
+}
+```
+
+<KeyConcept title="Critical Insight">
+Microtasks are processed COMPLETELY before any macrotask. This means Promise callbacks always run before setTimeout callbacks, even with 0ms delay.
+</KeyConcept>
+
+<EventLoopVisualizer showMicrotasks={true} />
+
+<ProgressCheckpoint section="callbacks" xpReward={15} />
+
+## Microtasks vs Macrotasks
+
+Understanding the difference is crucial for predicting execution order:
+
+### Microtasks (High Priority)
+- `Promise.then()`, `Promise.catch()`, `Promise.finally()`
+- `queueMicrotask()`
+- `MutationObserver` callbacks
+- `async/await` continuations
+
+### Macrotasks (Lower Priority)
+- `setTimeout()`, `setInterval()`
+- `setImmediate()` (Node.js)
+- I/O operations
+- UI rendering
+- `requestAnimationFrame()`
+
+```javascript
+console.log('1: Script start');
+
+setTimeout(() => console.log('2: setTimeout'), 0);
+
+Promise.resolve()
+  .then(() => console.log('3: Promise 1'))
+  .then(() => console.log('4: Promise 2'));
+
+queueMicrotask(() => console.log('5: queueMicrotask'));
+
+console.log('6: Script end');
+
+// Output order:
+// 1: Script start
+// 6: Script end
+// 3: Promise 1
+// 5: queueMicrotask
+// 4: Promise 2
+// 2: setTimeout
+```
+
+<CodePlayground
+  initialCode={`// Microtasks vs Macrotasks demonstration
+console.log('1: Script start');
+
+// Macrotask
+setTimeout(() => {
+  console.log('2: setTimeout (macrotask)');
+}, 0);
+
+// Microtasks
+Promise.resolve()
+  .then(() => {
+    console.log('3: Promise 1 (microtask)');
+    // Microtask scheduled from microtask
+    queueMicrotask(() => console.log('4: Nested microtask'));
+  })
+  .then(() => console.log('5: Promise 2 (microtask)'));
+
+queueMicrotask(() => console.log('6: queueMicrotask'));
+
+console.log('7: Script end');
+
+// Predict the order before running!`}
+/>
+
+<ProgressCheckpoint section="promises" xpReward={15} />
+
+## Promise Internals
+
+### Promise Resolution Procedure
+
+When a Promise resolves, it follows the Promise/A+ specification:
+
+```javascript
+// Understanding Promise resolution
+const p1 = Promise.resolve(42);
+
+// Resolving with a non-thenable
+p1.then(value => {
+  console.log(value); // 42
+});
+
+// Resolving with another Promise (unwrapping)
+const p2 = Promise.resolve(Promise.resolve(100));
+p2.then(value => {
+  console.log(value); // 100, not Promise{100}
+});
+
+// Resolving with a thenable
+const thenable = {
+  then(resolve) {
+    resolve('I am a thenable');
+  }
+};
+Promise.resolve(thenable).then(console.log); // "I am a thenable"
+```
+
+### Creating Custom Promises
+
+```javascript
+// Manual Promise implementation (simplified)
+class MyPromise {
+  constructor(executor) {
+    this.state = 'pending';
+    this.value = undefined;
+    this.handlers = [];
+    
+    const resolve = (value) => {
+      if (this.state !== 'pending') return;
+      this.state = 'fulfilled';
+      this.value = value;
+      this.handlers.forEach(h => h.onFulfilled(value));
+    };
+    
+    const reject = (reason) => {
+      if (this.state !== 'pending') return;
+      this.state = 'rejected';
+      this.value = reason;
+      this.handlers.forEach(h => h.onRejected(reason));
+    };
+    
+    try {
+      executor(resolve, reject);
+    } catch (error) {
+      reject(error);
+    }
+  }
+  
+  then(onFulfilled, onRejected) {
+    return new MyPromise((resolve, reject) => {
+      const handler = {
+        onFulfilled: value => {
+          queueMicrotask(() => {
+            try {
+              const result = onFulfilled ? onFulfilled(value) : value;
+              resolve(result);
+            } catch (error) {
+              reject(error);
+            }
+          });
+        },
+        onRejected: reason => {
+          queueMicrotask(() => {
+            try {
+              if (onRejected) {
+                const result = onRejected(reason);
+                resolve(result);
+              } else {
+                reject(reason);
+              }
+            } catch (error) {
+              reject(error);
+            }
+          });
+        }
+      };
+      
+      if (this.state === 'pending') {
+        this.handlers.push(handler);
+      } else if (this.state === 'fulfilled') {
+        handler.onFulfilled(this.value);
+      } else {
+        handler.onRejected(this.value);
+      }
+    });
+  }
+}
+```
+
+<PromiseChainBuilder showExecutionOrder={true} />
+
+<ProgressCheckpoint section="promise-chaining" xpReward={15} />
+
+## Async Iterators and Generators
+
+### Async Generators
+
+Combine generators with async/await for streaming async data:
+
+```javascript
+// Async generator function
+async function* fetchPages(url) {
+  let page = 1;
+  let hasMore = true;
+  
+  while (hasMore) {
+    const response = await fetch(`${url}?page=${page}`);
+    const data = await response.json();
+    
+    yield data.items;
+    
+    hasMore = data.hasNextPage;
+    page++;
+  }
+}
+
+// Consuming with for-await-of
+async function processAllPages() {
+  for await (const items of fetchPages('/api/items')) {
+    console.log('Processing batch:', items.length);
+    // Process each batch as it arrives
+  }
+}
+```
+
+### Async Iteration Protocol
+
+```javascript
+// Custom async iterable
+const asyncIterable = {
+  [Symbol.asyncIterator]() {
+    let i = 0;
+    return {
+      async next() {
+        if (i >= 3) {
+          return { done: true };
+        }
+        
+        // Simulate async operation
+        await new Promise(r => setTimeout(r, 100));
+        
+        return {
+          value: i++,
+          done: false
+        };
+      }
+    };
+  }
+};
+
+// Usage
+for await (const value of asyncIterable) {
+  console.log(value); // 0, 1, 2
+}
+```
+
+<CodePlayground
+  initialCode={`// Async generator example
+async function* countWithDelay(max) {
+  for (let i = 1; i <= max; i++) {
+    // Simulate async operation
+    await new Promise(r => setTimeout(r, 300));
+    yield i;
+  }
+}
+
+// Consume the async generator
+async function main() {
+  console.log("Starting async iteration...");
+  
+  for await (const num of countWithDelay(5)) {
+    console.log("Got:", num);
+  }
+  
+  console.log("Done!");
+}
+
+main();`}
+/>
+
+<ProgressCheckpoint section="async-await" xpReward={15} />
+
+## Advanced Patterns
+
+### Cancellation with AbortController
+
+```javascript
+async function fetchWithCancellation(url, signal) {
+  try {
+    const response = await fetch(url, { signal });
+    return await response.json();
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      console.log('Fetch was cancelled');
+      return null;
+    }
+    throw error;
+  }
+}
+
+// Usage
+const controller = new AbortController();
+
+// Start fetch
+const promise = fetchWithCancellation('/api/data', controller.signal);
+
+// Cancel after 5 seconds
+setTimeout(() => controller.abort(), 5000);
+```
+
+### Semaphore for Concurrency Control
+
+```javascript
+class Semaphore {
+  constructor(max) {
+    this.max = max;
+    this.current = 0;
+    this.queue = [];
+  }
+  
+  async acquire() {
+    if (this.current < this.max) {
+      this.current++;
+      return;
+    }
+    
+    await new Promise(resolve => this.queue.push(resolve));
+    this.current++;
+  }
+  
+  release() {
+    this.current--;
+    if (this.queue.length > 0) {
+      const next = this.queue.shift();
+      next();
+    }
+  }
+  
+  async run(fn) {
+    await this.acquire();
+    try {
+      return await fn();
+    } finally {
+      this.release();
+    }
+  }
+}
+
+// Usage: limit to 3 concurrent requests
+const semaphore = new Semaphore(3);
+
+const urls = [/* many URLs */];
+const results = await Promise.all(
+  urls.map(url => semaphore.run(() => fetch(url)))
+);
+```
+
+### Promise Queue
+
+```javascript
+class PromiseQueue {
+  constructor() {
+    this.queue = [];
+    this.processing = false;
+  }
+  
+  enqueue(promiseFactory) {
+    return new Promise((resolve, reject) => {
+      this.queue.push({ promiseFactory, resolve, reject });
+      this.process();
+    });
+  }
+  
+  async process() {
+    if (this.processing) return;
+    this.processing = true;
+    
+    while (this.queue.length > 0) {
+      const { promiseFactory, resolve, reject } = this.queue.shift();
+      try {
+        const result = await promiseFactory();
+        resolve(result);
+      } catch (error) {
+        reject(error);
+      }
+    }
+    
+    this.processing = false;
+  }
+}
+```
+
+<AsyncTimeline />
+
+<ProgressCheckpoint section="event-loop" xpReward={15} />
+
+## Performance Considerations
+
+### Avoiding Microtask Starvation
+
+```javascript
+// ❌ Bad: Blocks rendering
+async function processLargeArray(items) {
+  for (const item of items) {
+    await processItem(item); // Microtasks block rendering
+  }
+}
+
+// ✅ Better: Yield to event loop periodically
+async function processLargeArrayBetter(items) {
+  for (let i = 0; i < items.length; i++) {
+    await processItem(items[i]);
+    
+    // Yield to event loop every 100 items
+    if (i % 100 === 0) {
+      await new Promise(r => setTimeout(r, 0));
+    }
+  }
+}
+```
+
+### Memory Leaks with Promises
+
+```javascript
+// ❌ Potential memory leak
+const cache = new Map();
+
+async function fetchCached(url) {
+  if (!cache.has(url)) {
+    cache.set(url, fetch(url).then(r => r.json()));
+  }
+  return cache.get(url);
+}
+
+// ✅ Better: Use WeakMap or implement cache eviction
+const cache = new Map();
+const MAX_CACHE_SIZE = 100;
+
+async function fetchCachedBetter(url) {
+  if (cache.has(url)) {
+    return cache.get(url);
+  }
+  
+  // Evict oldest entries if cache is full
+  if (cache.size >= MAX_CACHE_SIZE) {
+    const firstKey = cache.keys().next().value;
+    cache.delete(firstKey);
+  }
+  
+  const promise = fetch(url).then(r => r.json());
+  cache.set(url, promise);
+  return promise;
+}
+```
+
+<ProgressCheckpoint section="summary" xpReward={10} />
+
+## Key Takeaways
+
+<KeyConcept title="Event Loop Order">
+Synchronous code → All microtasks → One macrotask → Render → Repeat. Microtasks always complete before macrotasks.
+</KeyConcept>
+
+<KeyConcept title="Async Iterators">
+Use `async function*` and `for await...of` for streaming async data. Great for pagination and real-time data.
+</KeyConcept>
+
+<KeyConcept title="Cancellation">
+Use `AbortController` to cancel fetch requests and other async operations gracefully.
+</KeyConcept>
+
+<KeyConcept title="Concurrency Control">
+Implement semaphores or queues to limit concurrent operations and prevent overwhelming APIs or resources.
+</KeyConcept>
+
+## Quick Quiz
+
+<Quiz>
+  <Question text="In what order are microtasks and macrotasks processed?">
+    <Answer>Alternating: one microtask, one macrotask</Answer>
+    <Answer>Macrotasks first, then microtasks</Answer>
+    <Answer correct>All microtasks, then one macrotask, repeat</Answer>
+    <Answer>They're processed in the order they were added</Answer>
+  </Question>
+  
+  <Question text="Which of these is a microtask?">
+    <Answer>setTimeout callback</Answer>
+    <Answer correct>Promise.then() callback</Answer>
+    <Answer>setInterval callback</Answer>
+    <Answer>requestAnimationFrame callback</Answer>
+  </Question>
+  
+  <Question text="What is the purpose of queueMicrotask()?">
+    <Answer>To delay execution until the next event loop tick</Answer>
+    <Answer correct>To schedule a microtask that runs before macrotasks</Answer>
+    <Answer>To create a new Promise</Answer>
+    <Answer>To cancel pending microtasks</Answer>
+  </Question>
+  
+  <Question text="How do you cancel a fetch request?">
+    <Answer>Call fetch.cancel()</Answer>
+    <Answer>Set a timeout on the Promise</Answer>
+    <Answer correct>Use AbortController and pass signal to fetch</Answer>
+    <Answer>Fetch requests cannot be cancelled</Answer>
+  </Question>
+</Quiz>
+
+---
+
+**Congratulations!** 🎉 You've mastered the advanced concepts of asynchronous JavaScript. You now understand the event loop internals, can predict execution order, and know how to implement sophisticated async patterns. This knowledge will help you debug complex async issues and write highly performant code.

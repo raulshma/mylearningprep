@@ -1,0 +1,332 @@
+# Hoisting, Scope, and Prototype - Intermediate
+
+Now that you understand the basics, let's dive deeper into these core JavaScript concepts. We'll explore closures, the temporal dead zone in detail, and how to navigate the prototype chain.
+
+<InfoBox type="tip" title="Level Up Your Understanding">
+These intermediate concepts are what separate JavaScript beginners from confident developers. Master these, and you'll debug issues much faster!
+</InfoBox>
+
+<ProgressCheckpoint section="introduction" xpReward={20} />
+
+## The Temporal Dead Zone (TDZ) Explained
+
+The TDZ is the period between entering a scope and the actual declaration of a `let` or `const` variable. During this time, the variable exists but cannot be accessed.
+
+```javascript
+{
+  // TDZ starts here for 'message'
+  
+  console.log(message);  // ❌ ReferenceError: Cannot access 'message' before initialization
+  
+  // TDZ ends here
+  let message = "Hello!";
+  
+  console.log(message);  // ✅ "Hello!"
+}
+```
+
+### Why Does TDZ Exist?
+
+TDZ helps catch bugs early. With `var`, you might accidentally use a variable before it's properly set up:
+
+```javascript
+// With var - silent bug
+function buggyCode() {
+  console.log(count);  // undefined - no error, but probably a bug!
+  var count = 10;
+}
+
+// With let - caught immediately
+function betterCode() {
+  console.log(count);  // ❌ ReferenceError - bug caught!
+  let count = 10;
+}
+```
+
+<HoistingSimulator showPhases={true} highlightHoisted={true} />
+
+<KeyConcept title="TDZ Best Practice">
+Always declare variables at the top of their scope. This makes your code clearer and avoids TDZ issues entirely.
+</KeyConcept>
+
+<ProgressCheckpoint section="hoisting" xpReward={20} />
+
+## Closures: Functions That Remember
+
+A **closure** is a function that "remembers" variables from its outer scope, even after that outer function has finished running.
+
+### The Backpack Analogy
+
+When a function is created, it packs a "backpack" with all the variables it might need from its surrounding scope. It carries this backpack wherever it goes!
+
+```javascript
+function createCounter() {
+  let count = 0;  // This goes in the backpack!
+  
+  return function increment() {
+    count++;  // Uses count from the backpack
+    return count;
+  };
+}
+
+const counter = createCounter();
+console.log(counter());  // 1
+console.log(counter());  // 2
+console.log(counter());  // 3
+
+// count is not accessible here, but the inner function still has it!
+```
+
+### Practical Closure Examples
+
+```javascript
+// Private variables
+function createBankAccount(initialBalance) {
+  let balance = initialBalance;  // Private!
+  
+  return {
+    deposit(amount) {
+      balance += amount;
+      return balance;
+    },
+    withdraw(amount) {
+      if (amount <= balance) {
+        balance -= amount;
+        return balance;
+      }
+      return "Insufficient funds";
+    },
+    getBalance() {
+      return balance;
+    }
+  };
+}
+
+const account = createBankAccount(100);
+console.log(account.getBalance());  // 100
+console.log(account.deposit(50));   // 150
+console.log(account.withdraw(30));  // 120
+// console.log(balance);  // ❌ Error - balance is private!
+```
+
+<ScopeChainVisualizer showClosures={true} />
+
+<ProgressCheckpoint section="closures" xpReward={20} />
+
+## Common Closure Pitfall: The Loop Problem
+
+One of the most common JavaScript interview questions involves closures in loops:
+
+```javascript
+// The classic bug
+for (var i = 0; i < 3; i++) {
+  setTimeout(function() {
+    console.log(i);  // Prints 3, 3, 3 (not 0, 1, 2!)
+  }, 100);
+}
+
+// Why? All callbacks share the same 'i' variable
+// By the time they run, the loop has finished and i = 3
+```
+
+### Solutions
+
+```javascript
+// Solution 1: Use let (creates new binding each iteration)
+for (let i = 0; i < 3; i++) {
+  setTimeout(function() {
+    console.log(i);  // Prints 0, 1, 2 ✅
+  }, 100);
+}
+
+// Solution 2: Create a closure with IIFE
+for (var i = 0; i < 3; i++) {
+  (function(j) {
+    setTimeout(function() {
+      console.log(j);  // Prints 0, 1, 2 ✅
+    }, 100);
+  })(i);
+}
+```
+
+<CodePlayground
+  initialCode={`// Try both versions!
+
+// Bug version with var
+console.log("With var:");
+for (var i = 0; i < 3; i++) {
+  setTimeout(() => console.log("var:", i), 10);
+}
+
+// Fixed version with let
+console.log("With let:");
+for (let j = 0; j < 3; j++) {
+  setTimeout(() => console.log("let:", j), 20);
+}`}
+/>
+
+<ProgressCheckpoint section="scope-chain" xpReward={20} />
+
+## Prototype Chain Traversal
+
+When you access a property on an object, JavaScript searches through the prototype chain:
+
+1. First, check the object itself
+2. If not found, check its prototype
+3. Continue up the chain until found or reaching `null`
+
+```javascript
+const animal = {
+  eats: true,
+  walk() {
+    console.log("Walking...");
+  }
+};
+
+const dog = {
+  barks: true,
+  __proto__: animal  // dog's prototype is animal
+};
+
+const myDog = {
+  name: "Buddy",
+  __proto__: dog  // myDog's prototype is dog
+};
+
+// Property lookup chain:
+console.log(myDog.name);   // "Buddy" - found on myDog
+console.log(myDog.barks);  // true - found on dog (prototype)
+console.log(myDog.eats);   // true - found on animal (prototype's prototype)
+console.log(myDog.flies);  // undefined - not found anywhere
+```
+
+<PrototypeChainExplorer showMethods={true} interactive={true} />
+
+### Checking Property Ownership
+
+```javascript
+const parent = { inherited: true };
+const child = Object.create(parent);
+child.own = true;
+
+// hasOwnProperty checks only the object itself
+console.log(child.hasOwnProperty('own'));        // true
+console.log(child.hasOwnProperty('inherited'));  // false
+
+// 'in' operator checks the entire prototype chain
+console.log('own' in child);        // true
+console.log('inherited' in child);  // true
+```
+
+<ProgressCheckpoint section="prototype-chain" xpReward={20} />
+
+## Event Propagation Control
+
+Events actually have THREE phases:
+1. **Capturing** - Event travels DOWN from window to target
+2. **Target** - Event reaches the clicked element
+3. **Bubbling** - Event travels UP from target to window
+
+```javascript
+element.addEventListener('click', handler, true);   // Capturing phase
+element.addEventListener('click', handler, false);  // Bubbling phase (default)
+element.addEventListener('click', handler);         // Bubbling phase
+```
+
+### Stopping Propagation
+
+```javascript
+// stopPropagation - stops the event from continuing
+button.addEventListener('click', function(e) {
+  e.stopPropagation();  // Parent handlers won't fire
+  console.log("Button clicked!");
+});
+
+// stopImmediatePropagation - also stops other handlers on same element
+button.addEventListener('click', function(e) {
+  e.stopImmediatePropagation();
+  console.log("First handler");
+});
+
+button.addEventListener('click', function(e) {
+  console.log("Second handler");  // This won't run!
+});
+```
+
+<EventBubblingPlayground showPath={true} allowStopPropagation={true} />
+
+### Event Delegation
+
+Instead of adding listeners to many elements, add one to their parent:
+
+```javascript
+// Instead of this (inefficient):
+document.querySelectorAll('button').forEach(btn => {
+  btn.addEventListener('click', handleClick);
+});
+
+// Do this (event delegation):
+document.querySelector('.button-container').addEventListener('click', function(e) {
+  if (e.target.matches('button')) {
+    handleClick(e);
+  }
+});
+```
+
+<ProgressCheckpoint section="event-bubbling" xpReward={20} />
+
+## Key Takeaways
+
+<KeyConcept title="Temporal Dead Zone">
+`let` and `const` are hoisted but remain in the TDZ until their declaration is reached. Accessing them early throws a ReferenceError.
+</KeyConcept>
+
+<KeyConcept title="Closures">
+Functions "remember" their outer scope variables. This enables private variables and powerful patterns like factories and modules.
+</KeyConcept>
+
+<KeyConcept title="Prototype Chain">
+Property lookup travels up the prototype chain. Use `hasOwnProperty` to check only the object itself, or `in` to check the entire chain.
+</KeyConcept>
+
+<KeyConcept title="Event Propagation">
+Events have capturing (down) and bubbling (up) phases. Use `stopPropagation()` to prevent further propagation.
+</KeyConcept>
+
+<ProgressCheckpoint section="summary" xpReward={15} />
+
+## Quick Quiz
+
+<Quiz>
+  <Question text="What is a closure?">
+    <Answer>A way to close JavaScript files</Answer>
+    <Answer correct>A function that remembers variables from its outer scope</Answer>
+    <Answer>A method to end loops early</Answer>
+    <Answer>A type of JavaScript error</Answer>
+  </Question>
+  
+  <Question text="Why does 'for (var i...)' with setTimeout print the same number?">
+    <Answer>setTimeout is broken</Answer>
+    <Answer>var doesn't work in loops</Answer>
+    <Answer correct>All callbacks share the same 'i' variable</Answer>
+    <Answer>The loop runs too fast</Answer>
+  </Question>
+  
+  <Question text="What does hasOwnProperty check?">
+    <Answer>The entire prototype chain</Answer>
+    <Answer correct>Only the object itself, not its prototype</Answer>
+    <Answer>If a property is writable</Answer>
+    <Answer>If a property is enumerable</Answer>
+  </Question>
+  
+  <Question text="What are the three phases of event propagation?">
+    <Answer>Start, Middle, End</Answer>
+    <Answer>Click, Hold, Release</Answer>
+    <Answer correct>Capturing, Target, Bubbling</Answer>
+    <Answer>Down, Across, Up</Answer>
+  </Question>
+</Quiz>
+
+---
+
+**Excellent work!** 🎉 You now understand closures, the TDZ, and prototype chain traversal. In the advanced level, we'll explore execution context internals, lexical environments, and performance implications.

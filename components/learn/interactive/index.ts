@@ -1,7 +1,16 @@
 // Interactive Components for Learning Lessons
-// All components are wrapped with error boundaries (Requirements 11.5, 10.5)
+// All components are wrapped with error boundaries (Requirements 11.5, 10.5, 23.5)
 
 import { withErrorBoundary } from '@/components/learn/shared';
+
+// JavaScript components
+import { CodePlayground as CodePlaygroundBase } from './javascript/CodePlayground';
+import { VariableVisualizer as VariableVisualizerBase } from './javascript/VariableVisualizer';
+import { DomTreeVisualizer as DomTreeVisualizerBase } from './javascript/DomTreeVisualizer';
+import { DomManipulationSandbox as DomManipulationSandboxBase } from './javascript/DomManipulationSandbox';
+import { EventFlowSimulator as EventFlowSimulatorBase } from './javascript/EventFlowSimulator';
+import { ApiRequestBuilder as ApiRequestBuilderBase } from './javascript/ApiRequestBuilder';
+import { ResponseInspector as ResponseInspectorBase } from './javascript/ResponseInspector';
 
 // Hosting components
 import { HostingTypeSelector as HostingTypeSelectorBase } from './hosting/HostingTypeSelector';
@@ -60,6 +69,15 @@ export const ScreenReaderSimulator = withErrorBoundary(ScreenReaderSimulatorBase
 export const SeoPreview = withErrorBoundary(SeoPreviewBase, 'SeoPreview');
 export const MetaTagEditor = withErrorBoundary(MetaTagEditorBase, 'MetaTagEditor');
 
+// JavaScript components
+export const CodePlayground = withErrorBoundary(CodePlaygroundBase, 'CodePlayground');
+export const VariableVisualizer = withErrorBoundary(VariableVisualizerBase, 'VariableVisualizer');
+export const DomTreeVisualizer = withErrorBoundary(DomTreeVisualizerBase, 'DomTreeVisualizer');
+export const DomManipulationSandbox = withErrorBoundary(DomManipulationSandboxBase, 'DomManipulationSandbox');
+export const EventFlowSimulator = withErrorBoundary(EventFlowSimulatorBase, 'EventFlowSimulator');
+export const ApiRequestBuilder = withErrorBoundary(ApiRequestBuilderBase, 'ApiRequestBuilder');
+export const ResponseInspector = withErrorBoundary(ResponseInspectorBase, 'ResponseInspector');
+
 // Re-export types and utilities
 export type { HostingType, HostingTypeInfo } from './hosting/HostingTypeSelector';
 export type { DiagramType } from './hosting/ServerArchitectureDiagram';
@@ -74,3 +92,10 @@ export type { IssueSeverity, AccessibilityIssue, AccessibilityExample } from './
 export type { ScreenReaderOutput, ScreenReaderExample } from './accessibility/ScreenReaderSimulator';
 export type { SeoMetaTags, SeoPreviewProps } from './seo/SeoPreview';
 export type { MetaTag, MetaTagEditorProps } from './seo/MetaTagEditor';
+export type { CodePlaygroundProps, ExecutionResult, ExecutionError, ConsoleOutput } from './javascript/CodePlayground';
+export type { VariableVisualizerProps, VariableState, VariableStep } from './javascript/VariableVisualizer';
+export type { DomTreeVisualizerProps, DomTreeNode } from './javascript/DomTreeVisualizer';
+export type { DomManipulationSandboxProps } from './javascript/DomManipulationSandbox';
+export type { EventFlowSimulatorProps, NestedElement, EventPhase, EventFlowStep } from './javascript/EventFlowSimulator';
+export type { ApiRequestBuilderProps, HttpMethod, Header, ApiResponse } from './javascript/ApiRequestBuilder';
+export type { ResponseInspectorProps, ResponseData } from './javascript/ResponseInspector';

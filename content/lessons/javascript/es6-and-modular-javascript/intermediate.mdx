@@ -1,0 +1,473 @@
+# ES6+ and Modular JavaScript
+
+Building on the basics, let's explore more powerful ES6+ features that will take your JavaScript skills to the next level. These features are essential for writing professional, maintainable code.
+
+<InfoBox type="info" title="Prerequisites">
+This lesson assumes you're comfortable with let/const, arrow functions, template literals, and basic destructuring from the beginner level.
+</InfoBox>
+
+<ProgressCheckpoint section="introduction" xpReward={15} />
+
+## Advanced Destructuring
+
+Destructuring goes beyond simple extraction. Let's explore default values, renaming, and nested destructuring.
+
+### Default Values
+
+```javascript
+// Provide fallbacks for missing properties
+const user = { name: "Alice" };
+const { name, age = 25, role = "user" } = user;
+
+console.log(name);  // "Alice"
+console.log(age);   // 25 (default)
+console.log(role);  // "user" (default)
+```
+
+### Renaming Variables
+
+```javascript
+// Rename during destructuring
+const response = { data: [1, 2, 3], status: 200 };
+const { data: items, status: statusCode } = response;
+
+console.log(items);      // [1, 2, 3]
+console.log(statusCode); // 200
+```
+
+### Nested Destructuring
+
+```javascript
+const company = {
+  name: "TechCorp",
+  address: {
+    city: "San Francisco",
+    country: "USA"
+  },
+  employees: [
+    { name: "Alice", role: "Developer" },
+    { name: "Bob", role: "Designer" }
+  ]
+};
+
+// Nested object destructuring
+const { 
+  name: companyName,
+  address: { city, country }
+} = company;
+
+// Nested array destructuring
+const { employees: [firstEmployee] } = company;
+console.log(firstEmployee.name);  // "Alice"
+```
+
+<CodePlayground
+  initialCode={`// Advanced destructuring patterns
+const apiResponse = {
+  success: true,
+  data: {
+    user: { id: 1, name: "Alice", email: "alice@example.com" },
+    posts: [
+      { id: 101, title: "First Post" },
+      { id: 102, title: "Second Post" }
+    ]
+  },
+  meta: { page: 1, total: 50 }
+};
+
+// Nested destructuring with defaults and renaming
+const {
+  success,
+  data: {
+    user: { name: userName, email },
+    posts: [firstPost, secondPost]
+  },
+  meta: { page = 1, limit = 10 }
+} = apiResponse;
+
+console.log("User:", userName);
+console.log("Email:", email);
+console.log("First post:", firstPost.title);
+console.log("Page:", page, "Limit:", limit);`}
+/>
+
+<ProgressCheckpoint section="let-const" xpReward={15} />
+
+## Spread and Rest: Advanced Patterns
+
+The spread and rest operators have many powerful use cases beyond basic copying.
+
+### Object Merging and Overriding
+
+```javascript
+const defaults = { theme: "light", fontSize: 14, language: "en" };
+const userPrefs = { theme: "dark", fontSize: 16 };
+
+// Later properties override earlier ones
+const settings = { ...defaults, ...userPrefs };
+// { theme: "dark", fontSize: 16, language: "en" }
+```
+
+### Removing Properties
+
+```javascript
+const user = { id: 1, name: "Alice", password: "secret", email: "a@b.com" };
+
+// Remove password using rest
+const { password, ...safeUser } = user;
+console.log(safeUser);  // { id: 1, name: "Alice", email: "a@b.com" }
+```
+
+### Function Parameter Patterns
+
+```javascript
+// Destructuring in parameters with rest
+function processUser({ name, email, ...otherProps }) {
+  console.log(`Processing ${name} (${email})`);
+  console.log("Other properties:", otherProps);
+}
+
+processUser({ 
+  name: "Alice", 
+  email: "alice@example.com",
+  age: 25,
+  role: "admin"
+});
+```
+
+<CodePlayground
+  initialCode={`// Advanced spread/rest patterns
+const baseConfig = {
+  apiUrl: "https://api.example.com",
+  timeout: 5000,
+  retries: 3,
+  headers: { "Content-Type": "application/json" }
+};
+
+// Deep merge with nested spread
+const customConfig = {
+  ...baseConfig,
+  timeout: 10000,
+  headers: {
+    ...baseConfig.headers,
+    "Authorization": "Bearer token123"
+  }
+};
+
+console.log("Config:", customConfig);
+
+// Array manipulation
+const numbers = [1, 2, 3, 4, 5];
+const [first, ...rest] = numbers;
+const withoutFirst = rest;
+const withoutLast = numbers.slice(0, -1);
+const middle = numbers.slice(1, -1);
+
+console.log("First:", first);
+console.log("Rest:", rest);
+console.log("Middle:", middle);`}
+/>
+
+<ProgressCheckpoint section="arrow-functions" xpReward={15} />
+
+## Classes: Object-Oriented JavaScript
+
+ES6 classes provide a cleaner syntax for creating objects and handling inheritance.
+
+### Basic Class Syntax
+
+```javascript
+class User {
+  constructor(name, email) {
+    this.name = name;
+    this.email = email;
+    this.createdAt = new Date();
+  }
+
+  // Instance method
+  greet() {
+    return `Hello, I'm ${this.name}!`;
+  }
+
+  // Getter
+  get displayName() {
+    return `${this.name} <${this.email}>`;
+  }
+
+  // Static method (called on class, not instance)
+  static createGuest() {
+    return new User("Guest", "guest@example.com");
+  }
+}
+
+const user = new User("Alice", "alice@example.com");
+console.log(user.greet());        // "Hello, I'm Alice!"
+console.log(user.displayName);    // "Alice <alice@example.com>"
+
+const guest = User.createGuest(); // Static method
+```
+
+### Inheritance with extends
+
+```javascript
+class Animal {
+  constructor(name) {
+    this.name = name;
+  }
+
+  speak() {
+    console.log(`${this.name} makes a sound`);
+  }
+}
+
+class Dog extends Animal {
+  constructor(name, breed) {
+    super(name);  // Call parent constructor
+    this.breed = breed;
+  }
+
+  speak() {
+    console.log(`${this.name} barks!`);
+  }
+
+  fetch() {
+    console.log(`${this.name} fetches the ball!`);
+  }
+}
+
+const dog = new Dog("Rex", "German Shepherd");
+dog.speak();  // "Rex barks!"
+dog.fetch();  // "Rex fetches the ball!"
+```
+
+<CodePlayground
+  initialCode={`// Classes in action
+class Task {
+  constructor(title, priority = "medium") {
+    this.id = Date.now();
+    this.title = title;
+    this.priority = priority;
+    this.completed = false;
+  }
+
+  complete() {
+    this.completed = true;
+    return this;
+  }
+
+  get status() {
+    return this.completed ? "✅ Done" : "⏳ Pending";
+  }
+
+  toString() {
+    return \`[\${this.priority.toUpperCase()}] \${this.title} - \${this.status}\`;
+  }
+}
+
+// Create and manage tasks
+const task1 = new Task("Learn ES6", "high");
+const task2 = new Task("Build project", "medium");
+
+console.log(task1.toString());
+task1.complete();
+console.log(task1.toString());
+console.log(task2.toString());`}
+/>
+
+<ProgressCheckpoint section="destructuring" xpReward={15} />
+
+## ES Modules: Import and Export Patterns
+
+Let's explore the different ways to import and export code between modules.
+
+### Named Exports
+
+```javascript
+// utils.js
+export const PI = 3.14159;
+export const E = 2.71828;
+
+export function add(a, b) {
+  return a + b;
+}
+
+export function multiply(a, b) {
+  return a * b;
+}
+```
+
+### Default Exports
+
+```javascript
+// Calculator.js
+export default class Calculator {
+  add(a, b) { return a + b; }
+  subtract(a, b) { return a - b; }
+}
+
+// Can also export a function or value as default
+// export default function() { ... }
+// export default { key: "value" }
+```
+
+### Import Patterns
+
+```javascript
+// Import specific named exports
+import { add, multiply } from './utils.js';
+
+// Import with alias
+import { add as sum } from './utils.js';
+
+// Import all as namespace
+import * as MathUtils from './utils.js';
+MathUtils.add(1, 2);
+
+// Import default export
+import Calculator from './Calculator.js';
+
+// Import default and named together
+import Calculator, { PI, E } from './math.js';
+```
+
+<ModuleDependencyVisualizer />
+
+### Re-exporting
+
+```javascript
+// index.js - Barrel file pattern
+export { add, multiply } from './math.js';
+export { formatDate } from './date.js';
+export { default as Calculator } from './Calculator.js';
+
+// Now consumers can import from one place:
+// import { add, formatDate, Calculator } from './utils/index.js';
+```
+
+<ProgressCheckpoint section="spread-rest" xpReward={15} />
+
+## Default Parameters and Enhanced Object Literals
+
+### Default Parameters
+
+```javascript
+function createUser(name, role = "user", active = true) {
+  return { name, role, active };
+}
+
+createUser("Alice");                    // { name: "Alice", role: "user", active: true }
+createUser("Bob", "admin");             // { name: "Bob", role: "admin", active: true }
+createUser("Charlie", "mod", false);    // { name: "Charlie", role: "mod", active: false }
+```
+
+### Enhanced Object Literals
+
+```javascript
+const name = "Alice";
+const age = 25;
+
+// Shorthand property names
+const user = { name, age };  // Same as { name: name, age: age }
+
+// Shorthand methods
+const calculator = {
+  add(a, b) { return a + b; },      // Instead of add: function(a, b) { ... }
+  multiply(a, b) { return a * b; }
+};
+
+// Computed property names
+const propName = "dynamicKey";
+const obj = {
+  [propName]: "value",
+  [`${propName}_2`]: "another value"
+};
+```
+
+<CodePlayground
+  initialCode={`// Enhanced object literals
+const createAPI = (baseUrl, version = "v1") => {
+  const buildUrl = (endpoint) => \`\${baseUrl}/\${version}/\${endpoint}\`;
+  
+  return {
+    baseUrl,
+    version,
+    
+    // Shorthand methods
+    get(endpoint) {
+      return \`GET \${buildUrl(endpoint)}\`;
+    },
+    
+    post(endpoint, data) {
+      return \`POST \${buildUrl(endpoint)} with \${JSON.stringify(data)}\`;
+    },
+    
+    // Computed property
+    [\`\${version}Url\`]: baseUrl
+  };
+};
+
+const api = createAPI("https://api.example.com", "v2");
+console.log(api.get("users"));
+console.log(api.post("users", { name: "Alice" }));
+console.log("v2Url:", api.v2Url);`}
+/>
+
+<ProgressCheckpoint section="modules" xpReward={15} />
+
+## See the Transformation
+
+Curious how ES6+ code gets converted to work in older browsers? This is what tools like Babel do:
+
+<SyntaxTransformer />
+
+<ProgressCheckpoint section="summary" xpReward={10} />
+
+## Key Takeaways
+
+<KeyConcept title="Advanced Destructuring">
+Use default values, renaming, and nested patterns for complex data extraction.
+</KeyConcept>
+
+<KeyConcept title="Classes">
+Clean syntax for OOP with constructors, methods, getters, static methods, and inheritance.
+</KeyConcept>
+
+<KeyConcept title="Module Patterns">
+Named exports for multiple items, default exports for main functionality, barrel files for organization.
+</KeyConcept>
+
+## Quick Quiz
+
+<Quiz>
+  <Question text="How do you provide a default value when destructuring?">
+    <Answer>const { name || 'default' } = obj</Answer>
+    <Answer correct>const { name = 'default' } = obj</Answer>
+    <Answer>const { name ?? 'default' } = obj</Answer>
+    <Answer>const { name : 'default' } = obj</Answer>
+  </Question>
+  
+  <Question text="What keyword is used to call a parent class constructor?">
+    <Answer>parent()</Answer>
+    <Answer>this.parent()</Answer>
+    <Answer correct>super()</Answer>
+    <Answer>base()</Answer>
+  </Question>
+  
+  <Question text="How do you import all exports as a namespace?">
+    <Answer>import all from './module'</Answer>
+    <Answer correct>import * as name from './module'</Answer>
+    <Answer>import { * } from './module'</Answer>
+    <Answer>import everything from './module'</Answer>
+  </Question>
+  
+  <Question text="What is the shorthand for { name: name, age: age }?">
+    <Answer>{ name:, age: }</Answer>
+    <Answer correct>{ name, age }</Answer>
+    <Answer>{ =name, =age }</Answer>
+    <Answer>{ ...name, ...age }</Answer>
+  </Question>
+</Quiz>
+
+---
+
+**Excellent progress!** 🎉 You've mastered intermediate ES6+ features. In the advanced level, we'll explore Symbols, generators, iterators, Proxy/Reflect, and module bundling concepts.

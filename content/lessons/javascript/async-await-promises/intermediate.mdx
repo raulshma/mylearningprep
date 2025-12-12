@@ -1,0 +1,389 @@
+# Async/Await and Promises - Intermediate
+
+Now that you understand the basics of Promises and async/await, let's dive deeper into practical patterns, error handling, and working with multiple asynchronous operations.
+
+<InfoBox type="tip" title="Level Up Your Async Skills">
+This lesson covers real-world patterns you'll use daily: chaining promises, handling errors gracefully, and coordinating multiple async operations.
+</InfoBox>
+
+<ProgressCheckpoint section="introduction" xpReward={15} />
+
+## Promise Chaining
+
+One of the most powerful features of Promises is **chaining** — connecting multiple async operations in sequence:
+
+```javascript
+// Each .then() returns a new Promise
+fetchUser(userId)
+  .then(user => {
+    console.log("Got user:", user.name);
+    return fetchOrders(user.id);  // Return a Promise
+  })
+  .then(orders => {
+    console.log("Got orders:", orders.length);
+    return fetchOrderDetails(orders[0].id);
+  })
+  .then(details => {
+    console.log("Order details:", details);
+  })
+  .catch(error => {
+    // Catches errors from ANY step above!
+    console.error("Something went wrong:", error);
+  });
+```
+
+<KeyConcept title="Chaining Rules">
+- Each `.then()` returns a new Promise
+- Return a value → next `.then()` receives it
+- Return a Promise → next `.then()` waits for it
+- One `.catch()` at the end handles all errors
+</KeyConcept>
+
+<PromiseChainBuilder />
+
+<ProgressCheckpoint section="promise-chaining" xpReward={15} />
+
+## Promise Static Methods
+
+JavaScript provides several useful methods for working with multiple Promises:
+
+### Promise.all() - Wait for All
+
+Runs multiple Promises in parallel and waits for ALL to complete:
+
+```javascript
+// Fetch multiple resources at once
+const [users, posts, comments] = await Promise.all([
+  fetch('/api/users').then(r => r.json()),
+  fetch('/api/posts').then(r => r.json()),
+  fetch('/api/comments').then(r => r.json())
+]);
+
+// All three are now available!
+console.log(users, posts, comments);
+```
+
+<InfoBox type="warning" title="All or Nothing">
+If ANY Promise rejects, `Promise.all()` immediately rejects with that error. Use `Promise.allSettled()` if you need results from all, regardless of failures.
+</InfoBox>
+
+### Promise.race() - First One Wins
+
+Returns as soon as ANY Promise settles (resolves or rejects):
+
+```javascript
+// Timeout pattern - race between fetch and timeout
+const result = await Promise.race([
+  fetch('/api/slow-endpoint'),
+  new Promise((_, reject) => 
+    setTimeout(() => reject(new Error('Timeout!')), 5000)
+  )
+]);
+```
+
+### Promise.allSettled() - Get All Results
+
+Waits for all Promises and returns their outcomes (success or failure):
+
+```javascript
+const results = await Promise.allSettled([
+  fetch('/api/endpoint1'),
+  fetch('/api/endpoint2'),  // This might fail
+  fetch('/api/endpoint3')
+]);
+
+results.forEach((result, index) => {
+  if (result.status === 'fulfilled') {
+    console.log(`Request ${index} succeeded:`, result.value);
+  } else {
+    console.log(`Request ${index} failed:`, result.reason);
+  }
+});
+```
+
+<CodePlayground
+  initialCode={`// Promise.all example
+async function fetchAllData() {
+  console.log("Fetching all data in parallel...");
+  
+  const results = await Promise.all([
+    new Promise(resolve => setTimeout(() => resolve("User data"), 500)),
+    new Promise(resolve => setTimeout(() => resolve("Posts data"), 300)),
+    new Promise(resolve => setTimeout(() => resolve("Comments data"), 400))
+  ]);
+  
+  console.log("All done!");
+  results.forEach((data, i) => console.log(\`Result \${i + 1}: \${data}\`));
+}
+
+fetchAllData();`}
+/>
+
+<ProgressCheckpoint section="async-await" xpReward={15} />
+
+## Advanced async/await Patterns
+
+### Sequential vs Parallel Execution
+
+```javascript
+// ❌ Sequential - slow! Each waits for the previous
+async function sequential() {
+  const user = await fetchUser();      // Wait...
+  const posts = await fetchPosts();    // Then wait...
+  const comments = await fetchComments(); // Then wait...
+  return { user, posts, comments };
+}
+
+// ✅ Parallel - fast! All run at the same time
+async function parallel() {
+  const [user, posts, comments] = await Promise.all([
+    fetchUser(),
+    fetchPosts(),
+    fetchComments()
+  ]);
+  return { user, posts, comments };
+}
+```
+
+### Async in Loops
+
+Be careful with async operations in loops:
+
+```javascript
+// ❌ This runs sequentially (slow)
+async function processSequential(items) {
+  for (const item of items) {
+    await processItem(item);  // Waits for each one
+  }
+}
+
+// ✅ This runs in parallel (fast)
+async function processParallel(items) {
+  await Promise.all(items.map(item => processItem(item)));
+}
+
+// ✅ Controlled concurrency (process 3 at a time)
+async function processWithLimit(items, limit = 3) {
+  const results = [];
+  for (let i = 0; i < items.length; i += limit) {
+    const batch = items.slice(i, i + limit);
+    const batchResults = await Promise.all(
+      batch.map(item => processItem(item))
+    );
+    results.push(...batchResults);
+  }
+  return results;
+}
+```
+
+<KeyConcept title="Parallel vs Sequential">
+- Use `Promise.all()` when operations are independent
+- Use sequential `await` when each step depends on the previous
+- Consider rate limiting for API calls
+</KeyConcept>
+
+<ProgressCheckpoint section="event-loop" xpReward={15} />
+
+## Error Handling Patterns
+
+### try/catch with async/await
+
+```javascript
+async function fetchData() {
+  try {
+    const response = await fetch('/api/data');
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Fetch failed:', error.message);
+    // Re-throw, return default, or handle gracefully
+    throw error;
+  } finally {
+    // Always runs - good for cleanup
+    console.log('Fetch attempt completed');
+  }
+}
+```
+
+### Error Handling with Promise.all()
+
+```javascript
+// Option 1: Catch individual errors
+const results = await Promise.all([
+  fetchUser().catch(err => ({ error: err, type: 'user' })),
+  fetchPosts().catch(err => ({ error: err, type: 'posts' })),
+  fetchComments().catch(err => ({ error: err, type: 'comments' }))
+]);
+
+// Option 2: Use Promise.allSettled()
+const settled = await Promise.allSettled([
+  fetchUser(),
+  fetchPosts(),
+  fetchComments()
+]);
+
+const successful = settled
+  .filter(r => r.status === 'fulfilled')
+  .map(r => r.value);
+```
+
+### Creating Retry Logic
+
+```javascript
+async function fetchWithRetry(url, maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      console.log(`Attempt ${attempt} failed:`, error.message);
+      
+      if (attempt === maxRetries) {
+        throw new Error(`Failed after ${maxRetries} attempts`);
+      }
+      
+      // Wait before retrying (exponential backoff)
+      await new Promise(r => setTimeout(r, 1000 * attempt));
+    }
+  }
+}
+```
+
+<CodePlayground
+  initialCode={`// Retry logic example
+async function fetchWithRetry(shouldFail, maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(\`Attempt \${attempt}...\`);
+      
+      // Simulate random failure
+      if (shouldFail && attempt < maxRetries) {
+        throw new Error("Network error");
+      }
+      
+      console.log("✅ Success!");
+      return "Data loaded";
+    } catch (error) {
+      console.log(\`❌ Failed: \${error.message}\`);
+      
+      if (attempt === maxRetries) {
+        throw new Error(\`Failed after \${maxRetries} attempts\`);
+      }
+      
+      // Wait before retry
+      await new Promise(r => setTimeout(r, 500));
+    }
+  }
+}
+
+// Try with failures enabled
+fetchWithRetry(true)
+  .then(result => console.log("Final result:", result))
+  .catch(err => console.log("Final error:", err.message));`}
+/>
+
+<EventLoopVisualizer />
+
+<ProgressCheckpoint section="summary" xpReward={10} />
+
+## Common Patterns Summary
+
+### Timeout Wrapper
+
+```javascript
+function withTimeout(promise, ms) {
+  const timeout = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('Timeout')), ms)
+  );
+  return Promise.race([promise, timeout]);
+}
+
+// Usage
+const data = await withTimeout(fetch('/api/slow'), 5000);
+```
+
+### Debounced Async Function
+
+```javascript
+function debounceAsync(fn, delay) {
+  let timeoutId;
+  let pendingPromise;
+  
+  return async function(...args) {
+    clearTimeout(timeoutId);
+    
+    return new Promise((resolve, reject) => {
+      timeoutId = setTimeout(async () => {
+        try {
+          const result = await fn.apply(this, args);
+          resolve(result);
+        } catch (error) {
+          reject(error);
+        }
+      }, delay);
+    });
+  };
+}
+```
+
+<AsyncTimeline />
+
+## Key Takeaways
+
+<KeyConcept title="Promise Chaining">
+Chain `.then()` calls for sequential operations. Return values or Promises to pass data along the chain.
+</KeyConcept>
+
+<KeyConcept title="Parallel Execution">
+Use `Promise.all()` for independent operations. It's faster than sequential `await` calls.
+</KeyConcept>
+
+<KeyConcept title="Error Handling">
+Use `try/catch` with async/await. Consider `Promise.allSettled()` when you need all results regardless of failures.
+</KeyConcept>
+
+<KeyConcept title="Retry Logic">
+Implement retry with exponential backoff for unreliable operations like network requests.
+</KeyConcept>
+
+## Quick Quiz
+
+<Quiz>
+  <Question text="What happens if one Promise in Promise.all() rejects?">
+    <Answer>The other Promises continue running</Answer>
+    <Answer correct>Promise.all() immediately rejects</Answer>
+    <Answer>It returns partial results</Answer>
+    <Answer>It retries the failed Promise</Answer>
+  </Question>
+  
+  <Question text="Which is faster for independent async operations?">
+    <Answer>Sequential await calls</Answer>
+    <Answer correct>Promise.all() with parallel execution</Answer>
+    <Answer>They're the same speed</Answer>
+    <Answer>Using callbacks instead</Answer>
+  </Question>
+  
+  <Question text="What does Promise.allSettled() return?">
+    <Answer>Only successful results</Answer>
+    <Answer>Only failed results</Answer>
+    <Answer correct>All results with status (fulfilled/rejected)</Answer>
+    <Answer>The first result that completes</Answer>
+  </Question>
+  
+  <Question text="When should you use sequential await instead of Promise.all()?">
+    <Answer>Always, it's safer</Answer>
+    <Answer>Never, parallel is always better</Answer>
+    <Answer correct>When each operation depends on the previous result</Answer>
+    <Answer>When you want faster execution</Answer>
+  </Question>
+</Quiz>
+
+---
+
+**Excellent progress!** 🎉 You now understand practical async patterns used in production code. In the advanced level, we'll explore the event loop internals, microtasks vs macrotasks, and async iterators.

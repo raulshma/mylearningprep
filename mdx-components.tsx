@@ -44,6 +44,28 @@ import { ScreenReaderSimulator } from '@/components/learn/interactive/accessibil
 import { SeoPreview } from '@/components/learn/interactive/seo/SeoPreview';
 import { MetaTagEditor } from '@/components/learn/interactive/seo/MetaTagEditor';
 
+// JavaScript Lesson Components
+import { CodePlayground } from '@/components/learn/interactive/javascript/CodePlayground';
+import { VariableVisualizer } from '@/components/learn/interactive/javascript/VariableVisualizer';
+import { DomTreeVisualizer } from '@/components/learn/interactive/javascript/DomTreeVisualizer';
+import { DomManipulationSandbox } from '@/components/learn/interactive/javascript/DomManipulationSandbox';
+import { EventFlowSimulator } from '@/components/learn/interactive/javascript/EventFlowSimulator';
+import { ApiRequestBuilder } from '@/components/learn/interactive/javascript/ApiRequestBuilder';
+import { ResponseInspector } from '@/components/learn/interactive/javascript/ResponseInspector';
+import { ES6FeatureExplorer } from '@/components/learn/interactive/javascript/ES6FeatureExplorer';
+import { ModuleDependencyVisualizer } from '@/components/learn/interactive/javascript/ModuleDependencyVisualizer';
+import { SyntaxTransformer } from '@/components/learn/interactive/javascript/SyntaxTransformer';
+import { ScopeChainVisualizer } from '@/components/learn/interactive/javascript/ScopeChainVisualizer';
+import { HoistingSimulator } from '@/components/learn/interactive/javascript/HoistingSimulator';
+import { PrototypeChainExplorer } from '@/components/learn/interactive/javascript/PrototypeChainExplorer';
+import { EventBubblingPlayground } from '@/components/learn/interactive/javascript/EventBubblingPlayground';
+import { EventLoopVisualizer } from '@/components/learn/interactive/javascript/EventLoopVisualizer';
+import { PromiseChainBuilder } from '@/components/learn/interactive/javascript/PromiseChainBuilder';
+import { AsyncTimeline } from '@/components/learn/interactive/javascript/AsyncTimeline';
+import { ErrorTypeExplorer } from '@/components/learn/interactive/javascript/ErrorTypeExplorer';
+import { DebugSimulator } from '@/components/learn/interactive/javascript/DebugSimulator';
+import { StackTraceAnalyzer } from '@/components/learn/interactive/javascript/StackTraceAnalyzer';
+
 /**
  * MDX Components Configuration
  * This file provides custom components for MDX content rendering.
@@ -104,6 +126,28 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     // SEO Lesson Components
     SeoPreview,
     MetaTagEditor,
+
+    // JavaScript Lesson Components
+    CodePlayground,
+    VariableVisualizer,
+    DomTreeVisualizer,
+    DomManipulationSandbox,
+    EventFlowSimulator,
+    ApiRequestBuilder,
+    ResponseInspector,
+    ES6FeatureExplorer,
+    ModuleDependencyVisualizer,
+    SyntaxTransformer,
+    ScopeChainVisualizer,
+    HoistingSimulator,
+    PrototypeChainExplorer,
+    EventBubblingPlayground,
+    EventLoopVisualizer,
+    PromiseChainBuilder,
+    AsyncTimeline,
+    ErrorTypeExplorer,
+    DebugSimulator,
+    StackTraceAnalyzer,
 
     // Enhanced HTML elements with proper styling
     h1: ({ children, ...props }) => (
