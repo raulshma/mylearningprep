@@ -126,6 +126,42 @@ describe('Lessons Content API - CSS Lessons', () => {
     expect(data.error).toBe('Lesson content not found');
   });
 
+  it('returns 400 for path traversal attempts and does not read files', async () => {
+    const { auth } = await import('@clerk/nextjs/server');
+    (auth as any).mockResolvedValue({ userId: 'user123' });
+
+    const request = new NextRequest(
+      'http://localhost:3000/api/lessons/content?path=../secret&level=beginner'
+    );
+    const response = await GET(request);
+
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error).toBe('Invalid path');
+    expect(fs.readFile).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 for absolute/windows paths and does not read files', async () => {
+    const { auth } = await import('@clerk/nextjs/server');
+    (auth as any).mockResolvedValue({ userId: 'user123' });
+
+    const absoluteRequest = new NextRequest(
+      'http://localhost:3000/api/lessons/content?path=/etc/passwd&level=beginner'
+    );
+    const absoluteResponse = await GET(absoluteRequest);
+    expect(absoluteResponse.status).toBe(400);
+    expect((await absoluteResponse.json()).error).toBe('Invalid path');
+
+    const windowsRequest = new NextRequest(
+      'http://localhost:3000/api/lessons/content?path=C:/Windows/System32&level=beginner'
+    );
+    const windowsResponse = await GET(windowsRequest);
+    expect(windowsResponse.status).toBe(400);
+    expect((await windowsResponse.json()).error).toBe('Invalid path');
+
+    expect(fs.readFile).not.toHaveBeenCalled();
+  });
+
   it('loads content for all CSS lesson topics', async () => {
     const { auth } = await import('@clerk/nextjs/server');
     (auth as any).mockResolvedValue({ userId: 'user123' });

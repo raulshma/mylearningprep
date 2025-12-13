@@ -73,7 +73,7 @@ export function AIToolCard({
 
         <CardHeader className="pb-2">
           <div className="flex items-start justify-between">
-            <div className={cn('p-2 rounded-lg', color.replace('bg-', 'bg-').replace('-500', '-500/10'))}>
+            <div className={cn('p-2 rounded-lg', color.replace('-500', '-500/10'))}>
               <Icon className={cn('h-5 w-5', color.replace('bg-', 'text-'))} />
             </div>
             <div className="flex items-center gap-2">

@@ -9,32 +9,16 @@ import rehypeSlug from 'rehype-slug';
 import type { ExperienceLevel } from '@/lib/db/schemas/lesson-progress';
 import type { LearningObjective } from '@/lib/db/schemas/roadmap';
 import { objectiveToLessonSlug, getObjectiveTitle, getObjectiveLessonId } from '@/lib/utils/lesson-utils';
+import { resolvePathWithinRoot } from '@/lib/utils/safe-path';
 
 const CONTENT_DIR = path.join(process.cwd(), 'content', 'lessons');
-
-/**
- * Sanitize and validate a lesson path to prevent path traversal attacks.
- * Returns the safe absolute path if valid, or null if the path is malicious.
- */
-function sanitizeLessonPath(userPath: string, ...additionalSegments: string[]): string | null {
-  // Normalize and resolve the full path
-  const resolvedPath = path.resolve(CONTENT_DIR, userPath, ...additionalSegments);
-  
-  // Ensure the resolved path is within CONTENT_DIR (prevent path traversal)
-  if (!resolvedPath.startsWith(CONTENT_DIR + path.sep) && resolvedPath !== CONTENT_DIR) {
-    console.error('Path traversal attempt detected:', userPath);
-    return null;
-  }
-  
-  return resolvedPath;
-}
 
 /**
  * Get lesson metadata from JSON file
  */
 export async function getLessonMetadata(lessonPath: string) {
   try {
-    const metadataPath = sanitizeLessonPath(lessonPath, 'metadata.json');
+    const metadataPath = await resolvePathWithinRoot(CONTENT_DIR, lessonPath, 'metadata.json');
     if (!metadataPath) {
       return null;
     }
@@ -74,7 +58,7 @@ export const getLessonContent = unstable_cache(
         return null;
       }
       
-      const mdxPath = sanitizeLessonPath(lessonPath, `${level}.mdx`);
+      const mdxPath = await resolvePathWithinRoot(CONTENT_DIR, lessonPath, `${level}.mdx`);
       if (!mdxPath) {
         return null;
       }
@@ -105,7 +89,7 @@ export const getLessonContent = unstable_cache(
  */
 export async function lessonExists(lessonPath: string): Promise<boolean> {
   try {
-    const metadataPath = sanitizeLessonPath(lessonPath, 'metadata.json');
+    const metadataPath = await resolvePathWithinRoot(CONTENT_DIR, lessonPath, 'metadata.json');
     if (!metadataPath) {
       return false;
     }
@@ -121,7 +105,7 @@ export async function lessonExists(lessonPath: string): Promise<boolean> {
  */
 export async function getLessonsForMilestone(milestoneId: string) {
   try {
-    const milestonePath = sanitizeLessonPath(milestoneId);
+    const milestonePath = await resolvePathWithinRoot(CONTENT_DIR, milestoneId);
     if (!milestonePath) {
       return [];
     }

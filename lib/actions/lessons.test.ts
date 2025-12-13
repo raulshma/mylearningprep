@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { getNextLessonSuggestion } from './lessons';
+import { getNextLessonSuggestion, getLessonMetadata, lessonExists, getLessonsForMilestone } from './lessons';
 import type { ExperienceLevel } from '@/lib/db/schemas/lesson-progress';
 
 // Mock fs/promises
@@ -8,6 +8,7 @@ vi.mock('fs/promises', () => ({
     readFile: vi.fn(),
     readdir: vi.fn(),
     access: vi.fn(),
+    realpath: vi.fn((p: string) => Promise.resolve(p)),
   },
 }));
 
@@ -284,5 +285,48 @@ describe('Lesson Navigation - Next Lesson Suggestions', () => {
       expect(result).not.toBeNull();
       expect(result?.lessonPath).toBe('css/box-model');
     });
+  });
+});
+
+describe('Lesson Actions - Path Security', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('getLessonMetadata rejects traversal and does not read files', async () => {
+    const fs = await import('fs/promises');
+
+    const result = await getLessonMetadata('../secret');
+
+    expect(result).toBeNull();
+    expect(vi.mocked(fs.default.readFile)).not.toHaveBeenCalled();
+  });
+
+  it('lessonExists rejects traversal and does not access files', async () => {
+    const fs = await import('fs/promises');
+
+    const result = await lessonExists('../secret');
+
+    expect(result).toBe(false);
+    expect(vi.mocked(fs.default.access)).not.toHaveBeenCalled();
+  });
+
+  it('getLessonsForMilestone rejects traversal and does not list directories', async () => {
+    const fs = await import('fs/promises');
+
+    const result = await getLessonsForMilestone('../secret');
+
+    expect(result).toEqual([]);
+    expect(vi.mocked(fs.default.readdir)).not.toHaveBeenCalled();
+  });
+
+  it('getLessonsForMilestone allows safe milestone ids', async () => {
+    const fs = await import('fs/promises');
+    vi.mocked(fs.default.readdir).mockResolvedValueOnce([]);
+
+    const result = await getLessonsForMilestone('css');
+
+    expect(result).toEqual([]);
+    expect(vi.mocked(fs.default.readdir)).toHaveBeenCalledTimes(1);
   });
 });
