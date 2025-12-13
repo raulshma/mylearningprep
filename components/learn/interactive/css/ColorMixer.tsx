@@ -56,48 +56,50 @@ export function ColorMixer({
   const hsl = useMemo(() => rgbToHsl(rgb), [rgb]);
   const hex = useMemo(() => rgbToHex(rgb), [rgb]);
 
-  // Color harmonies
-  const harmonies = useMemo((): ColorHarmony[] => {
-    const baseHue = hsl.h;
+  // Helper function to convert HSL to hex - defined before harmonies
+  const hslToHex = (hslColor: HSLColor): string => {
+    return rgbToHex(hslToRgb(hslColor));
+  };
 
-    return [
-      {
-        name: 'Complementary',
-        colors: [
-          hex,
-          hslToHex({ h: (baseHue + 180) % 360, s: hsl.s, l: hsl.l }),
-        ],
-        description: 'Opposite on the color wheel',
-      },
-      {
-        name: 'Analogous',
-        colors: [
-          hslToHex({ h: (baseHue - 30 + 360) % 360, s: hsl.s, l: hsl.l }),
-          hex,
-          hslToHex({ h: (baseHue + 30) % 360, s: hsl.s, l: hsl.l }),
-        ],
-        description: 'Adjacent colors on the wheel',
-      },
-      {
-        name: 'Triadic',
-        colors: [
-          hex,
-          hslToHex({ h: (baseHue + 120) % 360, s: hsl.s, l: hsl.l }),
-          hslToHex({ h: (baseHue + 240) % 360, s: hsl.s, l: hsl.l }),
-        ],
-        description: 'Evenly spaced around the wheel',
-      },
-      {
-        name: 'Split Complementary',
-        colors: [
-          hex,
-          hslToHex({ h: (baseHue + 150) % 360, s: hsl.s, l: hsl.l }),
-          hslToHex({ h: (baseHue + 210) % 360, s: hsl.s, l: hsl.l }),
-        ],
-        description: 'Base + two adjacent to complement',
-      },
-    ];
-  }, [hsl, hex]);
+  // Color harmonies - computed directly without useMemo to avoid React Compiler issues
+  const baseHue = hsl.h;
+  const harmonies: ColorHarmony[] = [
+    {
+      name: 'Complementary',
+      colors: [
+        hex,
+        hslToHex({ h: (baseHue + 180) % 360, s: hsl.s, l: hsl.l }),
+      ],
+      description: 'Opposite on the color wheel',
+    },
+    {
+      name: 'Analogous',
+      colors: [
+        hslToHex({ h: (baseHue - 30 + 360) % 360, s: hsl.s, l: hsl.l }),
+        hex,
+        hslToHex({ h: (baseHue + 30) % 360, s: hsl.s, l: hsl.l }),
+      ],
+      description: 'Adjacent colors on the wheel',
+    },
+    {
+      name: 'Triadic',
+      colors: [
+        hex,
+        hslToHex({ h: (baseHue + 120) % 360, s: hsl.s, l: hsl.l }),
+        hslToHex({ h: (baseHue + 240) % 360, s: hsl.s, l: hsl.l }),
+      ],
+      description: 'Evenly spaced around the wheel',
+    },
+    {
+      name: 'Split Complementary',
+      colors: [
+        hex,
+        hslToHex({ h: (baseHue + 150) % 360, s: hsl.s, l: hsl.l }),
+        hslToHex({ h: (baseHue + 210) % 360, s: hsl.s, l: hsl.l }),
+      ],
+      description: 'Base + two adjacent to complement',
+    },
+  ];
 
   // Gradient CSS
   const gradientCss = useMemo(() => {
@@ -152,10 +154,6 @@ export function ColorMixer({
       console.error('Failed to copy:', err);
     }
   }, []);
-
-  const hslToHex = (hsl: HSLColor): string => {
-    return rgbToHex(hslToRgb(hsl));
-  };
 
   return (
     <div className="w-full max-w-6xl mx-auto my-8 space-y-6">

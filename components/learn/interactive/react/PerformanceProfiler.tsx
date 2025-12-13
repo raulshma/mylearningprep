@@ -45,6 +45,19 @@ interface ProfileSession {
   totalTime: number;
 }
 
+// Calculate total times recursively - pure function, no dependencies
+function calculateTotalTimes(metrics: RenderMetric[]): RenderMetric[] {
+  return metrics.map(metric => {
+    const childrenWithTotals = calculateTotalTimes(metric.children);
+    const childrenTotal = childrenWithTotals.reduce((sum, c) => sum + c.totalTime, 0);
+    return {
+      ...metric,
+      children: childrenWithTotals,
+      totalTime: metric.renderTime + metric.commitTime + childrenTotal,
+    };
+  });
+}
+
 /**
  * PerformanceProfiler Component
  * Display component render times, show flame graph visualization, highlight optimization opportunities
@@ -172,19 +185,6 @@ export function PerformanceProfiler({
     ];
   }, []);
 
-  // Calculate total times recursively
-  const calculateTotalTimes = useCallback((metrics: RenderMetric[]): RenderMetric[] => {
-    return metrics.map(metric => {
-      const childrenWithTotals = calculateTotalTimes(metric.children);
-      const childrenTotal = childrenWithTotals.reduce((sum, c) => sum + c.totalTime, 0);
-      return {
-        ...metric,
-        children: childrenWithTotals,
-        totalTime: metric.renderTime + metric.commitTime + childrenTotal,
-      };
-    });
-  }, []);
-
   // Start profiling
   const handleStartProfiling = useCallback(() => {
     setIsProfiling(true);
@@ -205,7 +205,7 @@ export function PerformanceProfiler({
       setSelectedSession(session);
       setIsProfiling(false);
     }, 1500);
-  }, [generateMetrics, calculateTotalTimes]);
+  }, [generateMetrics]);
 
   // Reset
   const handleReset = useCallback(() => {

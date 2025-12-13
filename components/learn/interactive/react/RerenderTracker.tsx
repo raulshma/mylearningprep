@@ -47,13 +47,16 @@ export function RerenderTracker({
   const [contextValue, setContextValue] = useState('initial');
   
   // Render counts for each component
-  const [renderInfo, setRenderInfo] = useState<Record<string, ComponentRenderInfo>>({
-    app: { id: 'app', name: 'App', renderCount: 1, lastRenderTime: Date.now(), isHighlighted: false },
-    parent: { id: 'parent', name: 'Parent', renderCount: 1, lastRenderTime: Date.now(), isHighlighted: false },
-    childA: { id: 'childA', name: 'ChildA', renderCount: 1, lastRenderTime: Date.now(), isHighlighted: false },
-    childB: { id: 'childB', name: 'ChildB', renderCount: 1, lastRenderTime: Date.now(), isHighlighted: false },
-    grandchild: { id: 'grandchild', name: 'Grandchild', renderCount: 1, lastRenderTime: Date.now(), isHighlighted: false },
-    contextConsumer: { id: 'contextConsumer', name: 'ContextConsumer', renderCount: 1, lastRenderTime: Date.now(), isHighlighted: false },
+  const [renderInfo, setRenderInfo] = useState<Record<string, ComponentRenderInfo>>(() => {
+    const now = Date.now();
+    return {
+      app: { id: 'app', name: 'App', renderCount: 1, lastRenderTime: now, isHighlighted: false },
+      parent: { id: 'parent', name: 'Parent', renderCount: 1, lastRenderTime: now, isHighlighted: false },
+      childA: { id: 'childA', name: 'ChildA', renderCount: 1, lastRenderTime: now, isHighlighted: false },
+      childB: { id: 'childB', name: 'ChildB', renderCount: 1, lastRenderTime: now, isHighlighted: false },
+      grandchild: { id: 'grandchild', name: 'Grandchild', renderCount: 1, lastRenderTime: now, isHighlighted: false },
+      contextConsumer: { id: 'contextConsumer', name: 'ContextConsumer', renderCount: 1, lastRenderTime: now, isHighlighted: false },
+    };
   });
 
   // Track which components should re-render
@@ -113,13 +116,14 @@ export function RerenderTracker({
     setParentState(0);
     setChildAState(0);
     setContextValue('initial');
+    const now = Date.now();
     setRenderInfo({
-      app: { id: 'app', name: 'App', renderCount: 1, lastRenderTime: Date.now(), isHighlighted: false },
-      parent: { id: 'parent', name: 'Parent', renderCount: 1, lastRenderTime: Date.now(), isHighlighted: false },
-      childA: { id: 'childA', name: 'ChildA', renderCount: 1, lastRenderTime: Date.now(), isHighlighted: false },
-      childB: { id: 'childB', name: 'ChildB', renderCount: 1, lastRenderTime: Date.now(), isHighlighted: false },
-      grandchild: { id: 'grandchild', name: 'Grandchild', renderCount: 1, lastRenderTime: Date.now(), isHighlighted: false },
-      contextConsumer: { id: 'contextConsumer', name: 'ContextConsumer', renderCount: 1, lastRenderTime: Date.now(), isHighlighted: false },
+      app: { id: 'app', name: 'App', renderCount: 1, lastRenderTime: now, isHighlighted: false },
+      parent: { id: 'parent', name: 'Parent', renderCount: 1, lastRenderTime: now, isHighlighted: false },
+      childA: { id: 'childA', name: 'ChildA', renderCount: 1, lastRenderTime: now, isHighlighted: false },
+      childB: { id: 'childB', name: 'ChildB', renderCount: 1, lastRenderTime: now, isHighlighted: false },
+      grandchild: { id: 'grandchild', name: 'Grandchild', renderCount: 1, lastRenderTime: now, isHighlighted: false },
+      contextConsumer: { id: 'contextConsumer', name: 'ContextConsumer', renderCount: 1, lastRenderTime: now, isHighlighted: false },
     });
   }, []);
 

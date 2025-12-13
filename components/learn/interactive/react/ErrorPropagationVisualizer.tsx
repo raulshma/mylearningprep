@@ -135,6 +135,16 @@ export function ErrorPropagationVisualizer({
     return [];
   }, [tree]);
 
+  // Find a node by ID - defined before findNearestBoundary since it's used there
+  const findNode = useCallback((node: TreeNode, id: string): TreeNode | null => {
+    if (node.id === id) return node;
+    for (const child of node.children) {
+      const found = findNode(child, id);
+      if (found) return found;
+    }
+    return null;
+  }, []);
+
   // Find the nearest boundary in the path
   const findNearestBoundary = useCallback((path: string[]): string | null => {
     const reversedPath = [...path].reverse();
@@ -146,17 +156,7 @@ export function ErrorPropagationVisualizer({
       }
     }
     return null;
-  }, [tree]);
-
-  // Find a node by ID
-  const findNode = (node: TreeNode, id: string): TreeNode | null => {
-    if (node.id === id) return node;
-    for (const child of node.children) {
-      const found = findNode(child, id);
-      if (found) return found;
-    }
-    return null;
-  };
+  }, [tree, findNode]);
 
   // Update node state
   const updateNode = useCallback((
