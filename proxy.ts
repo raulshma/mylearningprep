@@ -19,7 +19,7 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   // Protect all other routes
-  const { userId, sessionClaims } = await auth.protect();
+  const { sessionClaims } = await auth.protect();
 
   // Check admin access for admin routes
   // Role is stored in user's publicMetadata and exposed via custom session token

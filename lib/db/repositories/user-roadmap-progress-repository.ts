@@ -1,12 +1,12 @@
-import { ObjectId } from 'mongodb';
-import { cache } from 'react';
-import { getUserRoadmapProgressCollection } from '../collections';
-import type { 
-  UserRoadmapProgress, 
-  CreateUserRoadmapProgress, 
+import { ObjectId } from "mongodb";
+import { cache } from "react";
+import { getUserRoadmapProgressCollection } from "../collections";
+import type {
+  UserRoadmapProgress,
+  CreateUserRoadmapProgress,
   NodeProgress,
-  NodeProgressStatus 
-} from '../schemas/user-roadmap-progress';
+  NodeProgressStatus,
+} from "../schemas/user-roadmap-progress";
 
 /**
  * User Roadmap Progress Repository
@@ -14,57 +14,65 @@ import type {
  */
 
 // Find user's progress for a specific roadmap
-export const findByUserAndRoadmap = cache(async (
-  userId: string, 
-  roadmapId: string
-): Promise<UserRoadmapProgress | null> => {
-  const collection = await getUserRoadmapProgressCollection();
-  const doc = await collection.findOne({ userId, roadmapId });
-  
-  if (!doc) return null;
-  
-  return {
-    ...doc,
-    _id: doc._id.toString(),
-  } as UserRoadmapProgress;
-});
+export const findByUserAndRoadmap = cache(
+  async (
+    userId: string,
+    roadmapId: string
+  ): Promise<UserRoadmapProgress | null> => {
+    const collection = await getUserRoadmapProgressCollection();
+    const doc = await collection.findOne({ userId, roadmapId });
+
+    if (!doc) return null;
+
+    return {
+      ...doc,
+      _id: doc._id.toString(),
+    } as UserRoadmapProgress;
+  }
+);
 
 // Find user's progress by roadmap slug
-export const findByUserAndSlug = cache(async (
-  userId: string, 
-  roadmapSlug: string
-): Promise<UserRoadmapProgress | null> => {
-  const collection = await getUserRoadmapProgressCollection();
-  const doc = await collection.findOne({ userId, roadmapSlug });
-  
-  if (!doc) return null;
-  
-  return {
-    ...doc,
-    _id: doc._id.toString(),
-  } as UserRoadmapProgress;
-});
+export const findByUserAndSlug = cache(
+  async (
+    userId: string,
+    roadmapSlug: string
+  ): Promise<UserRoadmapProgress | null> => {
+    const collection = await getUserRoadmapProgressCollection();
+    const doc = await collection.findOne({ userId, roadmapSlug });
+
+    if (!doc) return null;
+
+    return {
+      ...doc,
+      _id: doc._id.toString(),
+    } as UserRoadmapProgress;
+  }
+);
 
 // Find all roadmap progress for a user
-export const findAllByUser = cache(async (userId: string): Promise<UserRoadmapProgress[]> => {
-  const collection = await getUserRoadmapProgressCollection();
-  const docs = await collection
-    .find({ userId })
-    .sort({ updatedAt: -1 })
-    .toArray();
-  
-  return docs.map(doc => ({
-    ...doc,
-    _id: doc._id.toString(),
-  })) as UserRoadmapProgress[];
-});
+export const findAllByUser = cache(
+  async (userId: string): Promise<UserRoadmapProgress[]> => {
+    const collection = await getUserRoadmapProgressCollection();
+    const docs = await collection
+      .find({ userId })
+      .sort({ updatedAt: -1 })
+      .toArray();
+
+    return docs.map((doc) => ({
+      ...doc,
+      _id: doc._id.toString(),
+    })) as UserRoadmapProgress[];
+  }
+);
 
 // Create initial progress record when user starts a roadmap
-export async function createProgress(progress: CreateUserRoadmapProgress): Promise<UserRoadmapProgress> {
+export async function createProgress(
+  progress: CreateUserRoadmapProgress
+): Promise<UserRoadmapProgress> {
   const collection = await getUserRoadmapProgressCollection();
   const now = new Date();
   const id = new ObjectId().toString();
-  
+
   const doc = {
     ...progress,
     _id: id,
@@ -73,9 +81,9 @@ export async function createProgress(progress: CreateUserRoadmapProgress): Promi
     createdAt: now,
     updatedAt: now,
   };
-  
+
   await collection.insertOne(doc as any);
-  
+
   return doc as UserRoadmapProgress;
 }
 
@@ -87,35 +95,46 @@ export async function updateNodeProgress(
   nodeUpdate: Partial<NodeProgress>
 ): Promise<void> {
   const collection = await getUserRoadmapProgressCollection();
-  
-  // First, check if node progress exists
-  const existing = await collection.findOne({
-    userId,
-    roadmapId,
-    'nodeProgress.nodeId': nodeId,
-  });
-  
-  if (existing) {
-    // Update existing node progress
-    await collection.updateOne(
-      { userId, roadmapId, 'nodeProgress.nodeId': nodeId },
-      {
-        $set: {
-          'nodeProgress.$': { nodeId, ...nodeUpdate },
-          updatedAt: new Date(),
-          lastActivityAt: new Date(),
-        },
-      }
-    );
-  } else {
-    // Add new node progress
+
+  const now = new Date();
+
+  // Update only provided fields to avoid overwriting existing node stats.
+  const setOps: Record<string, unknown> = {
+    updatedAt: now,
+    lastActivityAt: now,
+  };
+
+  for (const [key, value] of Object.entries(nodeUpdate)) {
+    if (key === "nodeId") continue;
+    if (value === undefined) continue;
+    setOps[`nodeProgress.$.${key}`] = value;
+  }
+
+  const updateResult = await collection.updateOne(
+    { userId, roadmapId, "nodeProgress.nodeId": nodeId },
+    { $set: setOps }
+  );
+
+  // If the node doesn't exist yet, add a well-formed node progress entry.
+  if (updateResult.matchedCount === 0) {
+    const newNodeProgress: NodeProgress = {
+      nodeId,
+      status: (nodeUpdate.status ?? "locked") as NodeProgressStatus,
+      startedAt: nodeUpdate.startedAt,
+      completedAt: nodeUpdate.completedAt,
+      activitiesCompleted: nodeUpdate.activitiesCompleted ?? 0,
+      timeSpentMinutes: nodeUpdate.timeSpentMinutes ?? 0,
+      correctAnswers: nodeUpdate.correctAnswers ?? 0,
+      totalQuestions: nodeUpdate.totalQuestions ?? 0,
+    };
+
     await collection.updateOne(
       { userId, roadmapId },
       {
-        $push: { nodeProgress: { nodeId, ...nodeUpdate } as any },
-        $set: { 
-          updatedAt: new Date(),
-          lastActivityAt: new Date(),
+        $push: { nodeProgress: newNodeProgress as any },
+        $set: {
+          updatedAt: now,
+          lastActivityAt: now,
         },
       }
     );
@@ -130,22 +149,22 @@ export async function markNodeCompleted(
 ): Promise<void> {
   const collection = await getUserRoadmapProgressCollection();
   const now = new Date();
-  
+
   // Check if node exists in progress
   const progress = await collection.findOne({
     userId,
     roadmapId,
-    'nodeProgress.nodeId': nodeId,
+    "nodeProgress.nodeId": nodeId,
   });
-  
+
   if (progress) {
     // Update existing node
     await collection.updateOne(
-      { userId, roadmapId, 'nodeProgress.nodeId': nodeId },
+      { userId, roadmapId, "nodeProgress.nodeId": nodeId },
       {
         $set: {
-          'nodeProgress.$.status': 'completed' as NodeProgressStatus,
-          'nodeProgress.$.completedAt': now,
+          "nodeProgress.$.status": "completed" as NodeProgressStatus,
+          "nodeProgress.$.completedAt": now,
           updatedAt: now,
           lastActivityAt: now,
         },
@@ -160,7 +179,7 @@ export async function markNodeCompleted(
         $push: {
           nodeProgress: {
             nodeId,
-            status: 'completed' as NodeProgressStatus,
+            status: "completed" as NodeProgressStatus,
             completedAt: now,
             activitiesCompleted: 0,
             timeSpentMinutes: 0,
@@ -168,7 +187,7 @@ export async function markNodeCompleted(
             totalQuestions: 0,
           } as any,
         },
-        $set: { 
+        $set: {
           updatedAt: now,
           lastActivityAt: now,
         },
@@ -176,7 +195,7 @@ export async function markNodeCompleted(
       }
     );
   }
-  
+
   // Recalculate overall progress
   await recalculateProgress(userId, roadmapId);
 }
@@ -189,40 +208,43 @@ export async function startNode(
 ): Promise<void> {
   const collection = await getUserRoadmapProgressCollection();
   const now = new Date();
-  
+
   await collection.updateOne(
     { userId, roadmapId },
     {
-      $set: { 
+      $set: {
         currentNodeId: nodeId,
         updatedAt: now,
         lastActivityAt: now,
       },
     }
   );
-  
+
   // Update or create node progress
   await updateNodeProgress(userId, roadmapId, nodeId, {
     nodeId,
-    status: 'in-progress' as NodeProgressStatus,
+    status: "in-progress" as NodeProgressStatus,
     startedAt: now,
   } as NodeProgress);
 }
 
 // Recalculate overall progress percentage
-async function recalculateProgress(userId: string, roadmapId: string): Promise<void> {
+async function recalculateProgress(
+  userId: string,
+  roadmapId: string
+): Promise<void> {
   const collection = await getUserRoadmapProgressCollection();
-  
+
   const progress = await collection.findOne({ userId, roadmapId });
   if (!progress) return;
-  
+
   const completedCount = progress.nodeProgress.filter(
-    (n: { status: NodeProgressStatus }) => n.status === 'completed'
+    (n: { status: NodeProgressStatus }) => n.status === "completed"
   ).length;
-  
+
   const totalNodes = progress.totalNodes || 1;
   const overallProgress = Math.round((completedCount / totalNodes) * 100);
-  
+
   await collection.updateOne(
     { userId, roadmapId },
     {
@@ -245,15 +267,15 @@ export async function incrementNodeActivity(
   totalQuestions: number = 0
 ): Promise<void> {
   const collection = await getUserRoadmapProgressCollection();
-  
+
   await collection.updateOne(
-    { userId, roadmapId, 'nodeProgress.nodeId': nodeId },
+    { userId, roadmapId, "nodeProgress.nodeId": nodeId },
     {
       $inc: {
-        'nodeProgress.$.activitiesCompleted': 1,
-        'nodeProgress.$.timeSpentMinutes': timeSpentMinutes,
-        'nodeProgress.$.correctAnswers': correctAnswers,
-        'nodeProgress.$.totalQuestions': totalQuestions,
+        "nodeProgress.$.activitiesCompleted": 1,
+        "nodeProgress.$.timeSpentMinutes": timeSpentMinutes,
+        "nodeProgress.$.correctAnswers": correctAnswers,
+        "nodeProgress.$.totalQuestions": totalQuestions,
       },
       $set: {
         updatedAt: new Date(),

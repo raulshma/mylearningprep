@@ -1,11 +1,14 @@
-'use server';
+"use server";
 
-import { auth } from '@clerk/nextjs/server';
-import { revalidatePath } from 'next/cache';
-import * as roadmapRepo from '@/lib/db/repositories/roadmap-repository';
-import * as progressRepo from '@/lib/db/repositories/user-roadmap-progress-repository';
-import type { Roadmap, RoadmapNode } from '@/lib/db/schemas/roadmap';
-import type { UserRoadmapProgress, NodeProgressStatus } from '@/lib/db/schemas/user-roadmap-progress';
+import { auth } from "@clerk/nextjs/server";
+import { revalidatePath } from "next/cache";
+import * as roadmapRepo from "@/lib/db/repositories/roadmap-repository";
+import * as progressRepo from "@/lib/db/repositories/user-roadmap-progress-repository";
+import type { Roadmap, RoadmapNode } from "@/lib/db/schemas/roadmap";
+import type {
+  UserRoadmapProgress,
+  NodeProgressStatus,
+} from "@/lib/db/schemas/user-roadmap-progress";
 
 /**
  * Roadmap Server Actions
@@ -37,7 +40,10 @@ export async function getRoadmapWithProgress(slug: string): Promise<{
   roadmap: Roadmap | null;
   progress: UserRoadmapProgress | null;
   subRoadmaps: Roadmap[];
-  lessonAvailability: Record<string, import('@/lib/actions/lessons').ObjectiveLessonInfo[]>;
+  lessonAvailability: Record<
+    string,
+    import("@/lib/actions/lessons").ObjectiveLessonInfo[]
+  >;
   parentRoadmap: Roadmap | null;
   subRoadmapProgressMap: Record<string, SubRoadmapProgressInfo>;
 }> {
@@ -45,7 +51,14 @@ export async function getRoadmapWithProgress(slug: string): Promise<{
 
   const roadmap = await roadmapRepo.findRoadmapBySlug(slug);
   if (!roadmap) {
-    return { roadmap: null, progress: null, subRoadmaps: [], lessonAvailability: {}, parentRoadmap: null, subRoadmapProgressMap: {} };
+    return {
+      roadmap: null,
+      progress: null,
+      subRoadmaps: [],
+      lessonAvailability: {},
+      parentRoadmap: null,
+      subRoadmapProgressMap: {},
+    };
   }
 
   let progress: UserRoadmapProgress | null = null;
@@ -58,20 +71,24 @@ export async function getRoadmapWithProgress(slug: string): Promise<{
 
   // Get lesson availability map
   // We import dynamically to avoid circular dependencies if any (though lessons.ts is generic)
-  const { getRoadmapLessonAvailability } = await import('@/lib/actions/lessons');
+  const { getRoadmapLessonAvailability } = await import(
+    "@/lib/actions/lessons"
+  );
   const lessonAvailability = await getRoadmapLessonAvailability(roadmap);
 
   // Fetch parent roadmap if this is a sub-roadmap (Requirements: 2.1)
   let parentRoadmap: Roadmap | null = null;
   if (roadmap.parentRoadmapSlug) {
-    parentRoadmap = await roadmapRepo.findRoadmapBySlug(roadmap.parentRoadmapSlug);
+    parentRoadmap = await roadmapRepo.findRoadmapBySlug(
+      roadmap.parentRoadmapSlug
+    );
   }
 
   // Get sub-roadmap progress for milestones that have sub-roadmaps (Requirements: 4.2, 4.3)
   const subRoadmapSlugs = roadmap.nodes
-    .filter(node => node.subRoadmapSlug)
-    .map(node => node.subRoadmapSlug as string);
-  
+    .filter((node) => node.subRoadmapSlug)
+    .map((node) => node.subRoadmapSlug as string);
+
   let subRoadmapProgressMap: Record<string, SubRoadmapProgressInfo> = {};
   if (subRoadmapSlugs.length > 0 && userId) {
     for (const subSlug of subRoadmapSlugs) {
@@ -86,7 +103,7 @@ export async function getRoadmapWithProgress(slug: string): Promise<{
         };
         continue;
       }
-      
+
       const subProgress = await progressRepo.findByUserAndSlug(userId, subSlug);
       subRoadmapProgressMap[subSlug] = {
         slug: subSlug,
@@ -98,19 +115,28 @@ export async function getRoadmapWithProgress(slug: string): Promise<{
     }
   }
 
-  return { roadmap, progress, subRoadmaps, lessonAvailability, parentRoadmap, subRoadmapProgressMap };
+  return {
+    roadmap,
+    progress,
+    subRoadmaps,
+    lessonAvailability,
+    parentRoadmap,
+    subRoadmapProgressMap,
+  };
 }
 
 // Start learning a roadmap (creates progress record)
-export async function startRoadmap(roadmapSlug: string): Promise<UserRoadmapProgress | null> {
+export async function startRoadmap(
+  roadmapSlug: string
+): Promise<UserRoadmapProgress | null> {
   const { userId } = await auth();
   if (!userId) {
-    throw new Error('Authentication required');
+    throw new Error("Authentication required");
   }
 
   const roadmap = await roadmapRepo.findRoadmapBySlug(roadmapSlug);
   if (!roadmap) {
-    throw new Error('Roadmap not found');
+    throw new Error("Roadmap not found");
   }
 
   // Check if already started
@@ -121,9 +147,11 @@ export async function startRoadmap(roadmapSlug: string): Promise<UserRoadmapProg
 
   // Create initial progress with first node available
   const firstNodes = findFirstNodes(roadmap);
-  const initialNodeProgress = roadmap.nodes.map(node => ({
+  const initialNodeProgress = roadmap.nodes.map((node) => ({
     nodeId: node.id,
-    status: firstNodes.includes(node.id) ? ('available' as NodeProgressStatus) : ('locked' as NodeProgressStatus),
+    status: firstNodes.includes(node.id)
+      ? ("available" as NodeProgressStatus)
+      : ("locked" as NodeProgressStatus),
     activitiesCompleted: 0,
     timeSpentMinutes: 0,
     correctAnswers: 0,
@@ -140,22 +168,25 @@ export async function startRoadmap(roadmapSlug: string): Promise<UserRoadmapProg
     startedAt: new Date(),
   });
 
-  revalidatePath('/roadmaps');
+  revalidatePath("/roadmaps");
   revalidatePath(`/roadmaps/${roadmapSlug}`);
 
   return progress;
 }
 
 // Start learning a specific node
-export async function startNode(roadmapSlug: string, nodeId: string): Promise<void> {
+export async function startNode(
+  roadmapSlug: string,
+  nodeId: string
+): Promise<void> {
   const { userId } = await auth();
   if (!userId) {
-    throw new Error('Authentication required');
+    throw new Error("Authentication required");
   }
 
   const progress = await progressRepo.findByUserAndSlug(userId, roadmapSlug);
   if (!progress) {
-    throw new Error('Please start the roadmap first');
+    throw new Error("Please start the roadmap first");
   }
 
   await progressRepo.startNode(userId, progress.roadmapId, nodeId);
@@ -163,15 +194,18 @@ export async function startNode(roadmapSlug: string, nodeId: string): Promise<vo
 }
 
 // Mark node as completed
-export async function completeNode(roadmapSlug: string, nodeId: string): Promise<void> {
+export async function completeNode(
+  roadmapSlug: string,
+  nodeId: string
+): Promise<void> {
   const { userId } = await auth();
   if (!userId) {
-    throw new Error('Authentication required');
+    throw new Error("Authentication required");
   }
 
   const progress = await progressRepo.findByUserAndSlug(userId, roadmapSlug);
   if (!progress) {
-    throw new Error('Progress not found');
+    throw new Error("Progress not found");
   }
 
   await progressRepo.markNodeCompleted(userId, progress.roadmapId, nodeId);
@@ -179,12 +213,21 @@ export async function completeNode(roadmapSlug: string, nodeId: string): Promise
   // Unlock dependent nodes
   const roadmap = await roadmapRepo.findRoadmapBySlug(roadmapSlug);
   if (roadmap) {
-    const dependentNodes = findDependentNodes(roadmap, nodeId, progress);
+    const dependentNodes = findDependentNodesAfterCompletion(
+      roadmap,
+      nodeId,
+      progress
+    );
     for (const depNodeId of dependentNodes) {
-      await progressRepo.updateNodeProgress(userId, progress.roadmapId, depNodeId, {
-        nodeId: depNodeId,
-        status: 'available',
-      });
+      await progressRepo.updateNodeProgress(
+        userId,
+        progress.roadmapId,
+        depNodeId,
+        {
+          nodeId: depNodeId,
+          status: "available",
+        }
+      );
     }
 
     // Sync progress to parent roadmap if this is a sub-roadmap (Requirements: 4.1)
@@ -195,8 +238,8 @@ export async function completeNode(roadmapSlug: string, nodeId: string): Promise
         roadmap.parentRoadmapSlug,
         roadmap.parentNodeId,
         roadmapSlug
-      ).catch(error => {
-        console.error('Failed to sync sub-roadmap progress:', error);
+      ).catch((error) => {
+        console.error("Failed to sync sub-roadmap progress:", error);
       });
     }
   }
@@ -212,7 +255,7 @@ export async function getNodeDetails(
   const roadmap = await roadmapRepo.findRoadmapBySlug(roadmapSlug);
   if (!roadmap) return null;
 
-  return roadmap.nodes.find(n => n.id === nodeId) || null;
+  return roadmap.nodes.find((n) => n.id === nodeId) || null;
 }
 
 // Update node activity stats (after completing a learning activity)
@@ -241,10 +284,8 @@ export async function updateNodeActivity(
 
 // Helper: Find nodes with no incoming edges (starting points)
 function findFirstNodes(roadmap: Roadmap): string[] {
-  const targetNodes = new Set(roadmap.edges.map(e => e.target));
-  return roadmap.nodes
-    .filter(n => !targetNodes.has(n.id))
-    .map(n => n.id);
+  const targetNodes = new Set(roadmap.edges.map((e) => e.target));
+  return roadmap.nodes.filter((n) => !targetNodes.has(n.id)).map((n) => n.id);
 }
 
 /**
@@ -306,17 +347,25 @@ async function syncSubRoadmapProgressInternal(
   parentNodeId: string,
   subRoadmapSlug: string
 ): Promise<void> {
-  const subProgress = await progressRepo.findByUserAndSlug(userId, subRoadmapSlug);
+  const subProgress = await progressRepo.findByUserAndSlug(
+    userId,
+    subRoadmapSlug
+  );
   if (!subProgress) return;
 
   const completionPercent = subProgress.overallProgress / 100;
 
   if (completionPercent >= SUB_ROADMAP_COMPLETION_THRESHOLD) {
     // Check if parent milestone is already completed to avoid redundant updates
-    const parentProgress = await progressRepo.findByUserAndSlug(userId, parentRoadmapSlug);
+    const parentProgress = await progressRepo.findByUserAndSlug(
+      userId,
+      parentRoadmapSlug
+    );
     if (parentProgress) {
-      const parentNodeProgress = parentProgress.nodeProgress.find(np => np.nodeId === parentNodeId);
-      if (parentNodeProgress?.status === 'completed') {
+      const parentNodeProgress = parentProgress.nodeProgress.find(
+        (np) => np.nodeId === parentNodeId
+      );
+      if (parentNodeProgress?.status === "completed") {
         return; // Already completed, no need to update
       }
     }
@@ -343,9 +392,11 @@ async function completeNodeInternal(
     if (!roadmap) return;
 
     const firstNodes = findFirstNodes(roadmap);
-    const initialNodeProgress = roadmap.nodes.map(node => ({
+    const initialNodeProgress = roadmap.nodes.map((node) => ({
       nodeId: node.id,
-      status: firstNodes.includes(node.id) ? ('available' as NodeProgressStatus) : ('locked' as NodeProgressStatus),
+      status: firstNodes.includes(node.id)
+        ? ("available" as NodeProgressStatus)
+        : ("locked" as NodeProgressStatus),
       activitiesCompleted: 0,
       timeSpentMinutes: 0,
       correctAnswers: 0,
@@ -371,12 +422,21 @@ async function completeNodeInternal(
   // Unlock dependent nodes
   const roadmap = await roadmapRepo.findRoadmapBySlug(roadmapSlug);
   if (roadmap) {
-    const dependentNodes = findDependentNodes(roadmap, nodeId, progress);
+    const dependentNodes = findDependentNodesAfterCompletion(
+      roadmap,
+      nodeId,
+      progress
+    );
     for (const depNodeId of dependentNodes) {
-      await progressRepo.updateNodeProgress(userId, progress.roadmapId, depNodeId, {
-        nodeId: depNodeId,
-        status: 'available',
-      });
+      await progressRepo.updateNodeProgress(
+        userId,
+        progress.roadmapId,
+        depNodeId,
+        {
+          nodeId: depNodeId,
+          status: "available",
+        }
+      );
     }
   }
 }
@@ -394,7 +454,12 @@ export async function syncSubRoadmapProgress(
   const { userId } = await auth();
   if (!userId) return;
 
-  await syncSubRoadmapProgressInternal(userId, parentRoadmapSlug, parentNodeId, subRoadmapSlug);
+  await syncSubRoadmapProgressInternal(
+    userId,
+    parentRoadmapSlug,
+    parentNodeId,
+    subRoadmapSlug
+  );
 }
 
 /**
@@ -418,12 +483,12 @@ export async function getSubRoadmapProgressMap(
   subRoadmapSlugs: string[]
 ): Promise<Record<string, SubRoadmapProgressInfo>> {
   const { userId } = await auth();
-  
+
   const result: Record<string, SubRoadmapProgressInfo> = {};
-  
+
   for (const slug of subRoadmapSlugs) {
     const roadmap = await roadmapRepo.findRoadmapBySlug(slug);
-    
+
     if (!roadmap) {
       result[slug] = {
         slug,
@@ -434,12 +499,12 @@ export async function getSubRoadmapProgressMap(
       };
       continue;
     }
-    
+
     let progress: UserRoadmapProgress | null = null;
     if (userId) {
       progress = await progressRepo.findByUserAndSlug(userId, slug);
     }
-    
+
     result[slug] = {
       slug,
       overallProgress: progress?.overallProgress ?? 0,
@@ -448,38 +513,45 @@ export async function getSubRoadmapProgressMap(
       exists: true,
     };
   }
-  
+
   return result;
 }
 
 // Helper: Find nodes that should be unlocked after completing a node
-function findDependentNodes(
+function findDependentNodesAfterCompletion(
   roadmap: Roadmap,
   completedNodeId: string,
   progress: UserRoadmapProgress
 ): string[] {
+  const completedSet = new Set(
+    progress.nodeProgress
+      .filter((np) => np.status === "completed")
+      .map((np) => np.nodeId)
+  );
+  completedSet.add(completedNodeId);
+
   const unlockable: string[] = [];
-  
+
   // Find nodes that have this node as a prerequisite
-  const dependentEdges = roadmap.edges.filter(e => e.source === completedNodeId);
-  
+  const dependentEdges = roadmap.edges.filter(
+    (e) => e.source === completedNodeId
+  );
+
   for (const edge of dependentEdges) {
     const targetNodeId = edge.target;
-    
-    // Check if all prerequisites for this target are completed
-    const allPrereqs = roadmap.edges
-      .filter(e => e.target === targetNodeId && e.type === 'sequential')
-      .map(e => e.source);
-    
-    const allCompleted = allPrereqs.every(prereqId => {
-      const prereqProgress = progress.nodeProgress.find(np => np.nodeId === prereqId);
-      return prereqProgress?.status === 'completed';
-    });
-    
+
+    // Check if all sequential prerequisites for this target are completed
+    const prereqNodeIds = roadmap.edges
+      .filter((e) => e.target === targetNodeId && e.type === "sequential")
+      .map((e) => e.source);
+
+    const allCompleted = prereqNodeIds.every((prereqId) =>
+      completedSet.has(prereqId)
+    );
     if (allCompleted) {
       unlockable.push(targetNodeId);
     }
   }
-  
+
   return unlockable;
 }

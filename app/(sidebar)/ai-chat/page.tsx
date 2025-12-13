@@ -7,7 +7,7 @@ import { aiConversationRepository } from "@/lib/db/repositories/ai-conversation-
 import { userRepository } from "@/lib/db/repositories/user-repository";
 
 export const metadata = {
-  title: "AI Chat | MyInterviewPrep",
+  title: "AI Chat | MyLearningPrep",
   description: "Chat with your AI interview assistant",
 };
 

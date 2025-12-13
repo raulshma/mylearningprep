@@ -3,6 +3,8 @@ import { SharedHeaderProvider } from '@/components/dashboard/shared-header-conte
 import { SidebarPageWrapper } from '@/components/dashboard/sidebar-page-wrapper';
 import { ResponsiveSidebarLayout } from '@/components/dashboard/responsive-sidebar-layout';
 
+export const dynamic = 'force-dynamic';
+
 export default async function SidebarLayout({
   children,
 }: {

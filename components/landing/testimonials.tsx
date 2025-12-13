@@ -15,7 +15,7 @@ const testimonials = [
   },
   {
     quote:
-      "I prepped for 3 days using MyInterviewPrep and got an offer. The personalized content was exactly what I needed.",
+      "I prepped for 3 days using MyLearningPrep and got an offer. The personalized content was exactly what I needed.",
     author: "Marcus T.",
     role: "Full Stack Developer",
     company: "Hired at Series B Startup",

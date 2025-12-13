@@ -15,7 +15,7 @@ export function Footer() {
             </p>
             <div className="flex gap-4">
               <a
-                href="https://github.com/raulshma/myinterviewprep"
+                href="https://github.com/raulshma/mylearningprep"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-muted-foreground hover:text-foreground transition-colors"
@@ -122,7 +122,7 @@ export function Footer() {
 
         <div className="pt-8 border-t border-border/50 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-xs text-muted-foreground">
-            &copy; 2025 MyInterviewPrep. All rights reserved.
+            &copy; 2025 MyLearningPrep. All rights reserved.
           </p>
           <div className="flex items-center gap-6">
             <span className="text-xs text-muted-foreground">

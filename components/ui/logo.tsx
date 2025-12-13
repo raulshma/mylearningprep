@@ -5,7 +5,7 @@ export function Logo({ className }: { className?: string }) {
         <span className="text-foreground font-mono text-sm">M</span>
       </div>
       <span className="font-mono text-foreground tracking-tight">
-        MyInterviewPrep
+        MyLearningPrep
       </span>
     </div>
   );

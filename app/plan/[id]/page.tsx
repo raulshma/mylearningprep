@@ -36,13 +36,13 @@ export async function generateMetadata({
 
   if (!result.success) {
     return {
-      title: "Plan Not Found | MyInterviewPrep",
+      title: "Plan Not Found | MyLearningPrep",
       description: "This interview preparation plan is not available.",
     };
   }
 
   const plan = result.data;
-  const title = `${plan.jobDetails.title} at ${plan.jobDetails.company} | MyInterviewPrep`;
+  const title = `${plan.jobDetails.title} at ${plan.jobDetails.company} | MyLearningPrep`;
   const description = `AI-generated interview preparation plan for ${plan.jobDetails.title} position at ${plan.jobDetails.company}. Includes revision topics, MCQs, and rapid-fire questions.`;
 
   return {
@@ -52,7 +52,7 @@ export async function generateMetadata({
       title,
       description,
       type: "article",
-      siteName: "MyInterviewPrep",
+      siteName: "MyLearningPrep",
     },
     twitter: {
       card: "summary_large_image",

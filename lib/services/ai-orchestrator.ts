@@ -868,7 +868,7 @@ function buildSystemPrompt(ctx: OrchestratorContext): string {
     timeZoneName: "short",
   });
 
-  let prompt = `You are MyInterviewPrep's AI Interview Assistant, an expert at helping software engineers prepare for technical interviews.
+  let prompt = `You are MyLearningPrep's AI Learning Assistant, an expert at helping software engineers learn and prepare for technical challenges.
 
 Current Context:
 - Date: ${formattedDate}

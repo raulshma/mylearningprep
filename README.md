@@ -1,10 +1,10 @@
-# MyInterviewPrep
+# MyLearningPrep
 
 A comprehensive, interactive learning platform for developers preparing for technical interviews. Built with Next.js 16, React 19, and modern web technologies.
 
 ## Overview
 
-MyInterviewPrep is an all-in-one preparation platform that combines structured learning roadmaps, AI-powered assistance, mock interviews, and gamification to help developers master frontend technologies and ace their technical interviews.
+MyLearningPrep is an all-in-one learning platform that combines structured learning roadmaps, AI-powered assistance, and gamification to help developers master frontend technologies and advance their technical skills.
 
 ## Features
 
@@ -143,8 +143,8 @@ Specialized interactive components for various topics:
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/myinterviewprep.git
-   cd myinterviewprep
+   git clone https://github.com/yourusername/mylearningprep.git
+   cd mylearningprep
    ```
 
 2. Install dependencies:
@@ -182,7 +182,7 @@ This starts the application along with SearXNG for web search capabilities.
 ## Project Structure
 
 ```
-myinterviewprep/
+mylearningprep/
 ├── app/                    # Next.js App Router pages
 │   ├── (landing)/          # Landing page routes
 │   ├── (sidebar)/          # Dashboard routes with sidebar

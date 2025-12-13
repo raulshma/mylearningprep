@@ -7,9 +7,9 @@ services:
     volumes:
       - mongodb_data:/data/db
     environment:
-      - MONGO_INITDB_DATABASE=myinterviewprep
+      - MONGO_INITDB_DATABASE=mylearningprep
     networks:
-      - myinterviewprep-network
+      - mylearningprep-network
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
@@ -25,7 +25,7 @@ services:
     volumes:
       - redis_data:/data
     networks:
-      - myinterviewprep-network
+      - mylearningprep-network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -44,7 +44,7 @@ services:
       - SEARXNG_BASE_URL=http://localhost:8080/
       - SEARXNG_SECRET_KEY=ultrasecretkey
     networks:
-      - myinterviewprep-network
+      - mylearningprep-network
     cap_drop:
       - ALL
     cap_add:
@@ -69,7 +69,7 @@ services:
     shm_size: 1g
     restart: unless-stopped
     networks:
-      - myinterviewprep-network
+      - mylearningprep-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:11235/health"]
       interval: 30s
@@ -88,7 +88,7 @@ services:
       redis:
         condition: service_healthy
     networks:
-      - myinterviewprep-network
+      - mylearningprep-network
     restart: unless-stopped
 
 volumes:
@@ -100,5 +100,5 @@ volumes:
     driver: local
 
 networks:
-  myinterviewprep-network:
+  mylearningprep-network:
     driver: bridge

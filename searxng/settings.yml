@@ -5,7 +5,7 @@ use_default_settings: true
 
 general:
   debug: false
-  instance_name: "MyInterviewPrep Search"
+  instance_name: "MyLearningPrep Search"
   privacypolicy_url: false
   donation_url: false
   contact_url: false

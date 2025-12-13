@@ -297,7 +297,7 @@ export function UpgradePageContent({ profile }: UpgradePageContentProps) {
   useEffect(() => {
     setHeader({
       title: "Upgrade Plan",
-      description: "Unlock the full potential of MyInterviewPrep",
+      description: "Unlock the full potential of MyLearningPrep",
       badge: "Pricing",
       badgeIcon: Sparkles,
     });
