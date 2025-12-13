@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ViewTransitionLink } from "@/components/transitions";
-import { LayoutDashboard, LogOut, Menu, X, Github } from "lucide-react";
+import { LayoutDashboard, LogOut, Menu, X, Github, Sun, Moon } from "lucide-react";
 import { useTransition, useState, useEffect } from "react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { motion, AnimatePresence } from "framer-motion";
@@ -149,17 +149,19 @@ export function Header() {
           </ViewTransitionLink>
         </nav>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-1 md:gap-4">
           <a
             href="https://github.com/raulshma/mylearningprep"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-muted-foreground hover:text-foreground transition-colors"
+            className="text-muted-foreground hover:text-foreground transition-colors hidden md:block"
             aria-label="View on GitHub"
           >
             <Github className="h-5 w-5" />
           </a>
-          <ThemeToggle />
+          <div className="hidden md:block">
+            <ThemeToggle />
+          </div>
           <AnimatePresence mode="wait">
             {!isLoaded ? (
               // Skeleton placeholder while loading
@@ -248,6 +250,41 @@ export function Header() {
                         Dashboard
                       </div>
                     </DropdownMenuItem>
+
+                    {/* Mobile-only items in dropdown */}
+                    <div className="md:hidden">
+                      <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent my-1" />
+                      
+                      <DropdownMenuItem
+                        onClick={() => window.open("https://github.com/raulshma/mylearningprep", "_blank")}
+                        className="rounded-xl px-3 py-2.5 text-sm font-medium cursor-pointer transition-colors hover:bg-black/5 dark:hover:bg-white/10 md:hidden"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="p-1.5 rounded-lg bg-gray-500/10 text-gray-500">
+                            <Github className="h-4 w-4" />
+                          </div>
+                          GitHub
+                        </div>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem
+                        onClick={() => {
+                          const html = document.documentElement;
+                          const currentTheme = html.classList.contains("dark") ? "dark" : "light";
+                          const newTheme = currentTheme === "dark" ? "light" : "dark";
+                          html.classList.toggle("dark");
+                          localStorage.setItem("theme", newTheme);
+                        }}
+                        className="rounded-xl px-3 py-2.5 text-sm font-medium cursor-pointer transition-colors hover:bg-black/5 dark:hover:bg-white/10 md:hidden"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="p-1.5 rounded-lg bg-purple-500/10 text-purple-500">
+                            <div className="h-4 w-4 rounded-full bg-yellow-400 dark:bg-gray-300" />
+                          </div>
+                          Toggle Theme
+                        </div>
+                      </DropdownMenuItem>
+                    </div>
 
                     <div className="h-px bg-gradient-to-r from-transparent via-border to-transparent my-1" />
 
