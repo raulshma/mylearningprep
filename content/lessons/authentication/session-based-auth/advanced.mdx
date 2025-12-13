@@ -1,0 +1,56 @@
+# Session-Based Authentication (Advanced)
+
+<InfoBox type="info" title="Advanced focus">
+This level is about *hardening* sessions: minimizing theft, preventing replay, and operating safely in modern deployments.
+</InfoBox>
+
+## 1) Session storage and invalidation strategy
+
+Choose where session state lives:
+
+- **DB-backed sessions**: easiest revocation + auditing, can be slower
+- **In-memory (Redis) sessions**: fast, but plan for eviction and outages
+
+Key design decision: *what does logout mean?*
+
+- Hard logout: delete session record
+- Soft logout: mark revoked + keep for audit
+
+<ProgressCheckpoint section="session-mental-model" xpReward={15} />
+
+## 2) Cookie + session hardening (theft + replay)
+
+Mitigations:
+
+- Bind session to client signals (careful with privacy and false positives)
+- Short idle timeouts + absolute max session age
+- Rotate session IDs periodically (and on auth events)
+- Consider step-up auth for sensitive actions
+
+<InfoBox type="warning" title="Don’t over-bind">
+Overly strict IP/device binding can break legitimate users (mobile networks, VPNs). Prefer *risk-based* checks.
+</InfoBox>
+
+<ProgressCheckpoint section="cookie-flags" xpReward={15} />
+
+## 3) CSRF hardening in SPAs and server actions
+
+If you have state-changing requests that rely on cookies:
+
+- Use `SameSite=Lax` or `Strict` where possible
+- Add CSRF tokens for POST/PUT/DELETE
+- Validate `Origin` for same-site requests when it exists
+
+<KeyConcept title="Rule of thumb">
+If cookies authenticate a request automatically, you must explicitly defend against CSRF.
+</KeyConcept>
+
+<Quiz id="csrf-rule">
+  <Question>When is CSRF most relevant?</Question>
+  <Answer correct>When credentials are automatically attached by the browser (cookies)</Answer>
+  <Answer>When tokens are stored only in memory</Answer>
+  <Answer>When requests are made over HTTPS</Answer>
+  <Answer>When you use GraphQL</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="csrf-and-logout" xpReward={15} />

@@ -1,0 +1,75 @@
+# JWT, OAuth, and SSO (Beginner)
+
+<InfoBox type="info" title="Goal">
+By the end, you’ll be able to explain **what a JWT is**, **what OAuth is for**, and **what SSO means** — without mixing them up.
+</InfoBox>
+
+## 1) JWT: a tamper-proof “badge” of claims
+
+Think of a **JWT** (JSON Web Token) like a **laminated badge**.
+
+- It contains **claims** (little facts): who you are (`sub`), who issued it (`iss`), who it’s for (`aud`), when it expires (`exp`).
+- It’s **signed**, so it can’t be modified without being detected.
+
+<KeyConcept title="JWT in one sentence">
+A JWT is a compact, URL-safe way to carry signed claims between parties.
+</KeyConcept>
+
+<InfoBox type="warning" title="JWT ≠ login">
+A JWT is not automatically “authentication”. It’s just a token format. Whether it *means* you’re logged in depends on your system.
+</InfoBox>
+
+<Quiz id="jwt-basic-quiz">
+  <Question>Which claim usually tells you when a JWT should stop being accepted?</Question>
+  <Answer>aud</Answer>
+  <Answer correct>exp</Answer>
+  <Answer>sub</Answer>
+  <Answer>typ</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="jwt-mental-model" xpReward={10} />
+
+## 2) OAuth: a “valet key” for APIs
+
+OAuth is about **delegated authorization**.
+
+Analogy: You give a valet a **key that can only park the car**, not open your house.
+
+- You (the user) don’t share your password with the app.
+- The app receives an **access token** that can call an API.
+
+### See the modern flow (Authorization Code + PKCE)
+
+<OAuthPkceFlowSimulator />
+
+<InfoBox type="tip" title="Modern recommendation">
+Prefer **Authorization Code + PKCE** for browser-based and mobile clients.
+</InfoBox>
+
+<ProgressCheckpoint section="oauth-pkce-flow" xpReward={10} />
+
+## 3) SSO: “log in once, access many apps”
+
+SSO (Single Sign-On) means:
+
+- You sign in to an **Identity Provider (IdP)** once.
+- Many apps can trust that IdP, so you don’t re-enter credentials everywhere.
+
+Common SSO building blocks:
+
+- **OpenID Connect (OIDC)**: “OAuth + identity” (adds an ID token and standard identity claims)
+- **SAML**: older but still common in enterprises
+
+<InfoBox type="info" title="What you should remember">
+SSO is the *experience*. OAuth/OIDC/SAML are the *protocols* that implement it.
+</InfoBox>
+
+<ProgressCheckpoint section="sso-oidc" xpReward={10} />
+
+---
+
+## Quick recap
+
+- **JWT** is a token format (signed claims).
+- **OAuth** is delegated authorization (get limited access without sharing passwords).
+- **SSO** is a user experience often implemented with **OIDC** or **SAML**.

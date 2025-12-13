@@ -1,0 +1,55 @@
+# Third-Party Authentication (Beginner)
+
+<InfoBox type="info" title="Why use third-party auth?">
+Providers like Clerk/Auth0/Okta handle password storage, MFA, device flows, and session management so you can focus on your app.
+</InfoBox>
+
+## 1) Mental model: who does what?
+
+Think of it like a concert venue:
+
+- **Identity Provider (IdP)** = ticketing company (verifies identity)
+- **Your app** = venue (trusts the ticketing company)
+- **Browser** = messenger carrying sealed envelopes (redirects)
+
+In OIDC, you’ll typically see two key token types:
+
+- **ID token**: “who the user is” (authentication)
+- **Access token**: “what the user can do” with an API (authorization)
+
+<KeyConcept title="Beginner rule">
+Don’t use the **ID token** to call your API unless the system explicitly documents it.
+</KeyConcept>
+
+<ProgressCheckpoint section="oidc-mental-model" xpReward={10} />
+
+## 2) Redirects: the safe way
+
+Your app sends the user to the provider and back.
+
+What makes it safe:
+
+- **Exact redirect URIs** (no wildcards)
+- **`state` parameter**: protects against login CSRF
+- **HTTPS** everywhere
+
+<Quiz id="state-quiz">
+  <Question>What is the `state` parameter mainly used for in OAuth/OIDC?</Question>
+  <Answer correct>Preventing CSRF / request forgery during redirects</Answer>
+  <Answer>Encrypting the access token</Answer>
+  <Answer>Storing the user’s password</Answer>
+  <Answer>Improving performance</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="integration-pitfalls" xpReward={10} />
+
+## 3) What you store in your app
+
+In a Next.js app, you usually want either:
+
+- A **server-side session cookie** (recommended for most web apps)
+- Or a **short-lived access token** held in memory (when calling APIs directly)
+
+<SessionVsTokenVisualizer />
+
+<ProgressCheckpoint section="production-checklist" xpReward={10} />

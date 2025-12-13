@@ -1,0 +1,75 @@
+# JWT, OAuth, and SSO (Advanced)
+
+<InfoBox type="info" title="What interviewers want">
+You can explain the threat model: **token leakage**, **code injection**, **open redirectors**, **CSRF**, and why modern guidance pushes clients toward **Authorization Code + PKCE**.
+</InfoBox>
+
+## 1) JWT: trust is contextual
+
+A JWT is only useful for decisions if:
+
+- you trust the **issuer key** (key management / rotation / JWKS)
+- you validate the token to match your system expectations (`iss`, `aud`, `exp`, and sometimes `nbf` / `iat`)
+
+<KeyConcept title="Audience is not optional in practice">
+If you accept a token not intended for your API, you’re basically accepting a “foreign passport”. Always validate `aud`.
+</KeyConcept>
+
+<InfoBox type="warning" title="Revocation isn’t free">
+JWTs are self-contained. If you need instant revocation, you need server-side state (short expirations + refresh flow, or token introspection/blacklists).
+</InfoBox>
+
+<ProgressCheckpoint section="jwt-mental-model" xpReward={10} />
+
+## 2) OAuth: best current practices (what’s changed)
+
+Key points from modern guidance:
+
+- **Public clients MUST use PKCE** for authorization code flows.
+- Avoid the **implicit flow** unless you have very specific mitigations.
+- Use strict redirect URI validation and avoid open redirectors.
+
+<OAuthPkceFlowSimulator />
+
+### Practical mitigations to call out
+
+- Use `state` (or OIDC `nonce`) correctly to prevent CSRF and replay.
+- Keep tokens out of URLs; prefer back-channel token responses.
+- Use least-privilege scopes and audience restriction.
+
+<Quiz id="oauth-best-practice-quiz">
+  <Question>Which OAuth response type is generally discouraged today because access tokens can leak in URLs?</Question>
+  <Answer correct>token (implicit)</Answer>
+  <Answer>code</Answer>
+  <Answer>code id_token</Answer>
+  <Answer>none</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="oauth-pkce-flow" xpReward={10} />
+
+## 3) SSO: OIDC vs SAML, and where people get burned
+
+When people say “SSO”, ask: **IdP-initiated or SP-initiated?**
+
+- OIDC (OAuth-based) is common for modern apps.
+- SAML is still huge in enterprise; more XML, more ceremony.
+
+Common mistakes:
+
+- treating an access token as an ID token (or vice versa)
+- accepting tokens without validating `iss` and `aud`
+- relying on browser-visible tokens (XSS makes this painful)
+
+<InfoBox type="tip" title="A strong architecture answer">
+“For web apps, we typically use OIDC for login and keep the session in httpOnly cookies; access tokens are scoped and audience-restricted for APIs.”
+</InfoBox>
+
+<ProgressCheckpoint section="sso-oidc" xpReward={10} />
+
+---
+
+## References
+
+- OAuth 2.0 Security Best Current Practice (Jan 2025): https://datatracker.ietf.org/doc/html/rfc9700
+- OAuth 2.0: https://datatracker.ietf.org/doc/html/rfc6749
+- JWT: https://datatracker.ietf.org/doc/html/rfc7519

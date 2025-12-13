@@ -1,0 +1,28 @@
+{
+  "id": "third-party-auth",
+  "title": "Third-Party Authentication (OIDC / Clerk)",
+  "description": "Integrate third-party auth safely: OIDC mental model, sessions vs tokens, and common integration pitfalls.",
+  "milestone": "authentication",
+  "order": 3,
+  "sections": [
+    "oidc-mental-model",
+    "integration-pitfalls",
+    "production-checklist"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 20,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 25,
+      "xpReward": 60
+    }
+  },
+  "prerequisites": [],
+  "tags": ["auth", "oidc", "oauth", "pkce", "clerk"]
+}

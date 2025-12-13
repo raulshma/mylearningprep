@@ -1,0 +1,88 @@
+# JWT, OAuth, and SSO (Intermediate)
+
+<InfoBox type="info" title="Mindset">
+In interviews, your job is to **separate concerns**: token format (JWT) vs delegated access (OAuth) vs federation/login experience (SSO).
+</InfoBox>
+
+## 1) JWT: format + validation rules
+
+A JWT is typically used as a **JWS** (signed), sometimes as a **JWE** (encrypted).
+
+Common registered claims:
+
+- `iss` issuer
+- `sub` subject (the user)
+- `aud` audience (who should accept it)
+- `exp` expiration time
+
+<KeyConcept title="Validation checklist">
+Verify signature, then validate `exp`, `aud`, and `iss` according to your app’s rules.
+</KeyConcept>
+
+<Comparison
+  leftTitle="JWT as access token"
+  rightTitle="JWT as ID token"
+  leftContent="Used to access APIs (resource server checks scopes/audience)."
+  rightContent="Used to represent the user identity (OIDC)."
+/>
+
+<ProgressCheckpoint section="jwt-mental-model" xpReward={10} />
+
+## 2) OAuth: roles and the safer flow
+
+OAuth roles (as used in the real world):
+
+- **Resource Owner**: the user
+- **Client**: your app
+- **Authorization Server**: issues tokens
+- **Resource Server**: the API you call
+
+### Why PKCE is a big deal
+
+PKCE binds the authorization code to the client instance that started the login.
+
+- Browser sees `code_challenge`.
+- Only the client instance knows `code_verifier`.
+
+<OAuthPkceFlowSimulator />
+
+<InfoBox type="warning" title="Don’t do this">
+Avoid putting access tokens in URLs. URLs leak via logs, browser history, and referrers.
+</InfoBox>
+
+<Quiz id="oauth-pkce-quiz">
+  <Question>In PKCE, which value must stay secret to keep the code exchange safe?</Question>
+  <Answer>code_challenge</Answer>
+  <Answer correct>code_verifier</Answer>
+  <Answer>state</Answer>
+  <Answer>redirect_uri</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="oauth-pkce-flow" xpReward={10} />
+
+## 3) SSO: federation via OIDC (most common) or SAML
+
+SSO in modern web apps is often:
+
+- **OIDC** for consumer + modern enterprise
+- **SAML** for enterprise legacy + IdP-driven portals
+
+A practical mental model:
+
+- OAuth gets you an **access token** (for APIs)
+- OIDC adds an **ID token** (a JWT describing the user)
+- Both can be part of an SSO experience
+
+<InfoBox type="tip" title="SSO language to use">
+Say: “We use **OIDC** for login (ID token) and OAuth access tokens for API calls.”
+</InfoBox>
+
+<ProgressCheckpoint section="sso-oidc" xpReward={10} />
+
+---
+
+## Recommended reading (optional)
+
+- OAuth 2.0 framework: https://datatracker.ietf.org/doc/html/rfc6749
+- OAuth security best current practice (2025): https://datatracker.ietf.org/doc/html/rfc9700
+- JWT spec: https://datatracker.ietf.org/doc/html/rfc7519

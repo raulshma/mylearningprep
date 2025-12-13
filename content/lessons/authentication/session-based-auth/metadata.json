@@ -1,0 +1,28 @@
+{
+  "id": "session-based-auth",
+  "title": "Session-Based Authentication",
+  "description": "Learn cookies, sessions, CSRF, and how to build secure server-managed login state.",
+  "milestone": "authentication",
+  "order": 2,
+  "sections": [
+    "session-mental-model",
+    "cookie-flags",
+    "csrf-and-logout"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 20
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 30
+    },
+    "advanced": {
+      "estimatedMinutes": 20,
+      "xpReward": 50
+    }
+  },
+  "prerequisites": [],
+  "tags": ["auth", "sessions", "cookies", "csrf"]
+}

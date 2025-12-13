@@ -1,0 +1,28 @@
+{
+  "id": "jwt-oauth-sso",
+  "title": "JWT, OAuth, and SSO",
+  "description": "Understand the difference between tokens, delegated authorization, and single sign-on — with modern best practices.",
+  "milestone": "authentication",
+  "order": 1,
+  "sections": [
+    "jwt-mental-model",
+    "oauth-pkce-flow",
+    "sso-oidc"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 20
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 30
+    },
+    "advanced": {
+      "estimatedMinutes": 20,
+      "xpReward": 50
+    }
+  },
+  "prerequisites": [],
+  "tags": ["auth", "jwt", "oauth", "pkce", "sso", "oidc"]
+}

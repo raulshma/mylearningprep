@@ -1,0 +1,51 @@
+# Third-Party Authentication (Intermediate)
+
+<InfoBox type="info" title="What this level adds">
+You’ll focus on *getting the boundaries right*: where tokens live, how your backend trusts the provider, and what to validate.
+</InfoBox>
+
+## 1) OIDC flow basics (authorization code + PKCE)
+
+For browser-based apps, the safe default is:
+
+- Authorization Code Flow
+- PKCE enabled
+
+This reduces token leakage risk compared to implicit flow.
+
+<OAuthPkceFlowSimulator />
+
+<ProgressCheckpoint section="oidc-mental-model" xpReward={15} />
+
+## 2) Validation and trust boundaries
+
+Depending on your architecture, you might:
+
+- Let the provider manage the session cookie and you only read identity (common in managed auth)
+- Or exchange/verify tokens server-side and create your own session
+
+Validation checklist (conceptual):
+
+- Verify issuer (`iss`) and audience (`aud`)
+- Enforce expiration (`exp`) and clock skew
+- Validate signature with correct key (JWKS)
+
+<Quiz id="id-token-quiz">
+  <Question>Which claim is most directly used to ensure a token was intended for your app?</Question>
+  <Answer correct>`aud` (audience)</Answer>
+  <Answer>`sub` (subject)</Answer>
+  <Answer>`iat` (issued at)</Answer>
+  <Answer>`typ` (type)</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="integration-pitfalls" xpReward={15} />
+
+## 3) Cookie gotchas in production
+
+If you rely on cookies across domains/subdomains:
+
+- You may need `SameSite=None; Secure` for certain flows
+- Prefer keeping auth on the same site when possible
+- Be deliberate with `Domain` and `Path`
+
+<ProgressCheckpoint section="production-checklist" xpReward={15} />

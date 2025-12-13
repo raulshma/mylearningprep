@@ -1,0 +1,47 @@
+# Third-Party Authentication (Advanced)
+
+<InfoBox type="info" title="Advanced focus">
+You’ll threat-model third-party auth integrations and build a production checklist: redirect hardening, token handling, and supply-chain mindset.
+</InfoBox>
+
+## 1) Redirect hardening and downgrade resistance
+
+Key ideas:
+
+- Strict redirect URI matching
+- Avoid the implicit flow
+- Use PKCE (S256) and do not allow downgrades
+- Treat `state` and OIDC `nonce` as mandatory
+
+<Quiz id="implicit-flow-quiz">
+  <Question>Why is the implicit flow discouraged for browser-based apps?</Question>
+  <Answer correct>Tokens are more likely to leak via URLs, referrers, logs, or browser history</Answer>
+  <Answer>It can’t be used with HTTPS</Answer>
+  <Answer>It requires a database</Answer>
+  <Answer>It only works on mobile</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="oidc-mental-model" xpReward={20} />
+
+## 2) Token handling patterns (choose intentionally)
+
+Common safe patterns:
+
+- **BFF (Backend-for-Frontend)**: browser has a session cookie; backend holds tokens
+- **Direct API calls**: browser holds short-lived access token (memory) + refresh strategy (careful)
+
+Avoid:
+
+- Long-lived tokens in `localStorage`
+- Reusing ID tokens as access tokens
+
+<ProgressCheckpoint section="integration-pitfalls" xpReward={20} />
+
+## 3) Operational checklist
+
+- Rotate provider secrets/keys where applicable
+- Monitor login errors and suspicious patterns
+- Use least-privilege scopes
+- Plan account linking + session revocation
+
+<ProgressCheckpoint section="production-checklist" xpReward={20} />

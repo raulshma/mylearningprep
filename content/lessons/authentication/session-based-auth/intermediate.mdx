@@ -1,0 +1,53 @@
+# Session-Based Authentication (Intermediate)
+
+<InfoBox type="info" title="What you’re optimizing">
+Session auth is great when you want **server control**: easy logout, easy revocation, easy step-up auth.
+</InfoBox>
+
+## 1) Session lifecycle
+
+Typical lifecycle:
+
+1. User signs in → server creates session record
+2. Server sets cookie with a random session ID
+3. Each request → server looks up session ID → identifies user
+4. Logout → server invalidates session
+
+<SessionVsTokenVisualizer />
+
+<KeyConcept title="Key property">
+The cookie should be an **unguessable identifier**, not user data.
+</KeyConcept>
+
+<ProgressCheckpoint section="session-mental-model" xpReward={10} />
+
+## 2) Cookie configuration you should know
+
+- `HttpOnly`: stops JS reads (good)
+- `Secure`: HTTPS only
+- `SameSite=Lax|Strict|None`: CSRF tradeoffs; `None` requires `Secure`
+- `Path` / `Domain`: keep it tight; don’t over-broaden the cookie scope
+
+<InfoBox type="warning" title="Common mistake">
+Setting cookies for a parent domain (e.g., `.example.com`) can increase blast radius if another subdomain is compromised.
+</InfoBox>
+
+<ProgressCheckpoint section="cookie-flags" xpReward={10} />
+
+## 3) CSRF, rotation, and session fixation
+
+When cookies are automatically sent, CSRF is the main “gotcha”. Use a layered defense:
+
+- `SameSite` + CSRF token for state-changing actions
+- Verify request origins where appropriate
+- Rotate session IDs after login / privilege changes (mitigates fixation)
+
+<Quiz id="session-fixation-quiz">
+  <Question>What does rotating the session ID after login help prevent?</Question>
+  <Answer correct>Session fixation</Answer>
+  <Answer>SQL injection</Answer>
+  <Answer>Clickjacking</Answer>
+  <Answer>DNS spoofing</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="csrf-and-logout" xpReward={10} />

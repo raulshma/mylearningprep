@@ -422,9 +422,9 @@ export const frontendRoadmap: CreateRoadmap = {
       type: 'topic',
       position: { x: 200, y: 1080 },
       learningObjectives: [
-        'JWT, OAuth, SSO',
-        'Session-based auth',
-        'Third-party auth (Clerk)',
+        { title: 'JWT, OAuth, SSO', lessonId: 'jwt-oauth-sso' },
+        { title: 'Session-based auth', lessonId: 'session-based-auth' },
+        { title: 'Third-party auth', lessonId: 'third-party-auth' },
       ],
       resources: [
         { title: 'Auth0 Documentation', url: 'https://auth0.com/docs', type: 'documentation', description: 'Comprehensive authentication and authorization guides' },

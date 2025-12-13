@@ -1,0 +1,63 @@
+# Session-Based Authentication (Beginner)
+
+<InfoBox type="info" title="The simple idea">
+A **session** is server-managed login state. The browser carries only a **random ID** (usually in a cookie).
+</InfoBox>
+
+## 1) The mental model: “coat check ticket”
+
+Analogy: You give your coat to the venue and receive a **ticket number**.
+
+- The ticket **is not your coat**.
+- The ticket just points to your coat stored behind the counter.
+
+That’s sessions:
+
+- Cookie contains `sessionId=...`
+- Server stores “who is this user?” in a session store (DB/Redis/in-memory)
+
+<SessionVsTokenVisualizer />
+
+<ProgressCheckpoint section="session-mental-model" xpReward={10} />
+
+## 2) Cookie flags (the basics)
+
+When you use cookies for sessions, set them safely:
+
+- **HttpOnly**: JS can’t read it (helps against XSS token theft)
+- **Secure**: only over HTTPS
+- **SameSite**: helps reduce CSRF risk
+
+<InfoBox type="tip" title="Most common cookie shape">
+`sessionId=...; HttpOnly; Secure; SameSite=Lax`
+</InfoBox>
+
+<ProgressCheckpoint section="cookie-flags" xpReward={10} />
+
+## 3) CSRF and logout (why sessions need extra care)
+
+Because browsers automatically send cookies, attackers can try to trick a logged-in user’s browser into making requests.
+
+Basic protections:
+
+- Use **SameSite** where possible
+- Use CSRF tokens for state-changing requests
+- Require re-auth for sensitive actions
+
+<Quiz id="csrf-basic-quiz">
+  <Question>Why are session cookies commonly associated with CSRF risk?</Question>
+  <Answer>Because cookies are always encrypted</Answer>
+  <Answer correct>Because browsers automatically attach cookies to requests</Answer>
+  <Answer>Because JWTs can’t expire</Answer>
+  <Answer>Because servers can’t store sessions</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="csrf-and-logout" xpReward={10} />
+
+---
+
+## Quick recap
+
+- Session = server remembers who you are.
+- Cookie = browser carries the session ID.
+- Add cookie flags + CSRF protections for real safety.

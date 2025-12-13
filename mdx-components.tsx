@@ -133,6 +133,10 @@ import {
   PageObjectModelDemo,
 } from '@/components/learn/interactive/testing';
 
+// Authentication Lesson Components
+import { OAuthPkceFlowSimulator } from '@/components/learn/interactive/auth/OAuthPkceFlowSimulator';
+import { SessionVsTokenVisualizer } from '@/components/learn/interactive/auth/SessionVsTokenVisualizer';
+
 /**
  * MDX Components Configuration
  * This file provides custom components for MDX content rendering.
@@ -275,6 +279,10 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     E2EFlowVisualizer,
     LocatorPlayground,
     PageObjectModelDemo,
+
+    // Authentication Lesson Components
+    OAuthPkceFlowSimulator,
+    SessionVsTokenVisualizer,
 
     // Enhanced HTML elements with proper styling
     h1: ({ children, ...props }) => (
