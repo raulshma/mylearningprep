@@ -85,7 +85,8 @@ export const LearningObjectiveSchema = z.object({
 // Resource recommendation for a topic
 export const TopicResourceSchema = z.object({
   title: z.string().min(1),
-  type: z.enum(['documentation', 'article', 'video', 'practice', 'book']),
+  type: z.enum(['documentation', 'article', 'video', 'practice', 'book', 'course', 'tool']),
+  url: z.string().url().optional(),
   description: z.string().min(1),
 });
 

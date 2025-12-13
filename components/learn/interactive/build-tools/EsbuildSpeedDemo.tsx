@@ -26,6 +26,13 @@ interface BuildResult {
   icon: string;
 }
 
+// Bundler configurations - defined outside component to prevent recreation on every render
+const BUNDLERS = [
+  { name: 'esbuild', baseTime: 0.8, color: 'yellow', description: 'Written in Go' },
+  { name: 'Vite (prod)', baseTime: 8, color: 'purple', description: 'Uses esbuild + Rollup' },
+  { name: 'Webpack', baseTime: 25, color: 'blue', description: 'JavaScript-based' },
+] as const;
+
 /**
  * EsbuildSpeedDemo Component
  * Visual comparison of esbuild's speed vs traditional bundlers
@@ -38,12 +45,6 @@ export function EsbuildSpeedDemo({ moduleCount = 1000 }: EsbuildSpeedDemoProps) 
   const shouldReduceMotion = useReducedMotion();
   const animationRef = useRef<number | null>(null);
 
-  const bundlers = [
-    { name: 'esbuild', baseTime: 0.8, color: 'yellow', description: 'Written in Go' },
-    { name: 'Vite (prod)', baseTime: 8, color: 'purple', description: 'Uses esbuild + Rollup' },
-    { name: 'Webpack', baseTime: 25, color: 'blue', description: 'JavaScript-based' },
-  ];
-
   const runBenchmark = useCallback(() => {
     setIsRunning(true);
     setResults([]);
@@ -52,13 +53,13 @@ export function EsbuildSpeedDemo({ moduleCount = 1000 }: EsbuildSpeedDemoProps) 
     let bundlerIndex = 0;
     
     const runNextBundler = () => {
-      if (bundlerIndex >= bundlers.length) {
+      if (bundlerIndex >= BUNDLERS.length) {
         setIsRunning(false);
         setCurrentBundler(null);
         return;
       }
 
-      const bundler = bundlers[bundlerIndex];
+      const bundler = BUNDLERS[bundlerIndex];
       setCurrentBundler(bundler.name);
       
       // Simulate build with progress
@@ -94,7 +95,7 @@ export function EsbuildSpeedDemo({ moduleCount = 1000 }: EsbuildSpeedDemoProps) 
     };
 
     runNextBundler();
-  }, [bundlers]);
+  }, []);
 
   const resetDemo = useCallback(() => {
     if (animationRef.current) {
@@ -106,7 +107,7 @@ export function EsbuildSpeedDemo({ moduleCount = 1000 }: EsbuildSpeedDemoProps) 
     setCurrentBundler(null);
   }, []);
 
-  const maxTime = Math.max(...bundlers.map(b => b.baseTime));
+  const maxTime = Math.max(...BUNDLERS.map(b => b.baseTime));
 
   return (
     <Card className="w-full max-w-4xl mx-auto my-8 overflow-hidden" role="region" aria-label="esbuild Speed Demo">
@@ -154,7 +155,7 @@ export function EsbuildSpeedDemo({ moduleCount = 1000 }: EsbuildSpeedDemoProps) 
 
         {/* Bundler Comparison */}
         <div className="space-y-4">
-          {bundlers.map((bundler) => {
+          {BUNDLERS.map((bundler) => {
             const result = results.find(r => r.bundler === bundler.name);
             const currentProgress = progress[bundler.name] || 0;
             const isActive = currentBundler === bundler.name;
@@ -263,7 +264,7 @@ export function EsbuildSpeedDemo({ moduleCount = 1000 }: EsbuildSpeedDemoProps) 
 
         {/* Results Summary */}
         <AnimatePresence>
-          {results.length === bundlers.length && (
+          {results.length === BUNDLERS.length && (
             <motion.div
               initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -273,7 +274,7 @@ export function EsbuildSpeedDemo({ moduleCount = 1000 }: EsbuildSpeedDemoProps) 
                 <Zap className="w-5 h-5 text-yellow-500 mt-0.5" />
                 <div>
                   <p className="text-sm font-medium text-yellow-400">
-                    esbuild is {Math.round(bundlers[2].baseTime / bundlers[0].baseTime)}x faster than Webpack!
+                    esbuild is {Math.round(BUNDLERS[2].baseTime / BUNDLERS[0].baseTime)}x faster than Webpack!
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
                     Written in Go with full parallelization, esbuild processes files 10-100x faster than JavaScript-based bundlers. This makes it ideal for CI/CD pipelines and large codebases.
