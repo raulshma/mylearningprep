@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Monitor, Server, Globe, Wifi, ArrowRight, Zap } from 'lucide-react';
+import { Monitor, Server, Globe, Wifi, ArrowRight, Zap, GitBranch, Layers, Folder, Cloud, Upload, Download, GitMerge } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   AnimatedControls,
@@ -15,7 +15,10 @@ type DiagramType =
   | 'dns-lookup' 
   | 'http-request' 
   | 'tcp-handshake'
-  | 'client-server';
+  | 'client-server'
+  | 'git-three-trees'
+  | 'git-branch-merge'
+  | 'git-remote-flow';
 
 interface AnimatedDiagramProps {
   type: DiagramType;
@@ -71,6 +74,15 @@ export function AnimatedDiagram({
         {type === 'tcp-handshake' && (
           <TCPHandshakeDiagram key={resetKey} isPlaying={isPlaying} multiplier={multiplier} />
         )}
+        {type === 'git-three-trees' && (
+          <GitThreeTreesDiagram key={resetKey} isPlaying={isPlaying} multiplier={multiplier} />
+        )}
+        {type === 'git-branch-merge' && (
+          <GitBranchMergeDiagram key={resetKey} isPlaying={isPlaying} multiplier={multiplier} />
+        )}
+        {type === 'git-remote-flow' && (
+          <GitRemoteFlowDiagram key={resetKey} isPlaying={isPlaying} multiplier={multiplier} />
+        )}
       </div>
 
       {/* Controls - Requirements 11.1: play/pause and speed adjustment */}
@@ -93,8 +105,243 @@ function getDiagramLabel(type: DiagramType): string {
     case 'http-request': return 'HTTP request/response cycle';
     case 'tcp-handshake': return 'TCP three-way handshake';
     case 'client-server': return 'Client-Server communication';
+    case 'git-three-trees': return 'Git: working tree → staging → commits';
+    case 'git-branch-merge': return 'Git: branches and merging';
+    case 'git-remote-flow': return 'Git: local repo ↔ remote repo sync';
     default: return 'Interactive diagram';
   }
+}
+
+function GitThreeTreesDiagram({ isPlaying, multiplier }: { isPlaying: boolean; multiplier: number }) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch h-full">
+      <div className="p-4 rounded-xl border border-border bg-secondary/30">
+        <div className="flex items-center gap-2 mb-2">
+          <Folder className="w-5 h-5 text-primary" />
+          <h4 className="font-semibold text-foreground">Working tree</h4>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Your files on disk. You edit code here.
+        </p>
+
+        <div className="mt-4 space-y-2">
+          <div className="flex items-center gap-2 text-xs">
+            <span className="px-2 py-1 rounded bg-primary/10 border border-primary/20 font-mono">index.ts</span>
+            <span className="text-muted-foreground">modified</span>
+          </div>
+          <div className="flex items-center gap-2 text-xs">
+            <span className="px-2 py-1 rounded bg-secondary border border-border font-mono">README.md</span>
+            <span className="text-muted-foreground">untracked</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="relative p-4 rounded-xl border border-border bg-secondary/30">
+        <div className="flex items-center gap-2 mb-2">
+          <Layers className="w-5 h-5 text-blue-500" />
+          <h4 className="font-semibold text-foreground">Staging area (index)</h4>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          A &quot;shopping cart&quot; of changes you intend to commit.
+        </p>
+
+        <div className="mt-4">
+          <div className="px-2 py-1 rounded bg-blue-500/10 border border-blue-500/20 text-xs font-mono inline-block">
+            index.ts
+          </div>
+        </div>
+
+        {isPlaying && (
+          <>
+            <motion.div
+              className="absolute -left-8 top-1/2 -translate-y-1/2 text-xs text-muted-foreground flex items-center gap-2"
+              animate={{ opacity: [0, 1, 1, 0], x: [-6, 0, 0, 6] }}
+              transition={{ duration: 2.2 * multiplier, repeat: Infinity, ease: 'easeInOut' }}
+            >
+              <ArrowRight className="w-4 h-4" />
+              <span className="font-mono">git add</span>
+            </motion.div>
+            <motion.div
+              className="absolute -right-10 top-1/2 -translate-y-1/2 text-xs text-muted-foreground flex items-center gap-2"
+              animate={{ opacity: [0, 0, 1, 1, 0], x: [6, 6, 0, 0, -6] }}
+              transition={{ duration: 2.2 * multiplier, repeat: Infinity, ease: 'easeInOut', times: [0, 0.35, 0.55, 0.85, 1] }}
+            >
+              <span className="font-mono">git commit</span>
+              <ArrowRight className="w-4 h-4" />
+            </motion.div>
+          </>
+        )}
+      </div>
+
+      <div className="p-4 rounded-xl border border-border bg-secondary/30">
+        <div className="flex items-center gap-2 mb-2">
+          <GitBranch className="w-5 h-5 text-green-500" />
+          <h4 className="font-semibold text-foreground">Repository (commits)</h4>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Your project history. Commits are snapshots with messages.
+        </p>
+
+        <div className="mt-4 space-y-2">
+          {[{ id: 'a1b2c3d', msg: 'feat: add login' }, { id: 'e4f5g6h', msg: 'fix: handle null user' }].map((c) => (
+            <div key={c.id} className="flex items-center justify-between gap-2 text-xs">
+              <span className="font-mono text-muted-foreground">{c.id}</span>
+              <span className="text-foreground truncate">{c.msg}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GitBranchMergeDiagram({ isPlaying, multiplier }: { isPlaying: boolean; multiplier: number }) {
+  const [step, setStep] = useState(0);
+
+  useEffect(() => {
+    if (!isPlaying) return;
+    const interval = setInterval(() => setStep((s) => (s + 1) % 4), 1600 * multiplier);
+    return () => clearInterval(interval);
+  }, [isPlaying, multiplier]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className={cn('p-3 rounded-xl border', step <= 1 ? 'bg-primary/10 border-primary/30' : 'bg-secondary/30 border-border')}>
+          <div className="flex items-center gap-2">
+            <GitBranch className="w-5 h-5 text-primary" />
+            <span className="text-sm font-semibold">main</span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">Stable history</p>
+        </div>
+
+        <div className={cn('p-3 rounded-xl border', step >= 1 ? 'bg-blue-500/10 border-blue-500/30' : 'bg-secondary/30 border-border')}>
+          <div className="flex items-center gap-2">
+            <GitBranch className="w-5 h-5 text-blue-500" />
+            <span className="text-sm font-semibold">feature/login</span>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">Work in progress</p>
+        </div>
+      </div>
+
+      <div className="relative h-28 rounded-xl border border-border bg-secondary/30 overflow-hidden">
+        <div className="absolute inset-0 p-4">
+          {/* main line */}
+          <div className="absolute left-6 right-6 top-7 h-0.5 bg-border" />
+          {/* feature line */}
+          <div className="absolute left-16 right-10 top-16 h-0.5 bg-border" />
+
+          {/* commits */}
+          {[0, 1, 2].map((i) => (
+            <div
+              key={`m-${i}`}
+              className={cn(
+                'absolute top-7 -translate-y-1/2 w-3 h-3 rounded-full',
+                i <= 1 ? 'bg-primary' : 'bg-muted-foreground/40'
+              )}
+              style={{ left: `${18 + i * 18}%` }}
+            />
+          ))}
+
+          {[0, 1].map((i) => (
+            <div
+              key={`f-${i}`}
+              className={cn(
+                'absolute top-16 -translate-y-1/2 w-3 h-3 rounded-full',
+                step >= 2 ? 'bg-blue-500' : 'bg-muted-foreground/40'
+              )}
+              style={{ left: `${34 + i * 18}%` }}
+            />
+          ))}
+
+          {/* merge commit */}
+          <motion.div
+            className={cn(
+              'absolute top-7 -translate-y-1/2 w-4 h-4 rounded-full flex items-center justify-center',
+              step === 3 ? 'bg-green-500 text-white' : 'bg-muted-foreground/40 text-transparent'
+            )}
+            style={{ left: '72%' }}
+            animate={step === 3 ? { scale: [1, 1.15, 1] } : {}}
+            transition={{ duration: 0.6 * multiplier }}
+          >
+            <GitMerge className="w-3 h-3" />
+          </motion.div>
+
+          {/* branch off line */}
+          <div className="absolute left-[34%] top-7 w-0.5 h-9 bg-border" />
+        </div>
+      </div>
+
+      <motion.div
+        key={step}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="p-3 rounded-lg bg-secondary/50 text-sm text-muted-foreground"
+      >
+        {step === 0 && <span><span className="font-mono text-foreground">main</span> has stable commits.</span>}
+        {step === 1 && <span>Create a branch: <span className="font-mono text-foreground">git switch -c feature/login</span>.</span>}
+        {step === 2 && <span>Make commits on the branch without affecting <span className="font-mono text-foreground">main</span>.</span>}
+        {step === 3 && <span>Merge back: <span className="font-mono text-foreground">git merge feature/login</span>.</span>}
+      </motion.div>
+    </div>
+  );
+}
+
+function GitRemoteFlowDiagram({ isPlaying, multiplier }: { isPlaying: boolean; multiplier: number }) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center h-full">
+      <div className="p-4 rounded-xl border border-border bg-secondary/30">
+        <div className="flex items-center gap-2 mb-2">
+          <Folder className="w-5 h-5 text-primary" />
+          <h4 className="font-semibold text-foreground">Local</h4>
+        </div>
+        <p className="text-xs text-muted-foreground">Your machine (commits, branches, working tree).</p>
+      </div>
+
+      <div className="relative p-4 rounded-xl border border-border bg-secondary/30">
+        <div className="flex items-center justify-center gap-4">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Download className="w-4 h-4" />
+            <span className="font-mono">fetch</span>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Upload className="w-4 h-4" />
+            <span className="font-mono">push</span>
+          </div>
+        </div>
+
+        {isPlaying && (
+          <>
+            <motion.div
+              className="absolute left-6 right-6 top-12 h-0.5 bg-border"
+              animate={{ opacity: [0.6, 1, 0.6] }}
+              transition={{ duration: 1.6 * multiplier, repeat: Infinity }}
+            />
+            <motion.div
+              className="absolute top-10 left-6 w-3 h-3 rounded bg-blue-500"
+              animate={{ x: ['0%', '260%'] }}
+              transition={{ duration: 2.2 * multiplier, repeat: Infinity, ease: 'linear' }}
+              title="fetch"
+            />
+            <motion.div
+              className="absolute top-14 right-6 w-3 h-3 rounded bg-green-500"
+              animate={{ x: ['0%', '-260%'] }}
+              transition={{ duration: 2.2 * multiplier, repeat: Infinity, ease: 'linear', delay: 0.6 * multiplier }}
+              title="push"
+            />
+          </>
+        )}
+      </div>
+
+      <div className="p-4 rounded-xl border border-border bg-secondary/30">
+        <div className="flex items-center gap-2 mb-2">
+          <Cloud className="w-5 h-5 text-blue-500" />
+          <h4 className="font-semibold text-foreground">Remote</h4>
+        </div>
+        <p className="text-xs text-muted-foreground">Shared server (GitHub/GitLab). Collaboration happens here.</p>
+      </div>
+    </div>
+  );
 }
 
 // Packet Flow Animation

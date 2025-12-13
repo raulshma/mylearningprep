@@ -1,0 +1,94 @@
+# Creating repositories
+
+<InfoBox type="tip">
+A **repository** (repo) is a project folder with an attached Git history.
+</InfoBox>
+
+## Repo mental model
+
+- Your project files live in a normal folder.
+- Git stores history in a hidden folder called **.git**.
+
+<KeyConcept title="The .git folder">
+`.git` is where Git keeps commits, branches, tags, and the staging area. If you delete it, you delete the repo history.
+</KeyConcept>
+
+<ProgressCheckpoint section="repo-mental-model" xpReward={10} />
+
+---
+
+## Option A: Start a new repo (git init)
+
+Use this when you already have a project folder and want to start tracking it.
+
+```bash
+cd my-project
+
+git init
+```
+
+Then check status:
+
+```bash
+git status
+```
+
+<InfoBox type="tip">
+If you see “On branch main”, you’re good. If it says “master”, don’t worry—branch names can be configured.
+</InfoBox>
+
+<ProgressCheckpoint section="git-init" xpReward={10} />
+
+---
+
+## Make your first commit
+
+1) Stage files:
+
+```bash
+git add .
+```
+
+2) Commit:
+
+```bash
+git commit -m "chore: initial commit"
+```
+
+<AnimatedDiagram type="git-three-trees" />
+
+<ProgressCheckpoint section="first-commit" xpReward={10} />
+
+---
+
+## Option B: Copy an existing repo (git clone)
+
+Use this when a repo already exists (for example on GitHub).
+
+```bash
+git clone https://github.com/OWNER/REPO.git
+```
+
+This downloads the repo history **and** the working files.
+
+<Quiz id="init-vs-clone-quiz">
+  <Question>When should you use `git clone` instead of `git init`?</Question>
+  <Answer correct>When a repository already exists and you want a copy of it</Answer>
+  <Answer>When you want to delete Git history</Answer>
+  <Answer>When you want to stage files</Answer>
+  <Answer>When you want to rename a branch</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="git-clone" xpReward={10} />
+
+---
+
+## Summary
+
+<KeyConcept title="Create a repo">
+- Use `git init` to start tracking a folder
+- Use `git add` + `git commit` to create history
+- Use `git clone` to download an existing repo (history + files)
+</KeyConcept>
+
+<ProgressCheckpoint section="summary" xpReward={10} />

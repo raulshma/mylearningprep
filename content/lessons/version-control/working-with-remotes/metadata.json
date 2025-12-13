@@ -1,0 +1,23 @@
+{
+  "id": "working-with-remotes",
+  "title": "Working with remotes",
+  "description": "Collaborate using GitHub/GitLab: remotes, fetch vs pull, push, and upstream tracking.",
+  "milestone": "version-control",
+  "order": 4,
+  "sections": [
+    "what-is-a-remote",
+    "remote-tracking",
+    "fetch-vs-pull",
+    "push",
+    "common-collab-patterns",
+    "safety",
+    "summary"
+  ],
+  "levels": {
+    "beginner": { "estimatedMinutes": 14, "xpReward": 50 },
+    "intermediate": { "estimatedMinutes": 20, "xpReward": 100 },
+    "advanced": { "estimatedMinutes": 30, "xpReward": 200 }
+  },
+  "prerequisites": [],
+  "tags": ["git", "version-control", "remote", "fetch", "pull", "push"]
+}

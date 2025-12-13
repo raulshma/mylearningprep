@@ -1,0 +1,124 @@
+# Working with remotes (Intermediate)
+
+<InfoBox type="tip">
+Intermediate remotes = understanding **upstream tracking** and avoiding accidental merges.
+</InfoBox>
+
+## Inspect and manage remotes
+
+List remotes:
+
+```bash
+git remote -v
+```
+
+Add a remote:
+
+```bash
+git remote add origin https://github.com/OWNER/REPO.git
+```
+
+Show remote details:
+
+```bash
+git remote show origin
+```
+
+<ProgressCheckpoint section="what-is-a-remote" xpReward={15} />
+
+---
+
+## Tracking branches and upstream
+
+When your branch tracks a remote branch, you can use simple commands like `git pull` and `git push` without extra args.
+
+Set upstream the first time you push:
+
+```bash
+git push -u origin main
+```
+
+Then later:
+
+```bash
+git pull
+```
+
+```bash
+git push
+```
+
+<InteractiveDemo type="git-remote-sync" title="Ahead/behind simulation" />
+
+<ProgressCheckpoint section="remote-tracking" xpReward={15} />
+
+---
+
+## Prefer predictable pull behavior
+
+Many developers pick one of these patterns:
+
+### Fast-forward only (safe default)
+
+```bash
+git config --global pull.ff only
+```
+
+### Rebase on pull (keeps linear history)
+
+```bash
+git config --global pull.rebase true
+```
+
+<InfoBox type="warning">
+If your team uses merge commits intentionally, don’t force a global rebase workflow.
+</InfoBox>
+
+<ProgressCheckpoint section="fetch-vs-pull" xpReward={15} />
+
+---
+
+## Forks and upstream remotes (common in open source)
+
+- `origin`: your fork
+- `upstream`: the original project
+
+```bash
+git remote add upstream https://github.com/ORIGINAL/REPO.git
+```
+
+Fetch upstream:
+
+```bash
+git fetch upstream
+```
+
+Bring changes into your branch (example):
+
+```bash
+git switch main
+
+git merge upstream/main
+```
+
+<ProgressCheckpoint section="common-collab-patterns" xpReward={15} />
+
+---
+
+## Summary
+
+<KeyConcept title="Intermediate remote workflow">
+- Use upstream tracking (`git push -u`) for simpler pulls/pushes
+- Choose a pull strategy (ff-only or rebase) intentionally
+- Use `upstream` remote when working with forks
+</KeyConcept>
+
+<Quiz id="upstream-quiz">
+  <Question>Why set an upstream tracking branch?</Question>
+  <Answer correct>So `git pull`/`git push` know the default remote branch to sync with</Answer>
+  <Answer>So Git can auto-resolve all conflicts</Answer>
+  <Answer>So you don’t need commits anymore</Answer>
+  <Answer>To delete the remote repository</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="summary" xpReward={15} />

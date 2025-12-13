@@ -1,0 +1,148 @@
+# Branching and Merging (Intermediate)
+
+<InfoBox type="tip">
+Intermediate goal: merge predictably and keep history readable.
+</InfoBox>
+
+## Branches, HEAD, and commit graphs
+
+Useful inspection commands:
+
+```bash
+git log --oneline --decorate --graph --all
+```
+
+```bash
+git show --name-only HEAD
+```
+
+<AnimatedDiagram type="git-branch-merge" />
+
+<ProgressCheckpoint section="branches-as-pointers" xpReward={15} />
+
+---
+
+## Creating branches (modern commands)
+
+Prefer `switch` over older `checkout` for clarity:
+
+```bash
+git switch -c feature/search
+```
+
+Delete a merged branch:
+
+```bash
+git branch -d feature/search
+```
+
+Force delete (only if you really mean it):
+
+```bash
+git branch -D feature/search
+```
+
+<ProgressCheckpoint section="create-switch" xpReward={15} />
+
+---
+
+## Merging styles
+
+Fast-forward merge happens when `main` has not moved since branching.
+
+To require a merge commit (keeps “feature branch” grouping):
+
+```bash
+git merge --no-ff feature/search
+```
+
+To *only* allow fast-forward (prevents accidental merge commits):
+
+```bash
+git merge --ff-only feature/search
+```
+
+<ProgressCheckpoint section="merge" xpReward={15} />
+
+---
+
+## Conflict resolution workflow
+
+When conflicts occur:
+
+```bash
+git status
+```
+
+After resolving files:
+
+```bash
+git add path/to/conflicted-file
+```
+
+Then finish merge:
+
+```bash
+git commit
+```
+
+Abort a merge attempt:
+
+```bash
+git merge --abort
+```
+
+<Quiz id="conflict-quiz">
+  <Question>After you fix conflict markers in a file, what’s the next step?</Question>
+  <Answer correct>Stage the resolved file with git add</Answer>
+  <Answer>Run git clone</Answer>
+  <Answer>Delete the branch</Answer>
+  <Answer>Run git fetch</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="conflicts" xpReward={15} />
+
+---
+
+## Merge vs rebase (when to use which)
+
+<Comparison
+  left={{
+    title: "Merge",
+    items: [
+      "Preserves branch history as it happened",
+      "Safe for shared branches",
+      "Can create merge commits",
+    ],
+    variant: "positive",
+  }}
+  right={{
+    title: "Rebase",
+    items: [
+      "Creates a linear history",
+      "Rewrites commits (new SHAs)",
+      "Risky on shared branches unless your team expects it",
+    ],
+    variant: "neutral",
+  }}
+/>
+
+Rule of thumb:
+
+- rebase your *local* work to clean it up
+- merge to integrate shared work
+
+<ProgressCheckpoint section="merge-vs-rebase" xpReward={15} />
+
+---
+
+## Summary
+
+<KeyConcept title="Intermediate branching">
+- Visualize history with `git log --graph`
+- Use `--ff-only` or `--no-ff` intentionally
+- Learn `git merge --abort` for safety
+- Use rebase carefully (history rewrite)
+</KeyConcept>
+
+<ProgressCheckpoint section="summary" xpReward={15} />

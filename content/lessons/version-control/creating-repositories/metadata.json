@@ -1,0 +1,22 @@
+{
+  "id": "creating-repositories",
+  "title": "Creating repositories",
+  "description": "Create new Git repos with init/clone, understand the .git directory, and choose good defaults.",
+  "milestone": "version-control",
+  "order": 2,
+  "sections": [
+    "repo-mental-model",
+    "git-init",
+    "first-commit",
+    "git-clone",
+    "recommended-config",
+    "summary"
+  ],
+  "levels": {
+    "beginner": { "estimatedMinutes": 10, "xpReward": 50 },
+    "intermediate": { "estimatedMinutes": 16, "xpReward": 100 },
+    "advanced": { "estimatedMinutes": 24, "xpReward": 200 }
+  },
+  "prerequisites": [],
+  "tags": ["git", "version-control", "init", "clone", "repository"]
+}

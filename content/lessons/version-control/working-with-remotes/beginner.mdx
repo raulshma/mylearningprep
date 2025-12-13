@@ -1,0 +1,101 @@
+# Working with remotes
+
+<InfoBox type="tip">
+A **remote** is just a saved nickname for a Git server URL (like GitHub). The most common remote is called `origin`.
+</InfoBox>
+
+## What is a remote?
+
+- Local repo: on your machine
+- Remote repo: shared copy on a server (GitHub/GitLab)
+
+<AnimatedDiagram type="git-remote-flow" />
+
+<ProgressCheckpoint section="what-is-a-remote" xpReward={10} />
+
+---
+
+## Remote-tracking branches (what you see after fetch)
+
+When you fetch, Git updates references like:
+
+- `origin/main`
+
+That’s Git’s “notes” about what the remote has.
+
+Check remotes:
+
+```bash
+git remote -v
+```
+
+<ProgressCheckpoint section="remote-tracking" xpReward={10} />
+
+---
+
+## Fetch vs pull (super important)
+
+- `git fetch`: download updates, **do not** merge them
+- `git pull`: fetch + integrate (merge or rebase)
+
+```bash
+git fetch
+```
+
+```bash
+git pull
+```
+
+<InteractiveDemo type="git-remote-sync" />
+
+<Quiz id="fetch-vs-pull-quiz">
+  <Question>What does `git fetch` do?</Question>
+  <Answer correct>Downloads updates from the remote without merging into your current branch</Answer>
+  <Answer>Merges your current branch into the remote</Answer>
+  <Answer>Deletes remote branches</Answer>
+  <Answer>Creates a new repository</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="fetch-vs-pull" xpReward={10} />
+
+---
+
+## Push (send your commits to the remote)
+
+Push sends your local commits to the remote:
+
+```bash
+git push
+```
+
+First push on a new branch often sets upstream:
+
+```bash
+git push -u origin feature/login
+```
+
+<ProgressCheckpoint section="push" xpReward={10} />
+
+---
+
+## Common collaboration pattern
+
+1) Fetch or pull often
+2) Work on a branch
+3) Push your branch
+4) Open a Pull Request (PR)
+
+<ProgressCheckpoint section="common-collab-patterns" xpReward={10} />
+
+---
+
+## Summary
+
+<KeyConcept title="Remote basics">
+- `origin` is a nickname for a server URL
+- `fetch` updates `origin/*` refs without merging
+- `pull` fetches and integrates
+- `push` publishes your commits to the remote
+</KeyConcept>
+
+<ProgressCheckpoint section="summary" xpReward={10} />

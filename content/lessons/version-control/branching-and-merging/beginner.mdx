@@ -1,0 +1,110 @@
+# Branching and Merging
+
+<InfoBox type="tip">
+A branch is like a **parallel timeline**. You can experiment without breaking the main story.
+</InfoBox>
+
+## Branches are lightweight pointers
+
+In Git, branches are not big copies of files. They’re mostly **names that point to commits**.
+
+<AnimatedDiagram type="git-branch-merge" />
+
+<ProgressCheckpoint section="branches-as-pointers" xpReward={10} />
+
+---
+
+## Create a branch and switch to it
+
+Create and switch in one command:
+
+```bash
+git switch -c feature/login
+```
+
+List branches:
+
+```bash
+git branch
+```
+
+Switch back:
+
+```bash
+git switch main
+```
+
+<ProgressCheckpoint section="create-switch" xpReward={10} />
+
+---
+
+## Merge your work back to main
+
+Typical flow:
+
+```bash
+git switch main
+
+git merge feature/login
+```
+
+If Git can do it cleanly, you’re done.
+
+<ProgressCheckpoint section="merge" xpReward={10} />
+
+---
+
+## Merge conflicts (what they are)
+
+A conflict happens when Git can’t automatically combine changes.
+
+Usually this means:
+
+- you and someone else edited the same lines
+- or two branches changed the same part of a file differently
+
+When you see a conflict:
+
+1) Open the file
+2) Choose which version (or combine them)
+3) Stage the resolved file
+4) Commit the merge
+
+<InfoBox type="tip">
+Conflicts are normal. They’re Git asking you to make a decision.
+</InfoBox>
+
+<ProgressCheckpoint section="conflicts" xpReward={10} />
+
+---
+
+## Merge vs rebase (beginner-friendly rule)
+
+For now:
+
+- use **merge** to combine branches
+- avoid **rebase** until you’re comfortable (it can rewrite history)
+
+<ProgressCheckpoint section="merge-vs-rebase" xpReward={10} />
+
+---
+
+## Summary
+
+<KeyConcept title="Branching loop">
+1) `git switch -c feature/x`
+2) commit work on the branch
+3) `git switch main`
+4) `git merge feature/x`
+5) resolve conflicts if needed
+</KeyConcept>
+
+<Quiz id="branch-quiz">
+  <Question>What is a Git branch, conceptually?</Question>
+  <Answer correct>A name/pointer to a commit (a line of history)</Answer>
+  <Answer>A full copy of your repository stored twice</Answer>
+  <Answer>A remote server</Answer>
+  <Answer>A special kind of commit message</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="summary" xpReward={10} />

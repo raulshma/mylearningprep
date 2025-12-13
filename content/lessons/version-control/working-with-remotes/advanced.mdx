@@ -1,0 +1,83 @@
+# Working with remotes (Advanced)
+
+<InfoBox type="tip">
+Advanced remotes = refspecs, safety, and keeping shared history clean.
+</InfoBox>
+
+## Remote-tracking refs are local data
+
+After `fetch`, refs like `origin/main` are updated locally. They are not “live”—they’re your last downloaded view.
+
+```bash
+git fetch --prune
+```
+
+`--prune` removes remote-tracking refs for branches deleted on the server.
+
+<ProgressCheckpoint section="remote-tracking" xpReward={20} />
+
+---
+
+## RefSpecs (what fetch/push really move)
+
+You rarely need to write refspecs, but it’s useful to know they exist.
+
+Example: push your local branch to a remote branch of the same name:
+
+```bash
+git push origin HEAD
+```
+
+Or explicit:
+
+```bash
+git push origin feature/login:feature/login
+```
+
+<ProgressCheckpoint section="push" xpReward={20} />
+
+---
+
+## Force pushing safely
+
+Force-push is sometimes needed (e.g., after rebasing your own feature branch), but use the safer variant:
+
+```bash
+git push --force-with-lease
+```
+
+This refuses to overwrite remote work you didn’t know about.
+
+<InfoBox type="warning">
+Never force-push shared protected branches unless your team explicitly allows it.
+</InfoBox>
+
+<ProgressCheckpoint section="safety" xpReward={20} />
+
+---
+
+## Auth and transport (HTTPS vs SSH)
+
+- HTTPS: easy setup, uses credential managers/tokens
+- SSH: key-based, common for power users
+
+If you switch your remote URL:
+
+```bash
+git remote set-url origin git@github.com:OWNER/REPO.git
+```
+
+<ProgressCheckpoint section="what-is-a-remote" xpReward={20} />
+
+---
+
+## Summary
+
+<KeyConcept title="Advanced remote habits">
+- Treat `origin/*` as cached remote state
+- Use `fetch --prune` to keep refs clean
+- Prefer `--force-with-lease` over `--force`
+- Understand refspec direction when troubleshooting pushes
+</KeyConcept>
+
+<ProgressCheckpoint section="summary" xpReward={20} />

@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Play, Pause, RotateCcw, ChevronRight } from 'lucide-react';
+import { Play, Pause, RotateCcw, ChevronRight, Plus, Check, Upload, Download, GitCommit, GitBranch, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -10,7 +10,9 @@ type DemoType =
   | 'ip-address-demo'
   | 'url-parser'
   | 'request-builder'
-  | 'packet-simulator';
+  | 'packet-simulator'
+  | 'git-staging-demo'
+  | 'git-remote-sync';
 
 interface InteractiveDemoProps {
   type: DemoType;
@@ -36,6 +38,8 @@ export function InteractiveDemo({ type, title }: InteractiveDemoProps) {
         {type === 'url-parser' && <URLParserDemo />}
         {type === 'request-builder' && <RequestBuilderDemo />}
         {type === 'packet-simulator' && <PacketSimulatorDemo />}
+        {type === 'git-staging-demo' && <GitStagingDemo />}
+        {type === 'git-remote-sync' && <GitRemoteSyncDemo />}
       </div>
     </motion.div>
   );
@@ -47,8 +51,284 @@ function getDemoTitle(type: DemoType): string {
     case 'url-parser': return 'URL Structure';
     case 'request-builder': return 'HTTP Request Builder';
     case 'packet-simulator': return 'Packet Journey Simulator';
+    case 'git-staging-demo': return 'Git Staging (git add / restore --staged)';
+    case 'git-remote-sync': return 'Remote Sync (fetch / pull / push)';
     default: return 'Interactive Demo';
   }
+}
+
+type GitFileState = 'modified' | 'untracked' | 'staged';
+interface GitFile {
+  name: string;
+  state: GitFileState;
+}
+
+function GitStagingDemo() {
+  const [files, setFiles] = useState<GitFile[]>([
+    { name: 'src/app/page.tsx', state: 'modified' },
+    { name: 'README.md', state: 'untracked' },
+    { name: 'src/components/Button.tsx', state: 'modified' },
+  ]);
+  const [lastAction, setLastAction] = useState<string>('');
+
+  const stageFile = (name: string) => {
+    setFiles((prev) => prev.map((f) => (f.name === name ? { ...f, state: 'staged' } : f)));
+    setLastAction(`git add ${name}`);
+  };
+
+  const unstageFile = (name: string) => {
+    setFiles((prev) =>
+      prev.map((f) => (f.name === name ? { ...f, state: f.state === 'staged' ? 'modified' : f.state } : f))
+    );
+    setLastAction(`git restore --staged ${name}`);
+  };
+
+  const commit = () => {
+    const hasStaged = files.some((f) => f.state === 'staged');
+    if (!hasStaged) return;
+    setFiles((prev) => prev.filter((f) => f.state !== 'staged'));
+    setLastAction('git commit -m "..."');
+  };
+
+  const reset = () => {
+    setFiles([
+      { name: 'src/app/page.tsx', state: 'modified' },
+      { name: 'README.md', state: 'untracked' },
+      { name: 'src/components/Button.tsx', state: 'modified' },
+    ]);
+    setLastAction('');
+  };
+
+  const statusText = useMemo(() => {
+    const staged = files.filter((f) => f.state === 'staged');
+    const modified = files.filter((f) => f.state === 'modified');
+    const untracked = files.filter((f) => f.state === 'untracked');
+
+    const lines: string[] = [];
+    lines.push('On branch main');
+    lines.push('');
+
+    if (staged.length) {
+      lines.push('Changes to be committed:');
+      for (const f of staged) lines.push(`  modified:   ${f.name}`);
+      lines.push('');
+    }
+
+    if (modified.length) {
+      lines.push('Changes not staged for commit:');
+      lines.push('  (use "git add <file>..." to update what will be committed)');
+      for (const f of modified) lines.push(`  modified:   ${f.name}`);
+      lines.push('');
+    }
+
+    if (untracked.length) {
+      lines.push('Untracked files:');
+      lines.push('  (use "git add <file>..." to include in what will be committed)');
+      for (const f of untracked) lines.push(`  ${f.name}`);
+      lines.push('');
+    }
+
+    if (!staged.length && !modified.length && !untracked.length) {
+      lines.push('nothing to commit, working tree clean');
+    }
+
+    return lines.join('\n');
+  }, [files]);
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Practice the &quot;three places&quot; model: working tree → staging area → commit.
+      </p>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <GitBranch className="w-4 h-4" />
+            <span>Files</span>
+          </div>
+
+          <div className="space-y-2">
+            {files.map((f) => (
+              <div
+                key={f.name}
+                className={cn(
+                  'p-3 rounded-lg border flex items-center justify-between gap-3',
+                  f.state === 'staged'
+                    ? 'bg-green-500/10 border-green-500/30'
+                    : f.state === 'untracked'
+                      ? 'bg-blue-500/10 border-blue-500/30'
+                      : 'bg-secondary/30 border-border'
+                )}
+              >
+                <div className="min-w-0">
+                  <div className="text-sm font-medium text-foreground truncate">{f.name}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {f.state === 'staged' ? 'staged' : f.state === 'untracked' ? 'untracked' : 'modified'}
+                  </div>
+                </div>
+
+                <div className="flex gap-2 shrink-0">
+                  {f.state !== 'staged' ? (
+                    <Button size="sm" variant="outline" onClick={() => stageFile(f.name)}>
+                      <Plus className="w-4 h-4 mr-1" />
+                      Stage
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="outline" onClick={() => unstageFile(f.name)}>
+                      Undo stage
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex gap-2">
+            <Button size="sm" onClick={commit} disabled={!files.some((f) => f.state === 'staged')}>
+              <GitCommit className="w-4 h-4 mr-2" />
+              Commit staged
+            </Button>
+            <Button size="sm" variant="outline" onClick={reset}>
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Reset
+            </Button>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Check className="w-4 h-4" />
+              <span>Simulated <span className="font-mono">git status</span></span>
+            </div>
+            {lastAction && (
+              <span className="text-xs text-muted-foreground">
+                Last: <span className="font-mono text-foreground">{lastAction}</span>
+              </span>
+            )}
+          </div>
+          <pre className="bg-zinc-900 border border-border rounded-xl p-4 overflow-x-auto text-xs text-green-400 whitespace-pre">
+{statusText}
+          </pre>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GitRemoteSyncDemo() {
+  const [localAhead, setLocalAhead] = useState(0);
+  const [localBehind, setLocalBehind] = useState(0);
+  const [remoteAhead, setRemoteAhead] = useState(0);
+  const [message, setMessage] = useState<string>('Start by making a local commit or simulating a teammate push.');
+
+  const makeLocalCommit = () => {
+    setLocalAhead((n) => n + 1);
+    setMessage('You made a local commit. You are now "ahead" of origin/main.');
+  };
+
+  const teammatePushes = () => {
+    setRemoteAhead((n) => n + 1);
+    setLocalBehind((n) => n + 1);
+    setMessage('A teammate pushed to origin. Your local branch is now "behind".');
+  };
+
+  const fetch = () => {
+    if (remoteAhead === 0) {
+      setMessage('Fetch pulled no new remote commits.');
+      return;
+    }
+    setMessage('Fetched: updated remote-tracking branch origin/main (no merge into your branch yet).');
+  };
+
+  const pull = () => {
+    if (localBehind === 0) {
+      setMessage('Pull: already up to date.');
+      return;
+    }
+    setLocalBehind(0);
+    setRemoteAhead(0);
+    setMessage('Pulled: your local branch now includes the remote commits.');
+  };
+
+  const push = () => {
+    if (localAhead === 0) {
+      setMessage('Push: nothing to push.');
+      return;
+    }
+    setLocalAhead(0);
+    setMessage('Pushed: origin now has your commits.');
+  };
+
+  const reset = () => {
+    setLocalAhead(0);
+    setLocalBehind(0);
+    setRemoteAhead(0);
+    setMessage('Reset the simulation.');
+  };
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        This models the difference between <span className="font-mono">fetch</span> (download history) and <span className="font-mono">pull</span> (fetch + integrate).
+      </p>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="p-4 rounded-xl border border-border bg-secondary/30">
+          <div className="flex items-center gap-2 mb-2">
+            <GitBranch className="w-5 h-5 text-primary" />
+            <h4 className="font-semibold text-foreground">Your local branch</h4>
+          </div>
+          <div className="text-xs text-muted-foreground space-y-1">
+            <div>ahead of origin/main: <span className="font-mono text-foreground">{localAhead}</span></div>
+            <div>behind origin/main: <span className="font-mono text-foreground">{localBehind}</span></div>
+          </div>
+        </div>
+
+        <div className="p-4 rounded-xl border border-border bg-secondary/30">
+          <div className="flex items-center gap-2 mb-2">
+            <Download className="w-5 h-5 text-blue-500" />
+            <h4 className="font-semibold text-foreground">Remote (origin)</h4>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            new commits on origin/main: <span className="font-mono text-foreground">{remoteAhead}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" onClick={makeLocalCommit}>
+          <Plus className="w-4 h-4 mr-2" />
+          Local commit
+        </Button>
+        <Button size="sm" variant="outline" onClick={teammatePushes}>
+          <ArrowRight className="w-4 h-4 mr-2" />
+          Teammate pushes
+        </Button>
+        <Button size="sm" variant="outline" onClick={fetch}>
+          <Download className="w-4 h-4 mr-2" />
+          Fetch
+        </Button>
+        <Button size="sm" onClick={pull} disabled={localBehind === 0}>
+          <Download className="w-4 h-4 mr-2" />
+          Pull
+        </Button>
+        <Button size="sm" onClick={push} disabled={localAhead === 0}>
+          <Upload className="w-4 h-4 mr-2" />
+          Push
+        </Button>
+        <Button size="sm" variant="outline" onClick={reset}>
+          <RotateCcw className="w-4 h-4 mr-2" />
+          Reset
+        </Button>
+      </div>
+
+      <div className="p-3 rounded-lg border border-border bg-secondary/30 text-sm text-muted-foreground">
+        {message}
+      </div>
+    </div>
+  );
 }
 
 // IP Address Demo

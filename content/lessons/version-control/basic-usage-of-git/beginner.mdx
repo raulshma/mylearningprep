@@ -1,0 +1,144 @@
+# Basic Usage of Git
+
+<InfoBox type="tip">
+Git is like a **time machine for your project**:
+- you can save checkpoints (commits)
+- you can compare “what changed?” (diff)
+- you can go back safely (restore)
+</InfoBox>
+
+## Why Git exists
+
+When you build features, you’re constantly making edits you *might* want to undo. Git helps you:
+
+- keep a history of changes
+- explain *why* a change happened (commit messages)
+- collaborate without overwriting each other
+
+<ProgressCheckpoint section="why-git" xpReward={10} />
+
+---
+
+## The 3 places your code can live (the Git mental model)
+
+Git has a simple workflow if you remember the **3 places**:
+
+1. **Working tree**: your files (what you’re editing)
+2. **Staging area**: what you *intend* to include in the next commit
+3. **Repository**: your commits (history)
+
+<AnimatedDiagram type="git-three-trees" />
+
+<KeyConcept title="Why staging matters">
+Staging lets you choose *exactly* what goes into the next commit. You can work on multiple things, but only commit the part that’s ready.
+</KeyConcept>
+
+<ProgressCheckpoint section="three-places" xpReward={10} />
+
+---
+
+## The everyday workflow: status → add → commit
+
+Think of staging like a shopping cart:
+
+- you edit files (items on the shelves)
+- you add selected files to the cart (stage)
+- you check out (commit)
+
+### 1) Check what changed
+
+```bash
+git status
+```
+
+### 2) Stage changes
+
+Stage a file:
+
+```bash
+git add path/to/file
+```
+
+Stage everything:
+
+```bash
+git add .
+```
+
+### 3) Commit (save a checkpoint)
+
+```bash
+git commit -m "feat: add signup form"
+```
+
+<InteractiveDemo type="git-staging-demo" />
+
+<Quiz id="git-staging-quiz">
+  <Question>What does the staging area represent?</Question>
+  <Answer correct>The exact changes you intend to include in the next commit</Answer>
+  <Answer>A backup of your whole computer</Answer>
+  <Answer>A remote server like GitHub</Answer>
+  <Answer>Your last commit</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="everyday-workflow" xpReward={10} />
+
+---
+
+## Look around: diff and log
+
+### See what changed (before committing)
+
+```bash
+git diff
+```
+
+### See what you staged
+
+```bash
+git diff --staged
+```
+
+### See history
+
+```bash
+git log --oneline --decorate
+```
+
+<ProgressCheckpoint section="diff-log" xpReward={10} />
+
+---
+
+## Safe undo (beginner-friendly)
+
+Undo local file edits (restore from the last commit):
+
+```bash
+git restore path/to/file
+```
+
+Unstage a file (keep edits, just remove from staging):
+
+```bash
+git restore --staged path/to/file
+```
+
+<InfoBox type="warning">
+Be careful with commands that *rewrite history* (like some uses of `reset`). As a beginner, prefer `git restore` and small commits.
+</InfoBox>
+
+<ProgressCheckpoint section="safe-undo" xpReward={10} />
+
+---
+
+## Summary
+
+<KeyConcept title="Your Git loop">
+1) `git status` to see what’s going on
+2) `git add` to stage what you want
+3) `git commit` to save a checkpoint
+4) `git diff` / `git log` to review
+5) `git restore` to undo safely
+</KeyConcept>
+
+<ProgressCheckpoint section="summary" xpReward={10} />

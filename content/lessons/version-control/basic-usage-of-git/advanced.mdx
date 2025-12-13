@@ -1,0 +1,104 @@
+# Basic Usage of Git (Advanced)
+
+<InfoBox type="tip">
+Advanced Git feels easier when you know what Git *stores*: **snapshots of content** plus **pointers (refs)**.
+</InfoBox>
+
+## The objects Git stores (tiny mental model)
+
+Git stores content as objects:
+
+- **blob**: file contents
+- **tree**: directory listing (names → blobs/trees)
+- **commit**: points to a tree + metadata + parent commit(s)
+
+Your branch is just a **name that points to a commit**.
+
+<AnimatedDiagram type="git-three-trees" />
+
+<ProgressCheckpoint section="three-places" xpReward={20} />
+
+---
+
+## HEAD, refs, and “where am I?”
+
+- `HEAD` is “what you currently have checked out”
+- `main` is a ref that points to a commit
+- `origin/main` is a *remote-tracking* ref (more on remotes later)
+
+Useful commands:
+
+```bash
+git rev-parse HEAD
+```
+
+```bash
+git show --no-patch --decorate HEAD
+```
+
+<ProgressCheckpoint section="diff-log" xpReward={20} />
+
+---
+
+## The index (staging area) is a real thing
+
+The index is not a suggestion—it’s a file that represents what will be committed.
+
+When you stage, you are telling Git: “for the next snapshot, use *this* version of the file.”
+
+- stage whole file: `git add file`
+- stage hunks: `git add -p`
+- unstage: `git restore --staged file`
+
+<InteractiveDemo type="git-staging-demo" />
+
+<ProgressCheckpoint section="everyday-workflow" xpReward={20} />
+
+---
+
+## Recover mistakes (reflog is your safety net)
+
+If you "lost" a commit because you reset or switched branches, it often still exists.
+
+```bash
+git reflog
+```
+
+You can usually recover by checking out the old commit:
+
+```bash
+git switch --detach <sha>
+```
+
+Or moving a branch pointer back:
+
+```bash
+git reset --hard <sha>
+```
+
+<InfoBox type="warning">
+`reset --hard` can discard working tree changes. Use it only when you’re sure, or after stashing/backing up.
+</InfoBox>
+
+<Quiz id="git-reflog-quiz">
+  <Question>What is `git reflog` most useful for?</Question>
+  <Answer correct>Finding recent HEAD positions to recover “lost” commits</Answer>
+  <Answer>Uploading code to GitHub</Answer>
+  <Answer>Deleting old branches on a remote</Answer>
+  <Answer>Encrypting your repository</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="safe-undo" xpReward={20} />
+
+---
+
+## Summary
+
+<KeyConcept title="Advanced basics">
+- Git stores snapshots (objects), not diffs
+- Branches are pointers to commits
+- The index is an actual staged snapshot
+- Reflog often lets you recover mistakes
+</KeyConcept>
+
+<ProgressCheckpoint section="summary" xpReward={20} />

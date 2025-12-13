@@ -1,0 +1,134 @@
+# Basic Usage of Git (Intermediate)
+
+<InfoBox type="tip">
+At this level, the goal is **high-signal commits**: small, reviewable changes with clear messages.
+</InfoBox>
+
+## The 3-tree model (working tree, index, commits)
+
+If Git ever feels confusing, ask: “Which tree am I changing?”
+
+- Working tree: files on disk
+- Index: staged snapshot for the next commit
+- HEAD: last commit you currently have checked out
+
+<AnimatedDiagram type="git-three-trees" />
+
+<ProgressCheckpoint section="three-places" xpReward={15} />
+
+---
+
+## Make better commits (quality > quantity)
+
+### Stage intentionally
+
+- Stage a file: `git add file`
+- Stage everything: `git add .`
+- Stage in chunks (interactive):
+
+```bash
+git add -p
+```
+
+### Write good messages
+
+A simple format:
+
+- `feat: ...` new functionality
+- `fix: ...` bug fix
+- `refactor: ...` code change without behavior change
+
+Example:
+
+```bash
+git commit -m "fix: prevent double-submit on signup"
+```
+
+<InteractiveDemo type="git-staging-demo" title="Stage only what you mean" />
+
+<ProgressCheckpoint section="everyday-workflow" xpReward={15} />
+
+---
+
+## Review changes like a pro
+
+### Diff everything you changed
+
+```bash
+git diff
+```
+
+### Diff what you staged
+
+```bash
+git diff --staged
+```
+
+### Inspect a specific commit
+
+```bash
+git show HEAD
+```
+
+### Useful log view
+
+```bash
+git log --oneline --decorate --graph --all
+```
+
+<ProgressCheckpoint section="diff-log" xpReward={15} />
+
+---
+
+## Undo without panic
+
+### Undo edits in a file (restore from HEAD)
+
+```bash
+git restore src/app/page.tsx
+```
+
+### Unstage a file (keep edits)
+
+```bash
+git restore --staged src/app/page.tsx
+```
+
+### Fix the last commit (amend)
+
+If you forgot a file or want to adjust the message (and you haven’t pushed yet):
+
+```bash
+git commit --amend
+```
+
+### Reset (know what you’re doing)
+
+- Keep your changes, move commit pointer back:
+
+```bash
+git reset --soft HEAD~1
+```
+
+<Quiz id="git-undo-quiz">
+  <Question>Which command is best to unstage a file but keep your edits?</Question>
+  <Answer correct>git restore --staged path/to/file</Answer>
+  <Answer>git restore path/to/file</Answer>
+  <Answer>git log</Answer>
+  <Answer>git clone</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="safe-undo" xpReward={15} />
+
+---
+
+## Summary
+
+<KeyConcept title="Intermediate Git habits">
+- Stage deliberately (often with `git add -p`)
+- Review diffs before committing
+- Prefer `restore`/`amend` for small mistakes
+- Avoid rewriting history once work is shared
+</KeyConcept>
+
+<ProgressCheckpoint section="summary" xpReward={15} />

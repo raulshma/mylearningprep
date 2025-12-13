@@ -1,0 +1,108 @@
+# Creating repositories (Intermediate)
+
+<InfoBox type="tip">
+Intermediate goal: set up repos with **good defaults** so collaboration is smooth.
+</InfoBox>
+
+## git init: choose sensible defaults
+
+### Set the default initial branch name
+
+Many teams use `main`:
+
+```bash
+git config --global init.defaultBranch main
+```
+
+### Initialize a new repo
+
+```bash
+mkdir my-project
+cd my-project
+
+git init
+```
+
+<ProgressCheckpoint section="git-init" xpReward={15} />
+
+---
+
+## First commit: include only what belongs
+
+### Add a .gitignore early
+
+Create a `.gitignore` so you don’t commit build outputs or secrets.
+
+Example (frontend projects):
+
+```gitignore
+node_modules/
+.next/
+dist/
+.env
+.DS_Store
+```
+
+Then:
+
+```bash
+git add .
+git commit -m "chore: initial commit"
+```
+
+<ProgressCheckpoint section="first-commit" xpReward={15} />
+
+---
+
+## git clone: understand what you get
+
+Clone downloads:
+
+- the entire commit history (by default)
+- branches and tags (refs)
+- a working copy
+
+Common options:
+
+```bash
+git clone --depth 1 https://github.com/OWNER/REPO.git
+```
+
+`--depth 1` creates a **shallow clone** (faster, but with limited history).
+
+<ProgressCheckpoint section="git-clone" xpReward={15} />
+
+---
+
+## Windows note: line endings
+
+On Windows, Git can normalize line endings. The recommended setting depends on your team, but common configs are:
+
+```bash
+git config --global core.autocrlf true
+```
+
+Or, if your team wants strict LF everywhere:
+
+```bash
+git config --global core.autocrlf input
+```
+
+<InfoBox type="warning">
+Pick a team-wide approach to line endings and stick to it to avoid noisy diffs.
+</InfoBox>
+
+<ProgressCheckpoint section="recommended-config" xpReward={15} />
+
+---
+
+## Summary
+
+<KeyConcept title="Intermediate repo setup">
+- Configure `init.defaultBranch`
+- Add `.gitignore` before your first commit
+- Use `clone --depth 1` when you only need recent history
+- Align line-ending settings (especially on Windows)
+</KeyConcept>
+
+<ProgressCheckpoint section="summary" xpReward={15} />

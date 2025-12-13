@@ -1,0 +1,22 @@
+{
+  "id": "branching-and-merging",
+  "title": "Branching and Merging",
+  "description": "Work safely on features using branches, then merge changes back—conflicts included.",
+  "milestone": "version-control",
+  "order": 3,
+  "sections": [
+    "branches-as-pointers",
+    "create-switch",
+    "merge",
+    "conflicts",
+    "merge-vs-rebase",
+    "summary"
+  ],
+  "levels": {
+    "beginner": { "estimatedMinutes": 14, "xpReward": 50 },
+    "intermediate": { "estimatedMinutes": 20, "xpReward": 100 },
+    "advanced": { "estimatedMinutes": 30, "xpReward": 200 }
+  },
+  "prerequisites": [],
+  "tags": ["git", "version-control", "branch", "merge", "conflict"]
+}

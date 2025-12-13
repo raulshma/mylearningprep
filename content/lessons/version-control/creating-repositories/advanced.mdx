@@ -1,0 +1,107 @@
+# Creating repositories (Advanced)
+
+<InfoBox type="tip">
+At an advanced level, creating repos is about choosing the *right kind* of repository and wiring it into tooling.
+</InfoBox>
+
+## What `git init` actually does
+
+`git init` creates the `.git` directory, including:
+
+- object database (`.git/objects`)
+- refs (`.git/refs`)
+- HEAD (what you’re on)
+- index (staging area)
+
+You can see top-level structure:
+
+```bash
+ls -la .git
+```
+
+<ProgressCheckpoint section="git-init" xpReward={20} />
+
+---
+
+## Bare repos (server-style)
+
+A **bare** repo has no working tree. It’s useful for:
+
+- a central “hub” server
+- mirroring
+- CI/CD or deployment targets
+
+Create one:
+
+```bash
+git init --bare my-project.git
+```
+
+<ProgressCheckpoint section="repo-mental-model" xpReward={20} />
+
+---
+
+## Clone performance and partial history
+
+Two useful advanced clone patterns:
+
+### Shallow clone
+
+```bash
+git clone --depth 1 https://github.com/OWNER/REPO.git
+```
+
+### Partial clone (download less data)
+
+```bash
+git clone --filter=blob:none https://github.com/OWNER/REPO.git
+```
+
+<InfoBox type="warning">
+Partial clone support depends on server hosting and Git version. Use it when repos are huge.
+</InfoBox>
+
+<ProgressCheckpoint section="git-clone" xpReward={20} />
+
+---
+
+## Repo hygiene defaults
+
+Recommended configs to reduce surprises:
+
+```bash
+git config --global fetch.prune true
+```
+
+```bash
+git config --global pull.ff only
+```
+
+And (optionally) prefer rebase on pull:
+
+```bash
+git config --global pull.rebase true
+```
+
+<Quiz id="bare-repo-quiz">
+  <Question>Why would you use a bare repo?</Question>
+  <Answer correct>To host or share a repo without a working copy</Answer>
+  <Answer>To automatically fix merge conflicts</Answer>
+  <Answer>To make commits immutable</Answer>
+  <Answer>To remove the staging area</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="recommended-config" xpReward={20} />
+
+---
+
+## Summary
+
+<KeyConcept title="Advanced repo creation">
+- `git init` builds `.git` (objects + refs + index)
+- Bare repos are for servers and hubs
+- Shallow/partial clone improves performance for large repos
+- Set prune/ff/rebase defaults to reduce foot-guns
+</KeyConcept>
+
+<ProgressCheckpoint section="summary" xpReward={20} />

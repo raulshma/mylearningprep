@@ -1,0 +1,22 @@
+{
+  "id": "basic-usage-of-git",
+  "title": "Basic Usage of Git",
+  "description": "Learn Git’s everyday workflow: status, add, commit, log, diff, and safe undo.",
+  "milestone": "version-control",
+  "order": 1,
+  "sections": [
+    "why-git",
+    "three-places",
+    "everyday-workflow",
+    "diff-log",
+    "safe-undo",
+    "summary"
+  ],
+  "levels": {
+    "beginner": { "estimatedMinutes": 12, "xpReward": 50 },
+    "intermediate": { "estimatedMinutes": 18, "xpReward": 100 },
+    "advanced": { "estimatedMinutes": 28, "xpReward": 200 }
+  },
+  "prerequisites": [],
+  "tags": ["git", "version-control", "workflow", "commit"]
+}

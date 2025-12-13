@@ -158,10 +158,10 @@ export const frontendRoadmap: CreateRoadmap = {
       type: 'topic',
       position: { x: 200, y: 480 },
       learningObjectives: [
-        'Basic Usage of Git',
-        'Creating repositories',
-        'Branching and Merging',
-        'Working with remotes',
+        { title: 'Basic Usage of Git', lessonId: 'basic-usage-of-git' },
+        { title: 'Creating repositories', lessonId: 'creating-repositories' },
+        { title: 'Branching and Merging', lessonId: 'branching-and-merging' },
+        { title: 'Working with remotes', lessonId: 'working-with-remotes' },
       ],
       resources: [
         { title: 'Git Official Documentation', url: 'https://git-scm.com/doc', type: 'documentation', description: 'Official Git reference and Pro Git book' },

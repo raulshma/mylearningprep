@@ -1,0 +1,91 @@
+# Branching and Merging (Advanced)
+
+<InfoBox type="tip">
+Advanced merging is mostly about **history shape** and **safety in collaboration**.
+</InfoBox>
+
+## Branches are refs; merges are commits
+
+A merge commit has **two parents**. That’s how Git represents “these histories were combined”.
+
+<AnimatedDiagram type="git-branch-merge" />
+
+<ProgressCheckpoint section="branches-as-pointers" xpReward={20} />
+
+---
+
+## Fast-forward policies
+
+Many teams configure pull/merge policies to avoid surprising histories:
+
+```bash
+git config --global pull.ff only
+```
+
+This prevents `git pull` from creating merge commits unexpectedly.
+
+<ProgressCheckpoint section="merge" xpReward={20} />
+
+---
+
+## Rebase workflows (and why they’re dangerous on shared branches)
+
+Rebase creates *new* commits (new SHAs). If you already pushed the old ones, teammates might have based work on them.
+
+Safe-ish pattern:
+
+- rebase locally before opening a PR
+- merge via PR when shared
+
+Advanced command:
+
+```bash
+git rebase --rebase-merges main
+```
+
+<ProgressCheckpoint section="merge-vs-rebase" xpReward={20} />
+
+---
+
+## Conflict ergonomics
+
+Helpful tools:
+
+- `git rerere` (reuse recorded resolutions):
+
+```bash
+git config --global rerere.enabled true
+```
+
+- aborting operations:
+
+```bash
+git merge --abort
+```
+
+```bash
+git rebase --abort
+```
+
+<Quiz id="rerere-quiz">
+  <Question>What does `git rerere` help with?</Question>
+  <Answer correct>Reusing previous conflict resolutions automatically</Answer>
+  <Answer>Encrypting a repository</Answer>
+  <Answer>Deleting remote branches</Answer>
+  <Answer>Staging partial files</Answer>
+</Quiz>
+
+<ProgressCheckpoint section="conflicts" xpReward={20} />
+
+---
+
+## Summary
+
+<KeyConcept title="Advanced branching">
+- Merges are commits with multiple parents
+- Enforce fast-forward policies to reduce surprises
+- Rebase rewrites history—use it before sharing
+- `rerere` can save time on recurring conflicts
+</KeyConcept>
+
+<ProgressCheckpoint section="summary" xpReward={20} />
