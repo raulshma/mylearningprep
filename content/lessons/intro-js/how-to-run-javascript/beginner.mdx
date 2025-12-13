@@ -1,0 +1,49 @@
+# Running JavaScript in Your Browser
+
+Did you know your web browser already has a built-in "playground" for JavaScript? It's called the **Console**.
+
+## The Browser Console
+
+Developers use the console to test code quickly and find errors. Let's try it!
+
+1. Right-click anywhere on this page and select **Inspect**.
+2. Click the tab labeled **Console**.
+3. You should see a blinking cursor or `>`.
+
+### Try This!
+
+Type this code into your console and press Enter:
+
+```javascript
+alert("Hello from the console!");
+```
+
+You should see a pop-up window! That's JavaScript running instantly.
+
+## The Script Tag
+
+To save JavaScript code so it runs every time a page loads, we use the `<script>` tag in HTML.
+
+```html
+<!-- index.html -->
+<!DOCTYPE html>
+<html>
+  <body>
+    <h1>My Website</h1>
+
+    <script>
+      // JavaScript goes here!
+      console.log("The page has loaded!");
+    </script>
+  </body>
+</html>
+```
+
+The browser reads the HTML file top-to-bottom. When it sees `<script>`, it stops to run the JavaScript code inside.
+
+<CodePlayground
+  initialCode="console.log('I am running inside the browser!');"
+  mode="javascript"
+/>
+
+<ProgressCheckpoint section="browser-console" xpReward={15} />

@@ -1,0 +1,381 @@
+# TypeScript: Basic Syntax and Types
+
+Welcome to the intermediate level! Now that you understand the fundamentals, let's explore more powerful type features. We'll cover union types, literal types, type narrowing, and the `any` vs `unknown` conundrum.
+
+<InfoBox type="info" title="What You'll Learn">
+This level covers TypeScript's powerful type composition features. You'll learn how to handle values that could be one of several types, and how TypeScript "narrows" types based on your code's logic.
+</InfoBox>
+
+<ProgressCheckpoint section="introduction" xpReward={20} />
+
+## Union Types: "Either/Or" Types
+
+What if a variable could be one of several types? Union types let you express this:
+
+```typescript
+// This variable can be either a string OR a number
+let id: string | number;
+
+id = "abc-123";  // ✅ Valid
+id = 42;         // ✅ Also valid
+id = true;       // ❌ Error: Type 'boolean' is not assignable
+```
+
+<KeyConcept title="The Pipe Symbol |">
+The `|` symbol means "OR" in TypeScript types. `string | number` means "string OR number".
+</KeyConcept>
+
+### Working with Union Types
+
+When you have a union type, TypeScript only lets you use operations that work for ALL possible types:
+
+```typescript
+function printId(id: string | number) {
+  // ❌ Error: toUpperCase doesn't exist on number
+  // console.log(id.toUpperCase());
+  
+  // ✅ Works: toString exists on both string and number
+  console.log(id.toString());
+}
+```
+
+<TypePlayground
+  initialCode={`// Union types in action
+let result: string | number;
+
+result = "Success!";
+console.log("String:", result);
+
+result = 404;
+console.log("Number:", result);
+
+// Function accepting union type
+function formatValue(value: string | number): string {
+  // We can only use methods common to both types here
+  return "Value: " + value.toString();
+}
+
+console.log(formatValue("hello"));
+console.log(formatValue(42));`}
+  height={320}
+/>
+
+<ProgressCheckpoint section="type-annotations" xpReward={25} />
+
+## Type Narrowing: Smart Type Detection
+
+TypeScript tracks your code's logic and "narrows" the type based on checks you perform:
+
+```typescript
+function printId(id: string | number) {
+  if (typeof id === "string") {
+    // Inside this block, TypeScript KNOWS id is a string
+    console.log(id.toUpperCase()); // ✅ Works!
+  } else {
+    // Here, TypeScript KNOWS id is a number
+    console.log(id.toFixed(2)); // ✅ Works!
+  }
+}
+```
+
+### Narrowing Techniques
+
+```typescript
+// 1. typeof checks
+if (typeof x === "string") { /* x is string */ }
+
+// 2. Truthiness checks
+if (value) { /* value is not null/undefined/0/'' */ }
+
+// 3. Equality checks
+if (x === null) { /* x is null */ }
+
+// 4. "in" operator for objects
+if ("name" in obj) { /* obj has a name property */ }
+
+// 5. instanceof for classes
+if (error instanceof TypeError) { /* error is TypeError */ }
+```
+
+<TypePlayground
+  initialCode={`// Type narrowing demonstration
+function processValue(value: string | number | null) {
+  // Check for null first
+  if (value === null) {
+    console.log("Value is null");
+    return;
+  }
+  
+  // Now TypeScript knows: value is string | number
+  
+  if (typeof value === "string") {
+    // Now TypeScript knows: value is string
+    console.log("String length:", value.length);
+    console.log("Uppercase:", value.toUpperCase());
+  } else {
+    // Now TypeScript knows: value is number
+    console.log("Doubled:", value * 2);
+    console.log("Fixed:", value.toFixed(2));
+  }
+}
+
+processValue("hello");
+processValue(3.14159);
+processValue(null);`}
+  height={380}
+/>
+
+<ProgressCheckpoint section="primitive-types" xpReward={25} />
+
+## Literal Types: Exact Values as Types
+
+Instead of allowing any string, you can specify the EXACT values allowed:
+
+```typescript
+// This can ONLY be "left", "center", or "right"
+let alignment: "left" | "center" | "right";
+
+alignment = "center";  // ✅ Valid
+alignment = "top";     // ❌ Error: Type '"top"' is not assignable
+```
+
+### Literal Types with Numbers
+
+```typescript
+// HTTP status codes
+type SuccessCode = 200 | 201 | 204;
+type ErrorCode = 400 | 401 | 403 | 404 | 500;
+
+function handleResponse(code: SuccessCode | ErrorCode) {
+  if (code === 200) {
+    console.log("OK!");
+  }
+}
+```
+
+### Boolean Literal Types
+
+```typescript
+// A button that can only be pressed, not unpressed
+type PressOnly = true;
+
+// Useful in conditional types and discriminated unions
+type Result = { success: true; data: string } | { success: false; error: string };
+```
+
+<TypePlayground
+  initialCode={`// Literal types for precise control
+type Direction = "up" | "down" | "left" | "right";
+type DiceRoll = 1 | 2 | 3 | 4 | 5 | 6;
+
+function move(direction: Direction): string {
+  return "Moving " + direction;
+}
+
+function rollDice(): DiceRoll {
+  return Math.ceil(Math.random() * 6) as DiceRoll;
+}
+
+console.log(move("up"));
+console.log(move("down"));
+// console.log(move("diagonal"));  // Error!
+
+console.log("Dice roll:", rollDice());
+console.log("Dice roll:", rollDice());
+console.log("Dice roll:", rollDice());`}
+  height={320}
+/>
+
+<ProgressCheckpoint section="arrays-tuples" xpReward={20} />
+
+## The Type Alias Keyword
+
+When types get complex, use `type` to create a reusable name:
+
+```typescript
+// Without alias — hard to read and repeat
+let user1: { name: string; age: number; email: string };
+let user2: { name: string; age: number; email: string };
+
+// With alias — clean and reusable
+type User = {
+  name: string;
+  age: number;
+  email: string;
+};
+
+let user1: User;
+let user2: User;
+```
+
+### Combining Types with Intersections
+
+Use `&` to combine multiple types:
+
+```typescript
+type Person = { name: string; age: number };
+type Employee = { employeeId: string; department: string };
+
+// Has ALL properties from both types
+type Staff = Person & Employee;
+
+const alice: Staff = {
+  name: "Alice",
+  age: 30,
+  employeeId: "E001",
+  department: "Engineering"
+};
+```
+
+<KeyConcept title="Union vs Intersection">
+- `A | B` — value is type A OR type B (either one)
+- `A & B` — value is type A AND type B (has all properties of both)
+</KeyConcept>
+
+<ProgressCheckpoint section="object-types" xpReward={20} />
+
+## any vs unknown: The "I Don't Know" Types
+
+Sometimes you don't know the type. TypeScript has two options:
+
+### The `any` Type (Use Sparingly!)
+
+`any` disables type checking completely:
+
+```typescript
+let anything: any = "hello";
+anything = 42;         // No error
+anything = true;       // No error
+anything.foo.bar;      // No error... but will crash at runtime!
+```
+
+<InfoBox type="warning" title="Avoid any When Possible">
+Using `any` defeats the purpose of TypeScript. It's like having a spell-checker but ignoring all the red underlines. Use it only as a last resort during migration or when dealing with truly dynamic data.
+</InfoBox>
+
+### The `unknown` Type (Safer!)
+
+`unknown` is the safe version — you must check the type before using it:
+
+```typescript
+let mystery: unknown = "hello";
+
+// ❌ Error: Object is of type 'unknown'
+// console.log(mystery.toUpperCase());
+
+// ✅ Check the type first
+if (typeof mystery === "string") {
+  console.log(mystery.toUpperCase()); // Works!
+}
+```
+
+<TypePlayground
+  initialCode={`// any vs unknown comparison
+
+// any - dangerous, no checks required
+let anyValue: any = "hello";
+console.log("any length:", anyValue.length);  // Works
+anyValue = 42;
+// anyValue.toUpperCase();  // Would crash at runtime!
+
+// unknown - safe, requires type checks
+let unknownValue: unknown = "TypeScript";
+
+// Direct access not allowed:
+// console.log(unknownValue.length);  // Error!
+
+// Must narrow the type first:
+if (typeof unknownValue === "string") {
+  console.log("unknown (after check):", unknownValue.length);
+}
+
+console.log("Use 'unknown' for type safety!");`}
+  height={340}
+/>
+
+<ProgressCheckpoint section="type-inference" xpReward={15} />
+
+## Type Assertions: "Trust Me, I Know Better"
+
+Sometimes YOU know more than TypeScript. Use type assertions to tell TypeScript the type:
+
+```typescript
+// You know this returns an HTMLCanvasElement, but TypeScript doesn't
+const canvas = document.getElementById("myCanvas") as HTMLCanvasElement;
+
+// Alternative syntax (not in JSX files)
+const canvas2 = <HTMLCanvasElement>document.getElementById("myCanvas");
+```
+
+<InfoBox type="warning" title="Use Assertions Carefully">
+Type assertions don't change runtime behavior — they just tell TypeScript to trust you. If you're wrong, you'll get runtime errors. Use assertions only when you're certain about the type.
+</InfoBox>
+
+### Non-null Assertion
+
+When you know a value isn't null or undefined, use `!`:
+
+```typescript
+// TypeScript thinks this could be null
+const element = document.getElementById("app");
+
+// You KNOW it exists, so assert it:
+const element2 = document.getElementById("app")!;
+element2.innerHTML = "Hello"; // No error
+```
+
+<ProgressCheckpoint section="summary" xpReward={15} />
+
+## Key Takeaways
+
+<KeyConcept title="Union Types for Flexibility">
+`string | number` means the value can be either type. Use narrowing to work with specific types.
+</KeyConcept>
+
+<KeyConcept title="Literal Types for Precision">
+`"left" | "center" | "right"` restricts values to exact matches — great for configuration options.
+</KeyConcept>
+
+<KeyConcept title="unknown Over any">
+When you don't know the type, prefer `unknown` — it forces you to check before using.
+</KeyConcept>
+
+<KeyConcept title="Narrowing is Automatic">
+TypeScript tracks your `if`, `typeof`, and other checks to automatically narrow types.
+</KeyConcept>
+
+## Quick Quiz
+
+<Quiz>
+  <Question text="What does 'string | number' mean in TypeScript?">
+    <Answer>A type that is both string AND number</Answer>
+    <Answer correct>A type that can be either string OR number</Answer>
+    <Answer>A mathematical operation</Answer>
+    <Answer>An invalid type</Answer>
+  </Question>
+  
+  <Question text="What is type narrowing?">
+    <Answer>Making a type definition shorter</Answer>
+    <Answer>Converting values to narrower data types</Answer>
+    <Answer correct>TypeScript automatically determining a more specific type based on code logic</Answer>
+    <Answer>Limiting which types can be used</Answer>
+  </Question>
+  
+  <Question text="What's the main difference between 'any' and 'unknown'?">
+    <Answer>They are exactly the same</Answer>
+    <Answer>any is faster than unknown</Answer>
+    <Answer correct>unknown requires type checking before use, any doesn't</Answer>
+    <Answer>unknown can only be used for objects</Answer>
+  </Question>
+  
+  <Question text="What does the '&' operator do with types?">
+    <Answer>Creates a union of types</Answer>
+    <Answer correct>Creates an intersection — a type with all properties from both types</Answer>
+    <Answer>Compares two types for equality</Answer>
+    <Answer>Performs bitwise AND on type values</Answer>
+  </Question>
+</Quiz>
+
+---
+
+**Great progress!** 🎉 You now understand TypeScript's powerful type composition features. In the advanced level, we'll explore conditional types, mapped types, and template literal types — the tools for building truly sophisticated type systems.

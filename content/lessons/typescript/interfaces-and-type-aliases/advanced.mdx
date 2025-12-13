@@ -1,0 +1,522 @@
+# Interfaces and Type Aliases
+
+Welcome to the advanced level! You've mastered the fundamentals and intermediate patterns. Now let's explore TypeScript's most sophisticated interface features — the techniques used by library authors and framework developers.
+
+<InfoBox type="info" title="Advanced Territory">
+These concepts power libraries like React's type definitions, tRPC, and Zod. Understanding them will let you create your own powerful type utilities and contribute to typed libraries.
+</InfoBox>
+
+<ProgressCheckpoint section="introduction" xpReward={30} />
+
+## Declaration Merging: Interfaces That Grow
+
+Unlike type aliases, interfaces with the same name automatically merge:
+
+```typescript
+interface User {
+  name: string;
+}
+
+interface User {
+  age: number;
+}
+
+interface User {
+  email: string;
+}
+
+// All declarations merge into one!
+// User now has: name, age, AND email
+const user: User = {
+  name: "Alice",
+  age: 25,
+  email: "alice@example.com"
+};
+```
+
+### Why This Matters: Extending Libraries
+
+Declaration merging lets you add types to existing libraries:
+
+```typescript
+// Original library defines:
+interface Window {
+  // ... browser properties
+}
+
+// Your code can add to it:
+interface Window {
+  myApp: {
+    version: string;
+    config: object;
+  };
+}
+
+// Now window.myApp is typed!
+window.myApp.version; // string
+```
+
+<KeyConcept title="Module Augmentation">
+This pattern is called "module augmentation" — you're augmenting an existing module's types with your own additions.
+</KeyConcept>
+
+<TypePlayground
+  initialCode={`// Declaration merging demonstration
+interface API {
+  getUser(id: number): Promise<unknown>;
+}
+
+// Later in the code, we add more methods
+interface API {
+  createUser(data: unknown): Promise<unknown>;
+  deleteUser(id: number): Promise<void>;
+}
+
+// The API interface now has ALL three methods!
+const api: API = {
+  async getUser(id) { 
+    return { id, name: "User " + id }; 
+  },
+  async createUser(data) { 
+    return { ...data, id: Date.now() }; 
+  },
+  async deleteUser(id) { 
+    console.log("Deleted user", id); 
+  }
+};
+
+// Test the merged interface
+api.getUser(1).then(console.log);
+api.deleteUser(99);
+
+console.log("All methods available on merged interface!");`}
+  height={360}
+/>
+
+<ProgressCheckpoint section="interfaces-basics" xpReward={35} />
+
+## Callable and Constructable Interfaces
+
+Interfaces can describe objects that are callable or constructable:
+
+### Callable Interface (Hybrid Types)
+
+```typescript
+interface Counter {
+  (): number;           // Can be called as function
+  count: number;        // Has properties
+  reset(): void;        // Has methods
+}
+
+function createCounter(): Counter {
+  const fn = function() {
+    return ++fn.count;
+  } as Counter;
+  
+  fn.count = 0;
+  fn.reset = () => { fn.count = 0; };
+  
+  return fn;
+}
+
+const counter = createCounter();
+console.log(counter());   // 1
+console.log(counter());   // 2
+counter.reset();
+console.log(counter());   // 1
+```
+
+### Constructor Interface
+
+```typescript
+interface ClockConstructor {
+  new (hour: number, minute: number): ClockInterface;
+}
+
+interface ClockInterface {
+  tick(): void;
+}
+
+class DigitalClock implements ClockInterface {
+  constructor(hour: number, minute: number) {}
+  tick() { console.log("beep beep"); }
+}
+
+function createClock(
+  ctor: ClockConstructor,
+  hour: number,
+  minute: number
+): ClockInterface {
+  return new ctor(hour, minute);
+}
+```
+
+<ProgressCheckpoint section="type-aliases" xpReward={30} />
+
+## Building Custom Utility Types
+
+Let's create our own utility types like the built-in ones:
+
+### DeepPartial: Recursive Optional
+
+```typescript
+type DeepPartial<T> = {
+  [P in keyof T]?: T[P] extends object
+    ? DeepPartial<T[P]>
+    : T[P];
+};
+
+interface Config {
+  server: {
+    host: string;
+    port: number;
+    ssl: {
+      enabled: boolean;
+      cert: string;
+    };
+  };
+}
+
+// All nested properties are now optional!
+type PartialConfig = DeepPartial<Config>;
+
+const config: PartialConfig = {
+  server: {
+    port: 3000
+    // host, ssl are all optional at any level
+  }
+};
+```
+
+### DeepReadonly: Recursive Immutability
+
+```typescript
+type DeepReadonly<T> = {
+  readonly [P in keyof T]: T[P] extends object
+    ? DeepReadonly<T[P]>
+    : T[P];
+};
+```
+
+### RequireAtLeastOne: Flexible Required Props
+
+```typescript
+type RequireAtLeastOne<T, Keys extends keyof T = keyof T> =
+  Pick<T, Exclude<keyof T, Keys>> &
+  {
+    [K in Keys]-?: Required<Pick<T, K>> & Partial<Pick<T, Exclude<Keys, K>>>;
+  }[Keys];
+
+interface Filter {
+  name?: string;
+  email?: string;
+  age?: number;
+}
+
+// Must have at least one of name, email, or age
+type ValidFilter = RequireAtLeastOne<Filter>;
+```
+
+<TypePlayground
+  initialCode={`// Custom utility types
+type DeepPartial<T> = {
+  [P in keyof T]?: T[P] extends object 
+    ? DeepPartial<T[P]> 
+    : T[P];
+};
+
+type DeepReadonly<T> = {
+  readonly [P in keyof T]: T[P] extends object 
+    ? DeepReadonly<T[P]> 
+    : T[P];
+};
+
+// Original deeply nested type
+interface AppState {
+  user: {
+    profile: {
+      name: string;
+      settings: {
+        theme: string;
+        notifications: boolean;
+      };
+    };
+  };
+}
+
+// With our custom utility types
+type PartialState = DeepPartial<AppState>;
+type ReadonlyState = DeepReadonly<AppState>;
+
+// All these are valid with DeepPartial
+const partial: PartialState = {
+  user: {
+    profile: {
+      settings: {
+        theme: "dark"
+        // notifications is optional!
+      }
+    }
+  }
+};
+
+console.log("Partial state:", partial.user?.profile?.settings?.theme);`}
+  height={420}
+/>
+
+<ProgressCheckpoint section="comparison" xpReward={30} />
+
+## Branded Types: Type-Safe IDs
+
+Create types that look identical at runtime but are distinct at compile time:
+
+```typescript
+// Brand with unique symbol
+type Brand<K, T> = K & { __brand: T };
+
+type UserId = Brand<string, "UserId">;
+type PostId = Brand<string, "PostId">;
+
+function getUser(id: UserId): void {}
+function getPost(id: PostId): void {}
+
+// Create branded values
+const userId = "user-123" as UserId;
+const postId = "post-456" as PostId;
+
+getUser(userId);  // ✅ Works
+getPost(postId);  // ✅ Works
+
+// getUser(postId);  // ❌ Error! Can't use PostId where UserId expected
+```
+
+### Practical Application: Units
+
+```typescript
+type Meters = Brand<number, "Meters">;
+type Kilometers = Brand<number, "Kilometers">;
+type Miles = Brand<number, "Miles">;
+
+function addDistances(a: Meters, b: Meters): Meters {
+  return (a + b) as Meters;
+}
+
+const d1 = 100 as Meters;
+const d2 = 50 as Meters;
+const d3 = 5 as Kilometers;
+
+addDistances(d1, d2);  // ✅ Both are Meters
+// addDistances(d1, d3);  // ❌ Can't mix Meters and Kilometers!
+```
+
+<ProgressCheckpoint section="extending" xpReward={30} />
+
+## Conditional Interface Properties
+
+Create interfaces where properties depend on other properties:
+
+```typescript
+// Using discriminated unions with conditional properties
+type ApiResponse<T> = 
+  | { success: true; data: T; error?: never }
+  | { success: false; data?: never; error: string };
+
+function handleResponse<T>(response: ApiResponse<T>) {
+  if (response.success) {
+    // TypeScript knows data exists, error doesn't
+    console.log(response.data);
+  } else {
+    // TypeScript knows error exists, data doesn't
+    console.log(response.error);
+  }
+}
+```
+
+### Exclusive Properties Pattern
+
+```typescript
+type Without<T, U> = { [P in Exclude<keyof T, keyof U>]?: never };
+type XOR<T, U> = (T | U) extends object
+  ? (Without<T, U> & U) | (Without<U, T> & T)
+  : T | U;
+
+interface CreditCard {
+  cardNumber: string;
+  cvv: string;
+}
+
+interface BankAccount {
+  accountNumber: string;
+  routingNumber: string;
+}
+
+// Can have credit card OR bank account, but not both
+type PaymentMethod = XOR<CreditCard, BankAccount>;
+
+const payment1: PaymentMethod = {
+  cardNumber: "1234",
+  cvv: "123"
+};
+
+const payment2: PaymentMethod = {
+  accountNumber: "999",
+  routingNumber: "111"
+};
+
+// This would error - can't have both!
+// const payment3: PaymentMethod = {
+//   cardNumber: "1234",
+//   accountNumber: "999"
+// };
+```
+
+<TypePlayground
+  initialCode={`// Exclusive property patterns
+type Exclusive<A, B> = 
+  | (A & { [K in keyof B]?: never })
+  | (B & { [K in keyof A]?: never });
+
+interface EmailAuth {
+  email: string;
+  password: string;
+}
+
+interface SocialAuth {
+  provider: "google" | "github" | "twitter";
+  token: string;
+}
+
+// Either email/password OR social login, never both
+type AuthMethod = Exclusive<EmailAuth, SocialAuth>;
+
+// Valid: Email authentication
+const emailLogin: AuthMethod = {
+  email: "user@example.com",
+  password: "secret"
+};
+
+// Valid: Social authentication
+const socialLogin: AuthMethod = {
+  provider: "google",
+  token: "oauth-token"
+};
+
+console.log("Email auth:", emailLogin);
+console.log("Social auth:", socialLogin);
+
+// Try uncommenting - this would error:
+// const invalid: AuthMethod = {
+//   email: "user@example.com",
+//   provider: "google"
+// };`}
+  height={400}
+/>
+
+<ProgressCheckpoint section="advanced-patterns" xpReward={25} />
+
+## Module Augmentation in Practice
+
+Extend third-party types safely:
+
+```typescript
+// Augment Express Request
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        id: string;
+        role: "admin" | "user";
+      };
+    }
+  }
+}
+
+// Now in your Express handlers:
+app.get("/profile", (req, res) => {
+  if (req.user) {
+    console.log(req.user.id);   // Typed!
+    console.log(req.user.role); // Typed!
+  }
+});
+```
+
+### Augmenting Built-in Types
+
+```typescript
+// Add method to Array
+declare global {
+  interface Array<T> {
+    first(): T | undefined;
+    last(): T | undefined;
+  }
+}
+
+Array.prototype.first = function() {
+  return this[0];
+};
+
+Array.prototype.last = function() {
+  return this[this.length - 1];
+};
+
+// Now available everywhere!
+const nums = [1, 2, 3, 4, 5];
+console.log(nums.first()); // 1
+console.log(nums.last());  // 5
+```
+
+<ProgressCheckpoint section="summary" xpReward={25} />
+
+## Key Takeaways
+
+<KeyConcept title="Declaration Merging Extends Libraries">
+Interfaces with the same name merge automatically, letting you add to existing types.
+</KeyConcept>
+
+<KeyConcept title="Build Custom Utility Types">
+Create reusable type transformations like DeepPartial and DeepReadonly.
+</KeyConcept>
+
+<KeyConcept title="Branded Types Prevent Bugs">
+Add "brand" markers to make structurally identical types distinct.
+</KeyConcept>
+
+<KeyConcept title="Module Augmentation Safely Extends">
+Add properties to third-party types without modifying source code.
+</KeyConcept>
+
+## Quick Quiz
+
+<Quiz>
+  <Question text="What happens when you declare two interfaces with the same name?">
+    <Answer>TypeScript throws an error</Answer>
+    <Answer>The second replaces the first</Answer>
+    <Answer correct>They automatically merge into one interface</Answer>
+    <Answer>Only the first one is used</Answer>
+  </Question>
+  
+  <Question text="What is the purpose of branded types?">
+    <Answer>To add branding logos to types</Answer>
+    <Answer correct>To make structurally identical types distinct for type checking</Answer>
+    <Answer>To mark types as exported</Answer>
+    <Answer>To compress type definitions</Answer>
+  </Question>
+  
+  <Question text="What does DeepPartial&lt;T&gt; do compared to Partial&lt;T&gt;?">
+    <Answer>They're exactly the same</Answer>
+    <Answer>DeepPartial is faster</Answer>
+    <Answer correct>DeepPartial makes nested properties optional too</Answer>
+    <Answer>DeepPartial only works on arrays</Answer>
+  </Question>
+  
+  <Question text="What is module augmentation used for?">
+    <Answer>Making modules larger</Answer>
+    <Answer>Removing module types</Answer>
+    <Answer correct>Adding types to existing modules/libraries</Answer>
+    <Answer>Converting modules to types</Answer>
+  </Question>
+</Quiz>
+
+---
+
+**Outstanding work!** 🎉 You've mastered TypeScript's most advanced interface and type alias features. These patterns are the foundation of sophisticated type systems used in production applications. Continue to the Generics lesson to learn how to create truly flexible, reusable type definitions!

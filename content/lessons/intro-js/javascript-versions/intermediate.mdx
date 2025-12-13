@@ -1,0 +1,132 @@
+# Key ECMAScript Version Highlights
+
+Let's explore the most impactful features introduced in each major ECMAScript version. Understanding these will help you read modern JavaScript code and know which features you can use.
+
+## ES5 (2009) - The Foundation
+
+ES5 was the first significant update after ES3 (1999). After a 10-year gap, it brought:
+
+```javascript
+// Strict mode - catches common mistakes
+'use strict';
+
+// Array methods that changed everything
+const numbers = [1, 2, 3, 4, 5];
+const doubled = numbers.map(n => n * 2);      // [2, 4, 6, 8, 10]
+const evens = numbers.filter(n => n % 2 === 0); // [2, 4]
+const sum = numbers.reduce((a, b) => a + b, 0); // 15
+
+// JSON built-in
+const json = JSON.stringify({ name: 'Alice' });
+const obj = JSON.parse(json);
+```
+
+<EcmaScriptVersionExplorer mode="intermediate" />
+
+## ES6/ES2015 - The Revolution
+
+ES6 was a complete game-changer. Here are the highlights:
+
+### Block Scoping with `let` and `const`
+
+```javascript
+// Before (var has function scope - problematic!)
+for (var i = 0; i < 3; i++) {
+  setTimeout(() => console.log(i), 100); // 3, 3, 3 😱
+}
+
+// After (let has block scope - fixed!)
+for (let i = 0; i < 3; i++) {
+  setTimeout(() => console.log(i), 100); // 0, 1, 2 ✅
+}
+```
+
+### Arrow Functions
+
+```javascript
+// Traditional function
+const add = function(a, b) {
+  return a + b;
+};
+
+// Arrow function (cleaner!)
+const addArrow = (a, b) => a + b;
+
+// Array operations become elegant
+const users = [{ name: 'Alice' }, { name: 'Bob' }];
+const names = users.map(user => user.name);
+```
+
+### Template Literals
+
+```javascript
+const name = 'World';
+const greeting = `Hello, ${name}!`; // Interpolation
+
+const multiline = `
+  This is a
+  multiline string
+  without concatenation!
+`;
+```
+
+### Destructuring
+
+```javascript
+// Object destructuring
+const { name, age } = { name: 'Alice', age: 30 };
+
+// Array destructuring
+const [first, second] = [1, 2, 3];
+
+// Function parameters
+function greet({ name, title = 'User' }) {
+  return `Hello, ${title} ${name}!`;
+}
+```
+
+## ES2017 - Async/Await
+
+The async/await syntax made asynchronous code much more readable:
+
+```javascript
+// Before (Promise chains)
+function fetchUser(id) {
+  return fetch(`/api/users/${id}`)
+    .then(response => response.json())
+    .then(user => fetch(`/api/posts?userId=${user.id}`))
+    .then(response => response.json());
+}
+
+// After (async/await)
+async function fetchUser(id) {
+  const response = await fetch(`/api/users/${id}`);
+  const user = await response.json();
+  const postsResponse = await fetch(`/api/posts?userId=${user.id}`);
+  return postsResponse.json();
+}
+```
+
+## ES2020 - Quality of Life
+
+### Optional Chaining (`?.`)
+
+```javascript
+// Before (defensive coding)
+const street = user && user.address && user.address.street;
+
+// After (clean!)
+const street = user?.address?.street;
+```
+
+### Nullish Coalescing (`??`)
+
+```javascript
+// || treats 0 and '' as falsy (often unwanted)
+const count = data.count || 10; // If count is 0, returns 10! 
+
+// ?? only checks for null/undefined
+const count = data.count ?? 10; // If count is 0, returns 0 ✅
+```
+
+<ProgressCheckpoint section="major-releases" xpReward={30} />

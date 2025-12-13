@@ -1,0 +1,32 @@
+{
+  "id": "generics",
+  "title": "Generics",
+  "description": "Master TypeScript generics - flexible, reusable type definitions that work with any type",
+  "milestone": "typescript",
+  "order": 3,
+  "sections": [
+    "introduction",
+    "generic-functions",
+    "generic-types",
+    "constraints",
+    "advanced-generics",
+    "built-in-generics",
+    "summary"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 25,
+      "xpReward": 100
+    },
+    "intermediate": {
+      "estimatedMinutes": 35,
+      "xpReward": 175
+    },
+    "advanced": {
+      "estimatedMinutes": 50,
+      "xpReward": 350
+    }
+  },
+  "prerequisites": ["basic-syntax-and-types", "interfaces-and-type-aliases"],
+  "tags": ["typescript", "generics", "reusable", "type-parameters", "constraints"]
+}

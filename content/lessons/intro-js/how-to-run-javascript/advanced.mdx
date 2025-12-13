@@ -1,0 +1,72 @@
+# Modern Runtimes and Build Tools
+
+While `node file.js` works for simple scripts, modern development involves more powerful tools and alternative runtimes.
+
+## npm Scripts
+
+In professional projects, we rarely type `node app.js` directly. Instead, we define **scripts** in `package.json`.
+
+```json
+{
+  "name": "my-app",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "jest"
+  }
+}
+```
+
+Run them with:
+
+- `npm start`
+- `npm run dev` (for custom script names)
+
+## Alternative Runtimes
+
+Node.js isn't the only player anymore!
+
+### 1. Deno
+
+Created by Ryan Dahl (creator of Node) to fix Node's design mistakes.
+
+- **Secure by default**: Can't access files/network without permission.
+- **TypeScript native**: Runs `.ts` files directly.
+
+```bash
+deno run --allow-net server.ts
+```
+
+### 2. Bun
+
+Built for speed (written in Zig).
+
+- **Extremely fast** startup.
+- **All-in-one**: Includes bundler, test runner, and package manager.
+- Drop-in replacement for Node.
+
+```bash
+bun run index.ts
+```
+
+## Transpilation
+
+Browsers/Node don't understand TypeScript directly (except Deno/Bun). We use "transpilers" to turn modern/typed code into standard JavaScript.
+
+**The Flow:**
+
+1. Write **TypeScript** (`.ts`) or modern JS.
+2. Build tool (TSC, Babel, SWC, esbuild) **transpiles** it.
+3. Run the resulting **JavaScript** (`.js`).
+
+```typescript
+// source.ts
+const greet = (name: string): string => \`Hello \${name}\`;
+
+// Output (dist/source.js)
+var greet = function(name) {
+    return "Hello " + name;
+};
+```
+
+<ProgressCheckpoint section="scripts" xpReward={40} />

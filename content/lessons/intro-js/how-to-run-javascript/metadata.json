@@ -1,0 +1,28 @@
+{
+  "id": "how-to-run-javascript",
+  "title": "How to Run JavaScript",
+  "description": "Learn the different ways to execute JavaScript code: in the browser, via Node.js, and using build tools.",
+  "milestone": "intro-js",
+  "order": 4,
+  "sections": [
+    "browser-console",
+    "script-tags",
+    "node-environment"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 15
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 25
+    },
+    "advanced": {
+      "estimatedMinutes": 20,
+      "xpReward": 40
+    }
+  },
+  "prerequisites": ["what-is-javascript"],
+  "tags": ["javascript", "runtime", "node", "console", "setup"]
+}

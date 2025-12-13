@@ -1,0 +1,365 @@
+# TypeScript Generics
+
+Welcome to the intermediate level! Now that you understand the basics of generics, let's explore more powerful features — constraints, default types, and common patterns used in real-world TypeScript.
+
+<InfoBox type="info" title="What You'll Learn">
+This level covers constraining generics, keyof operator with generics, default type parameters, and patterns for working with object properties dynamically.
+</InfoBox>
+
+<ProgressCheckpoint section="introduction" xpReward={25} />
+
+## Generic Constraints: Setting Boundaries
+
+Sometimes you need to limit what types can be used with a generic. Use `extends` to add constraints:
+
+```typescript
+// Without constraint — too permissive
+function getLength<T>(item: T): number {
+  return item.length;  // ❌ Error: Property 'length' doesn't exist on type 'T'
+}
+
+// With constraint — T must have a length property
+function getLength<T extends { length: number }>(item: T): number {
+  return item.length;  // ✅ Works!
+}
+
+getLength("hello");     // ✅ string has length
+getLength([1, 2, 3]);   // ✅ array has length
+getLength({ length: 10 }); // ✅ object has length
+// getLength(123);      // ❌ number doesn't have length
+```
+
+<KeyConcept title="extends Means 'Must Have'">
+`T extends X` means "T must be assignable to X" — T must have at least the properties/methods that X has.
+</KeyConcept>
+
+### Using Interfaces as Constraints
+
+```typescript
+interface Identifiable {
+  id: number | string;
+}
+
+function findById<T extends Identifiable>(items: T[], id: T["id"]): T | undefined {
+  return items.find(item => item.id === id);
+}
+
+const users = [
+  { id: 1, name: "Alice" },
+  { id: 2, name: "Bob" }
+];
+
+const found = findById(users, 1);  // Returns { id: 1, name: "Alice" }
+```
+
+<TypePlayground
+  initialCode={`// Generic constraints in action
+interface HasName {
+  name: string;
+}
+
+function greet<T extends HasName>(entity: T): string {
+  return "Hello, " + entity.name + "!";
+}
+
+// Works with any object that has a name property
+const user = { name: "Alice", age: 25 };
+const company = { name: "Tech Corp", employees: 100 };
+const pet = { name: "Fluffy", species: "Cat" };
+
+console.log(greet(user));
+console.log(greet(company));
+console.log(greet(pet));
+
+// Would not compile:
+// greet({ title: "Manager" });  // No 'name' property`}
+  height={300}
+/>
+
+<ProgressCheckpoint section="generic-functions" xpReward={30} />
+
+## The keyof Operator with Generics
+
+`keyof` creates a type from an object's keys. Combined with generics, it enables powerful patterns:
+
+```typescript
+function getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {
+  return obj[key];
+}
+
+const person = { name: "Alice", age: 25, city: "NYC" };
+
+const name = getProperty(person, "name");  // type: string
+const age = getProperty(person, "age");    // type: number
+// getProperty(person, "email");  // ❌ Error: "email" is not a key
+```
+
+### Setting Properties Safely
+
+```typescript
+function setProperty<T, K extends keyof T>(obj: T, key: K, value: T[K]): void {
+  obj[key] = value;
+}
+
+const user = { name: "Alice", score: 100 };
+
+setProperty(user, "name", "Bob");    // ✅ string value for string property
+setProperty(user, "score", 200);     // ✅ number value for number property
+// setProperty(user, "score", "high");  // ❌ Error: "high" is not a number
+```
+
+<TypePlayground
+  initialCode={`// keyof with generics
+function getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {
+  return obj[key];
+}
+
+function setProperty<T, K extends keyof T>(obj: T, key: K, value: T[K]): void {
+  obj[key] = value;
+}
+
+const product = {
+  name: "Laptop",
+  price: 999,
+  inStock: true
+};
+
+// Type-safe property access
+console.log("Name:", getProperty(product, "name"));
+console.log("Price:", getProperty(product, "price"));
+console.log("In Stock:", getProperty(product, "inStock"));
+
+// Type-safe property setting
+setProperty(product, "price", 899);
+console.log("New price:", product.price);
+
+// This would fail at compile time:
+// setProperty(product, "price", "expensive");`}
+  height={340}
+/>
+
+<ProgressCheckpoint section="generic-types" xpReward={30} />
+
+## Default Type Parameters
+
+Just like function parameters can have defaults, so can type parameters:
+
+```typescript
+interface ApiResponse<T = unknown> {
+  data: T;
+  status: number;
+  message: string;
+}
+
+// Use with specific type
+const userResponse: ApiResponse<{ name: string }> = {
+  data: { name: "Alice" },
+  status: 200,
+  message: "OK"
+};
+
+// Or use the default (unknown)
+const genericResponse: ApiResponse = {
+  data: { anything: "goes" },
+  status: 200,
+  message: "OK"  
+};
+```
+
+### Multiple Defaults
+
+```typescript
+interface Container<T = string, U = number> {
+  value: T;
+  count: U;
+}
+
+const c1: Container = { value: "hello", count: 5 };
+const c2: Container<boolean> = { value: true, count: 10 };
+const c3: Container<boolean, string> = { value: false, count: "many" };
+```
+
+<ProgressCheckpoint section="constraints" xpReward={25} />
+
+## Generic Classes
+
+Classes can be generic too:
+
+```typescript
+class Stack<T> {
+  private items: T[] = [];
+  
+  push(item: T): void {
+    this.items.push(item);
+  }
+  
+  pop(): T | undefined {
+    return this.items.pop();
+  }
+  
+  peek(): T | undefined {
+    return this.items[this.items.length - 1];
+  }
+  
+  isEmpty(): boolean {
+    return this.items.length === 0;
+  }
+}
+
+const numberStack = new Stack<number>();
+numberStack.push(1);
+numberStack.push(2);
+console.log(numberStack.pop());  // 2
+
+const stringStack = new Stack<string>();
+stringStack.push("hello");
+stringStack.push("world");
+console.log(stringStack.peek());  // "world"
+```
+
+<TypePlayground
+  initialCode={`// Generic class example
+class Queue<T> {
+  private items: T[] = [];
+  
+  enqueue(item: T): void {
+    this.items.push(item);
+  }
+  
+  dequeue(): T | undefined {
+    return this.items.shift();
+  }
+  
+  peek(): T | undefined {
+    return this.items[0];
+  }
+  
+  size(): number {
+    return this.items.length;
+  }
+}
+
+// Number queue
+const tasks = new Queue<number>();
+tasks.enqueue(1);
+tasks.enqueue(2);
+tasks.enqueue(3);
+
+console.log("First task:", tasks.dequeue());
+console.log("Next task:", tasks.peek());
+console.log("Remaining:", tasks.size());
+
+// Object queue
+const messages = new Queue<{ from: string; text: string }>();
+messages.enqueue({ from: "Alice", text: "Hello!" });
+messages.enqueue({ from: "Bob", text: "Hi there!" });
+
+console.log("Message:", messages.dequeue());`}
+  height={400}
+/>
+
+<ProgressCheckpoint section="advanced-generics" xpReward={25} />
+
+## Common Generic Patterns
+
+### Factory Functions
+
+```typescript
+function createInstance<T>(Constructor: new () => T): T {
+  return new Constructor();
+}
+
+class User {
+  name = "Default User";
+}
+
+const user = createInstance(User);
+console.log(user.name);  // "Default User"
+```
+
+### Wrapper Types
+
+```typescript
+type Nullable<T> = T | null;
+type Optional<T> = T | undefined;
+type Loaded<T> = { status: "loaded"; data: T };
+type Loading = { status: "loading" };
+type LoadState<T> = Loading | Loaded<T>;
+```
+
+### Generic Object Transformers
+
+```typescript
+function mapObject<T, U>(
+  obj: { [key: string]: T },
+  fn: (value: T) => U
+): { [key: string]: U } {
+  const result: { [key: string]: U } = {};
+  for (const key in obj) {
+    result[key] = fn(obj[key]);
+  }
+  return result;
+}
+
+const prices = { apple: 1.5, banana: 0.75, orange: 2.0 };
+const doubled = mapObject(prices, x => x * 2);
+// { apple: 3, banana: 1.5, orange: 4 }
+```
+
+<ProgressCheckpoint section="built-in-generics" xpReward={20} />
+
+## Key Takeaways
+
+<KeyConcept title="Constraints Limit Generics">
+Use `extends` to ensure type parameters have required properties or structure.
+</KeyConcept>
+
+<KeyConcept title="keyof Enables Dynamic Access">
+`K extends keyof T` lets you safely work with property names of any type.
+</KeyConcept>
+
+<KeyConcept title="Defaults Add Flexibility">
+`<T = DefaultType>` provides fallback types for optional type parameters.
+</KeyConcept>
+
+<KeyConcept title="Classes Can Be Generic">
+`class Container<T>` creates reusable data structures that work with any type.
+</KeyConcept>
+
+<ProgressCheckpoint section="summary" xpReward={15} />
+
+## Quick Quiz
+
+<Quiz>
+  <Question text="What does 'T extends { length: number }' mean?">
+    <Answer>T is exactly { length: number }</Answer>
+    <Answer correct>T must have at least a length property of type number</Answer>
+    <Answer>T extends the length type</Answer>
+    <Answer>T is a number</Answer>
+  </Question>
+  
+  <Question text="What does 'keyof T' produce?">
+    <Answer>All values in T</Answer>
+    <Answer correct>A union of all property names (keys) of T</Answer>
+    <Answer>The number of keys in T</Answer>
+    <Answer>The first key of T</Answer>
+  </Question>
+  
+  <Question text="In 'interface Box&lt;T = string&gt;', what does '= string' do?">
+    <Answer>Makes T always be string</Answer>
+    <Answer>Converts T to string</Answer>
+    <Answer correct>Provides a default type if T isn't specified</Answer>
+    <Answer>Requires T to extend string</Answer>
+  </Question>
+  
+  <Question text="What's the benefit of generic classes?">
+    <Answer>They run faster</Answer>
+    <Answer correct>They can work with different types while maintaining type safety</Answer>
+    <Answer>They use less memory</Answer>
+    <Answer>They're easier to debug</Answer>
+  </Question>
+</Quiz>
+
+---
+
+**Excellent progress!** 🎉 You've learned intermediate generic patterns. In the advanced level, we'll explore conditional types in generics, the infer keyword, and building sophisticated utility types!

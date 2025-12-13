@@ -1,0 +1,471 @@
+# Interfaces and Type Aliases
+
+Welcome to the intermediate level! Now that you understand the basics, let's explore more powerful patterns for defining and composing types in TypeScript.
+
+<InfoBox type="info" title="What You'll Learn">
+This level covers index signatures, function types in interfaces, utility types, and advanced object patterns that are essential for real-world TypeScript development.
+</InfoBox>
+
+<ProgressCheckpoint section="introduction" xpReward={20} />
+
+## Index Signatures: Dynamic Keys
+
+What if you don't know the exact property names in advance? Index signatures let you define objects with dynamic keys:
+
+```typescript
+interface StringDictionary {
+  [key: string]: string;
+}
+
+const translations: StringDictionary = {
+  hello: "hola",
+  goodbye: "adiós",
+  thanks: "gracias"
+  // Can add any string keys with string values!
+};
+```
+
+### Combining with Known Properties
+
+```typescript
+interface UserScores {
+  id: string;                    // Required known property
+  name: string;                  // Required known property
+  [subject: string]: string | number;  // Dynamic properties
+}
+
+const student: UserScores = {
+  id: "S001",
+  name: "Alice",
+  math: 95,
+  science: 88,
+  history: 92
+};
+```
+
+<InfoBox type="warning" title="Index Signature Constraint">
+When you have an index signature, ALL properties (including known ones) must be assignable to the index type. That's why `id` and `name` work — they're `string`, which is part of `string | number`.
+</InfoBox>
+
+<TypePlayground
+  initialCode={`// Index signatures for dynamic objects
+interface Cache {
+  [key: string]: {
+    value: unknown;
+    expiry: number;
+  };
+}
+
+const cache: Cache = {
+  "user:123": { value: { name: "Alice" }, expiry: Date.now() + 3600000 },
+  "token:abc": { value: "secret", expiry: Date.now() + 86400000 }
+};
+
+// Access any key
+console.log("Cached user:", cache["user:123"]);
+
+// Add new entries dynamically
+cache["settings:theme"] = { value: "dark", expiry: Infinity };
+console.log("All keys:", Object.keys(cache));`}
+  height={300}
+/>
+
+<ProgressCheckpoint section="interfaces-basics" xpReward={25} />
+
+## Function Types in Interfaces
+
+Interfaces can describe functions, not just objects:
+
+```typescript
+// Interface for a function type
+interface MathOperation {
+  (a: number, b: number): number;
+}
+
+const add: MathOperation = (a, b) => a + b;
+const multiply: MathOperation = (a, b) => a * b;
+
+console.log(add(5, 3));       // 8
+console.log(multiply(5, 3));  // 15
+```
+
+### Method Signatures in Object Interfaces
+
+```typescript
+interface Calculator {
+  value: number;
+  add(n: number): void;
+  subtract(n: number): void;
+  getResult(): number;
+}
+
+const calc: Calculator = {
+  value: 0,
+  add(n) { this.value += n; },
+  subtract(n) { this.value -= n; },
+  getResult() { return this.value; }
+};
+```
+
+### Method Shorthand vs Property Syntax
+
+```typescript
+interface WithMethods {
+  // Method shorthand
+  greet(name: string): string;
+  
+  // Property syntax (arrow function type)
+  calculate: (a: number, b: number) => number;
+}
+```
+
+<TypePlayground
+  initialCode={`// Function types in interfaces
+interface Formatter {
+  (value: unknown): string;
+}
+
+// Different implementations of the same interface
+const jsonFormat: Formatter = (value) => JSON.stringify(value);
+const stringFormat: Formatter = (value) => String(value);
+const prettyFormat: Formatter = (value) => 
+  JSON.stringify(value, null, 2);
+
+const data = { name: "Alice", age: 25 };
+
+console.log("JSON:", jsonFormat(data));
+console.log("String:", stringFormat(data));
+console.log("Pretty:", prettyFormat(data));`}
+  height={280}
+/>
+
+<ProgressCheckpoint section="type-aliases" xpReward={25} />
+
+## Utility Types: Built-in Transformations
+
+TypeScript provides utility types to transform existing types:
+
+### Partial&lt;T&gt; — Make All Properties Optional
+
+```typescript
+interface User {
+  name: string;
+  email: string;
+  age: number;
+}
+
+type PartialUser = Partial<User>;
+// { name?: string; email?: string; age?: number }
+
+// Perfect for update operations!
+function updateUser(user: User, updates: Partial<User>): User {
+  return { ...user, ...updates };
+}
+```
+
+### Required&lt;T&gt; — Make All Properties Required
+
+```typescript
+interface Config {
+  host?: string;
+  port?: number;
+  ssl?: boolean;
+}
+
+type RequiredConfig = Required<Config>;
+// { host: string; port: number; ssl: boolean }
+```
+
+### Pick&lt;T, K&gt; — Select Specific Properties
+
+```typescript
+interface User {
+  id: number;
+  name: string;
+  email: string;
+  password: string;
+}
+
+type PublicUser = Pick<User, "id" | "name" | "email">;
+// { id: number; name: string; email: string }
+```
+
+### Omit&lt;T, K&gt; — Remove Specific Properties
+
+```typescript
+type UserWithoutPassword = Omit<User, "password">;
+// { id: number; name: string; email: string }
+```
+
+<TypePlayground
+  initialCode={`// Utility types in action
+interface Article {
+  id: number;
+  title: string;
+  content: string;
+  author: string;
+  publishedAt: Date;
+}
+
+// For creating new articles (no id yet)
+type CreateArticle = Omit<Article, "id" | "publishedAt">;
+
+// For updating articles (all fields optional)
+type UpdateArticle = Partial<Article>;
+
+// For displaying in a list (only key fields)
+type ArticlePreview = Pick<Article, "id" | "title" | "author">;
+
+// Example usage
+const newArticle: CreateArticle = {
+  title: "TypeScript Tips",
+  content: "Learn these helpful patterns...",
+  author: "Alice"
+};
+
+const preview: ArticlePreview = {
+  id: 1,
+  title: "TypeScript Tips",
+  author: "Alice"
+};
+
+console.log("New article:", newArticle);
+console.log("Preview:", preview);`}
+  height={380}
+/>
+
+<ProgressCheckpoint section="comparison" xpReward={20} />
+
+## Record&lt;K, V&gt;: Quick Object Types
+
+`Record` creates an object type with specified keys and value types:
+
+```typescript
+// All these keys must exist with string values
+type ColorHex = Record<"red" | "green" | "blue", string>;
+
+const colors: ColorHex = {
+  red: "#ff0000",
+  green: "#00ff00",
+  blue: "#0000ff"
+};
+
+// Dynamic string keys with specific value type
+type UserRoles = Record<string, "admin" | "user" | "guest">;
+
+const roles: UserRoles = {
+  "alice@example.com": "admin",
+  "bob@example.com": "user"
+};
+```
+
+### Record vs Index Signature
+
+```typescript
+// These are equivalent:
+type Dict1 = Record<string, number>;
+type Dict2 = { [key: string]: number };
+
+// But Record is more flexible with key types:
+type StatusCodes = Record<200 | 404 | 500, string>;
+// { 200: string; 404: string; 500: string }
+```
+
+<ProgressCheckpoint section="extending" xpReward={20} />
+
+## Intersection Types: Combining Types
+
+Use `&` to combine multiple types into one:
+
+```typescript
+type Person = {
+  name: string;
+  age: number;
+};
+
+type ContactInfo = {
+  email: string;
+  phone: string;
+};
+
+// Has ALL properties from both types
+type Employee = Person & ContactInfo & {
+  employeeId: string;
+};
+
+const emp: Employee = {
+  name: "Alice",
+  age: 30,
+  email: "alice@company.com",
+  phone: "555-1234",
+  employeeId: "E001"
+};
+```
+
+### Interfaces + Type Intersections
+
+```typescript
+interface Timestamped {
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface SoftDeletable {
+  deletedAt?: Date;
+  isDeleted: boolean;
+}
+
+// Combine interfaces with intersection
+type AuditableEntity = Timestamped & SoftDeletable;
+
+// Or extend interfaces
+interface AuditableRecord extends Timestamped, SoftDeletable {
+  id: number;
+}
+```
+
+<TypePlayground
+  initialCode={`// Composing types with intersections
+type HasId = { id: number };
+type HasTimestamps = {
+  createdAt: Date;
+  updatedAt: Date;
+};
+type HasAuthor = { authorId: number };
+
+// Compose a complex type
+type BlogPost = HasId & HasTimestamps & HasAuthor & {
+  title: string;
+  content: string;
+  tags: string[];
+};
+
+const post: BlogPost = {
+  id: 1,
+  createdAt: new Date("2024-01-01"),
+  updatedAt: new Date("2024-01-02"),
+  authorId: 42,
+  title: "TypeScript Patterns",
+  content: "Learn about type composition...",
+  tags: ["typescript", "programming"]
+};
+
+console.log("Post:", post.title);
+console.log("Author ID:", post.authorId);
+console.log("Tags:", post.tags.join(", "));`}
+  height={360}
+/>
+
+<ProgressCheckpoint section="advanced-patterns" xpReward={15} />
+
+## Discriminated Unions: Type-Safe Alternatives
+
+Discriminated unions use a common property to distinguish between variants:
+
+```typescript
+interface SuccessResult {
+  status: "success";  // Discriminant
+  data: unknown;
+}
+
+interface ErrorResult {
+  status: "error";    // Discriminant
+  error: string;
+}
+
+type Result = SuccessResult | ErrorResult;
+
+function handleResult(result: Result) {
+  if (result.status === "success") {
+    // TypeScript knows: result is SuccessResult
+    console.log("Data:", result.data);
+  } else {
+    // TypeScript knows: result is ErrorResult
+    console.log("Error:", result.error);
+  }
+}
+```
+
+<TypePlayground
+  initialCode={`// Discriminated unions
+type Shape = 
+  | { kind: "circle"; radius: number }
+  | { kind: "rectangle"; width: number; height: number }
+  | { kind: "triangle"; base: number; height: number };
+
+function calculateArea(shape: Shape): number {
+  switch (shape.kind) {
+    case "circle":
+      return Math.PI * shape.radius ** 2;
+    case "rectangle":
+      return shape.width * shape.height;
+    case "triangle":
+      return (shape.base * shape.height) / 2;
+  }
+}
+
+const circle: Shape = { kind: "circle", radius: 5 };
+const rect: Shape = { kind: "rectangle", width: 10, height: 20 };
+const tri: Shape = { kind: "triangle", base: 10, height: 8 };
+
+console.log("Circle area:", calculateArea(circle).toFixed(2));
+console.log("Rectangle area:", calculateArea(rect));
+console.log("Triangle area:", calculateArea(tri));`}
+  height={360}
+/>
+
+<ProgressCheckpoint section="summary" xpReward={15} />
+
+## Key Takeaways
+
+<KeyConcept title="Index Signatures for Dynamic Keys">
+Use `[key: string]: Type` when you don't know property names in advance.
+</KeyConcept>
+
+<KeyConcept title="Utility Types Save Time">
+`Partial`, `Required`, `Pick`, `Omit`, and `Record` transform types without rewriting them.
+</KeyConcept>
+
+<KeyConcept title="Intersections Combine Types">
+Use `&` to create types that have all properties from multiple sources.
+</KeyConcept>
+
+<KeyConcept title="Discriminated Unions for Variants">
+A common "kind" or "type" property lets TypeScript narrow union types automatically.
+</KeyConcept>
+
+## Quick Quiz
+
+<Quiz>
+  <Question text="What does Partial&lt;T&gt; do?">
+    <Answer>Removes all properties from T</Answer>
+    <Answer correct>Makes all properties in T optional</Answer>
+    <Answer>Makes all properties in T required</Answer>
+    <Answer>Picks specific properties from T</Answer>
+  </Question>
+  
+  <Question text="What is an index signature used for?">
+    <Answer>Signing typed documents</Answer>
+    <Answer correct>Allowing objects to have dynamic property names</Answer>
+    <Answer>Indexing into arrays</Answer>
+    <Answer>Creating numbered properties</Answer>
+  </Question>
+  
+  <Question text="What does Pick&lt;User, 'name' | 'email'&gt; create?">
+    <Answer>A User without name and email</Answer>
+    <Answer correct>A type with only name and email from User</Answer>
+    <Answer>An array of name and email values</Answer>
+    <Answer>A function that picks values</Answer>
+  </Question>
+  
+  <Question text="What is a discriminated union?">
+    <Answer>A union that discriminates certain values</Answer>
+    <Answer correct>A union where each variant has a common property that identifies it</Answer>
+    <Answer>A union of discriminant types</Answer>
+    <Answer>A conditional type</Answer>
+  </Question>
+</Quiz>
+
+---
+
+**Excellent progress!** 🎉 You've learned powerful type composition patterns. In the advanced level, we'll explore declaration merging, module augmentation, and creating your own utility types!

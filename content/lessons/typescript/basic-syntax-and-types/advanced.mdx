@@ -1,0 +1,416 @@
+# TypeScript: Basic Syntax and Types
+
+Welcome to the advanced level! You've mastered the fundamentals and intermediate concepts. Now let's dive into TypeScript's most sophisticated type features — the tools that power complex libraries and frameworks.
+
+<InfoBox type="info" title="Advanced Territory">
+These features are used extensively in library development and advanced application architecture. Understanding them will help you read and write more sophisticated TypeScript code.
+</InfoBox>
+
+<ProgressCheckpoint section="introduction" xpReward={30} />
+
+## Conditional Types: Types That Branch
+
+Conditional types let you create types that depend on other types — like ternary operators, but for types:
+
+```typescript
+// Basic syntax: T extends U ? X : Y
+type IsString<T> = T extends string ? "yes" : "no";
+
+type A = IsString<string>;  // "yes"
+type B = IsString<number>;  // "no"
+type C = IsString<"hello">; // "yes" (literal types extend their base type)
+```
+
+### Practical Example: Extracting Return Types
+
+```typescript
+// Extract the return type of a function
+type ReturnOf<T> = T extends (...args: any[]) => infer R ? R : never;
+
+type Fn1 = () => string;
+type Fn2 = (x: number) => boolean;
+
+type R1 = ReturnOf<Fn1>;  // string
+type R2 = ReturnOf<Fn2>;  // boolean
+type R3 = ReturnOf<number>; // never (not a function)
+```
+
+<KeyConcept title="The infer Keyword">
+`infer` lets you "capture" a type within a conditional type. It's like a type variable that gets filled in based on what matches.
+</KeyConcept>
+
+<TypePlayground
+  initialCode={`// Conditional types in action
+type IsArray<T> = T extends any[] ? true : false;
+type IsFunction<T> = T extends (...args: any[]) => any ? true : false;
+
+// Test the types
+type Test1 = IsArray<number[]>;     // true
+type Test2 = IsArray<string>;       // false
+type Test3 = IsFunction<() => void>; // true
+type Test4 = IsFunction<number>;     // false
+
+// Practical: Unwrap a promise
+type Unwrap<T> = T extends Promise<infer U> ? U : T;
+
+type P1 = Unwrap<Promise<string>>;  // string
+type P2 = Unwrap<Promise<number[]>>; // number[]
+type P3 = Unwrap<boolean>;           // boolean (not a promise)
+
+console.log("Conditional types work at compile-time!");
+console.log("Check the type hints by hovering in a real editor.");`}
+  height={340}
+/>
+
+<ProgressCheckpoint section="type-annotations" xpReward={35} />
+
+## Mapped Types: Transforming Types
+
+Mapped types let you create new types by transforming each property of an existing type:
+
+```typescript
+// Make all properties optional
+type Partial<T> = {
+  [K in keyof T]?: T[K];
+};
+
+// Make all properties required
+type Required<T> = {
+  [K in keyof T]-?: T[K];  // -? removes optional modifier
+};
+
+// Make all properties readonly
+type Readonly<T> = {
+  readonly [K in keyof T]: T[K];
+};
+```
+
+### Understanding the Syntax
+
+```typescript
+type MappedType<T> = {
+  [K in keyof T]: NewType;
+  // K = each key in T
+  // keyof T = union of all keys
+  // T[K] = type of that property
+};
+```
+
+### Creating Custom Mapped Types
+
+```typescript
+// Make all properties nullable
+type Nullable<T> = {
+  [K in keyof T]: T[K] | null;
+};
+
+// Make all string properties have string | undefined values
+type StringsOptional<T> = {
+  [K in keyof T]: T[K] extends string ? T[K] | undefined : T[K];
+};
+
+interface User {
+  id: number;
+  name: string;
+  email: string;
+}
+
+type NullableUser = Nullable<User>;
+// { id: number | null; name: string | null; email: string | null }
+```
+
+<TypePlayground
+  initialCode={`// Mapped types demonstration
+interface Person {
+  name: string;
+  age: number;
+  isActive: boolean;
+}
+
+// Built-in utility types use mapped types
+type PartialPerson = Partial<Person>;
+// { name?: string; age?: number; isActive?: boolean }
+
+type ReadonlyPerson = Readonly<Person>;
+// { readonly name: string; readonly age: number; ... }
+
+// Custom mapped type: make all values strings
+type Stringify<T> = {
+  [K in keyof T]: string;
+};
+
+type StringPerson = Stringify<Person>;
+// { name: string; age: string; isActive: string }
+
+// Key remapping with 'as'
+type Getters<T> = {
+  [K in keyof T as \`get\${Capitalize<string & K>}\`]: () => T[K];
+};
+
+type PersonGetters = Getters<Person>;
+// { getName: () => string; getAge: () => number; ... }
+
+console.log("Mapped types transform object types!");`}
+  height={400}
+/>
+
+<ProgressCheckpoint section="primitive-types" xpReward={35} />
+
+## Template Literal Types: String Type Manipulation
+
+TypeScript 4.1+ lets you create types from string templates:
+
+```typescript
+type Greeting = `Hello, ${string}!`;
+
+const g1: Greeting = "Hello, World!";  // ✅
+const g2: Greeting = "Hello, TypeScript!";  // ✅
+const g3: Greeting = "Hi there!";  // ❌ Error
+```
+
+### String Manipulation with Built-in Types
+
+```typescript
+type Upper = Uppercase<"hello">;      // "HELLO"
+type Lower = Lowercase<"HELLO">;      // "hello"
+type Cap = Capitalize<"hello">;       // "Hello"
+type Uncap = Uncapitalize<"Hello">;   // "hello"
+```
+
+### Generating Event Handler Types
+
+```typescript
+type EventName = "click" | "focus" | "blur";
+type EventHandler = `on${Capitalize<EventName>}`;
+// "onClick" | "onFocus" | "onBlur"
+
+type EventHandlers = {
+  [E in EventName as `on${Capitalize<E>}`]: (event: Event) => void;
+};
+// { onClick: ...; onFocus: ...; onBlur: ... }
+```
+
+<TypePlayground
+  initialCode={`// Template literal types
+type Color = "red" | "green" | "blue";
+type Size = "small" | "medium" | "large";
+
+// Combine to generate all variants
+type ColorSize = \`\${Color}-\${Size}\`;
+// "red-small" | "red-medium" | "red-large" | "green-small" | ...
+
+// CSS property types
+type CSSValue = \`\${number}px\` | \`\${number}em\` | \`\${number}%\`;
+
+const width: CSSValue = "100px";    // ✅
+const height: CSSValue = "50%";     // ✅
+// const bad: CSSValue = "10apples"; // ❌
+
+// String manipulation
+type Screaming<S extends string> = Uppercase<S>;
+type Whisper<S extends string> = Lowercase<S>;
+
+type Loud = Screaming<"hello">;  // "HELLO"
+type Quiet = Whisper<"SHOUT">;   // "shout"
+
+console.log("Template literals create precise string types!");`}
+  height={360}
+/>
+
+<ProgressCheckpoint section="arrays-tuples" xpReward={30} />
+
+## Advanced Type Inference with infer
+
+The `infer` keyword is powerful for extracting types from complex structures:
+
+```typescript
+// Extract array element type
+type ElementOf<T> = T extends (infer E)[] ? E : never;
+
+type Nums = ElementOf<number[]>;   // number
+type Strs = ElementOf<string[]>;   // string
+
+// Extract function parameter types
+type Parameters<T> = T extends (...args: infer P) => any ? P : never;
+
+type Fn = (a: string, b: number) => void;
+type Params = Parameters<Fn>;  // [string, number]
+
+// Extract first parameter
+type FirstParam<T> = T extends (first: infer F, ...rest: any[]) => any ? F : never;
+
+type First = FirstParam<Fn>;  // string
+```
+
+### Recursive Type Inference
+
+```typescript
+// Deeply unwrap promises
+type DeepAwaited<T> = 
+  T extends Promise<infer U> 
+    ? DeepAwaited<U> 
+    : T;
+
+type Nested = Promise<Promise<Promise<string>>>;
+type Flat = DeepAwaited<Nested>;  // string
+
+// Flatten nested arrays
+type Flatten<T> = T extends (infer U)[] ? Flatten<U> : T;
+
+type Deep = number[][][];
+type FlatNum = Flatten<Deep>;  // number
+```
+
+<ProgressCheckpoint section="object-types" xpReward={30} />
+
+## Distributive Conditional Types
+
+When a conditional type is applied to a union, it distributes over each member:
+
+```typescript
+type ToArray<T> = T extends any ? T[] : never;
+
+// Distributes over union!
+type Result = ToArray<string | number>;
+// = ToArray<string> | ToArray<number>
+// = string[] | number[]
+```
+
+### Preventing Distribution
+
+Sometimes you DON'T want distribution. Wrap the type in brackets:
+
+```typescript
+// Distributed
+type Distributed<T> = T extends any ? T[] : never;
+type D = Distributed<string | number>; // string[] | number[]
+
+// Non-distributed
+type NonDistributed<T> = [T] extends [any] ? T[] : never;
+type ND = NonDistributed<string | number>; // (string | number)[]
+```
+
+<TypePlayground
+  initialCode={`// Distributive conditional types
+type ToArray<T> = T extends any ? T[] : never;
+
+// This distributes!
+type ArrayUnion = ToArray<string | number | boolean>;
+// string[] | number[] | boolean[]
+
+// Exclude null and undefined from a type
+type NonNullable<T> = T extends null | undefined ? never : T;
+
+type MaybeString = string | null | undefined;
+type DefinitelyString = NonNullable<MaybeString>;  // string
+
+// Extract only function types from a union
+type ExtractFunctions<T> = T extends (...args: any[]) => any ? T : never;
+
+type Mixed = string | (() => void) | number | ((x: number) => string);
+type OnlyFns = ExtractFunctions<Mixed>;
+// (() => void) | ((x: number) => string)
+
+console.log("Distributive types process each union member separately!");`}
+  height={360}
+/>
+
+<ProgressCheckpoint section="type-inference" xpReward={25} />
+
+## Type Predicates and Assertion Functions
+
+### Type Predicates
+
+Create custom type guards with type predicates:
+
+```typescript
+interface Cat { meow(): void; }
+interface Dog { bark(): void; }
+
+// Type predicate: "pet is Cat"
+function isCat(pet: Cat | Dog): pet is Cat {
+  return (pet as Cat).meow !== undefined;
+}
+
+function handlePet(pet: Cat | Dog) {
+  if (isCat(pet)) {
+    pet.meow();  // TypeScript knows it's a Cat!
+  } else {
+    pet.bark();  // TypeScript knows it's a Dog!
+  }
+}
+```
+
+### Assertion Functions
+
+Assert that a condition is true, narrowing the type for all code after:
+
+```typescript
+function assertIsString(value: unknown): asserts value is string {
+  if (typeof value !== "string") {
+    throw new Error("Not a string!");
+  }
+}
+
+function processValue(value: unknown) {
+  assertIsString(value);
+  // After assertion, TypeScript knows value is string
+  console.log(value.toUpperCase());
+}
+```
+
+<ProgressCheckpoint section="summary" xpReward={25} />
+
+## Key Takeaways
+
+<KeyConcept title="Conditional Types Enable Branching">
+`T extends U ? X : Y` creates types that vary based on type relationships.
+</KeyConcept>
+
+<KeyConcept title="Mapped Types Transform Structures">
+Transform all properties of a type at once — make them optional, readonly, or change their types.
+</KeyConcept>
+
+<KeyConcept title="Template Literals Create String Types">
+Generate precise string types from patterns and combine string unions.
+</KeyConcept>
+
+<KeyConcept title="infer Captures Types">
+Extract types from within complex structures like function parameters or return types.
+</KeyConcept>
+
+## Quick Quiz
+
+<Quiz>
+  <Question text="What does 'T extends string ? A : B' mean?">
+    <Answer>T must extend string</Answer>
+    <Answer correct>If T is assignable to string, the type is A; otherwise B</Answer>
+    <Answer>T is converted to string</Answer>
+    <Answer>An error if T is not string</Answer>
+  </Question>
+  
+  <Question text="What does 'infer' do in a conditional type?">
+    <Answer>Makes a type inference</Answer>
+    <Answer correct>Captures a type to use in the true branch</Answer>
+    <Answer>Infers the best type automatically</Answer>
+    <Answer>Creates an "any" type</Answer>
+  </Question>
+  
+  <Question text="What is a mapped type?">
+    <Answer>A type that maps between two values</Answer>
+    <Answer correct>A type that transforms each property of another type</Answer>
+    <Answer>A JavaScript Map with types</Answer>
+    <Answer>A type alias with parameters</Answer>
+  </Question>
+  
+  <Question text="What does 'keyof T' produce?">
+    <Answer>All values in T</Answer>
+    <Answer>The number of keys in T</Answer>
+    <Answer correct>A union of all property names (keys) of T</Answer>
+    <Answer>The first key of T</Answer>
+  </Question>
+</Quiz>
+
+---
+
+**Outstanding!** 🎉 You've mastered TypeScript's most advanced type features. These tools are the foundation of libraries like React's type definitions, Zod, and tRPC. Continue to the next lesson to explore Interfaces and Type Aliases in depth!

@@ -1,0 +1,352 @@
+# TypeScript: Basic Syntax and Types
+
+Welcome to TypeScript! TypeScript is JavaScript with superpowers — it adds **types** to help you catch errors before your code even runs. Think of it as having a helpful assistant who checks your work as you write.
+
+<InfoBox type="tip" title="The Dress Code Analogy">
+Imagine going to different events: a beach party, a business meeting, and a formal wedding. Each event has a "dress code" — expectations about what you should wear. TypeScript types work the same way! They're like dress codes for your data, telling your code what kind of values are expected in each spot.
+</InfoBox>
+
+<ProgressCheckpoint section="introduction" xpReward={10} />
+
+## Why TypeScript?
+
+JavaScript is flexible — maybe too flexible! You can accidentally pass the wrong type of data, and you won't know something is wrong until your code actually runs (and breaks).
+
+```javascript
+// JavaScript: This runs... but crashes later!
+function double(x) {
+  return x * 2;
+}
+
+double("hello"); // Returns NaN — oops!
+```
+
+TypeScript catches this BEFORE you run your code:
+
+```typescript
+// TypeScript: Error caught immediately!
+function double(x: number): number {
+  return x * 2;
+}
+
+double("hello"); // ❌ Error: Argument of type 'string' is not assignable to 'number'
+```
+
+<KeyConcept title="Types = Safety Net">
+Types act as a safety net. They catch mistakes early, making your code more reliable and easier to maintain. It's like spell-check, but for your code logic!
+</KeyConcept>
+
+<ProgressCheckpoint section="type-annotations" xpReward={10} />
+
+## Type Annotations: Labeling Your Data
+
+A **type annotation** is like putting a label on a container. It tells TypeScript what kind of data should go there.
+
+```typescript
+// Variable with type annotation
+let username: string = "Alice";
+let age: number = 25;
+let isActive: boolean = true;
+
+// TypeScript now knows exactly what each variable holds!
+```
+
+### The Syntax
+
+The pattern is simple: `variableName: type = value`
+
+```typescript
+let variableName: type = value;
+//              ↑ colon separates name from type
+```
+
+<TypePlayground
+  initialCode={`// Try changing the values and see what happens!
+let greeting: string = "Hello, TypeScript!";
+let count: number = 42;
+let isLearning: boolean = true;
+
+// Try this — what error do you get?
+// let broken: number = "oops";
+
+console.log(greeting);
+console.log("Count:", count);
+console.log("Learning?", isLearning);`}
+  height={280}
+/>
+
+<ProgressCheckpoint section="primitive-types" xpReward={15} />
+
+## Primitive Types: The Building Blocks
+
+TypeScript has several basic (primitive) types. Think of these as the LEGO bricks you'll use to build more complex structures.
+
+### String
+
+Text values, always wrapped in quotes:
+
+```typescript
+let firstName: string = "Alice";
+let greeting: string = `Hello, ${firstName}!`; // Template literal works too!
+```
+
+### Number
+
+All numbers — whole or decimal, positive or negative:
+
+```typescript
+let age: number = 25;
+let price: number = 19.99;
+let temperature: number = -5;
+```
+
+### Boolean
+
+True or false — like a light switch:
+
+```typescript
+let isLoggedIn: boolean = true;
+let hasPermission: boolean = false;
+```
+
+### Null and Undefined
+
+Special values for "nothing" or "not set":
+
+```typescript
+let emptyValue: null = null;
+let notYetSet: undefined = undefined;
+```
+
+<InfoBox type="info" title="null vs undefined">
+- `undefined` means "not yet assigned" — like an empty box
+- `null` means "intentionally empty" — like a box marked "nothing here"
+</InfoBox>
+
+<TypePlayground
+  initialCode={`// Explore primitive types
+let name: string = "TypeScript Learner";
+let score: number = 100;
+let isPassing: boolean = score >= 60;
+
+console.log("Name:", name, "- Type:", typeof name);
+console.log("Score:", score, "- Type:", typeof score);
+console.log("Passing?:", isPassing, "- Type:", typeof isPassing);
+
+// What's the difference?
+let nothing: null = null;
+let notSet: undefined = undefined;
+console.log("null type:", typeof nothing);      // "object" (JS quirk!)
+console.log("undefined type:", typeof notSet);  // "undefined"`}
+  height={320}
+/>
+
+<ProgressCheckpoint section="arrays-tuples" xpReward={15} />
+
+## Arrays: Organized Collections
+
+Arrays hold multiple values of the same type. Think of them as filing cabinets where each drawer holds the same kind of document.
+
+### Two Ways to Write Array Types
+
+```typescript
+// Method 1: type[]
+let numbers: number[] = [1, 2, 3, 4, 5];
+let names: string[] = ["Alice", "Bob", "Charlie"];
+
+// Method 2: Array<type>
+let scores: Array<number> = [95, 87, 92];
+let words: Array<string> = ["hello", "world"];
+```
+
+Both methods work identically — choose whichever you find more readable!
+
+### Tuples: Fixed-Size Arrays with Mixed Types
+
+A **tuple** is like a form with specific fields in a specific order:
+
+```typescript
+// A tuple representing a person: [name, age, isActive]
+let person: [string, number, boolean] = ["Alice", 25, true];
+
+// Each position has a specific type
+let point: [number, number] = [10, 20]; // x, y coordinates
+```
+
+<KeyConcept title="Array vs Tuple">
+- **Array**: Any length, same type for all elements
+- **Tuple**: Fixed length, each position can have a different type
+</KeyConcept>
+
+<TypePlayground
+  initialCode={`// Arrays - same type, any length
+let fruits: string[] = ["apple", "banana", "orange"];
+let prices: number[] = [1.5, 0.75, 2.0];
+
+console.log("Fruits:", fruits);
+console.log("First fruit:", fruits[0]);
+
+// Tuples - fixed length, mixed types
+let product: [string, number] = ["Widget", 9.99];
+console.log("Product:", product[0], "costs $" + product[1]);
+
+// Try adding to the array
+fruits.push("grape");
+console.log("After push:", fruits);
+
+// What happens if you try to push the wrong type?
+// fruits.push(123);  // Uncomment to see the error!`}
+  height={320}
+/>
+
+<ProgressCheckpoint section="object-types" xpReward={15} />
+
+## Object Types: Blueprints for Data
+
+Object types describe the **shape** of an object — what properties it should have and what types those properties should be.
+
+```typescript
+// Inline object type
+let user: { name: string; age: number } = {
+  name: "Alice",
+  age: 25
+};
+
+// Accessing properties (TypeScript knows they exist!)
+console.log(user.name); // ✅ Works!
+console.log(user.email); // ❌ Error: Property 'email' does not exist
+```
+
+<InfoBox type="tip" title="The Blueprint Analogy">
+Think of an object type as an architectural blueprint. Just as a blueprint specifies "this room should have a door here and a window there," an object type specifies "this object should have a name property (string) and an age property (number)."
+</InfoBox>
+
+### Optional Properties
+
+Some properties might not always be present. Use `?` to mark them as optional:
+
+```typescript
+let user: { 
+  name: string; 
+  age: number; 
+  email?: string;  // Optional!
+} = {
+  name: "Bob",
+  age: 30
+  // email is missing — that's OK!
+};
+```
+
+<TypePlayground
+  initialCode={`// Object types as blueprints
+let car: { brand: string; year: number; isElectric: boolean } = {
+  brand: "Tesla",
+  year: 2024,
+  isElectric: true
+};
+
+console.log(car.brand, car.year);
+console.log("Electric?", car.isElectric);
+
+// Optional properties with ?
+let profile: { name: string; bio?: string } = {
+  name: "Alice"
+  // bio is optional, so we can skip it
+};
+
+console.log("Profile:", profile.name);
+console.log("Bio:", profile.bio ?? "No bio yet");`}
+  height={320}
+/>
+
+<ProgressCheckpoint section="type-inference" xpReward={10} />
+
+## Type Inference: TypeScript's Smart Guesses
+
+Good news! You don't always have to write type annotations. TypeScript is smart enough to **infer** types from your code:
+
+```typescript
+// TypeScript infers: string
+let message = "Hello!";
+
+// TypeScript infers: number
+let count = 42;
+
+// TypeScript infers: boolean
+let isReady = true;
+```
+
+<KeyConcept title="When to Add Annotations?">
+- **Let TypeScript infer** when you immediately assign a value
+- **Add annotations** when there's no initial value, or for function parameters
+</KeyConcept>
+
+```typescript
+// Inference works great here
+let name = "Alice";  // TypeScript knows it's a string
+
+// Annotation needed — no initial value
+let age: number;
+age = 25;
+
+// Annotation recommended for function parameters
+function greet(name: string): string {
+  return `Hello, ${name}!`;
+}
+```
+
+<ProgressCheckpoint section="summary" xpReward={10} />
+
+## Key Takeaways
+
+<KeyConcept title="Types = Dress Codes for Data">
+Types tell TypeScript what kind of values are expected, catching errors before runtime.
+</KeyConcept>
+
+<KeyConcept title="Primitives Are Building Blocks">
+`string`, `number`, `boolean`, `null`, and `undefined` are your fundamental types.
+</KeyConcept>
+
+<KeyConcept title="Arrays for Lists, Tuples for Fixed Structures">
+Use arrays for collections of the same type, tuples when you need specific types at specific positions.
+</KeyConcept>
+
+<KeyConcept title="Object Types Define Shape">
+Object types describe what properties an object should have and their types.
+</KeyConcept>
+
+## Quick Quiz
+
+<Quiz>
+  <Question text="What does TypeScript add to JavaScript?">
+    <Answer>New runtime features</Answer>
+    <Answer correct>Static type checking</Answer>
+    <Answer>Faster execution</Answer>
+    <Answer>New syntax unrelated to types</Answer>
+  </Question>
+  
+  <Question text="Which syntax correctly declares a typed variable?">
+    <Answer>let name = string: 'Alice'</Answer>
+    <Answer correct>let name: string = 'Alice'</Answer>
+    <Answer>let string name = 'Alice'</Answer>
+    <Answer>string let name = 'Alice'</Answer>
+  </Question>
+  
+  <Question text="What is a tuple in TypeScript?">
+    <Answer>An array that can hold any type</Answer>
+    <Answer>A special function type</Answer>
+    <Answer correct>A fixed-length array where each position has a specific type</Answer>
+    <Answer>Another name for an object</Answer>
+  </Question>
+  
+  <Question text="How do you mark a property as optional in an object type?">
+    <Answer>Put 'optional' before the property name</Answer>
+    <Answer correct>Add ? after the property name</Answer>
+    <Answer>Wrap the type in Optional&lt;&gt;</Answer>
+    <Answer>Use the 'maybe' keyword</Answer>
+  </Question>
+</Quiz>
+
+---
+
+**Excellent work!** 🎉 You've learned the fundamentals of TypeScript types. In the intermediate level, we'll explore union types, literal types, and type narrowing — powerful tools for handling complex scenarios.

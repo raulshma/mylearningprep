@@ -1,0 +1,65 @@
+# JavaScript Outside the Browser: Node.js
+
+For a long time, JavaScript only lived in browsers. Then came **Node.js**, which let us run JavaScript directly on our computers (servers, robots, desktop apps).
+
+## Setting Up Node.js
+
+To run JavaScript on your computer, you need to install the Node.js runtime.
+
+1. Download it from [nodejs.org](https://nodejs.org)
+2. Open your terminal (Command Prompt or Verify)
+3. Check if it's installed:
+
+```bash
+node -v
+# Output: v20.11.0 (or similar)
+```
+
+## The REPL (Read-Eval-Print Loop)
+
+Just like the browser console, Node.js has an interactive mode. Type `node` in your terminal and press Enter.
+
+```bash
+$ node
+> 2 + 2
+4
+> const name = "Alice";
+undefined
+> "Hello " + name
+'Hello Alice'
+```
+
+(Press `Ctrl+C` twice to exit)
+
+## Running Files
+
+For real projects, you write code in files (usually ending in `.js`) and run them with Node.
+
+1. Create a file named `app.js`:
+
+```javascript
+// app.js
+console.log("Running from a file!");
+const add = (a, b) => a + b;
+console.log("2 + 3 =", add(2, 3));
+```
+
+2. Run it from your terminal:
+
+```bash
+node app.js
+```
+
+<CodePlayground 
+  initialCode={`// Try modifying this server-side style code!
+const os = { platform: () => 'win32' }; // Simulation
+console.log(\`Running on \${os.platform()}\`);
+
+const users = ['Alice', 'Bob', 'Charlie'];
+users.forEach(user => {
+console.log(\`Processing \${user}...\`);
+});`}
+mode="javascript"
+/>
+
+<ProgressCheckpoint section="node-environment" xpReward={25} />

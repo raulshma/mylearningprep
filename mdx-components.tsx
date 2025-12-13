@@ -73,6 +73,9 @@ import { RegexTester } from '@/components/learn/interactive/javascript/RegexTest
 import { PatternBuilder } from '@/components/learn/interactive/javascript/PatternBuilder';
 import { StorageInspector } from '@/components/learn/interactive/javascript/StorageInspector';
 import { StorageComparison } from '@/components/learn/interactive/javascript/StorageComparison';
+import { JsUseCaseExplorer } from '@/components/learn/interactive/javascript/JsUseCaseExplorer';
+import { JsTimelineExplorer } from '@/components/learn/interactive/javascript/JsTimelineExplorer';
+import { EcmaScriptVersionExplorer } from '@/components/learn/interactive/javascript/EcmaScriptVersionExplorer';
 
 // React Lesson Components
 import {
@@ -226,6 +229,9 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     PatternBuilder,
     StorageInspector,
     StorageComparison,
+    JsUseCaseExplorer,
+    JsTimelineExplorer,
+    EcmaScriptVersionExplorer,
 
     // React Lesson Components
     ReactPlayground,

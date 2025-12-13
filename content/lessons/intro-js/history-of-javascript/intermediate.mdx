@@ -1,0 +1,58 @@
+# The Browser Wars
+
+The mid-1990s were a turbulent time in tech history. The battle for browser dominance shaped JavaScript's evolution in ways that still affect us today.
+
+## Netscape vs. Microsoft
+
+In 1995, **Netscape Navigator** was the dominant web browser with about 80% market share. When JavaScript (originally called Mocha, then LiveScript) was released in Netscape Navigator 2.0, it gave Netscape a significant competitive advantage.
+
+Microsoft responded quickly. In 1996, they released **Internet Explorer 3.0** with their own version called **JScript**. While similar to JavaScript, JScript had subtle differences that would cause headaches for developers for years to come.
+
+<JsTimelineExplorer mode="intermediate" />
+
+## The Compatibility Nightmare
+
+```javascript
+// 1990s code had to check which browser was being used
+if (document.all) {
+  // Internet Explorer
+  element = document.all('myId');
+} else if (document.getElementById) {
+  // Netscape and others
+  element = document.getElementById('myId');
+}
+```
+
+This era gave birth to the infamous phrase: **"Best viewed in Internet Explorer"** (or Netscape) that plagued websites for years.
+
+## Key Timeline Events
+
+| Year | Event | Significance |
+|:-----|:------|:-------------|
+| **1995** | JavaScript created | Brendan Eich, Netscape |
+| **1996** | JScript released | Microsoft's response |
+| **1996** | JavaScript submitted to ECMA | Start of standardization |
+| **1997** | ECMAScript 1 released | First official standard |
+| **1999** | ECMAScript 3 released | Added regex, try/catch |
+| **2005** | AJAX coined | Asynchronous web apps (Gmail) |
+| **2006** | jQuery released | "Write less, do more" |
+
+## The AJAX Revolution
+
+In 2005, Google Gmail and Google Maps showed the world what JavaScript could really do. The technique was called **AJAX** (Asynchronous JavaScript and XML):
+
+```javascript
+// The XMLHttpRequest object changed everything
+const xhr = new XMLHttpRequest();
+xhr.open('GET', '/api/messages');
+xhr.onreadystatechange = function() {
+  if (xhr.readyState === 4 && xhr.status === 200) {
+    updateInbox(JSON.parse(xhr.responseText));
+  }
+};
+xhr.send();
+```
+
+This allowed web pages to update parts of themselves without full page reloads - a revolutionary concept at the time.
+
+<ProgressCheckpoint section="browser-wars" xpReward={30} />

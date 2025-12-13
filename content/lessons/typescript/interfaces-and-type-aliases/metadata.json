@@ -1,0 +1,32 @@
+{
+  "id": "interfaces-and-type-aliases",
+  "title": "Interfaces and Type Aliases",
+  "description": "Master TypeScript's two ways to define object shapes - interfaces and type aliases",
+  "milestone": "typescript",
+  "order": 2,
+  "sections": [
+    "introduction",
+    "interfaces-basics",
+    "type-aliases",
+    "comparison",
+    "extending",
+    "advanced-patterns",
+    "summary"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 20,
+      "xpReward": 75
+    },
+    "intermediate": {
+      "estimatedMinutes": 30,
+      "xpReward": 150
+    },
+    "advanced": {
+      "estimatedMinutes": 45,
+      "xpReward": 300
+    }
+  },
+  "prerequisites": ["basic-syntax-and-types"],
+  "tags": ["typescript", "interfaces", "types", "objects", "contracts"]
+}

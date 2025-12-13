@@ -17,7 +17,9 @@ import { ObjectExplorer as ObjectExplorerBase } from './javascript/ObjectExplore
 import { RegexTester as RegexTesterBase } from './javascript/RegexTester';
 import { PatternBuilder as PatternBuilderBase } from './javascript/PatternBuilder';
 
-// Hosting components
+// TypeScript components
+import { TypePlayground as TypePlaygroundBase } from './typescript/TypePlayground';
+
 import { HostingTypeSelector as HostingTypeSelectorBase } from './hosting/HostingTypeSelector';
 import { ServerArchitectureDiagram as ServerArchitectureDiagramBase } from './hosting/ServerArchitectureDiagram';
 
@@ -101,6 +103,9 @@ export const ObjectExplorer = withErrorBoundary(ObjectExplorerBase, 'ObjectExplo
 export const RegexTester = withErrorBoundary(RegexTesterBase, 'RegexTester');
 export const PatternBuilder = withErrorBoundary(PatternBuilderBase, 'PatternBuilder');
 
+// TypeScript components
+export const TypePlayground = withErrorBoundary(TypePlaygroundBase, 'TypePlayground');
+
 // React components
 export const ReactPlayground = withErrorBoundary(ReactPlaygroundBase, 'ReactPlayground');
 export const JsxTransformer = withErrorBoundary(JsxTransformerBase, 'JsxTransformer');
@@ -140,6 +145,9 @@ export type { MethodChainingPlaygroundProps, ChainableMethod, ChainStep } from '
 export type { ObjectExplorerProps, ObjectProperty } from './javascript/ObjectExplorer';
 export type { RegexTesterProps, RegexMatch, RegexTestResult } from './javascript/RegexTester';
 export type { PatternBuilderProps, PatternElement, PatternElementType } from './javascript/PatternBuilder';
+
+// TypeScript component types
+export type { TypePlaygroundProps } from './typescript/TypePlayground';
 
 // React component types
 export type { ReactPlaygroundProps, ReactPlaygroundError, ConsoleOutput as ReactConsoleOutput } from './react/ReactPlayground';

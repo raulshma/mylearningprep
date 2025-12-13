@@ -52,6 +52,11 @@ import { PatternBuilder as PatternBuilderBase } from './PatternBuilder';
 import { StorageInspector as StorageInspectorBase } from './StorageInspector';
 import { StorageComparison as StorageComparisonBase } from './StorageComparison';
 
+// JavaScript Introduction components
+import { JsUseCaseExplorer as JsUseCaseExplorerBase } from './JsUseCaseExplorer';
+import { JsTimelineExplorer as JsTimelineExplorerBase } from './JsTimelineExplorer';
+import { EcmaScriptVersionExplorer as EcmaScriptVersionExplorerBase } from './EcmaScriptVersionExplorer';
+
 // Wrap all interactive components with error boundaries
 export const CodePlayground = withErrorBoundary(CodePlaygroundBase, 'CodePlayground');
 export const VariableVisualizer = withErrorBoundary(VariableVisualizerBase, 'VariableVisualizer');
@@ -80,6 +85,9 @@ export const RegexTester = withErrorBoundary(RegexTesterBase, 'RegexTester');
 export const PatternBuilder = withErrorBoundary(PatternBuilderBase, 'PatternBuilder');
 export const StorageInspector = withErrorBoundary(StorageInspectorBase, 'StorageInspector');
 export const StorageComparison = withErrorBoundary(StorageComparisonBase, 'StorageComparison');
+export const JsUseCaseExplorer = withErrorBoundary(JsUseCaseExplorerBase, 'JsUseCaseExplorer');
+export const JsTimelineExplorer = withErrorBoundary(JsTimelineExplorerBase, 'JsTimelineExplorer');
+export const EcmaScriptVersionExplorer = withErrorBoundary(EcmaScriptVersionExplorerBase, 'EcmaScriptVersionExplorer');
 
 // Re-export types
 export type {
@@ -247,6 +255,18 @@ export type {
   StorageTypeInfo,
 } from './StorageComparison';
 
+export type {
+  JsUseCaseExplorerProps,
+} from './JsUseCaseExplorer';
+
+export type {
+  JsTimelineExplorerProps,
+} from './JsTimelineExplorer';
+
+export type {
+  EcmaScriptVersionExplorerProps,
+} from './EcmaScriptVersionExplorer';
+
 // Export base components for testing
 export { CodePlaygroundBase };
 export { VariableVisualizerBase };
@@ -275,3 +295,6 @@ export { RegexTesterBase };
 export { PatternBuilderBase };
 export { StorageInspectorBase };
 export { StorageComparisonBase };
+export { JsUseCaseExplorerBase };
+export { JsTimelineExplorerBase };
+export { EcmaScriptVersionExplorerBase };

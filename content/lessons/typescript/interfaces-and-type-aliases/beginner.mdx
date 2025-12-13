@@ -1,0 +1,410 @@
+# Interfaces and Type Aliases
+
+Welcome to one of TypeScript's most powerful features — defining the **shape** of your data! Think of interfaces and type aliases as blueprints that describe what your objects should look like.
+
+<InfoBox type="tip" title="The Contract Analogy">
+Imagine signing a contract before renting an apartment. The contract specifies: "This apartment has 2 bedrooms, 1 bathroom, and a kitchen." An interface is like that contract — it specifies exactly what properties an object must have. If the apartment doesn't match the contract, the deal is off!
+</InfoBox>
+
+<ProgressCheckpoint section="introduction" xpReward={10} />
+
+## Interfaces: Object Contracts
+
+An **interface** defines the structure that an object must follow. It's a contract that says "any object of this type must have these properties with these types."
+
+```typescript
+interface User {
+  name: string;
+  age: number;
+  email: string;
+}
+
+// This object follows the contract ✅
+const alice: User = {
+  name: "Alice",
+  age: 25,
+  email: "alice@example.com"
+};
+
+// This would fail — missing 'email' ❌
+// const bob: User = { name: "Bob", age: 30 };
+```
+
+<KeyConcept title="Interfaces Define Shape">
+An interface describes WHAT properties an object should have and their types — not HOW the object is created.
+</KeyConcept>
+
+<TypePlayground
+  initialCode={`// Define an interface
+interface Product {
+  name: string;
+  price: number;
+  inStock: boolean;
+}
+
+// Create objects that match the interface
+const laptop: Product = {
+  name: "MacBook Pro",
+  price: 1999,
+  inStock: true
+};
+
+const phone: Product = {
+  name: "iPhone",
+  price: 999,
+  inStock: false
+};
+
+console.log(laptop.name, "costs $" + laptop.price);
+console.log(phone.name, "in stock?", phone.inStock);
+
+// Try removing a property — what error do you get?`}
+  height={320}
+/>
+
+<ProgressCheckpoint section="interfaces-basics" xpReward={15} />
+
+## Optional and Readonly Properties
+
+Not every property is required. Use `?` for optional properties and `readonly` for properties that can't be changed.
+
+### Optional Properties
+
+```typescript
+interface UserProfile {
+  username: string;      // Required
+  email: string;         // Required
+  bio?: string;          // Optional — may or may not exist
+  website?: string;      // Optional
+}
+
+// Both are valid!
+const user1: UserProfile = { username: "alice", email: "a@b.com" };
+const user2: UserProfile = { 
+  username: "bob", 
+  email: "b@c.com",
+  bio: "Software developer"
+};
+```
+
+### Readonly Properties
+
+```typescript
+interface Config {
+  readonly apiKey: string;
+  readonly baseUrl: string;
+  timeout: number;
+}
+
+const config: Config = {
+  apiKey: "secret-key-123",
+  baseUrl: "https://api.example.com",
+  timeout: 5000
+};
+
+config.timeout = 10000;  // ✅ OK — not readonly
+// config.apiKey = "new-key";  // ❌ Error — readonly!
+```
+
+<InfoBox type="info" title="When to Use Readonly">
+Use `readonly` for values that should be set once and never changed — like configuration settings, IDs, or creation timestamps.
+</InfoBox>
+
+<TypePlayground
+  initialCode={`// Optional and readonly properties
+interface Article {
+  readonly id: number;
+  title: string;
+  content: string;
+  author?: string;        // Optional
+  publishedAt?: Date;     // Optional
+}
+
+const article: Article = {
+  id: 1,
+  title: "Learning TypeScript",
+  content: "TypeScript is awesome!"
+  // author and publishedAt are optional
+};
+
+console.log("Article:", article.title);
+console.log("Author:", article.author ?? "Anonymous");
+
+// This works — timeout is not readonly
+article.title = "Updated Title";
+console.log("New title:", article.title);
+
+// Try uncommenting this — what happens?
+// article.id = 2;`}
+  height={340}
+/>
+
+<ProgressCheckpoint section="type-aliases" xpReward={15} />
+
+## Type Aliases: Naming Any Type
+
+While interfaces describe objects, **type aliases** can give a name to ANY type — primitives, unions, tuples, and more!
+
+```typescript
+// Alias for a primitive
+type ID = string | number;
+
+// Alias for a union
+type Status = "pending" | "approved" | "rejected";
+
+// Alias for an object (looks similar to interface)
+type Point = {
+  x: number;
+  y: number;
+};
+
+// Alias for a tuple
+type Coordinate = [number, number];
+
+// Alias for a function type
+type Callback = (result: string) => void;
+```
+
+<KeyConcept title="Type Aliases = Nicknames">
+A type alias creates a new NAME for an existing type. It's like giving someone a nickname — "Robert" and "Bob" refer to the same person.
+</KeyConcept>
+
+<TypePlayground
+  initialCode={`// Type aliases for various types
+type UserID = string | number;
+type Status = "active" | "inactive" | "suspended";
+type Coordinate = [number, number];
+
+// Use them just like built-in types
+let userId: UserID = "user-123";
+userId = 456;  // Also valid!
+
+let status: Status = "active";
+// status = "unknown";  // Error!
+
+let position: Coordinate = [10, 20];
+console.log("Position: x=" + position[0] + ", y=" + position[1]);
+
+// Type alias for object
+type Rectangle = {
+  width: number;
+  height: number;
+};
+
+const rect: Rectangle = { width: 100, height: 50 };
+console.log("Area:", rect.width * rect.height);`}
+  height={340}
+/>
+
+<ProgressCheckpoint section="comparison" xpReward={15} />
+
+## Interface vs Type Alias: When to Use Which?
+
+Both can define object shapes, but they have key differences:
+
+### Similarity: Object Shapes
+
+```typescript
+// Interface
+interface UserInterface {
+  name: string;
+  age: number;
+}
+
+// Type Alias
+type UserType = {
+  name: string;
+  age: number;
+};
+
+// Both work identically for objects!
+const user1: UserInterface = { name: "Alice", age: 25 };
+const user2: UserType = { name: "Bob", age: 30 };
+```
+
+### Difference 1: Extending vs Intersection
+
+```typescript
+// Interface: use 'extends'
+interface Animal {
+  name: string;
+}
+interface Dog extends Animal {
+  breed: string;
+}
+
+// Type: use intersection &
+type AnimalType = {
+  name: string;
+};
+type DogType = AnimalType & {
+  breed: string;
+};
+```
+
+### Difference 2: Only Types Can Do This
+
+```typescript
+// Union types — only with type alias
+type Result = "success" | "error";
+
+// Primitive aliases — only with type alias  
+type ID = string | number;
+
+// Tuple types — only with type alias
+type Pair = [string, number];
+```
+
+### Difference 3: Declaration Merging (Interfaces Only)
+
+```typescript
+// Interfaces with same name merge together!
+interface Window {
+  title: string;
+}
+interface Window {
+  size: number;
+}
+// Result: Window has both 'title' and 'size'
+
+// Type aliases can't do this — would be an error
+```
+
+<InfoBox type="tip" title="General Rule of Thumb">
+- Use **interfaces** for objects and class shapes (they're more extensible)
+- Use **type aliases** for unions, tuples, and when you need non-object types
+</InfoBox>
+
+<ProgressCheckpoint section="extending" xpReward={10} />
+
+## Extending Interfaces
+
+Interfaces can extend other interfaces to inherit their properties:
+
+```typescript
+interface Person {
+  name: string;
+  age: number;
+}
+
+interface Employee extends Person {
+  employeeId: string;
+  department: string;
+}
+
+// Employee has all Person properties PLUS its own
+const worker: Employee = {
+  name: "Alice",
+  age: 30,
+  employeeId: "E001",
+  department: "Engineering"
+};
+```
+
+### Extending Multiple Interfaces
+
+```typescript
+interface Printable {
+  print(): void;
+}
+
+interface Serializable {
+  toJSON(): string;
+}
+
+// Extend multiple interfaces at once!
+interface Document extends Printable, Serializable {
+  title: string;
+  content: string;
+}
+```
+
+<TypePlayground
+  initialCode={`// Interface inheritance
+interface Vehicle {
+  brand: string;
+  year: number;
+  start(): void;
+}
+
+interface Car extends Vehicle {
+  doors: number;
+  honk(): void;
+}
+
+// Car must have ALL properties from Vehicle + its own
+const myCar: Car = {
+  brand: "Toyota",
+  year: 2024,
+  doors: 4,
+  start() {
+    console.log("Engine starting...");
+  },
+  honk() {
+    console.log("Beep beep!");
+  }
+};
+
+myCar.start();
+myCar.honk();
+console.log(myCar.brand, myCar.year, myCar.doors + " doors");`}
+  height={360}
+/>
+
+<ProgressCheckpoint section="advanced-patterns" xpReward={10} />
+
+## Key Takeaways
+
+<KeyConcept title="Interfaces = Object Contracts">
+Interfaces define the required shape of objects. They're great for describing APIs, component props, and data structures.
+</KeyConcept>
+
+<KeyConcept title="Type Aliases = Named Types">
+Type aliases give names to any type — including unions, tuples, and primitives. More flexible than interfaces.
+</KeyConcept>
+
+<KeyConcept title="Optional with ? and Readonly">
+Use `?` for properties that might not exist, `readonly` for properties that shouldn't change.
+</KeyConcept>
+
+<KeyConcept title="Extend to Build On Existing Types">
+Interfaces can extend other interfaces. Types can use `&` (intersection) to combine.
+</KeyConcept>
+
+<ProgressCheckpoint section="summary" xpReward={10} />
+
+## Quick Quiz
+
+<Quiz>
+  <Question text="What is the main purpose of an interface?">
+    <Answer>To create new objects</Answer>
+    <Answer correct>To define the shape/structure an object must have</Answer>
+    <Answer>To store data</Answer>
+    <Answer>To convert between types</Answer>
+  </Question>
+  
+  <Question text="How do you mark a property as optional in an interface?">
+    <Answer>Use the 'optional' keyword</Answer>
+    <Answer correct>Add ? after the property name</Answer>
+    <Answer>Wrap the type in Optional&lt;&gt;</Answer>
+    <Answer>Put the property in brackets</Answer>
+  </Question>
+  
+  <Question text="Which can ONLY be done with type aliases (not interfaces)?">
+    <Answer>Define object shapes</Answer>
+    <Answer>Extend other types</Answer>
+    <Answer correct>Create union types</Answer>
+    <Answer>Mark properties as readonly</Answer>
+  </Question>
+  
+  <Question text="What happens when you declare two interfaces with the same name?">
+    <Answer>An error occurs</Answer>
+    <Answer>The second one replaces the first</Answer>
+    <Answer correct>They merge together into one interface</Answer>
+    <Answer>TypeScript ignores the second one</Answer>
+  </Question>
+</Quiz>
+
+---
+
+**Excellent work!** 🎉 You now understand interfaces and type aliases — the foundation of defining data structures in TypeScript. In the intermediate level, we'll explore index signatures, function overloads, and advanced object patterns!

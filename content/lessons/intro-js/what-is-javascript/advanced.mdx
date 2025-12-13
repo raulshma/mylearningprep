@@ -1,0 +1,109 @@
+# JavaScript Under the Hood
+
+JavaScript is a **high-level, just-in-time compiled, multi-paradigm programming language** that conforms to the ECMAScript specification. Let's explore how JavaScript actually works at a deeper technical level.
+
+## JavaScript Engines
+
+Every browser has a JavaScript engine that parses, compiles, and executes your code:
+
+| Browser | Engine | Company |
+|:--------|:-------|:--------|
+| Chrome, Edge, Opera | **V8** | Google |
+| Firefox | **SpiderMonkey** | Mozilla |
+| Safari | **JavaScriptCore (Nitro)** | Apple |
+| Node.js, Deno, Bun | **V8** | Google |
+
+### How V8 Works
+
+1. **Parsing** → Code is converted to an Abstract Syntax Tree (AST)
+2. **Ignition** → AST is compiled to bytecode (fast startup)
+3. **TurboFan** → Hot code paths are optimized to machine code (JIT)
+4. **Garbage Collection** → Orinoco handles memory management
+
+```javascript
+// This function will be optimized by TurboFan if called frequently
+function hotFunction(arr) {
+  let sum = 0;
+  for (let i = 0; i < arr.length; i++) {
+    sum += arr[i]; // Inline caching optimizes property access
+  }
+  return sum;
+}
+```
+
+## The Call Stack and Event Loop
+
+JavaScript is **single-threaded** but handles asynchronous operations through the event loop:
+
+```javascript
+console.log('1. Start'); // Call stack
+
+setTimeout(() => {
+  console.log('3. Timeout'); // Task queue
+}, 0);
+
+Promise.resolve().then(() => {
+  console.log('2. Promise'); // Microtask queue (priority!)
+});
+
+console.log('4. End'); // Call stack
+
+// Output: 1. Start → 4. End → 2. Promise → 3. Timeout
+```
+
+<JsUseCaseExplorer mode="advanced" />
+
+## JavaScript Everywhere
+
+JavaScript has transcended the browser:
+
+### Runtime Environments
+
+- **Node.js** (2009) - Server-side JavaScript with libuv for async I/O
+- **Deno** (2018) - Secure runtime by Node's creator, TypeScript-first
+- **Bun** (2022) - Ultra-fast runtime with JavaScriptCore engine
+
+### Compilation Targets
+
+- **WebAssembly** - JavaScript can interop with near-native performance code
+- **Electron** - Desktop apps (VS Code, Slack, Discord)
+- **React Native** - Mobile apps with native UI components
+- **Capacitor/Ionic** - Hybrid mobile applications
+
+## Memory Management
+
+JavaScript uses automatic garbage collection with a **generational GC** strategy:
+
+```javascript
+// Objects in "young generation" are collected frequently
+function createTemporary() {
+  const temp = { data: new Array(1000) }; // Short-lived
+  return temp.data.length;
+}
+
+// Long-lived objects move to "old generation"
+const globalCache = new Map(); // Persists longer
+```
+
+### Common Memory Pitfalls
+
+1. **Closures holding references** - Can prevent garbage collection
+2. **Detached DOM nodes** - Event listeners on removed elements
+3. **Large object graphs** - Circular references (handled by mark-and-sweep)
+
+## Type System
+
+JavaScript is **dynamically typed** with these primitive types:
+
+- `undefined`, `null`, `boolean`, `number`, `bigint`, `string`, `symbol`
+
+All other values are objects (including arrays and functions).
+
+```javascript
+// typeof quirks
+typeof null === 'object';        // Historical bug, kept for compatibility
+typeof function(){} === 'function'; // Functions are callable objects
+typeof [] === 'object';          // Arrays are objects
+```
+
+<ProgressCheckpoint section="js-everywhere" xpReward={50} />

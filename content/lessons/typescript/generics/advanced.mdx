@@ -1,0 +1,417 @@
+# TypeScript Generics
+
+Welcome to the advanced level! You've mastered generic basics and intermediate patterns. Now let's explore the most powerful generic techniques — conditional types, inference, variance, and building library-quality utility types.
+
+<InfoBox type="info" title="Advanced Territory">
+These patterns power libraries like React, Zod, tRPC, and the TypeScript standard library. Mastering them will let you build sophisticated, type-safe APIs.
+</InfoBox>
+
+<ProgressCheckpoint section="introduction" xpReward={35} />
+
+## Conditional Types in Generics
+
+Combine generics with conditional types for powerful type transformations:
+
+```typescript
+// Different return type based on input
+type ArrayOrSingle<T> = T extends any[] ? T[number] : T;
+
+type A = ArrayOrSingle<string[]>;   // string
+type B = ArrayOrSingle<number>;     // number
+
+// Extracting function return types
+type ReturnType<T> = T extends (...args: any[]) => infer R ? R : never;
+
+type Fn = (x: number) => string;
+type R = ReturnType<Fn>;  // string
+```
+
+### Practical Example: API Response Types
+
+```typescript
+type ApiResponse<T> = T extends void
+  ? { success: boolean }
+  : { success: boolean; data: T };
+
+// For void operations (delete, etc.)
+type DeleteResponse = ApiResponse<void>;
+// { success: boolean }
+
+// For data operations (get, etc.)
+type UserResponse = ApiResponse<{ name: string }>;
+// { success: boolean; data: { name: string } }
+```
+
+<TypePlayground
+  initialCode={`// Conditional types in generics
+type UnwrapPromise<T> = T extends Promise<infer U> ? U : T;
+type UnwrapArray<T> = T extends (infer U)[] ? U : T;
+
+// Test UnwrapPromise
+type P1 = UnwrapPromise<Promise<string>>;  // string
+type P2 = UnwrapPromise<Promise<number[]>>; // number[]
+type P3 = UnwrapPromise<boolean>;           // boolean
+
+// Test UnwrapArray
+type A1 = UnwrapArray<string[]>;  // string
+type A2 = UnwrapArray<number>;    // number
+
+// Combine them!
+type DeepUnwrap<T> = T extends Promise<infer U>
+  ? DeepUnwrap<U>
+  : T extends (infer V)[]
+    ? DeepUnwrap<V>
+    : T;
+
+type Complex = Promise<Promise<string[]>>;
+type Simple = DeepUnwrap<Complex>;  // string
+
+console.log("Conditional types work at compile time!");
+console.log("Hover over type aliases in a real editor to see results.");`}
+  height={360}
+/>
+
+<ProgressCheckpoint section="generic-functions" xpReward={40} />
+
+## The infer Keyword Deep Dive
+
+`infer` captures types within conditional types:
+
+```typescript
+// Extract function parameters
+type Parameters<T> = T extends (...args: infer P) => any ? P : never;
+
+type Fn = (name: string, age: number) => void;
+type Params = Parameters<Fn>;  // [string, number]
+
+// Extract first parameter
+type FirstParam<T> = T extends (first: infer F, ...rest: any[]) => any ? F : never;
+type First = FirstParam<Fn>;  // string
+
+// Extract promise value
+type Awaited<T> = T extends Promise<infer U> ? Awaited<U> : T;
+type Result = Awaited<Promise<Promise<string>>>;  // string
+```
+
+### Extracting Constructor Parameters
+
+```typescript
+type ConstructorParameters<T> = T extends new (...args: infer P) => any ? P : never;
+
+class User {
+  constructor(public name: string, public age: number) {}
+}
+
+type UserParams = ConstructorParameters<typeof User>;
+// [string, number]
+```
+
+### Extracting Instance Types
+
+```typescript
+type InstanceType<T> = T extends new (...args: any[]) => infer I ? I : never;
+
+type UserInstance = InstanceType<typeof User>;
+// User
+```
+
+<TypePlayground
+  initialCode={`// Advanced infer patterns
+type GetReturnType<T> = T extends (...args: any[]) => infer R ? R : never;
+type GetParameters<T> = T extends (...args: infer P) => any ? P : never;
+type GetFirstParam<T> = T extends (first: infer F, ...rest: any[]) => any ? F : never;
+
+// Example function type
+type ExampleFn = (name: string, age: number, active: boolean) => { id: number };
+
+// Extract different parts
+type Return = GetReturnType<ExampleFn>;    // { id: number }
+type Params = GetParameters<ExampleFn>;    // [string, number, boolean]
+type First = GetFirstParam<ExampleFn>;     // string
+
+// Object property extraction
+type PropType<T, K extends keyof T> = T extends { [Key in K]: infer V } ? V : never;
+
+interface User {
+  name: string;
+  age: number;
+}
+
+type NameType = PropType<User, "name">;  // string
+type AgeType = PropType<User, "age">;    // number
+
+console.log("infer captures types from complex structures!");`}
+  height={380}
+/>
+
+<ProgressCheckpoint section="generic-types" xpReward={40} />
+
+## Generic Variance: Covariance and Contravariance
+
+Understanding variance helps you reason about type compatibility:
+
+### Covariance (Output Positions)
+
+Types flow the same direction as their container:
+
+```typescript
+// Arrays are covariant in their element type
+type Animal = { name: string };
+type Dog = { name: string; breed: string };
+
+// Dog extends Animal, so Dog[] is assignable to Animal[]
+const dogs: Dog[] = [{ name: "Rex", breed: "German Shepherd" }];
+const animals: Animal[] = dogs;  // ✅ OK — covariant
+```
+
+### Contravariance (Input Positions)
+
+Types flow opposite to their container:
+
+```typescript
+type AnimalHandler = (animal: Animal) => void;
+type DogHandler = (dog: Dog) => void;
+
+// AnimalHandler takes broader input, so it's assignable to DogHandler
+const handleAnimal: AnimalHandler = (animal) => console.log(animal.name);
+const handleDog: DogHandler = handleAnimal;  // ✅ OK — contravariant
+```
+
+### Invariance
+
+When a type appears in both input and output positions:
+
+```typescript
+interface Container<T> {
+  value: T;           // Output position — covariant
+  setValue(v: T): void; // Input position — contravariant
+}
+
+// Container<Dog> and Container<Animal> are NOT assignable to each other
+// They're invariant in T
+```
+
+<ProgressCheckpoint section="constraints" xpReward={35} />
+
+## Building Production-Quality Utility Types
+
+### DeepPartial — All Properties Optional Recursively
+
+```typescript
+type DeepPartial<T> = T extends object
+  ? { [P in keyof T]?: DeepPartial<T[P]> }
+  : T;
+
+interface Config {
+  server: {
+    host: string;
+    port: number;
+    ssl: { enabled: boolean; cert: string };
+  };
+}
+
+type PartialConfig = DeepPartial<Config>;
+// All nested properties are optional!
+```
+
+### Paths — Extract All Object Paths
+
+```typescript
+type Paths<T, Prefix extends string = ""> = T extends object
+  ? {
+      [K in keyof T & string]: T[K] extends object
+        ? Paths<T[K], `${Prefix}${K}.`> | `${Prefix}${K}`
+        : `${Prefix}${K}`;
+    }[keyof T & string]
+  : never;
+
+interface User {
+  name: string;
+  address: {
+    city: string;
+    zip: string;
+  };
+}
+
+type UserPaths = Paths<User>;
+// "name" | "address" | "address.city" | "address.zip"
+```
+
+<TypePlayground
+  initialCode={`// Building utility types
+type DeepRequired<T> = T extends object
+  ? { [P in keyof T]-?: DeepRequired<T[P]> }
+  : T;
+
+type DeepReadonly<T> = T extends object
+  ? { readonly [P in keyof T]: DeepReadonly<T[P]> }
+  : T;
+
+// Mutable - removes readonly
+type Mutable<T> = {
+  -readonly [P in keyof T]: T[P];
+};
+
+// PickByType - pick properties of specific type
+type PickByType<T, U> = {
+  [P in keyof T as T[P] extends U ? P : never]: T[P];
+};
+
+interface User {
+  id: number;
+  name: string;
+  email: string;
+  age: number;
+  isActive: boolean;
+}
+
+// Pick only string properties
+type StringProps = PickByType<User, string>;
+// { name: string; email: string }
+
+// Pick only number properties
+type NumberProps = PickByType<User, number>;
+// { id: number; age: number }
+
+console.log("Custom utility types provide ultimate flexibility!");`}
+  height={400}
+/>
+
+<ProgressCheckpoint section="advanced-generics" xpReward={35} />
+
+## Template Literal Types with Generics
+
+Combine generics with template literals for flexible string types:
+
+```typescript
+type EventName<T extends string> = `on${Capitalize<T>}`;
+
+type ClickEvent = EventName<"click">;   // "onClick"
+type FocusEvent = EventName<"focus">;   // "onFocus"
+
+// Generate event handlers dynamically
+type EventHandlers<T extends string> = {
+  [K in T as `on${Capitalize<K>}`]: (event: Event) => void;
+};
+
+type MouseEvents = EventHandlers<"click" | "mouseenter" | "mouseleave">;
+// {
+//   onClick: (event: Event) => void;
+//   onMouseenter: (event: Event) => void;
+//   onMouseleave: (event: Event) => void;
+// }
+```
+
+### Getter/Setter Generation
+
+```typescript
+type Getters<T> = {
+  [K in keyof T as `get${Capitalize<string & K>}`]: () => T[K];
+};
+
+type Setters<T> = {
+  [K in keyof T as `set${Capitalize<string & K>}`]: (value: T[K]) => void;
+};
+
+interface State {
+  count: number;
+  name: string;
+}
+
+type StateGetters = Getters<State>;
+// { getCount: () => number; getName: () => string }
+
+type StateSetters = Setters<State>;
+// { setCount: (value: number) => void; setName: (value: string) => void }
+```
+
+<ProgressCheckpoint section="built-in-generics" xpReward={30} />
+
+## Recursive Type Definitions
+
+Create types that reference themselves:
+
+```typescript
+// JSON value type
+type JSONValue = 
+  | string 
+  | number 
+  | boolean 
+  | null 
+  | JSONValue[] 
+  | { [key: string]: JSONValue };
+
+// Tree structure
+type TreeNode<T> = {
+  value: T;
+  children: TreeNode<T>[];
+};
+
+// Linked list
+type LinkedList<T> = {
+  value: T;
+  next: LinkedList<T> | null;
+};
+
+// Flatten nested arrays (recursive)
+type Flatten<T> = T extends (infer U)[] ? Flatten<U> : T;
+
+type Nested = number[][][];
+type Flat = Flatten<Nested>;  // number
+```
+
+<ProgressCheckpoint section="summary" xpReward={30} />
+
+## Key Takeaways
+
+<KeyConcept title="Conditional Types Enable Branching">
+`T extends U ? X : Y` creates types that vary based on type relationships.
+</KeyConcept>
+
+<KeyConcept title="infer Captures Types">
+Extract types from within complex structures like function parameters or return types.
+</KeyConcept>
+
+<KeyConcept title="Understand Variance">
+Covariance (outputs), contravariance (inputs), and invariance (both) determine type compatibility.
+</KeyConcept>
+
+<KeyConcept title="Build Reusable Utilities">
+Combine these patterns to create powerful, library-quality type utilities.
+</KeyConcept>
+
+## Quick Quiz
+
+<Quiz>
+  <Question text="What does 'infer R' do in 'T extends (...args: any[]) => infer R ? R : never'?">
+    <Answer>Infers the arguments type</Answer>
+    <Answer correct>Captures the return type into variable R</Answer>
+    <Answer>Makes R optional</Answer>
+    <Answer>Creates a new type R</Answer>
+  </Question>
+  
+  <Question text="What is covariance?">
+    <Answer>Types that never change</Answer>
+    <Answer correct>When subtype relationships flow in the same direction as the container</Answer>
+    <Answer>When types are incompatible</Answer>
+    <Answer>A measurement of type safety</Answer>
+  </Question>
+  
+  <Question text="What does 'type Flatten&lt;T&gt; = T extends (infer U)[] ? Flatten&lt;U&gt; : T' do?">
+    <Answer>Creates a new array type</Answer>
+    <Answer>Adds types to an array</Answer>
+    <Answer correct>Recursively unwraps nested array types to their base element type</Answer>
+    <Answer>Converts types to arrays</Answer>
+  </Question>
+  
+  <Question text="What's the purpose of Template Literal Types with generics?">
+    <Answer>To create longer strings</Answer>
+    <Answer correct>To generate precise string types dynamically from type parameters</Answer>
+    <Answer>To convert types to strings</Answer>
+    <Answer>To validate string inputs</Answer>
+  </Question>
+</Quiz>
+
+---
+
+**Congratulations!** 🎉 You've mastered TypeScript's most advanced generic features. These patterns are the foundation of sophisticated type systems used in production libraries. You now have the knowledge to create your own powerful, type-safe utilities and understand complex library type definitions!

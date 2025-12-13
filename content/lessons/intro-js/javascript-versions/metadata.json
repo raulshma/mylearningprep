@@ -1,0 +1,28 @@
+{
+  "id": "javascript-versions",
+  "title": "JavaScript Versions",
+  "description": "Explore the evolution of JavaScript through ECMAScript versions - from ES1 to ES2024 and beyond.",
+  "milestone": "intro-js",
+  "order": 3,
+  "sections": [
+    "version-overview",
+    "major-releases",
+    "latest-features"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 8,
+      "xpReward": 20
+    },
+    "intermediate": {
+      "estimatedMinutes": 12,
+      "xpReward": 30
+    },
+    "advanced": {
+      "estimatedMinutes": 18,
+      "xpReward": 50
+    }
+  },
+  "prerequisites": ["history-of-javascript"],
+  "tags": ["javascript", "ecmascript", "es6", "es2024", "versions"]
+}

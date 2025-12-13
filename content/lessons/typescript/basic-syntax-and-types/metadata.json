@@ -1,0 +1,32 @@
+{
+  "id": "basic-syntax-and-types",
+  "title": "Basic Syntax and Types",
+  "description": "Master TypeScript fundamentals - type annotations, primitive types, arrays, and object types",
+  "milestone": "typescript",
+  "order": 1,
+  "sections": [
+    "introduction",
+    "type-annotations",
+    "primitive-types",
+    "arrays-tuples",
+    "object-types",
+    "type-inference",
+    "summary"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 20,
+      "xpReward": 75
+    },
+    "intermediate": {
+      "estimatedMinutes": 30,
+      "xpReward": 150
+    },
+    "advanced": {
+      "estimatedMinutes": 45,
+      "xpReward": 300
+    }
+  },
+  "prerequisites": [],
+  "tags": ["typescript", "types", "syntax", "fundamentals"]
+}

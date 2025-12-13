@@ -1,0 +1,28 @@
+{
+  "id": "what-is-javascript",
+  "title": "What is JavaScript?",
+  "description": "Discover JavaScript - the programming language that brings web pages to life and powers modern applications.",
+  "milestone": "intro-js",
+  "order": 1,
+  "sections": [
+    "intro-what-is-js",
+    "js-in-action",
+    "js-everywhere"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 8,
+      "xpReward": 20
+    },
+    "intermediate": {
+      "estimatedMinutes": 12,
+      "xpReward": 30
+    },
+    "advanced": {
+      "estimatedMinutes": 18,
+      "xpReward": 50
+    }
+  },
+  "prerequisites": [],
+  "tags": ["javascript", "introduction", "web", "programming"]
+}

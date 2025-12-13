@@ -1,0 +1,28 @@
+{
+  "id": "history-of-javascript",
+  "title": "History of JavaScript",
+  "description": "Journey through JavaScript's fascinating history from its creation in 10 days to becoming the world's most popular language.",
+  "milestone": "intro-js",
+  "order": 2,
+  "sections": [
+    "birth-of-js",
+    "browser-wars",
+    "standardization"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 8,
+      "xpReward": 20
+    },
+    "intermediate": {
+      "estimatedMinutes": 12,
+      "xpReward": 30
+    },
+    "advanced": {
+      "estimatedMinutes": 18,
+      "xpReward": 50
+    }
+  },
+  "prerequisites": ["what-is-javascript"],
+  "tags": ["javascript", "history", "ecmascript", "brendan-eich"]
+}

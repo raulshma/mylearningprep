@@ -366,9 +366,9 @@ export const frontendRoadmap: CreateRoadmap = {
       type: 'milestone',
       position: { x: 550, y: 840 },
       learningObjectives: [
-        'Basic syntax and types',
-        'Interfaces and type aliases',
-        'Generics',
+        { title: 'Basic syntax and types', lessonId: 'basic-syntax-and-types' },
+        { title: 'Interfaces and type aliases', lessonId: 'interfaces-and-type-aliases' },
+        { title: 'Generics', lessonId: 'generics' },
       ],
       resources: [
         { title: 'TypeScript Official Handbook', url: 'https://www.typescriptlang.org/docs/handbook/', type: 'documentation', description: 'Official TypeScript documentation and handbook' },

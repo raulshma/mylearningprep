@@ -1,0 +1,321 @@
+# TypeScript Generics
+
+Welcome to Generics — one of TypeScript's most powerful features! Generics let you create **flexible, reusable** code that works with many different types while still maintaining type safety.
+
+<InfoBox type="tip" title="The Factory Analogy">
+Imagine a factory that makes containers. Instead of building separate factories for "water bottle factory," "coffee mug factory," and "jar factory," you build ONE flexible container factory that can make any container you need. You just tell it: "Make me a container for water" or "Make me a container for cookies." Generics work the same way — you define the pattern once, then fill in the specific type later!
+</InfoBox>
+
+<ProgressCheckpoint section="introduction" xpReward={15} />
+
+## Why Generics?
+
+Let's say you want a function that returns the first element of an array. Without generics, you'd need multiple functions:
+
+```typescript
+// Without generics — repetitive and limited
+function firstNumber(arr: number[]): number | undefined {
+  return arr[0];
+}
+
+function firstString(arr: string[]): string | undefined {
+  return arr[0];
+}
+
+// What about arrays of users? Dates? Products?
+// You'd need infinite functions!
+```
+
+With generics, you write it ONCE:
+
+```typescript
+// With generics — works for ANY type!
+function first<T>(arr: T[]): T | undefined {
+  return arr[0];
+}
+
+first([1, 2, 3]);           // Returns number
+first(["a", "b", "c"]);     // Returns string
+first([{id: 1}, {id: 2}]);  // Returns {id: number}
+```
+
+<KeyConcept title="T is a Type Variable">
+The `<T>` is a **type variable** — a placeholder for whatever type you actually use. Think of it like a function parameter, but for types instead of values.
+</KeyConcept>
+
+<ProgressCheckpoint section="generic-functions" xpReward={20} />
+
+## Generic Functions
+
+The basic syntax for a generic function:
+
+```typescript
+function functionName<T>(param: T): T {
+  return param;
+}
+```
+
+Let's break it down:
+- `<T>` — Declares a type variable named `T`
+- `param: T` — Parameter uses that type
+- `: T` — Return type is the same type
+
+### The Identity Function
+
+The simplest generic function returns what you give it:
+
+```typescript
+function identity<T>(value: T): T {
+  return value;
+}
+
+// TypeScript infers the type from what you pass
+const num = identity(42);        // num is number
+const str = identity("hello");   // str is string
+const obj = identity({x: 1});    // obj is {x: number}
+
+// Or you can specify explicitly
+const explicit = identity<string>("hi");
+```
+
+<TypePlayground
+  initialCode={`// Generic identity function
+function identity<T>(value: T): T {
+  return value;
+}
+
+// TypeScript infers types automatically
+const a = identity(100);
+const b = identity("TypeScript");
+const c = identity(true);
+const d = identity([1, 2, 3]);
+
+console.log("Number:", a, typeof a);
+console.log("String:", b, typeof b);
+console.log("Boolean:", c, typeof c);
+console.log("Array:", d, Array.isArray(d));
+
+// Explicit type parameter
+const explicit = identity<string>("Hello!");
+console.log("Explicit:", explicit);`}
+  height={300}
+/>
+
+<ProgressCheckpoint section="generic-types" xpReward={20} />
+
+## Multiple Type Parameters
+
+You can have multiple type variables:
+
+```typescript
+function pair<T, U>(first: T, second: U): [T, U] {
+  return [first, second];
+}
+
+const result = pair("hello", 42);
+// result is [string, number]
+
+const another = pair(true, { name: "Alice" });
+// another is [boolean, { name: string }]
+```
+
+### Swapping Values
+
+```typescript
+function swap<T, U>(tuple: [T, U]): [U, T] {
+  return [tuple[1], tuple[0]];
+}
+
+const original: [string, number] = ["age", 25];
+const swapped = swap(original);  // [number, string] → [25, "age"]
+```
+
+<TypePlayground
+  initialCode={`// Multiple type parameters
+function makePair<A, B>(first: A, second: B): { first: A; second: B } {
+  return { first, second };
+}
+
+function swap<X, Y>(pair: [X, Y]): [Y, X] {
+  return [pair[1], pair[0]];
+}
+
+// Different types in each pair
+const p1 = makePair("name", 42);
+const p2 = makePair(true, ["a", "b", "c"]);
+
+console.log("Pair 1:", p1);  // { first: "name", second: 42 }
+console.log("Pair 2:", p2);  // { first: true, second: [...] }
+
+// Swap tuple elements
+const original: [string, number] = ["score", 100];
+const swapped = swap(original);
+console.log("Original:", original);
+console.log("Swapped:", swapped);`}
+  height={320}
+/>
+
+<ProgressCheckpoint section="constraints" xpReward={20} />
+
+## Generic Interfaces and Types
+
+You can use generics in interfaces and type aliases too:
+
+### Generic Interface
+
+```typescript
+interface Box<T> {
+  value: T;
+  isEmpty: boolean;
+}
+
+const numberBox: Box<number> = { value: 42, isEmpty: false };
+const stringBox: Box<string> = { value: "hello", isEmpty: false };
+```
+
+### Generic Type Alias
+
+```typescript
+type Result<T> = {
+  success: boolean;
+  data: T;
+};
+
+const userResult: Result<{ name: string }> = {
+  success: true,
+  data: { name: "Alice" }
+};
+```
+
+### The Array Type — You Already Know Generics!
+
+```typescript
+// Array<T> is a generic type!
+const numbers: Array<number> = [1, 2, 3];
+const strings: Array<string> = ["a", "b", "c"];
+
+// number[] is shorthand for Array<number>
+```
+
+<TypePlayground
+  initialCode={`// Generic interfaces
+interface Container<T> {
+  value: T;
+  getValue: () => T;
+  setValue: (newValue: T) => void;
+}
+
+// Create containers for different types
+const numContainer: Container<number> = {
+  value: 0,
+  getValue() { return this.value; },
+  setValue(n) { this.value = n; }
+};
+
+const strContainer: Container<string> = {
+  value: "",
+  getValue() { return this.value; },
+  setValue(s) { this.value = s; }
+};
+
+numContainer.setValue(42);
+strContainer.setValue("Hello Generics!");
+
+console.log("Number container:", numContainer.getValue());
+console.log("String container:", strContainer.getValue());`}
+  height={340}
+/>
+
+<ProgressCheckpoint section="advanced-generics" xpReward={15} />
+
+## Built-in Generic Types
+
+TypeScript has many built-in generic types you use every day:
+
+### Promise&lt;T&gt;
+
+```typescript
+// A promise that resolves to a string
+async function fetchName(): Promise<string> {
+  return "Alice";
+}
+
+// A promise that resolves to a user object
+async function fetchUser(): Promise<{ id: number; name: string }> {
+  return { id: 1, name: "Alice" };
+}
+```
+
+### Array&lt;T&gt; and Map&lt;K, V&gt;
+
+```typescript
+const nums: Array<number> = [1, 2, 3];
+const userMap: Map<string, number> = new Map();
+userMap.set("alice", 1);
+userMap.set("bob", 2);
+```
+
+### Set&lt;T&gt;
+
+```typescript
+const uniqueNumbers: Set<number> = new Set([1, 2, 3, 2, 1]);
+// Contains: 1, 2, 3 (duplicates removed)
+```
+
+<ProgressCheckpoint section="built-in-generics" xpReward={10} />
+
+## Key Takeaways
+
+<KeyConcept title="Generics = Flexible Containers">
+Generics let you create reusable code that works with any type while maintaining type safety.
+</KeyConcept>
+
+<KeyConcept title="T is a Placeholder">
+`<T>` is a type variable — a placeholder that gets filled in when you use the generic.
+</KeyConcept>
+
+<KeyConcept title="Multiple Type Variables">
+Use `<T, U, V>` etc. when you need to track multiple different types.
+</KeyConcept>
+
+<KeyConcept title="You Already Use Generics">
+`Array<T>`, `Promise<T>`, `Map<K, V>` — these are all generic types!
+</KeyConcept>
+
+<ProgressCheckpoint section="summary" xpReward={10} />
+
+## Quick Quiz
+
+<Quiz>
+  <Question text="What does &lt;T&gt; represent in a generic function?">
+    <Answer>A function named T</Answer>
+    <Answer>The TypeScript type</Answer>
+    <Answer correct>A type variable/placeholder for any type</Answer>
+    <Answer>A constant value</Answer>
+  </Question>
+  
+  <Question text="What is the main benefit of generics?">
+    <Answer>Faster code execution</Answer>
+    <Answer correct>Reusable code that works with multiple types while maintaining type safety</Answer>
+    <Answer>Smaller bundle sizes</Answer>
+    <Answer>Easier debugging</Answer>
+  </Question>
+  
+  <Question text="What is Array&lt;number&gt; equivalent to?">
+    <Answer>number.Array</Answer>
+    <Answer correct>number[]</Answer>
+    <Answer>[number]</Answer>
+    <Answer>Array.number</Answer>
+  </Question>
+  
+  <Question text="In function pair&lt;T, U&gt;(a: T, b: U), what are T and U?">
+    <Answer>Two specific types</Answer>
+    <Answer correct>Two type variables that can be different types</Answer>
+    <Answer>The same type variable</Answer>
+    <Answer>Error - you can only have one type variable</Answer>
+  </Question>
+</Quiz>
+
+---
+
+**Great start!** 🎉 You now understand the fundamentals of generics. In the intermediate level, we'll explore constraints, default types, and more advanced patterns that unlock the full power of generics!
