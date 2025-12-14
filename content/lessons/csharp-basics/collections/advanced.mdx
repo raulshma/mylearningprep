@@ -1,0 +1,209 @@
+# Collections: Advanced Types and Performance
+
+Let's explore more specialized collections and understand when to use each.
+
+## Beyond List and Dictionary
+
+C# has many collection types. Here are the most useful:
+
+| Collection | Best For | Example |
+|:-----------|:---------|:--------|
+| `List<T>` | Ordered, indexed access | Shopping cart items |
+| `Dictionary<K,V>` | Key-value lookup | User settings |
+| `HashSet<T>` | Unique items, fast lookup | Tags, categories |
+| `Queue<T>` | First-in, first-out (FIFO) | Print queue |
+| `Stack<T>` | Last-in, first-out (LIFO) | Undo history |
+| `LinkedList<T>` | Frequent insertions/deletions | Playlist |
+
+<ProgressCheckpoint section="collections-intro" xpReward={15} />
+
+## HashSet&lt;T&gt;: Unique Items Only
+
+Perfect when you need unique values and fast lookups:
+
+```csharp
+HashSet<string> tags = new HashSet<string>();
+
+tags.Add("csharp");
+tags.Add("dotnet");
+tags.Add("csharp");  // Ignored! Already exists
+
+Console.WriteLine(tags.Count);  // 2
+
+// Super fast lookup
+bool hasCsharp = tags.Contains("csharp");  // O(1) - instant!
+
+// Set operations
+HashSet<string> moreTags = new HashSet<string> { "asp.net", "dotnet" };
+
+tags.UnionWith(moreTags);        // Combine sets
+tags.IntersectWith(moreTags);    // Keep common items only
+tags.ExceptWith(moreTags);       // Remove items in moreTags
+```
+
+### HashSet vs List for Lookups
+
+```csharp
+// If you're checking "Does this exist?" many times...
+List<int> list = Enumerable.Range(0, 1000000).ToList();
+HashSet<int> set = new HashSet<int>(list);
+
+// List.Contains() - O(n) - checks every item
+bool inList = list.Contains(999999);  // Slow!
+
+// HashSet.Contains() - O(1) - instant
+bool inSet = set.Contains(999999);    // Fast!
+```
+
+<ProgressCheckpoint section="list-basics" xpReward={15} />
+
+## Queue&lt;T&gt;: First In, First Out
+
+Like a line at a store - first person in line gets served first:
+
+```csharp
+Queue<string> printQueue = new Queue<string>();
+
+// Add to back of line
+printQueue.Enqueue("Document1.pdf");
+printQueue.Enqueue("Photo.jpg");
+printQueue.Enqueue("Report.docx");
+
+// Process from front
+while (printQueue.Count > 0)
+{
+    string next = printQueue.Dequeue();
+    Console.WriteLine($"Printing: {next}");
+}
+// Output:
+// Printing: Document1.pdf
+// Printing: Photo.jpg
+// Printing: Report.docx
+```
+
+## Stack&lt;T&gt;: Last In, First Out
+
+Like a stack of plates - you take from the top:
+
+```csharp
+Stack<string> undoStack = new Stack<string>();
+
+// Push actions onto stack
+undoStack.Push("Typed 'Hello'");
+undoStack.Push("Made text bold");
+undoStack.Push("Changed font");
+
+// Undo (pop from top)
+string lastAction = undoStack.Pop();  // "Changed font"
+Console.WriteLine($"Undoing: {lastAction}");
+
+// Peek without removing
+string nextToUndo = undoStack.Peek();  // "Made text bold"
+```
+
+<ProgressCheckpoint section="dictionary-basics" xpReward={15} />
+
+## Performance Comparison
+
+Understanding Big O notation helps choose the right collection:
+
+| Operation | List | Dictionary | HashSet |
+|:----------|:-----|:-----------|:--------|
+| Access by index | O(1) ✅ | N/A | N/A |
+| Access by key | N/A | O(1) ✅ | N/A |
+| Contains | O(n) ❌ | O(1) ✅ | O(1) ✅ |
+| Add | O(1)* | O(1)* | O(1)* |
+| Remove by value | O(n) | O(1) ✅ | O(1) ✅ |
+| Insert at position | O(n) | N/A | N/A |
+
+*Amortized - usually fast, occasionally slower when resizing
+
+## IEnumerable and LINQ Preview
+
+All collections implement `IEnumerable<T>`, enabling LINQ:
+
+```csharp
+List<int> numbers = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+
+// LINQ methods work on any IEnumerable
+var evens = numbers.Where(n => n % 2 == 0);     // Filter
+var doubled = numbers.Select(n => n * 2);       // Transform
+var sum = numbers.Sum();                         // Aggregate
+var first = numbers.First(n => n > 5);          // Find
+```
+
+## Immutable Collections
+
+For thread-safe, unchangeable collections:
+
+```csharp
+using System.Collections.Immutable;
+
+// Create immutable list
+ImmutableList<string> names = ImmutableList.Create("Alice", "Bob");
+
+// "Adding" creates a NEW list
+ImmutableList<string> moreNames = names.Add("Charlie");
+
+Console.WriteLine(names.Count);      // 2 (unchanged!)
+Console.WriteLine(moreNames.Count);  // 3 (new list)
+```
+
+<ProgressCheckpoint section="choosing-collection" xpReward={15} />
+
+## Choosing the Right Collection
+
+```
+                    Need ordered access?
+                    /                \
+                  Yes                 No
+                   |                   |
+        By index or by key?      Need unique items?
+           /          \               /         \
+       Index         Key           Yes          No
+         |            |             |            |
+       List<T>    Dictionary    HashSet<T>    Consider use case
+                                                /      |      \
+                                             FIFO    LIFO    Other
+                                               |       |        |
+                                            Queue   Stack   LinkedList
+```
+
+## Quiz
+
+<Quiz id="collections-advanced">
+  <Question
+    id="q1"
+    text="Which collection is best for checking if an item exists quickly?"
+  >
+    <Answer id="a" text="List<T>" />
+    <Answer id="b" text="HashSet<T>" isCorrect />
+    <Answer id="c" text="Queue<T>" />
+  </Question>
+  <Question
+    id="q2"
+    text="What does FIFO mean?"
+  >
+    <Answer id="a" text="First In, First Out" isCorrect />
+    <Answer id="b" text="Fast Input, Fast Output" />
+    <Answer id="c" text="Find In, Find Out" />
+  </Question>
+  <Question
+    id="q3"
+    text="What's the time complexity of List.Contains()?"
+  >
+    <Answer id="a" text="O(1)" />
+    <Answer id="b" text="O(n)" isCorrect />
+    <Answer id="c" text="O(log n)" />
+  </Question>
+</Quiz>
+
+## Key Takeaways
+
+- **HashSet** for unique items with fast lookups
+- **Queue** for FIFO (first-in, first-out) scenarios
+- **Stack** for LIFO (last-in, first-out) scenarios
+- Consider performance: O(1) is instant, O(n) scales with size
+- All collections implement IEnumerable for LINQ compatibility
+- Use immutable collections for thread safety
+- Choose the right collection based on your access patterns

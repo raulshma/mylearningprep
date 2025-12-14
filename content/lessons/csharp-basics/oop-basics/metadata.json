@@ -1,0 +1,29 @@
+{
+  "id": "oop-basics",
+  "title": "OOP Basics (Classes, Objects)",
+  "description": "Learn object-oriented programming fundamentals in C# - classes as blueprints and objects as instances.",
+  "milestone": "csharp-basics",
+  "order": 3,
+  "sections": [
+    "oop-intro",
+    "classes",
+    "objects",
+    "members"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 12,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 18,
+      "xpReward": 45
+    },
+    "advanced": {
+      "estimatedMinutes": 25,
+      "xpReward": 65
+    }
+  },
+  "prerequisites": ["control-flow"],
+  "tags": ["csharp", "oop", "classes", "objects", "fundamentals"]
+}

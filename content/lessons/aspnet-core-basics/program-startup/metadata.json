@@ -1,0 +1,28 @@
+{
+  "id": "program-startup",
+  "title": "Program.cs & Startup",
+  "description": "Learn about the entry point of ASP.NET Core applications and how services and middleware are configured.",
+  "milestone": "aspnet-core-basics",
+  "order": 3,
+  "sections": [
+    "entry-point",
+    "services",
+    "middleware"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 20,
+      "xpReward": 60
+    }
+  },
+  "prerequisites": ["project-structure"],
+  "tags": ["aspnet-core", "program", "startup", "services", "middleware"]
+}

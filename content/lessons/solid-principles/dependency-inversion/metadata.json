@@ -1,0 +1,28 @@
+{
+  "id": "dependency-inversion",
+  "title": "Dependency Inversion Principle",
+  "description": "Learn the fifth SOLID principle: high-level modules should not depend on low-level modules; both should depend on abstractions.",
+  "milestone": "solid-principles",
+  "order": 5,
+  "sections": [
+    "dip-introduction",
+    "dip-understanding",
+    "dip-application"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 12,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 18,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 25,
+      "xpReward": 60
+    }
+  },
+  "prerequisites": ["single-responsibility", "open-closed", "liskov-substitution", "interface-segregation"],
+  "tags": ["solid", "dip", "design-principles", "dependency-injection", "csharp"]
+}

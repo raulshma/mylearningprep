@@ -1,0 +1,29 @@
+{
+  "id": "linq-introduction",
+  "title": "LINQ Introduction",
+  "description": "Discover LINQ - Language Integrated Query - the elegant way to query and transform data in C#.",
+  "milestone": "csharp-basics",
+  "order": 5,
+  "sections": [
+    "linq-intro",
+    "query-syntax",
+    "method-syntax",
+    "common-operators"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 12,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 18,
+      "xpReward": 50
+    },
+    "advanced": {
+      "estimatedMinutes": 25,
+      "xpReward": 70
+    }
+  },
+  "prerequisites": ["collections"],
+  "tags": ["csharp", "linq", "queries", "functional-programming"]
+}

@@ -1,0 +1,205 @@
+# Application Startup Internals
+
+Understanding the startup internals enables you to customize hosting, implement advanced service registration patterns, and optimize application bootstrap time.
+
+## Generic Host Architecture
+
+`WebApplication` is built on top of the **Generic Host** (`IHost`), providing a consistent model for all .NET applications:
+
+```csharp
+// Under the hood, WebApplication.CreateBuilder does this:
+var hostBuilder = Host.CreateDefaultBuilder(args)
+    .ConfigureWebHostDefaults(webBuilder =>
+    {
+        webBuilder.ConfigureKestrel(options => { /* ... */ });
+        webBuilder.UseStartup<Startup>();  // Old pattern
+    });
+
+// Modern equivalent with WebApplicationBuilder:
+var builder = WebApplication.CreateBuilder(args);
+
+// Access the underlying builders:
+builder.Host.ConfigureContainer<ContainerBuilder>(container =>
+{
+    // Autofac registration
+});
+
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.ListenAnyIP(5000);
+    options.ListenAnyIP(5001, listenOptions =>
+    {
+        listenOptions.UseHttps();
+    });
+});
+```
+
+## Configuration Providers
+
+Default configuration providers are loaded in this order (later overrides earlier):
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+// Default providers (already configured):
+// 1. ChainedConfigurationProvider
+// 2. appsettings.json
+// 3. appsettings.{Environment}.json  
+// 4. User Secrets (Development only)
+// 5. Environment variables
+// 6. Command-line arguments
+
+// Add custom providers:
+builder.Configuration
+    .AddJsonFile("custom-settings.json", optional: true, reloadOnChange: true)
+    .AddAzureKeyVault(...)
+    .AddAzureAppConfiguration(...);
+```
+
+## Advanced Service Registration
+
+### Factory Registration
+
+```csharp
+builder.Services.AddScoped<IDbConnection>(provider =>
+{
+    var config = provider.GetRequiredService<IConfiguration>();
+    var connectionString = config.GetConnectionString("Default");
+    return new SqlConnection(connectionString);
+});
+```
+
+### Keyed Services (.NET 8+)
+
+```csharp
+// Register multiple implementations with keys
+builder.Services.AddKeyedScoped<INotificationService, EmailService>("email");
+builder.Services.AddKeyedScoped<INotificationService, SmsService>("sms");
+
+// Resolve by key
+public class OrderService
+{
+    public OrderService(
+        [FromKeyedServices("email")] INotificationService emailService)
+    {
+        // Uses EmailService implementation
+    }
+}
+```
+
+### Decorator Pattern
+
+```csharp
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+
+// Decorate with caching
+builder.Services.Decorate<IUserRepository, CachedUserRepository>();
+
+// CachedUserRepository wraps UserRepository
+public class CachedUserRepository : IUserRepository
+{
+    private readonly IUserRepository _inner;
+    private readonly IMemoryCache _cache;
+    
+    public CachedUserRepository(IUserRepository inner, IMemoryCache cache)
+    {
+        _inner = inner;
+        _cache = cache;
+    }
+}
+```
+
+## Startup Pipeline Customization
+
+### Terminal Middleware
+
+```csharp
+// Terminal middleware short-circuits the pipeline
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path == "/health")
+    {
+        context.Response.StatusCode = 200;
+        await context.Response.WriteAsync("Healthy");
+        return;  // Don't call next - short-circuit
+    }
+    
+    await next(context);  // Continue to next middleware
+});
+```
+
+### Branching with Map
+
+```csharp
+// Branch the pipeline for specific paths
+app.Map("/api", apiApp =>
+{
+    apiApp.UseAuthentication();
+    apiApp.UseAuthorization();
+    apiApp.Run(async context =>
+    {
+        await context.Response.WriteAsync("API endpoint");
+    });
+});
+
+app.MapWhen(context => context.Request.Query.ContainsKey("debug"), debugApp =>
+{
+    debugApp.UseMiddleware<DiagnosticsMiddleware>();
+});
+```
+
+## Hosted Services
+
+Background services that run with the application:
+
+```csharp
+builder.Services.AddHostedService<QueueProcessorService>();
+
+public class QueueProcessorService : BackgroundService
+{
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            await ProcessQueueAsync();
+            await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
+        }
+    }
+}
+```
+
+## Startup Diagnostics
+
+### Startup Filters
+
+```csharp
+// IStartupFilter allows modifying the middleware pipeline
+public class RequestLoggingStartupFilter : IStartupFilter
+{
+    public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next)
+    {
+        return app =>
+        {
+            app.UseMiddleware<RequestLoggingMiddleware>();
+            next(app);  // Call the rest of the pipeline
+        };
+    }
+}
+
+builder.Services.AddTransient<IStartupFilter, RequestLoggingStartupFilter>();
+```
+
+### Service Validation
+
+```csharp
+// Validate services are correctly registered at startup
+builder.Host.UseDefaultServiceProvider(options =>
+{
+    options.ValidateScopes = true;  // Detect scope issues
+    options.ValidateOnBuild = true;  // Validate all registrations at startup
+});
+```
+
+<MiddlewarePipelineSimulator mode="advanced" />
+
+<ProgressCheckpoint section="program-advanced" xpReward={60} />

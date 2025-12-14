@@ -1,0 +1,28 @@
+{
+  "id": "single-responsibility",
+  "title": "Single Responsibility Principle",
+  "description": "Learn the first SOLID principle: every class should have only one reason to change, ensuring focused and maintainable code.",
+  "milestone": "solid-principles",
+  "order": 1,
+  "sections": [
+    "srp-introduction",
+    "srp-understanding",
+    "srp-application"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 12,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 18,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 25,
+      "xpReward": 60
+    }
+  },
+  "prerequisites": [],
+  "tags": ["solid", "srp", "design-principles", "clean-code", "csharp"]
+}

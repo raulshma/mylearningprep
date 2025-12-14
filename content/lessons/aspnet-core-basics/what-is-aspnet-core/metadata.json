@@ -1,0 +1,28 @@
+{
+  "id": "what-is-aspnet-core",
+  "title": "What is ASP.NET Core?",
+  "description": "Discover ASP.NET Core - the modern, cross-platform, high-performance framework for building web applications and APIs.",
+  "milestone": "aspnet-core-basics",
+  "order": 1,
+  "sections": [
+    "intro-aspnet-core",
+    "cross-platform",
+    "framework-features"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 22,
+      "xpReward": 60
+    }
+  },
+  "prerequisites": [],
+  "tags": ["aspnet-core", "dotnet", "web", "framework", "introduction"]
+}

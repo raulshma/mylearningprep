@@ -1,0 +1,252 @@
+# OOP Basics: Properties, Methods, and Constructors
+
+Now let's dive deeper into the building blocks of classes in C#.
+
+## Properties: The Data
+
+Properties store an object's data. C# has several ways to define them:
+
+### Auto-Implemented Properties
+
+The simplest form:
+
+```csharp
+public class Person
+{
+    // Auto-implemented properties
+    public string Name { get; set; }     // Can get and set
+    public int Age { get; set; }
+    public DateTime BirthDate { get; }   // Read-only (no set)
+}
+```
+
+### Properties with Backing Fields
+
+For more control:
+
+```csharp
+public class BankAccount
+{
+    private decimal _balance;  // Backing field
+    
+    public decimal Balance
+    {
+        get { return _balance; }
+        set 
+        { 
+            if (value >= 0)  // Validation!
+                _balance = value; 
+        }
+    }
+}
+```
+
+<ProgressCheckpoint section="oop-intro" xpReward={10} />
+
+## Access Modifiers
+
+Control who can access your members:
+
+| Modifier | Who Can Access |
+|:---------|:---------------|
+| `public` | Anyone, anywhere |
+| `private` | Only this class |
+| `protected` | This class + child classes |
+| `internal` | Same project/assembly |
+
+```csharp
+public class Employee
+{
+    public string Name { get; set; }          // Anyone can access
+    private string _socialSecurity;            // Only this class
+    protected decimal Salary { get; set; }     // This class + children
+    internal int EmployeeId { get; set; }      // Same project
+}
+```
+
+<ProgressCheckpoint section="classes" xpReward={10} />
+
+## Constructors
+
+A **constructor** initializes an object when it's created:
+
+```csharp
+public class Car
+{
+    public string Brand { get; set; }
+    public int Year { get; set; }
+    
+    // Constructor - same name as class, no return type
+    public Car(string brand, int year)
+    {
+        Brand = brand;
+        Year = year;
+    }
+}
+
+// Now you MUST provide values when creating
+Car myCar = new Car("Toyota", 2024);
+```
+
+### Default Constructor
+
+If you define no constructor, C# provides an empty one:
+
+```csharp
+public class Simple
+{
+    public int Value { get; set; }
+    // C# auto-generates: public Simple() { }
+}
+
+Simple s = new Simple();  // Works!
+```
+
+### Multiple Constructors
+
+You can have several:
+
+```csharp
+public class Person
+{
+    public string Name { get; set; }
+    public int Age { get; set; }
+    
+    // Constructor with all parameters
+    public Person(string name, int age)
+    {
+        Name = name;
+        Age = age;
+    }
+    
+    // Constructor with just name (calls the other one)
+    public Person(string name) : this(name, 0)
+    {
+    }
+    
+    // Default constructor
+    public Person() : this("Unknown", 0)
+    {
+    }
+}
+```
+
+<OopConceptVisualizer type="constructor" />
+
+<ProgressCheckpoint section="objects" xpReward={10} />
+
+## Methods: The Behavior
+
+Methods define what an object can do:
+
+```csharp
+public class Calculator
+{
+    // Method with return value
+    public int Add(int a, int b)
+    {
+        return a + b;
+    }
+    
+    // Method with no return (void)
+    public void PrintResult(int result)
+    {
+        Console.WriteLine($"Result: {result}");
+    }
+    
+    // Method that uses object's data
+    private int _lastResult;
+    
+    public int AddAndStore(int a, int b)
+    {
+        _lastResult = a + b;
+        return _lastResult;
+    }
+}
+```
+
+## Object Initializers
+
+A shortcut for setting properties:
+
+```csharp
+// Long way
+Car car1 = new Car();
+car1.Brand = "Toyota";
+car1.Year = 2024;
+
+// Object initializer (shorter!)
+Car car2 = new Car 
+{ 
+    Brand = "Honda", 
+    Year = 2023 
+};
+
+// With constructor AND initializer
+Car car3 = new Car("Ford", 2022) 
+{ 
+    Color = "Blue"  // Set additional properties
+};
+```
+
+<ProgressCheckpoint section="members" xpReward={15} />
+
+## The this Keyword
+
+`this` refers to the current object:
+
+```csharp
+public class Person
+{
+    private string name;
+    
+    public Person(string name)
+    {
+        // 'this.name' is the field
+        // 'name' is the parameter
+        this.name = name;
+    }
+    
+    public void Introduce()
+    {
+        Console.WriteLine($"Hi, I'm {this.name}");
+    }
+}
+```
+
+## Quiz
+
+<Quiz id="oop-basics-intermediate">
+  <Question
+    id="q1"
+    text="What does 'private' mean for a property?"
+  >
+    <Answer id="a" text="Anyone can access it" />
+    <Answer id="b" text="Only the same class can access it" isCorrect />
+    <Answer id="c" text="It's hidden from the compiler" />
+  </Question>
+  <Question
+    id="q2"
+    text="What is a constructor?"
+  >
+    <Answer id="a" text="A method that destroys objects" />
+    <Answer id="b" text="A special method that initializes an object" isCorrect />
+    <Answer id="c" text="A property that stores data" />
+  </Question>
+  <Question
+    id="q3"
+    text="What does 'this' refer to?"
+  >
+    <Answer id="a" text="The class definition" />
+    <Answer id="b" text="The current object instance" isCorrect />
+    <Answer id="c" text="The parent class" />
+  </Question>
+</Quiz>
+
+## Key Takeaways
+
+- Properties store data with `get` and `set` accessors
+- Access modifiers control visibility (`public`, `private`, etc.)
+- Constructors initialize objects when created
+- Use `this` to refer to the current object
+- Object initializers provide a clean syntax for setting properties

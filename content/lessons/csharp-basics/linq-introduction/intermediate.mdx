@@ -1,0 +1,187 @@
+# LINQ: Query Syntax and Common Operators
+
+Now let's explore more LINQ methods and the alternative query syntax!
+
+## Two Ways to Write LINQ
+
+C# offers two syntaxes for LINQ - they do the same thing:
+
+### Method Syntax (Fluent)
+```csharp
+var result = products
+    .Where(p => p.Price > 100)
+    .OrderBy(p => p.Name)
+    .Select(p => p.Name);
+```
+
+### Query Syntax (SQL-like)
+```csharp
+var result = from p in products
+             where p.Price > 100
+             orderby p.Name
+             select p.Name;
+```
+
+<LinqQueryBuilder showBothSyntax={true} />
+
+<ProgressCheckpoint section="linq-intro" xpReward={10} />
+
+## Sorting with OrderBy
+
+Sort your data ascending or descending:
+
+```csharp
+List<int> numbers = new List<int> { 5, 2, 8, 1, 9 };
+
+// Ascending (low to high)
+var ascending = numbers.OrderBy(n => n);
+// Result: 1, 2, 5, 8, 9
+
+// Descending (high to low)
+var descending = numbers.OrderByDescending(n => n);
+// Result: 9, 8, 5, 2, 1
+```
+
+### Sort with Objects
+
+```csharp
+List<Person> people = new List<Person>
+{
+    new Person { Name = "Charlie", Age = 30 },
+    new Person { Name = "Alice", Age = 25 },
+    new Person { Name = "Bob", Age = 35 }
+};
+
+// Sort by name
+var byName = people.OrderBy(p => p.Name);
+// Alice, Bob, Charlie
+
+// Sort by age descending
+var byAgeDesc = people.OrderByDescending(p => p.Age);
+// Bob (35), Charlie (30), Alice (25)
+
+// Multiple sort criteria
+var byAgeTheByName = people
+    .OrderBy(p => p.Age)
+    .ThenBy(p => p.Name);
+```
+
+<LinqQueryBuilder defaultOperator="orderby" />
+
+<ProgressCheckpoint section="query-syntax" xpReward={15} />
+
+## Getting Single Items
+
+Sometimes you just need one item:
+
+```csharp
+List<int> numbers = new List<int> { 1, 2, 3, 4, 5 };
+
+// First item
+int first = numbers.First();           // 1
+int firstEven = numbers.First(n => n % 2 == 0);  // 2
+
+// Last item
+int last = numbers.Last();             // 5
+
+// First or default (returns 0 if none found)
+int firstBig = numbers.FirstOrDefault(n => n > 100);  // 0
+
+// Single (expects exactly one match, throws if not)
+int three = numbers.Single(n => n == 3);  // 3
+```
+
+<InfoBox type="warning" title="First vs FirstOrDefault">
+- `First()` throws an exception if no items match
+- `FirstOrDefault()` returns the default value (0, null, etc.) if no items match
+
+Use `FirstOrDefault()` when empty results are expected!
+</InfoBox>
+
+<LinqQueryBuilder defaultOperator="first" />
+
+<ProgressCheckpoint section="method-syntax" xpReward={15} />
+
+## Aggregation Methods
+
+Calculate values from collections:
+
+```csharp
+List<int> scores = new List<int> { 85, 90, 78, 92, 88 };
+
+int count = scores.Count();              // 5
+int sum = scores.Sum();                  // 433
+double average = scores.Average();       // 86.6
+int max = scores.Max();                  // 92
+int min = scores.Min();                  // 78
+
+// With conditions
+int highCount = scores.Count(s => s > 85);  // 3
+int highSum = scores.Where(s => s > 85).Sum();  // 270
+```
+
+## Take and Skip
+
+Get a portion of results:
+
+```csharp
+List<int> numbers = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+
+// First 3 items
+var firstThree = numbers.Take(3);    // 1, 2, 3
+
+// Skip first 3, take rest
+var afterThree = numbers.Skip(3);    // 4, 5, 6, 7, 8, 9, 10
+
+// Pagination! Page 2 of 3 items per page
+var page2 = numbers.Skip(3).Take(3); // 4, 5, 6
+```
+
+## Any and All
+
+Check conditions across a collection:
+
+```csharp
+List<int> numbers = new List<int> { 1, 2, 3, 4, 5 };
+
+// Are there any even numbers?
+bool hasEvens = numbers.Any(n => n % 2 == 0);  // true
+
+// Are ALL numbers less than 10?
+bool allSmall = numbers.All(n => n < 10);  // true
+
+// Is the collection empty?
+bool hasItems = numbers.Any();  // true
+```
+
+<ProgressCheckpoint section="common-operators" xpReward={10} />
+
+## Quiz
+
+<Quiz id="linq-intermediate">
+  <Question
+    id="q1"
+    text="What's the difference between First() and FirstOrDefault()?"
+  >
+    <Answer id="a" text="First() is faster" />
+    <Answer id="b" text="FirstOrDefault() returns default if empty instead of throwing" isCorrect />
+    <Answer id="c" text="No difference" />
+  </Question>
+  <Question
+    id="q2"
+    text="How do you get page 3 of 10 items per page?"
+  >
+    <Answer id="a" text="Skip(20).Take(10)" isCorrect />
+    <Answer id="b" text="Take(30).Skip(20)" />
+    <Answer id="c" text="Skip(30).Take(10)" />
+  </Question>
+</Quiz>
+
+## Key Takeaways
+
+- Query syntax looks like SQL, method syntax uses chained methods
+- `OrderBy` / `OrderByDescending` for sorting
+- `First` / `Last` / `Single` for single items
+- `Count` / `Sum` / `Average` / `Max` / `Min` for aggregation
+- `Take` / `Skip` for pagination
+- `Any` / `All` for checking conditions

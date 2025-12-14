@@ -1,0 +1,273 @@
+# Advanced Configuration Patterns
+
+Master the configuration system with custom providers, validation, hot reload, and production-ready patterns for managing secrets and complex configurations.
+
+## Options Pattern Deep Dive
+
+### IOptions vs IOptionsSnapshot vs IOptionsMonitor
+
+```csharp
+public class MyService
+{
+    // IOptions<T> - Singleton, values never change after startup
+    public MyService(IOptions<EmailSettings> options)
+    {
+        var settings = options.Value; // Same instance always
+    }
+}
+
+public class RequestScopedService
+{
+    // IOptionsSnapshot<T> - Scoped, re-reads config per request
+    public RequestScopedService(IOptionsSnapshot<EmailSettings> options)
+    {
+        var settings = options.Value; // May be different per request
+    }
+}
+
+public class BackgroundService
+{
+    // IOptionsMonitor<T> - Singleton with change notifications
+    public BackgroundService(IOptionsMonitor<EmailSettings> options)
+    {
+        var settings = options.CurrentValue;
+        
+        // React to configuration changes
+        options.OnChange(newSettings =>
+        {
+            Console.WriteLine($"Config changed! New server: {newSettings.SmtpServer}");
+        });
+    }
+}
+```
+
+<ConfigurationVisualizer mode="advanced" />
+
+### Named Options
+
+```csharp
+// Register multiple instances with names
+builder.Services.Configure<EmailSettings>("primary", config =>
+{
+    config.SmtpServer = "smtp.primary.com";
+});
+builder.Services.Configure<EmailSettings>("backup", config =>
+{
+    config.SmtpServer = "smtp.backup.com";
+});
+
+// Access by name
+public class EmailService
+{
+    private readonly EmailSettings _primarySettings;
+    private readonly EmailSettings _backupSettings;
+
+    public EmailService(IOptionsSnapshot<EmailSettings> options)
+    {
+        _primarySettings = options.Get("primary");
+        _backupSettings = options.Get("backup");
+    }
+}
+```
+
+### Options Validation
+
+```csharp
+// Validate at startup (fail fast)
+builder.Services.AddOptions<EmailSettings>()
+    .BindConfiguration("EmailSettings")
+    .ValidateDataAnnotations()
+    .ValidateOnStart();  // Validate immediately at startup
+
+// Using data annotations
+public class EmailSettings
+{
+    [Required]
+    [EmailAddress]
+    public string FromAddress { get; set; } = string.Empty;
+    
+    [Required]
+    public string SmtpServer { get; set; } = string.Empty;
+    
+    [Range(1, 65535)]
+    public int Port { get; set; } = 587;
+}
+
+// Custom validation logic
+builder.Services.AddOptions<EmailSettings>()
+    .BindConfiguration("EmailSettings")
+    .Validate(settings =>
+    {
+        return !string.IsNullOrEmpty(settings.SmtpServer) 
+            && settings.Port > 0;
+    }, "Invalid email configuration");
+```
+
+## Custom Configuration Providers
+
+### Creating a Custom Provider
+
+```csharp
+public class DatabaseConfigurationSource : IConfigurationSource
+{
+    public string ConnectionString { get; set; }
+
+    public IConfigurationProvider Build(IConfigurationBuilder builder)
+    {
+        return new DatabaseConfigurationProvider(this);
+    }
+}
+
+public class DatabaseConfigurationProvider : ConfigurationProvider
+{
+    private readonly DatabaseConfigurationSource _source;
+
+    public DatabaseConfigurationProvider(DatabaseConfigurationSource source)
+    {
+        _source = source;
+    }
+
+    public override void Load()
+    {
+        using var connection = new SqlConnection(_source.ConnectionString);
+        connection.Open();
+        
+        var command = new SqlCommand("SELECT [Key], [Value] FROM AppConfig", connection);
+        using var reader = command.ExecuteReader();
+        
+        Data = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        
+        while (reader.Read())
+        {
+            Data[reader.GetString(0)] = reader.GetString(1);
+        }
+    }
+}
+
+// Extension method for easy use
+public static class DatabaseConfigurationExtensions
+{
+    public static IConfigurationBuilder AddDatabaseConfiguration(
+        this IConfigurationBuilder builder,
+        string connectionString)
+    {
+        return builder.Add(new DatabaseConfigurationSource 
+        { 
+            ConnectionString = connectionString 
+        });
+    }
+}
+
+// Usage
+builder.Configuration.AddDatabaseConfiguration(
+    builder.Configuration.GetConnectionString("ConfigDb"));
+```
+
+## Secret Management
+
+### Azure Key Vault Integration
+
+```csharp
+// Install: Microsoft.Extensions.Configuration.AzureKeyVault
+// or: Azure.Extensions.AspNetCore.Configuration.Secrets (recommended)
+
+builder.Configuration.AddAzureKeyVault(
+    new Uri("https://mykeyvault.vault.azure.net/"),
+    new DefaultAzureCredential());
+
+// Secrets are accessed like any other configuration
+string apiKey = builder.Configuration["MyApiKey"];
+```
+
+### Secret Transformation
+
+```csharp
+// Key Vault secrets use "--" instead of ":" for hierarchy
+// Secret name: "EmailSettings--Password"
+// Accessed as: Configuration["EmailSettings:Password"]
+
+builder.Configuration.AddAzureKeyVault(
+    new Uri(vaultUri),
+    new DefaultAzureCredential(),
+    new AzureKeyVaultConfigurationOptions
+    {
+        Manager = new KeyVaultSecretManager()
+    });
+```
+
+## Configuration Change Tokens
+
+```csharp
+// React to any configuration change
+var changeToken = builder.Configuration.GetReloadToken();
+
+changeToken.RegisterChangeCallback(state =>
+{
+    Console.WriteLine("Configuration has been reloaded!");
+}, null);
+
+// Enable auto-reload for JSON files
+builder.Configuration.AddJsonFile("appsettings.json", 
+    optional: false, 
+    reloadOnChange: true);  // Monitor for file changes
+```
+
+## Post-Configuration
+
+```csharp
+// Modify options after all other configuration
+builder.Services.PostConfigure<EmailSettings>(settings =>
+{
+    // Ensure port is always positive
+    if (settings.Port <= 0)
+    {
+        settings.Port = 587;
+    }
+    
+    // Default from address if not set
+    if (string.IsNullOrEmpty(settings.FromAddress))
+    {
+        settings.FromAddress = "noreply@default.com";
+    }
+});
+
+// Post-configure with dependencies
+builder.Services.PostConfigure<EmailSettings>((options, configuration) =>
+{
+    // Access other services/configuration
+});
+```
+
+## Binding Complex Types
+
+```csharp
+// Configuration
+{
+  "Features": {
+    "EnableCache": true,
+    "CacheSettings": {
+      "ExpirationMinutes": 30,
+      "AllowedTypes": ["User", "Product", "Order"]
+    }
+  }
+}
+
+// Bind to complex types
+public class FeatureSettings
+{
+    public bool EnableCache { get; set; }
+    public CacheSettings CacheSettings { get; set; }
+}
+
+public class CacheSettings
+{
+    public int ExpirationMinutes { get; set; }
+    public List<string> AllowedTypes { get; set; } = new();
+}
+
+// Register
+builder.Services.Configure<FeatureSettings>(
+    builder.Configuration.GetSection("Features"));
+```
+
+<ProgressCheckpoint section="config-advanced" xpReward={60} />

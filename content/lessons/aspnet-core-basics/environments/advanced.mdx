@@ -1,0 +1,268 @@
+# Advanced Environment Patterns
+
+Master environment-based configuration with startup customization, environment-specific service registration, and production-ready patterns for multi-environment deployments.
+
+## IWebHostEnvironment Deep Dive
+
+The `IWebHostEnvironment` interface provides rich environment information:
+
+```csharp
+public interface IWebHostEnvironment : IHostEnvironment
+{
+    // The absolute path to wwwroot
+    string WebRootPath { get; set; }
+    
+    // File provider for wwwroot
+    IFileProvider WebRootFileProvider { get; set; }
+}
+
+public interface IHostEnvironment
+{
+    // Environment name (Development, Staging, Production, etc.)
+    string EnvironmentName { get; set; }
+    
+    // Application name (assembly name)
+    string ApplicationName { get; set; }
+    
+    // Content root path (where the app runs)
+    string ContentRootPath { get; set; }
+    
+    // File provider for content root
+    IFileProvider ContentRootFileProvider { get; set; }
+}
+```
+
+<EnvironmentSwitcher mode="advanced" />
+
+## Environment-Specific Service Registration
+
+### Conditional Service Registration
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+if (builder.Environment.IsDevelopment())
+{
+    // Use in-memory database for development
+    builder.Services.AddDbContext<AppDbContext>(options =>
+        options.UseInMemoryDatabase("DevDb"));
+    
+    // Mock external services
+    builder.Services.AddScoped<IPaymentService, MockPaymentService>();
+}
+else
+{
+    // Real database for production
+    builder.Services.AddDbContext<AppDbContext>(options =>
+        options.UseSqlServer(
+            builder.Configuration.GetConnectionString("Default")));
+    
+    // Real payment service
+    builder.Services.AddScoped<IPaymentService, StripePaymentService>();
+}
+
+// Services common to all environments
+builder.Services.AddControllers();
+```
+
+### Environment-Specific Startup Classes
+
+For complex scenarios, use separate startup classes:
+
+```csharp
+// Program.cs
+var builder = WebApplication.CreateBuilder(args);
+
+if (builder.Environment.IsDevelopment())
+{
+    Startup.ConfigureDevelopmentServices(builder.Services);
+}
+else if (builder.Environment.IsStaging())
+{
+    Startup.ConfigureStagingServices(builder.Services);
+}
+else
+{
+    Startup.ConfigureProductionServices(builder.Services);
+}
+
+// Or use reflection-based discovery:
+// StartupDevelopment, StartupProduction, etc.
+```
+
+## Custom Environment Detection
+
+### Feature Flags Based on Environment
+
+```csharp
+public class FeatureFlags
+{
+    public bool EnableBetaFeatures { get; set; }
+    public bool EnableDetailedLogging { get; set; }
+    public bool EnableEmailNotifications { get; set; }
+}
+
+// Configure based on environment
+builder.Services.Configure<FeatureFlags>(options =>
+{
+    options.EnableBetaFeatures = builder.Environment.IsDevelopment();
+    options.EnableDetailedLogging = !builder.Environment.IsProduction();
+    options.EnableEmailNotifications = builder.Environment.IsProduction();
+});
+```
+
+### Custom Environment Provider
+
+```csharp
+// Override environment for special scenarios
+builder.Host.ConfigureHostConfiguration(config =>
+{
+    var envOverride = Environment.GetEnvironmentVariable("APP_ENVIRONMENT_OVERRIDE");
+    if (!string.IsNullOrEmpty(envOverride))
+    {
+        config.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Environment"] = envOverride
+        });
+    }
+});
+```
+
+## Startup Filters by Environment
+
+```csharp
+public class DevelopmentStartupFilter : IStartupFilter
+{
+    public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next)
+    {
+        return app =>
+        {
+            // Add development-only middleware
+            app.UseMiddleware<RequestLoggingMiddleware>();
+            app.UseMiddleware<PerformanceMonitorMiddleware>();
+            
+            next(app);
+        };
+    }
+}
+
+// Register conditionally
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddTransient<IStartupFilter, DevelopmentStartupFilter>();
+}
+```
+
+## Environment in Docker and Kubernetes
+
+### Docker Compose
+
+```yaml
+version: '3.8'
+services:
+  api:
+    image: myapp:latest
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__Default=Server=db;Database=app;...
+    depends_on:
+      - db
+```
+
+### Kubernetes ConfigMap
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  ASPNETCORE_ENVIRONMENT: "Production"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp
+spec:
+  template:
+    spec:
+      containers:
+      - name: app
+        envFrom:
+        - configMapRef:
+            name: app-config
+        env:
+        - name: ConnectionStrings__Default
+          valueFrom:
+            secretKeyRef:
+              name: db-secrets
+              key: connection-string
+```
+
+## Environment-Aware Health Checks
+
+```csharp
+builder.Services.AddHealthChecks()
+    .AddCheck("self", () => HealthCheckResult.Healthy());
+
+if (!builder.Environment.IsDevelopment())
+{
+    // Only check external dependencies in non-dev
+    builder.Services.AddHealthChecks()
+        .AddSqlServer(
+            builder.Configuration.GetConnectionString("Default")!,
+            name: "database")
+        .AddRedis(
+            builder.Configuration.GetConnectionString("Redis")!,
+            name: "redis");
+}
+```
+
+## Secure Environment Handling
+
+### Never Use Development in Production
+
+```csharp
+// Fail fast if misconfigured
+if (!builder.Environment.IsDevelopment())
+{
+    var sensitiveEndpoints = new[] { "/swagger", "/hangfire" };
+    
+    app.Use(async (context, next) =>
+    {
+        var path = context.Request.Path.Value ?? "";
+        if (sensitiveEndpoints.Any(e => path.StartsWith(e, StringComparison.OrdinalIgnoreCase)))
+        {
+            context.Response.StatusCode = 404;
+            return;
+        }
+        await next();
+    });
+}
+```
+
+### Validate Environment at Startup
+
+```csharp
+// Ensure production has required configuration
+if (builder.Environment.IsProduction())
+{
+    var requiredSettings = new[]
+    {
+        "ConnectionStrings:Default",
+        "Jwt:Secret",
+        "Email:SmtpPassword"
+    };
+    
+    foreach (var setting in requiredSettings)
+    {
+        if (string.IsNullOrEmpty(builder.Configuration[setting]))
+        {
+            throw new InvalidOperationException(
+                $"Required configuration '{setting}' is missing in production");
+        }
+    }
+}
+```
+
+<ProgressCheckpoint section="env-advanced" xpReward={55} />

@@ -1,0 +1,131 @@
+# OOP Basics: Classes and Objects
+
+Welcome to Object-Oriented Programming! This is how C# organizes code into reusable, logical pieces.
+
+## What is OOP?
+
+<KeyConcept title="The Cookie Cutter Analogy" icon="cookie">
+Think of baking cookies:
+
+- **Class** = The cookie cutter (the BLUEPRINT)
+- **Object** = Each actual cookie (the THING you make)
+
+One cookie cutter can make many cookies. One class can create many objects!
+</KeyConcept>
+
+<ProgressCheckpoint section="oop-intro" xpReward={5} />
+
+## What is a Class?
+
+A **class** is a blueprint that defines:
+- What **data** something has (properties)
+- What it can **do** (methods)
+
+```csharp
+// This is a CLASS - a blueprint for cars
+public class Car
+{
+    // Properties - what a car HAS
+    public string Brand { get; set; }
+    public string Color { get; set; }
+    public int Year { get; set; }
+    
+    // Method - what a car can DO
+    public void Honk()
+    {
+        Console.WriteLine("Beep beep!");
+    }
+}
+```
+
+<ProgressCheckpoint section="classes" xpReward={10} />
+
+## What is an Object?
+
+An **object** is a real instance created from a class:
+
+```csharp
+// Creating an OBJECT from the Car class
+Car myCar = new Car();
+
+// Setting its properties
+myCar.Brand = "Toyota";
+myCar.Color = "Red";
+myCar.Year = 2024;
+
+// Calling its method
+myCar.Honk();  // Output: Beep beep!
+```
+
+<OopConceptVisualizer type="basic-class" />
+
+<ProgressCheckpoint section="objects" xpReward={10} />
+
+## The new Keyword
+
+The `new` keyword creates an object in memory:
+
+```csharp
+// This creates a new Car object
+Car myCar = new Car();
+```
+
+| Part | Meaning |
+|:-----|:--------|
+| `Car` | The type of object |
+| `myCar` | The variable name (reference) |
+| `new Car()` | Creates the object in memory |
+
+## Multiple Objects
+
+You can create many objects from one class:
+
+```csharp
+Car car1 = new Car();
+car1.Brand = "Toyota";
+car1.Color = "Red";
+
+Car car2 = new Car();
+car2.Brand = "Honda";
+car2.Color = "Blue";
+
+// car1 and car2 are DIFFERENT objects
+// Each has its own data!
+```
+
+<OopConceptVisualizer type="multiple-objects" />
+
+<ProgressCheckpoint section="members" xpReward={5} />
+
+## Quick Quiz
+
+<Quiz id="oop-basics-beginner">
+  <Question
+    id="q1"
+    text="What is a class?"
+  >
+    <Answer id="a" text="A specific thing in memory" />
+    <Answer id="b" text="A blueprint for creating objects" isCorrect />
+    <Answer id="c" text="A variable that stores numbers" />
+  </Question>
+  <Question
+    id="q2"
+    text="What keyword creates a new object?"
+  >
+    <Answer id="a" text="create" />
+    <Answer id="b" text="make" />
+    <Answer id="c" text="new" isCorrect />
+  </Question>
+</Quiz>
+
+## Key Takeaways
+
+<InfoBox type="tip" title="Remember">
+- **Class** = Blueprint (defines structure)
+- **Object** = Instance (actual thing in memory)
+- **Properties** = Data the object stores
+- **Methods** = Actions the object can perform
+- Use `new` to create objects from classes
+</InfoBox>
+
+> **Pro Tip:** Think of classes like blueprints for a house. The blueprint says "3 bedrooms, 2 bathrooms" but it's not a house - it's instructions. When you BUILD a house from that blueprint, that's the object!

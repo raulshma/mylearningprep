@@ -1,0 +1,103 @@
+# Control Flow: Making Decisions in Your Code
+
+Imagine you're at a crossroad. Do you go left or right? In programming, your code faces similar decisions constantly. **Control flow** is how we tell our programs to make choices!
+
+## What is Control Flow?
+
+<KeyConcept title="The Traffic Light Analogy" icon="traffic-light">
+Think of control flow like a traffic light:
+
+- **Red** = Stop (don't run this code)
+- **Green** = Go (run this code)
+- **The condition** = The light sensor that decides which signal shows
+
+Your code checks a condition and decides which path to take!
+</KeyConcept>
+
+<ProgressCheckpoint section="conditionals-intro" xpReward={5} />
+
+## The if/else Statement
+
+The most basic decision in C#:
+
+```csharp
+int score = 75;
+
+if (score >= 60)
+{
+    Console.WriteLine("You passed!");
+}
+else
+{
+    Console.WriteLine("Try again.");
+}
+```
+
+Let's break this down:
+
+| Part | What It Does |
+|:-----|:-------------|
+| `if (condition)` | Checks if something is true |
+| `{ }` | The code block to run if true |
+| `else` | What happens if the condition is false |
+
+<ProgressCheckpoint section="if-else" xpReward={10} />
+
+## See It In Action
+
+Watch how the computer makes decisions:
+
+<ControlFlowVisualizer type="if-else" />
+
+> **Notice:** When the score is 75, the condition `75 >= 60` is TRUE, so we enter the `if` block!
+
+## Real-World Example: Age Check
+
+```csharp
+int age = 20;
+
+if (age >= 18)
+{
+    Console.WriteLine("Welcome to the movie!");
+}
+else
+{
+    Console.WriteLine("Sorry, this movie is for adults.");
+}
+```
+
+Think of this like a bouncer at a club - they check your age and decide if you can enter!
+
+<ProgressCheckpoint section="switch-basics" xpReward={10} />
+
+## Quick Quiz
+
+<Quiz id="control-flow-basics">
+  <Question
+    id="q1"
+    text="What does this code print if age = 15? `if (age >= 18) { Console.WriteLine('Adult'); } else { Console.WriteLine('Minor'); }`"
+  >
+    <Answer id="a" text="Adult" />
+    <Answer id="b" text="Minor" isCorrect />
+    <Answer id="c" text="Nothing" />
+  </Question>
+  <Question
+    id="q2"
+    text="What symbol means 'greater than or equal to' in C#?"
+  >
+    <Answer id="a" text="=>" />
+    <Answer id="b" text=">=" isCorrect />
+    <Answer id="c" text="==" />
+  </Question>
+</Quiz>
+
+## Key Takeaways
+
+<InfoBox type="tip" title="Remember the Pattern">
+1. `if` checks a condition
+2. If TRUE → run the first block
+3. If FALSE → run the `else` block (optional)
+4. Always use `{ }` curly braces for clarity!
+</InfoBox>
+
+> **Pro Tip:** The condition inside `if()` must evaluate to true or false (a boolean). Numbers and strings won't work directly!

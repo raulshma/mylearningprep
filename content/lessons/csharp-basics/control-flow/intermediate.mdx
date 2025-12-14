@@ -1,0 +1,191 @@
+# Control Flow: Branching and Switching
+
+Now that you understand basic `if/else`, let's explore more powerful decision-making tools in C#.
+
+## The else-if Chain
+
+When you have multiple conditions to check, use `else if`:
+
+```csharp
+int score = 85;
+
+if (score >= 90)
+{
+    Console.WriteLine("Grade: A");
+}
+else if (score >= 80)
+{
+    Console.WriteLine("Grade: B");
+}
+else if (score >= 70)
+{
+    Console.WriteLine("Grade: C");
+}
+else if (score >= 60)
+{
+    Console.WriteLine("Grade: D");
+}
+else
+{
+    Console.WriteLine("Grade: F");
+}
+```
+
+<ControlFlowVisualizer type="if-else-if" />
+
+<ProgressCheckpoint section="conditionals-intro" xpReward={10} />
+
+## The Switch Statement
+
+When checking one variable against many possible values, `switch` is cleaner:
+
+```csharp
+int dayNumber = 3;
+
+switch (dayNumber)
+{
+    case 1:
+        Console.WriteLine("Monday");
+        break;
+    case 2:
+        Console.WriteLine("Tuesday");
+        break;
+    case 3:
+        Console.WriteLine("Wednesday");
+        break;
+    case 4:
+        Console.WriteLine("Thursday");
+        break;
+    case 5:
+        Console.WriteLine("Friday");
+        break;
+    default:
+        Console.WriteLine("Weekend!");
+        break;
+}
+```
+
+### Key Switch Rules
+
+| Keyword | Purpose |
+|:--------|:--------|
+| `switch (variable)` | The value to test |
+| `case value:` | A specific value to match |
+| `break;` | Exit the switch (required!) |
+| `default:` | Runs if no case matches |
+
+<ControlFlowVisualizer type="switch" />
+
+<ProgressCheckpoint section="switch-basics" xpReward={15} />
+
+## Switch vs If-Else: When to Use Which?
+
+<Comparison 
+  left={{
+    title: "Use if-else when...",
+    items: [
+      "Checking ranges (score >= 90)",
+      "Comparing different variables",
+      "Complex boolean logic (&&, ||)",
+      "Fewer than 3-4 conditions"
+    ]
+  }}
+  right={{
+    title: "Use switch when...",
+    items: [
+      "Checking one variable against exact values",
+      "Many possible values (5+)",
+      "Cleaner, more readable code",
+      "Each case has similar logic"
+    ]
+  }}
+/>
+
+## Combining Multiple Cases
+
+You can handle multiple values with the same code:
+
+```csharp
+char grade = 'B';
+
+switch (grade)
+{
+    case 'A':
+    case 'B':
+        Console.WriteLine("Great job!");
+        break;
+    case 'C':
+        Console.WriteLine("Good effort!");
+        break;
+    case 'D':
+    case 'F':
+        Console.WriteLine("Need improvement.");
+        break;
+    default:
+        Console.WriteLine("Invalid grade.");
+        break;
+}
+```
+
+## Nested Conditions
+
+You can put conditions inside conditions:
+
+```csharp
+bool hasTicket = true;
+int age = 15;
+
+if (hasTicket)
+{
+    if (age >= 18)
+    {
+        Console.WriteLine("Welcome to the R-rated movie!");
+    }
+    else
+    {
+        Console.WriteLine("You need an adult for this movie.");
+    }
+}
+else
+{
+    Console.WriteLine("Please buy a ticket first.");
+}
+```
+
+<InfoBox type="warning" title="Avoid Deep Nesting">
+Too many nested if statements make code hard to read. Consider:
+- Early returns
+- Combining conditions with `&&` (and) or `||` (or)
+- Using switch statements
+</InfoBox>
+
+<ProgressCheckpoint section="pattern-matching" xpReward={15} />
+
+## Quiz
+
+<Quiz id="control-flow-intermediate">
+  <Question
+    id="q1"
+    text="What happens if you forget the 'break' in a switch case?"
+  >
+    <Answer id="a" text="Compiler error" isCorrect />
+    <Answer id="b" text="Nothing happens" />
+    <Answer id="c" text="It runs the next case too (fall-through)" />
+  </Question>
+  <Question
+    id="q2"
+    text="When should you use 'default' in a switch?"
+  >
+    <Answer id="a" text="Never, it's optional" />
+    <Answer id="b" text="To handle unexpected values" isCorrect />
+    <Answer id="c" text="Only with numbers" />
+  </Question>
+</Quiz>
+
+## Key Takeaways
+
+- Use `else if` for multiple related conditions
+- Use `switch` for checking one value against many options
+- Always include `break` in switch cases (C# requires it)
+- Use `default` for unexpected values
+- Avoid deeply nested conditions when possible

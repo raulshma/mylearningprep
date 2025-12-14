@@ -158,6 +158,14 @@ import { MiddlewarePipelineSimulator } from '@/components/learn/interactive/dotn
 import { EntityFrameworkVisualizer } from '@/components/learn/interactive/dotnet/EntityFrameworkVisualizer';
 import { ApiEndpointBuilder as DotnetApiEndpointBuilder } from '@/components/learn/interactive/dotnet/ApiEndpointBuilder';
 import { SolidPrincipleDemo } from '@/components/learn/interactive/dotnet/SolidPrincipleDemo';
+import { AspNetCoreIntroVisualizer } from '@/components/learn/interactive/dotnet/AspNetCoreIntroVisualizer';
+import { ProjectStructureExplorer } from '@/components/learn/interactive/dotnet/ProjectStructureExplorer';
+import { ConfigurationVisualizer } from '@/components/learn/interactive/dotnet/ConfigurationVisualizer';
+import { EnvironmentSwitcher } from '@/components/learn/interactive/dotnet/EnvironmentSwitcher';
+import { ControlFlowVisualizer } from '@/components/learn/interactive/dotnet/ControlFlowVisualizer';
+import { OopConceptVisualizer } from '@/components/learn/interactive/dotnet/OopConceptVisualizer';
+import { CollectionExplorer } from '@/components/learn/interactive/dotnet/CollectionExplorer';
+import { LinqQueryBuilder } from '@/components/learn/interactive/dotnet/LinqQueryBuilder';
 
 /**
  * MDX Components Configuration
@@ -327,6 +335,14 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     EntityFrameworkVisualizer,
     DotnetApiEndpointBuilder,
     SolidPrincipleDemo,
+    AspNetCoreIntroVisualizer,
+    ProjectStructureExplorer,
+    ConfigurationVisualizer,
+    EnvironmentSwitcher,
+    ControlFlowVisualizer,
+    OopConceptVisualizer,
+    CollectionExplorer,
+    LinqQueryBuilder,
 
     // Enhanced HTML elements with proper styling
     h1: ({ children, ...props }) => (

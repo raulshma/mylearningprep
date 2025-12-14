@@ -1,0 +1,29 @@
+{
+  "id": "control-flow",
+  "title": "Control Flow (if/else, switch)",
+  "description": "Master conditional statements and control flow in C# - the decision-making heart of your programs.",
+  "milestone": "csharp-basics",
+  "order": 2,
+  "sections": [
+    "conditionals-intro",
+    "if-else",
+    "switch-basics",
+    "pattern-matching"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 20,
+      "xpReward": 60
+    }
+  },
+  "prerequisites": ["variables-data-types"],
+  "tags": ["csharp", "control-flow", "conditionals", "if-else", "switch"]
+}

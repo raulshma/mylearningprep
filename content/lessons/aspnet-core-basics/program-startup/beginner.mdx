@@ -1,0 +1,82 @@
+# Program.cs & Startup
+
+Every journey has a starting point, and for your ASP.NET Core app, that's `Program.cs`! Let's learn how your app wakes up and gets ready to work.
+
+## The Main Entrance 🚪
+
+Think of `Program.cs` like the **front door and reception desk** of a building:
+
+1. **Opening the door** - Starting the application
+2. **Setting up the lobby** - Preparing services your app needs
+3. **Assigning directions** - Telling requests where to go
+
+<DotnetCodePreview 
+  code={`var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container
+builder.Services.AddControllers();
+
+var app = builder.Build();
+
+// Configure the request pipeline
+app.MapControllers();
+
+app.Run();`}
+  title="A Simple Program.cs"
+/>
+
+## Breaking It Down Simply
+
+### Step 1: Create the Builder 🔨
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+```
+
+This is like hiring a contractor to build your app. The `builder` prepares everything you need.
+
+### Step 2: Add Services 🧰
+
+```csharp
+builder.Services.AddControllers();
+```
+
+Services are like **hiring staff** for your building:
+- `AddControllers()` = Hire API handlers
+- `AddDbContext()` = Hire a database manager
+- `AddAuthentication()` = Hire security guards
+
+### Step 3: Build the App 🏗️
+
+```csharp
+var app = builder.Build();
+```
+
+Construction is done! Now you have your app ready to run.
+
+### Step 4: Set Up the Pipeline 🔄
+
+```csharp
+app.MapControllers();
+```
+
+This tells requests where to go - like signs in a building pointing to different offices.
+
+### Step 5: Run! 🚀
+
+```csharp
+app.Run();
+```
+
+Open for business! Your app starts listening for visitors (requests).
+
+## Real-World Analogy
+
+> **Program.cs is like opening a restaurant:**
+> 
+> 1. Build the kitchen (create builder)
+> 2. Hire chefs, waiters, and cleaners (add services)
+> 3. Set up the dining flow (configure pipeline)
+> 4. Open the doors to customers (run)
+
+<ProgressCheckpoint section="program-basics" xpReward={25} />

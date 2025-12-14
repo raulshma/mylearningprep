@@ -1,0 +1,50 @@
+# Environments (Dev, Staging, Prod)
+
+Your app behaves differently depending on where it's running - just like how you act differently at home versus at work. ASP.NET Core has built-in support for this through **environments**!
+
+## The Three Stages 🎭
+
+Think of environments like stages in a theater production:
+
+<EnvironmentSwitcher mode="beginner" />
+
+### 1. Development 🏠 (Home)
+- **Where**: Your computer
+- **Who sees it**: Just you
+- **Mode**: Learning and experimenting
+- **Errors**: Detailed messages to help you fix problems
+
+### 2. Staging 🎬 (Dress Rehearsal)
+- **Where**: A test server
+- **Who sees it**: Your team
+- **Mode**: Testing before the real thing
+- **Errors**: Less detail, but still informative
+
+### 3. Production 🌟 (The Big Show)
+- **Where**: The live server
+- **Who sees it**: Real users
+- **Mode**: Best behavior only!
+- **Errors**: Friendly messages (no tech details!)
+
+## Why Do We Need Different Environments?
+
+| Scenario | Development | Production |
+|:---------|:------------|:-----------|
+| See error details? | ✅ Yes, helps debugging | ❌ No, security risk! |
+| Use real database? | ❌ No, use test data | ✅ Yes, real customer data |
+| Show debug tools? | ✅ Yes, very helpful | ❌ No, waste of resources |
+| Send real emails? | ❌ No, just pretend | ✅ Yes, to real customers |
+
+## Real-World Analogy
+
+> **Environments are like cooking stages:**
+> 
+> - **Development**: Experimenting with a recipe at home (taste as you go, make mistakes)
+> - **Staging**: Practice dinner for family (test with friendly critics)
+> - **Production**: Restaurant grand opening (everything must be perfect!)
+
+## The Key Takeaway
+
+Your app knows which environment it's in and can behave accordingly. This keeps you safe during development and keeps users safe in production!
+
+<ProgressCheckpoint section="env-basics" xpReward={20} />

@@ -1,0 +1,302 @@
+# Interface Segregation Principle (ISP)
+
+The Interface Segregation Principle states: **"No client should be forced to depend on methods it does not use."** Let's explore how to design cohesive, focused interfaces.
+
+## Fat Interface Anti-Pattern
+
+A "fat interface" is an interface that has too many methods, forcing implementers to provide unnecessary functionality:
+
+<DotnetCodePreview
+  title="Fat Interface: IDocument"
+  code={`// A "fat" interface - tries to do everything
+public interface IDocument
+{
+    // Basic operations
+    string GetContent();
+    void SetContent(string content);
+    void Save(string path);
+    void Load(string path);
+    
+    // Printing operations
+    void Print();
+    void PrintPreview();
+    PrintSettings GetPrintSettings();
+    void SetPrintSettings(PrintSettings settings);
+    
+    // Version control operations
+    void Commit(string message);
+    void Revert();
+    List<Version> GetHistory();
+    void Checkout(string version);
+}
+
+// Now every document MUST implement ALL of these!
+public class SimpleTextDocument : IDocument
+{
+    public string GetContent() => _content;
+    public void SetContent(string content) => _content = content;
+    public void Save(string path) => File.WriteAllText(path, _content);
+    public void Load(string path) => _content = File.ReadAllText(path);
+    
+    // ❌ Forced to implement printing even if text-only!
+    public void Print() => throw new NotSupportedException();
+    public void PrintPreview() => throw new NotSupportedException();
+    public PrintSettings GetPrintSettings() => throw new NotSupportedException();
+    public void SetPrintSettings(PrintSettings s) => throw new NotSupportedException();
+    
+    // ❌ Forced to implement versioning even if not needed!
+    public void Commit(string msg) => throw new NotSupportedException();
+    public void Revert() => throw new NotSupportedException();
+    public List<Version> GetHistory() => throw new NotSupportedException();
+    public void Checkout(string v) => throw new NotSupportedException();
+}`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5, 6, 7, 8],
+      highlight: "Core Operations",
+      explanation: "Basic document operations - all documents need these"
+    },
+    {
+      lineNumbers: [10, 11, 12, 13, 14],
+      highlight: "Printing Operations",
+      explanation: "Not all documents need printing capabilities"
+    },
+    {
+      lineNumbers: [16, 17, 18, 19, 20],
+      highlight: "Version Control",
+      explanation: "Not all documents need version history"
+    },
+    {
+      lineNumbers: [29, 30, 31, 32],
+      highlight: "Forced Implementation",
+      explanation: "Simple text documents MUST implement methods they'll never use!"
+    }
+  ]}
+/>
+
+<InfoBox type="warning">
+**Problem:** Every change to `IDocument` forces ALL implementations to update, even if the change is irrelevant to them.
+</InfoBox>
+
+## Applying ISP: Role Interfaces
+
+Split the fat interface into focused "role interfaces":
+
+<DotnetCodePreview
+  title="Segregated Interfaces by Role"
+  code={`// Core interface - minimal, essential operations
+public interface IDocument
+{
+    string GetContent();
+    void SetContent(string content);
+}
+
+// Persistence role
+public interface IPersistable
+{
+    void Save(string path);
+    void Load(string path);
+}
+
+// Printing role
+public interface IPrintable
+{
+    void Print();
+    void PrintPreview();
+    PrintSettings PrintSettings { get; set; }
+}
+
+// Version control role
+public interface IVersionControlled
+{
+    void Commit(string message);
+    void Revert();
+    IReadOnlyList<Version> GetHistory();
+}
+
+// Simple document: uses only what it needs
+public class SimpleTextDocument : IDocument, IPersistable
+{
+    public string GetContent() => _content;
+    public void SetContent(string content) => _content = content;
+    public void Save(string path) => File.WriteAllText(path, _content);
+    public void Load(string path) => _content = File.ReadAllText(path);
+    // No printing, no versioning - not needed!
+}
+
+// Rich document: composes multiple roles
+public class WordProcessor : IDocument, IPersistable, IPrintable, IVersionControlled
+{
+    // Implements ALL roles because it actually uses them
+}`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5, 6],
+      highlight: "Core Interface",
+      explanation: "Absolute minimum every document needs"
+    },
+    {
+      lineNumbers: [8, 9, 10, 11, 12],
+      highlight: "Persistence Role",
+      explanation: "Optional capability - implement only if needed"
+    },
+    {
+      lineNumbers: [14, 15, 16, 17, 18, 19],
+      highlight: "Printing Role",
+      explanation: "Separate concern - notebooks don't print"
+    },
+    {
+      lineNumbers: [28, 29, 30, 31, 32, 33, 34, 35],
+      highlight: "Composition",
+      explanation: "Class picks exactly the roles it supports"
+    }
+  ]}
+/>
+
+<SolidPrincipleDemo principle="I" mode="intermediate" />
+
+## ISP in ASP.NET Core
+
+ASP.NET Core extensively uses ISP. Compare:
+
+### Bad: One Mega-Interface
+
+```csharp
+// ❌ If this existed, Controllers would be forced to implement everything
+public interface IMvcHandler
+{
+    IActionResult HandleGet();
+    IActionResult HandlePost();
+    IActionResult HandlePut();
+    IActionResult HandleDelete();
+    IActionResult HandlePatch();
+    void OnActionExecuting();
+    void OnActionExecuted();
+    void OnException();
+    void ValidateAntiForgeryToken();
+    // ... 50 more methods
+}
+```
+
+### Good: Focused Interfaces (Actual ASP.NET Core)
+
+```csharp
+// ASP.NET Core's actual design - small, focused interfaces
+public interface IActionFilter
+{
+    void OnActionExecuting(ActionExecutingContext context);
+    void OnActionExecuted(ActionExecutedContext context);
+}
+
+public interface IExceptionFilter
+{
+    void OnException(ExceptionContext context);
+}
+
+public interface IResultFilter
+{
+    void OnResultExecuting(ResultExecutingContext context);
+    void OnResultExecuted(ResultExecutedContext context);
+}
+
+// Implement only what you need!
+public class LoggingFilter : IActionFilter
+{
+    public void OnActionExecuting(ActionExecutingContext ctx) => Log(ctx);
+    public void OnActionExecuted(ActionExecutedContext ctx) => Log(ctx);
+    // No exception handling, no result filtering - not needed!
+}
+```
+
+## Adapter Pattern for Legacy Fat Interfaces
+
+When you can't change the fat interface (third-party library), use adapters:
+
+```csharp
+// Legacy fat interface you can't change
+public interface ILegacyDatabase
+{
+    void Connect();
+    void Disconnect();
+    object ExecuteQuery(string sql);
+    void ExecuteNonQuery(string sql);
+    void BeginTransaction();
+    void CommitTransaction();
+    void RollbackTransaction();
+    void Backup();
+    void Restore();
+    // ... many more
+}
+
+// Create focused interfaces
+public interface IQueryExecutor
+{
+    object ExecuteQuery(string sql);
+    void ExecuteNonQuery(string sql);
+}
+
+// Adapter wraps legacy, exposes focused interface
+public class QueryExecutorAdapter : IQueryExecutor
+{
+    private readonly ILegacyDatabase _legacy;
+    
+    public QueryExecutorAdapter(ILegacyDatabase legacy) => _legacy = legacy;
+    
+    public object ExecuteQuery(string sql) => _legacy.ExecuteQuery(sql);
+    public void ExecuteNonQuery(string sql) => _legacy.ExecuteNonQuery(sql);
+}
+```
+
+## Client-Specific Interfaces
+
+Design interfaces from the client's perspective:
+
+| Client | Needs |
+|:-------|:------|
+| **OrderProcessor** | `IOrderWriter.Save()` |
+| **OrderReportService** | `IOrderReader.GetAll()` |
+| **AdminPanel** | Both `IOrderReader` and `IOrderWriter` |
+
+```csharp
+public interface IOrderReader
+{
+    Order GetById(int id);
+    IEnumerable<Order> GetAll();
+}
+
+public interface IOrderWriter
+{
+    void Save(Order order);
+    void Delete(int id);
+}
+
+// Repository implements both, but clients only see what they need
+public class OrderRepository : IOrderReader, IOrderWriter { }
+
+// Inject only what's needed
+public class OrderReportService
+{
+    private readonly IOrderReader _reader;  // Can only read!
+    
+    public OrderReportService(IOrderReader reader) => _reader = reader;
+}
+```
+
+## Signs of ISP Violations
+
+| Smell | Indicates |
+|:------|:----------|
+| `NotImplementedException` in methods | Class forced to implement unused method |
+| `NotSupportedException` thrown | Operation doesn't make sense for this class |
+| Empty method bodies | Placeholder for unused functionality |
+| Classes depending on unused methods | Interface too broad |
+
+## Key Takeaways
+
+- 🎯 **Role interfaces** - Group methods by capability
+- 👤 **Client-focused** - Design from consumer's perspective
+- 🔌 **Adapter pattern** - Facade over fat legacy interfaces
+- 🚫 **No empty methods** - Sign of forced implementation
+- 📦 **Composition** - Classes compose multiple small interfaces
+
+<ProgressCheckpoint section="isp-understanding" xpReward={40} />

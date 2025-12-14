@@ -1,0 +1,127 @@
+# Collections: Storing Multiple Items
+
+Sometimes you need to store many things, not just one. That's where **collections** come in!
+
+## What is a Collection?
+
+<KeyConcept title="The Shopping List Analogy" icon="list">
+Imagine a shopping list:
+
+- You can add items
+- You can remove items
+- You can check if something is on the list
+- Items have an order (first, second, third...)
+
+A **collection** is like a smart container that holds multiple items!
+</KeyConcept>
+
+<ProgressCheckpoint section="collections-intro" xpReward={5} />
+
+## Meet List&lt;T&gt;
+
+A `List` stores items in order, like a numbered list:
+
+```csharp
+// Create a list of strings
+List<string> fruits = new List<string>();
+
+// Add items
+fruits.Add("Apple");
+fruits.Add("Banana");
+fruits.Add("Cherry");
+
+// Access by index (starts at 0!)
+Console.WriteLine(fruits[0]);  // Apple
+Console.WriteLine(fruits[1]);  // Banana
+
+// How many items?
+Console.WriteLine(fruits.Count);  // 3
+```
+
+### The &lt;T&gt; Part
+
+The `<T>` is called a **generic type**. It tells the list what kind of items it holds:
+
+| Declaration | What It Stores |
+|:------------|:---------------|
+| `List<string>` | Text strings |
+| `List<int>` | Whole numbers |
+| `List<double>` | Decimal numbers |
+| `List<Person>` | Person objects |
+
+<CollectionExplorer type="list" />
+
+<ProgressCheckpoint section="list-basics" xpReward={10} />
+
+## Common List Operations
+
+```csharp
+List<string> colors = new List<string>();
+
+// Add items
+colors.Add("Red");
+colors.Add("Green");
+colors.Add("Blue");
+
+// Remove an item
+colors.Remove("Green");
+
+// Check if item exists
+bool hasRed = colors.Contains("Red");  // true
+
+// Find position
+int index = colors.IndexOf("Blue");  // 1
+
+// Clear all items
+colors.Clear();
+
+// Count items
+int count = colors.Count;  // 0
+```
+
+## Creating Lists with Items
+
+You can create a list with items already in it:
+
+```csharp
+// Collection initializer
+List<int> numbers = new List<int> { 1, 2, 3, 4, 5 };
+
+// Or the newer way (C# 12+)
+List<int> scores = [100, 85, 90, 75];
+```
+
+<ProgressCheckpoint section="dictionary-basics" xpReward={10} />
+
+## Quick Quiz
+
+<Quiz id="collections-beginner">
+  <Question
+    id="q1"
+    text="What index is the FIRST item in a list?"
+  >
+    <Answer id="a" text="1" />
+    <Answer id="b" text="0" isCorrect />
+    <Answer id="c" text="-1" />
+  </Question>
+  <Question
+    id="q2"
+    text="What does List<string> mean?"
+  >
+    <Answer id="a" text="A list that stores any type" />
+    <Answer id="b" text="A list that stores strings" isCorrect />
+    <Answer id="c" text="A list called 'string'" />
+  </Question>
+</Quiz>
+
+## Key Takeaways
+
+<InfoBox type="tip" title="Remember">
+- `List<T>` stores items in order by index
+- First item is at index 0 (not 1!)
+- Use `Add()` to add, `Remove()` to remove
+- `Count` tells you how many items
+- `<T>` specifies what type of items the list holds
+</InfoBox>
+
+> **Pro Tip:** Think of a List like a train with numbered cars. You can add cars, remove cars, and each car has a number so you can find it!

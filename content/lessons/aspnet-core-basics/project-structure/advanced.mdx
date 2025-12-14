@@ -1,0 +1,170 @@
+# Project Structure Deep Dive
+
+Understanding the project file format, SDK conventions, and build process is essential for advanced scenarios like multi-targeting, custom build tasks, and NuGet package creation.
+
+## SDK-Style Project Files
+
+ASP.NET Core uses the **SDK-style project format** introduced with .NET Core. The `Sdk` attribute determines default behavior:
+
+```xml
+<!-- Web SDK includes ASP.NET Core defaults -->
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+</Project>
+```
+
+### Available SDKs
+
+| SDK | Use Case |
+|:----|:---------|
+| `Microsoft.NET.Sdk` | Class libraries, console apps |
+| `Microsoft.NET.Sdk.Web` | ASP.NET Core applications |
+| `Microsoft.NET.Sdk.Worker` | Background services, hosted services |
+| `Microsoft.NET.Sdk.Razor` | Razor class libraries |
+| `Microsoft.NET.Sdk.BlazorWebAssembly` | Blazor WebAssembly apps |
+
+<ProjectStructureExplorer mode="advanced" />
+
+## Implicit Usings
+
+The Web SDK automatically includes common namespaces:
+
+```csharp
+// These are implicitly available (no using statement needed):
+global using Microsoft.AspNetCore.Builder;
+global using Microsoft.AspNetCore.Hosting;
+global using Microsoft.AspNetCore.Http;
+global using Microsoft.Extensions.Configuration;
+global using Microsoft.Extensions.DependencyInjection;
+global using Microsoft.Extensions.Hosting;
+global using Microsoft.Extensions.Logging;
+global using System.Net.Http.Json;
+```
+
+To view or customize, check the `obj/` folder for `*.GlobalUsings.g.cs`.
+
+## MSBuild Properties
+
+### Common Properties
+
+```xml
+<PropertyGroup>
+  <!-- Framework targeting -->
+  <TargetFramework>net8.0</TargetFramework>
+  
+  <!-- Language features -->
+  <Nullable>enable</Nullable>
+  <ImplicitUsings>enable</ImplicitUsings>
+  <LangVersion>latest</LangVersion>
+  
+  <!-- Output settings -->
+  <OutputType>Exe</OutputType>
+  <AssemblyName>MyApi</AssemblyName>
+  <RootNamespace>MyCompany.MyApi</RootNamespace>
+  
+  <!-- Docker support -->
+  <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+  
+  <!-- Trimming (for AOT) -->
+  <PublishTrimmed>true</PublishTrimmed>
+  <IsTrimmable>true</IsTrimmable>
+</PropertyGroup>
+```
+
+### Multi-Targeting
+
+```xml
+<PropertyGroup>
+  <TargetFrameworks>net8.0;net7.0;net6.0</TargetFrameworks>
+</PropertyGroup>
+
+<ItemGroup Condition="'$(TargetFramework)' == 'net6.0'">
+  <!-- Polyfills for older frameworks -->
+  <PackageReference Include="IndexRange" Version="1.0.0" />
+</ItemGroup>
+```
+
+## Build and Publish Pipeline
+
+### Build Process
+
+```bash
+# Restore dependencies
+dotnet restore
+
+# Build (Debug by default)
+dotnet build
+
+# Build for production
+dotnet build -c Release
+
+# Output goes to:
+# bin/Debug/net8.0/  or  bin/Release/net8.0/
+```
+
+### Publish Options
+
+```bash
+# Framework-dependent deployment (requires .NET runtime on target)
+dotnet publish -c Release
+
+# Self-contained (includes runtime)
+dotnet publish -c Release --self-contained -r linux-x64
+
+# Single file
+dotnet publish -c Release --self-contained -r win-x64 \
+  -p:PublishSingleFile=true
+
+# Native AOT (minimal API only)
+dotnet publish -c Release -r linux-x64 -p:PublishAot=true
+```
+
+## Directory.Build.props
+
+Centralize MSBuild properties across all projects in a solution:
+
+```xml
+<!-- Directory.Build.props (at solution root) -->
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Company>MyCompany</Company>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Common analyzers for all projects -->
+    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+</Project>
+```
+
+## Source Generators
+
+ASP.NET Core leverages source generators for performance:
+
+```csharp
+// Enable compile-time request delegate generation
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.TypeInfoResolverChain.Insert(0, 
+        AppJsonSerializerContext.Default);
+});
+
+// Source-generated JSON serializer
+[JsonSerializable(typeof(WeatherForecast))]
+[JsonSerializable(typeof(WeatherForecast[]))]
+internal partial class AppJsonSerializerContext : JsonSerializerContext
+{
+}
+```
+
+<ProgressCheckpoint section="project-advanced" xpReward={55} />

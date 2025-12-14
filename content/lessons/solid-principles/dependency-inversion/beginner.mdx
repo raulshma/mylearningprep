@@ -1,0 +1,110 @@
+# Dependency Inversion Principle (DIP)
+
+Imagine buying a new lamp. Would you prefer to:
+
+A) Wire it directly into your house's electrical system? 🔌⚡
+B) Just plug it into a wall outlet? 🔌✨
+
+Obviously B! That's the **Dependency Inversion Principle** in action.
+
+## The Wall Outlet Analogy 🔌
+
+| **Direct Wiring** ⚡ | **Using an Outlet** 🔌 |
+|:---------------------|:----------------------|
+| Need an electrician | Anyone can do it |
+| Permanent connection | Easy to unplug |
+| One lamp per wire | Any device with a plug |
+| Changing lamps = rewiring | Just swap devices |
+
+Wall outlets are **standardized interfaces**. Any device with a standard plug can use any outlet. Your lamp doesn't care if the power comes from a coal plant or solar panels!
+
+<InfoBox type="tip">
+**The DIP Says:** Don't connect your code directly to specific implementations. Use "outlets" (interfaces) so you can easily swap things out!
+</InfoBox>
+
+## The Problem: Tight Coupling
+
+When your code directly creates and uses specific classes, it's "hardwired":
+
+<SolidPrincipleDemo principle="D" mode="beginner" />
+
+## Direct Connection = Problems
+
+```
+     ┌─────────────────────────────────────────────┐
+     │          OrderService (High-Level)          │
+     └───────────────────┬─────────────────────────┘
+                         │
+                         │ Directly creates
+                         ▼
+     ┌─────────────────────────────────────────────┐
+     │          SqlDatabase (Low-Level)            │
+     └─────────────────────────────────────────────┘
+     
+     Problems:
+     • Can't test OrderService without a real database!
+     • Want to use MongoDB? Rewrite OrderService!
+     • OrderService "knows too much" about database details
+```
+
+## The Solution: Program to an Interface
+
+```
+     ┌─────────────────────────────────────────────┐
+     │          OrderService (High-Level)          │
+     │          depends on: IDatabase ◄───┐        │
+     └───────────────────┬─────────────────│───────┘
+                         │                 │
+                         │                 │ "I just need something
+                         │                 │  that saves and loads"
+                         ▼                 │
+     ┌─────────────────────────────────────┴───────┐
+     │               IDatabase (Interface)          │
+     │               "The Wall Outlet"              │
+     └───────────────────┬─────────────────────────┘
+                         │
+           ┌─────────────┴─────────────┐
+           ▼                           ▼
+     ┌───────────┐               ┌───────────┐
+     │   SQL     │               │  MongoDB  │
+     │ Database  │               │ Database  │
+     └───────────┘               └───────────┘
+     
+     Now you can swap databases without touching OrderService!
+```
+
+## Real-World Analogies
+
+| Before (Hardwired) | After (Pluggable) |
+|:-------------------|:------------------|
+| 🔌 Lamp wired into wall | 🔌 Lamp with a plug |
+| 🎮 Games built into console | 🎮 Swappable game cartridges |
+| 📱 Apps built into phone | 📱 Downloadable apps |
+| 🚗 Permanently attached tires | 🚗 Changeable wheels |
+
+## The Simple Rule
+
+> **"High-level modules should not depend on low-level modules. Both should depend on abstractions."**
+> — Robert C. Martin
+
+Ask yourself:
+- Does my code directly create the things it uses (like `new SqlDatabase()`)?
+- If I wanted to swap one piece, would I need to change many other pieces?
+
+## Why Does This Matter?
+
+| **Without DIP** 😰 | **With DIP** 😊 |
+|:------------------|:----------------|
+| Can't test without real database | Use fake database for tests |
+| Changing database = big rewrite | Just add new implementation |
+| Components tied together | Components are independent |
+| Rigid, hard to change | Flexible, easy to modify |
+
+## Key Takeaways
+
+- 🔌 **Use "outlets" (interfaces)** - Don't hardwire your code
+- 📦 **Depend on abstractions** - Not specific implementations
+- 🔄 **Swappable parts** - Like changing a tire without redesigning the car
+- 🧪 **Enables testing** - Use fake implementations in tests
+
+<ProgressCheckpoint section="dip-introduction" xpReward={25} />

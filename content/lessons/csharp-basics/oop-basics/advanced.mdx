@@ -1,0 +1,290 @@
+# OOP Basics: Inheritance, Static Members, and Beyond
+
+Let's explore more advanced OOP concepts that make C# powerful.
+
+## Inheritance
+
+A class can **inherit** from another class, getting all its members:
+
+```csharp
+// Base class (parent)
+public class Animal
+{
+    public string Name { get; set; }
+    
+    public void Eat()
+    {
+        Console.WriteLine($"{Name} is eating.");
+    }
+}
+
+// Derived class (child) - uses ':'
+public class Dog : Animal
+{
+    public string Breed { get; set; }
+    
+    public void Bark()
+    {
+        Console.WriteLine($"{Name} says: Woof!");
+    }
+}
+
+// Usage
+Dog myDog = new Dog();
+myDog.Name = "Buddy";      // Inherited from Animal
+myDog.Breed = "Labrador";  // Dog's own property
+myDog.Eat();               // Inherited method
+myDog.Bark();              // Dog's own method
+```
+
+<ProgressCheckpoint section="oop-intro" xpReward={15} />
+
+## Method Overriding
+
+Child classes can **override** parent methods:
+
+```csharp
+public class Animal
+{
+    public string Name { get; set; }
+    
+    // 'virtual' allows overriding
+    public virtual void Speak()
+    {
+        Console.WriteLine("Some sound...");
+    }
+}
+
+public class Dog : Animal
+{
+    // 'override' replaces the parent method
+    public override void Speak()
+    {
+        Console.WriteLine("Woof! Woof!");
+    }
+}
+
+public class Cat : Animal
+{
+    public override void Speak()
+    {
+        Console.WriteLine("Meow!");
+    }
+}
+
+// Polymorphism in action!
+Animal[] animals = { new Dog(), new Cat() };
+foreach (var animal in animals)
+{
+    animal.Speak();  // Each calls its own version!
+}
+// Output: Woof! Woof!
+// Output: Meow!
+```
+
+## The base Keyword
+
+Call the parent class's methods:
+
+```csharp
+public class Vehicle
+{
+    public virtual void Start()
+    {
+        Console.WriteLine("Vehicle starting...");
+    }
+}
+
+public class Car : Vehicle
+{
+    public override void Start()
+    {
+        base.Start();  // Call parent's Start first
+        Console.WriteLine("Car engine revving!");
+    }
+}
+```
+
+<ProgressCheckpoint section="classes" xpReward={15} />
+
+## Static Members
+
+`static` members belong to the class itself, not instances:
+
+```csharp
+public class MathHelper
+{
+    // Static field - shared by all
+    public static double Pi = 3.14159;
+    
+    // Static method - call without creating object
+    public static int Add(int a, int b)
+    {
+        return a + b;
+    }
+    
+    // Instance method (for comparison)
+    public int Multiply(int a, int b)
+    {
+        return a * b;
+    }
+}
+
+// Using static members - no 'new' needed!
+double pi = MathHelper.Pi;
+int sum = MathHelper.Add(5, 3);
+
+// Instance methods still need an object
+MathHelper helper = new MathHelper();
+int product = helper.Multiply(4, 5);
+```
+
+### When to Use Static
+
+| Use Static When... | Use Instance When... |
+|:-------------------|:---------------------|
+| Utility functions (Math.Abs) | Object needs its own state |
+| Factory methods | Different objects have different data |
+| Constants (Math.PI) | Behavior depends on object's data |
+| Counters/tracking | Multiple instances needed |
+
+<ProgressCheckpoint section="objects" xpReward={15} />
+
+## Sealed Classes
+
+Prevent inheritance:
+
+```csharp
+public sealed class FinalClass
+{
+    // No one can inherit from this class
+}
+
+// This would cause an error:
+// public class Child : FinalClass { }
+```
+
+## Abstract Classes
+
+Force child classes to implement certain methods:
+
+```csharp
+public abstract class Shape
+{
+    // Abstract method - no body, MUST be implemented
+    public abstract double GetArea();
+    
+    // Regular method - has implementation
+    public void Describe()
+    {
+        Console.WriteLine($"Area: {GetArea()}");
+    }
+}
+
+public class Circle : Shape
+{
+    public double Radius { get; set; }
+    
+    // MUST implement abstract method
+    public override double GetArea()
+    {
+        return Math.PI * Radius * Radius;
+    }
+}
+
+// Can't create abstract class directly
+// Shape s = new Shape();  // Error!
+
+// But can create derived classes
+Circle c = new Circle { Radius = 5 };
+c.Describe();  // Works!
+```
+
+## Interfaces Preview
+
+An interface is a contract that classes must follow:
+
+```csharp
+public interface IMovable
+{
+    void Move(int x, int y);
+    int Speed { get; set; }
+}
+
+public class Car : IMovable
+{
+    public int Speed { get; set; }
+    
+    public void Move(int x, int y)
+    {
+        Console.WriteLine($"Car moving to ({x}, {y}) at speed {Speed}");
+    }
+}
+```
+
+<ProgressCheckpoint section="members" xpReward={20} />
+
+## Records (C# 9+)
+
+For simple data classes, use records:
+
+```csharp
+// Traditional class
+public class PersonClass
+{
+    public string Name { get; init; }
+    public int Age { get; init; }
+}
+
+// Record - much shorter!
+public record Person(string Name, int Age);
+
+// Usage
+var p1 = new Person("Alice", 30);
+var p2 = new Person("Alice", 30);
+
+// Records have value equality!
+Console.WriteLine(p1 == p2);  // True (same values)
+
+// With-expressions for immutable updates
+var p3 = p1 with { Age = 31 };
+```
+
+## Quiz
+
+<Quiz id="oop-basics-advanced">
+  <Question
+    id="q1"
+    text="What keyword allows a method to be overridden?"
+  >
+    <Answer id="a" text="static" />
+    <Answer id="b" text="virtual" isCorrect />
+    <Answer id="c" text="abstract" />
+  </Question>
+  <Question
+    id="q2"
+    text="What's the difference between static and instance members?"
+  >
+    <Answer id="a" text="Static belongs to the class, instance belongs to objects" isCorrect />
+    <Answer id="b" text="Static is faster" />
+    <Answer id="c" text="No difference" />
+  </Question>
+  <Question
+    id="q3"
+    text="Can you create an instance of an abstract class?"
+  >
+    <Answer id="a" text="Yes, always" />
+    <Answer id="b" text="No, never" isCorrect />
+    <Answer id="c" text="Only if it has no abstract methods" />
+  </Question>
+</Quiz>
+
+## Key Takeaways
+
+- Inheritance allows code reuse with `:`
+- `virtual` + `override` enable polymorphism
+- `static` members belong to the class, not instances
+- `abstract` classes can't be instantiated but define contracts
+- `sealed` prevents inheritance
+- Records are perfect for simple data objects
+- Interfaces define contracts without implementation

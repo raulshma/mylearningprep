@@ -1,0 +1,117 @@
+# Interface Segregation Principle (ISP)
+
+Have you ever used a TV remote with 100 buttons, when you only use 5 of them? Volume up, volume down, channel change, mute, and power. That's it! 📺
+
+**The Interface Segregation Principle is about giving people ONLY what they need.**
+
+## The Remote Control Problem 📺
+
+| **Monster Remote** 🎛️ | **Simple Remote** 🔘 |
+|:-----------------------|:--------------------|
+| 100 buttons | 5 buttons |
+| Confusing layout | Clear purpose |
+| Many unused features | Every button useful |
+| Hard to find what you need | Easy to use |
+
+Would you rather have a simple remote with exactly what you need, or a complicated one with features you'll never use?
+
+<InfoBox type="tip">
+**The ISP Says:** Don't force users to depend on methods they don't use. Keep interfaces small and focused!
+</InfoBox>
+
+## The Worker Analogy 👷
+
+Imagine an interface for workers:
+
+<SolidPrincipleDemo principle="I" mode="beginner" />
+
+## The Problem Explained
+
+When you create a **giant interface** with too many methods:
+
+```
+     Giant Interface
+     ┌─────────────────────────────────────┐
+     │  interface IWorker                  │
+     │  ─────────────────                  │
+     │  • Work()                           │
+     │  • Eat()     ◀── Robots don't eat! │
+     │  • Sleep()   ◀── Robots don't sleep!│
+     │  • Report()                         │
+     └─────────────────────────────────────┘
+                       │
+         ┌─────────────┴─────────────┐
+         ▼                           ▼
+     ┌─────────┐                 ┌─────────┐
+     │ Human   │                 │ Robot   │
+     │ Worker  │                 │ Worker  │
+     │ ✅ All  │                 │ ❌ Must │
+     │ methods │                 │   fake  │
+     │ make    │                 │   Eat() │
+     │ sense   │                 │   and   │
+     │         │                 │  Sleep()│
+     └─────────┘                 └─────────┘
+```
+
+The robot is FORCED to implement `Eat()` and `Sleep()` even though it never uses them!
+
+## Real-World Examples
+
+| Too Big Interface | Better Approach |
+|:------------------|:----------------|
+| 📱 One mega-app | Small focused apps |
+| 🛠️ Giant Swiss Army knife | Specific tools |
+| 📋 Forms asking 50 questions | Short, relevant forms |
+| 🍽️ 20-page restaurant menu | One-page menu |
+
+## The Simple Rule
+
+> **"Clients should not be forced to depend on interfaces they do not use."**
+> — Robert C. Martin
+
+Ask yourself:
+- Does every class that implements this interface use ALL the methods?
+- Am I forcing anyone to implement empty or fake methods?
+
+## Good vs Bad Interfaces
+
+| **❌ Bad (Fat Interface)** | **✅ Good (Segregated)** |
+|:---------------------------|:------------------------|
+| `IWorker { Work(), Eat(), Sleep(), Report() }` | `IWorkable { Work() }` + `IFeedable { Eat() }` |
+| Forces unused implementations | Pick only what you need |
+| Classes have empty methods | Every method is meaningful |
+| Changes affect everyone | Changes are isolated |
+
+## Solution: Split It Up!
+
+```
+     Segregated Interfaces
+     
+     ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+     │ IWorkable    │  │ IFeedable    │  │ ISleepable   │
+     │ ───────────  │  │ ───────────  │  │ ───────────  │
+     │ • Work()     │  │ • Eat()      │  │ • Sleep()    │
+     └──────────────┘  └──────────────┘  └──────────────┘
+            │                │                   │
+            ▼                ▼                   ▼
+     ┌─────────────────────────────────────────────────┐
+     │ Human: IWorkable, IFeedable, ISleepable        │
+     │ ───────────────────────────────────────         │
+     │ ✅ Implements all three - makes sense!          │
+     └─────────────────────────────────────────────────┘
+     
+     ┌─────────────────────────────────────────────────┐
+     │ Robot: IWorkable                                │
+     │ ─────────────────                               │
+     │ ✅ Only implements Work() - no fake methods!    │
+     └─────────────────────────────────────────────────┘
+```
+
+## Key Takeaways
+
+- 📺 **Simple remotes** - Give users only what they need
+- 🧩 **Small interfaces** - Many small beats one large
+- 🚫 **No empty methods** - Every method should be useful
+- 🤖 **Flexibility** - Classes pick only interfaces they need
+
+<ProgressCheckpoint section="isp-introduction" xpReward={25} />

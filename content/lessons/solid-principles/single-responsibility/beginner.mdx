@@ -1,0 +1,70 @@
+# Single Responsibility Principle (SRP)
+
+Imagine you hire an employee to be a chef. But then you also ask them to do the dishes, manage payroll, answer phones, AND fix the plumbing. How well do you think they'd cook? 🍳
+
+**That's exactly the problem SRP solves!**
+
+## The Swiss Army Knife Problem 🔪
+
+Think about two types of knives:
+
+| **Swiss Army Knife** 🔧 | **Chef's Knife** 🔪 |
+|:-------------------------|:--------------------|
+| Can do many things | Does ONE thing |
+| Okay at everything | Excellent at cutting |
+| Jack of all trades | Master of one |
+| Confusing to use | Clear purpose |
+
+A professional chef uses a dedicated chef's knife, not a Swiss Army knife. Why? Because **specialized tools do their job better!**
+
+<InfoBox type="tip">
+**The SRP Says:** Each class should have only **ONE job** and only **ONE reason to change**.
+</InfoBox>
+
+## Let's See the Problem
+
+Here's code that does TOO MANY things (just like our overworked employee):
+
+<SolidPrincipleDemo principle="S" mode="beginner" />
+
+## Real-World Analogy: The Restaurant 🍽️
+
+Think of a well-run restaurant:
+
+- **Chef** → Only cooks food
+- **Waiter** → Only serves customers  
+- **Cashier** → Only handles payments
+- **Host** → Only seats guests
+
+Each person has **ONE job**. If the chef also had to take payments, wait tables, AND seat guests, the kitchen would be chaos!
+
+## The Simple Rule
+
+> **"A class should have only one reason to change."**
+> — Robert C. Martin (Uncle Bob)
+
+Ask yourself:
+1. What does this class do?
+2. Can I describe it in ONE sentence without using "AND"?
+
+❌ **Bad:** "This class manages users AND sends emails AND generates reports."
+
+✅ **Good:** "This class manages user data."
+
+## Why Does This Matter?
+
+| **Without SRP** 😰 | **With SRP** 😊 |
+|:-------------------|:----------------|
+| Change one thing, break another | Changes are isolated |
+| Hard to understand | Easy to understand |
+| Difficult to test | Easy to test |
+| Big, scary files | Small, focused files |
+
+## Key Takeaways
+
+- 📦 **One class = One job** (like one employee = one role)
+- 🔧 Use **specialized classes** (not Swiss Army classes)
+- 🧪 Smaller classes are **easier to test**
+- 🔄 Changes stay **isolated** and safe
+
+<ProgressCheckpoint section="srp-introduction" xpReward={25} />

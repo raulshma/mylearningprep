@@ -1,0 +1,137 @@
+# LINQ: Your Data's Best Friend
+
+Welcome to **LINQ** (Language Integrated Query) - one of C#'s most powerful features!
+
+## What is LINQ?
+
+<KeyConcept title="The Playlist Analogy" icon="music">
+Imagine you have a huge music playlist with thousands of songs. LINQ is like a smart assistant that can:
+
+- **Filter**: "Show me only rock songs"
+- **Sort**: "Order by release year"
+- **Transform**: "Just give me the song titles"
+- **Aggregate**: "How many songs from the 90s?"
+
+All in one line of code!
+</KeyConcept>
+
+<ProgressCheckpoint section="linq-intro" xpReward={5} />
+
+## Your First LINQ Query
+
+Let's start with a simple example - finding numbers:
+
+```csharp
+// Our data
+List<int> numbers = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+
+// LINQ query - get even numbers
+var evenNumbers = numbers.Where(n => n % 2 == 0);
+
+// Print results
+foreach (int num in evenNumbers)
+{
+    Console.WriteLine(num);  // 2, 4, 6, 8, 10
+}
+```
+
+### Breaking It Down
+
+| Part | What It Does |
+|:-----|:-------------|
+| `numbers` | The data source (our list) |
+| `.Where()` | The LINQ method (filter) |
+| `n => n % 2 == 0` | The condition (lambda) |
+| `var evenNumbers` | The result (filtered numbers) |
+
+<ProgressCheckpoint section="query-syntax" xpReward={10} />
+
+## The Where Method: Filtering
+
+`Where` keeps items that match your condition:
+
+```csharp
+List<string> fruits = new List<string> 
+{ 
+    "Apple", "Banana", "Apricot", "Cherry", "Avocado" 
+};
+
+// Fruits starting with 'A'
+var aFruits = fruits.Where(f => f.StartsWith("A"));
+// Result: Apple, Apricot, Avocado
+
+// Fruits with more than 5 letters
+var longFruits = fruits.Where(f => f.Length > 5);
+// Result: Banana, Apricot, Cherry, Avocado
+```
+
+<LinqQueryBuilder defaultOperator="where" />
+
+<ProgressCheckpoint section="method-syntax" xpReward={10} />
+
+## The Select Method: Transforming
+
+`Select` transforms each item:
+
+```csharp
+List<string> names = new List<string> { "alice", "bob", "charlie" };
+
+// Make all uppercase
+var upperNames = names.Select(n => n.ToUpper());
+// Result: ALICE, BOB, CHARLIE
+
+// Get just the lengths
+var lengths = names.Select(n => n.Length);
+// Result: 5, 3, 7
+```
+
+<LinqQueryBuilder defaultOperator="select" />
+
+## Chaining Methods
+
+The real power comes from combining methods:
+
+```csharp
+List<int> numbers = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+
+var result = numbers
+    .Where(n => n % 2 == 0)     // Keep even numbers
+    .Select(n => n * n);         // Square them
+
+// Result: 4, 16, 36, 64, 100
+```
+
+<ProgressCheckpoint section="common-operators" xpReward={10} />
+
+## Quick Quiz
+
+<Quiz id="linq-basics">
+  <Question
+    id="q1"
+    text="What does the Where method do?"
+  >
+    <Answer id="a" text="Transforms items" />
+    <Answer id="b" text="Filters items based on a condition" isCorrect />
+    <Answer id="c" text="Sorts items" />
+  </Question>
+  <Question
+    id="q2"
+    text="What does the Select method do?"
+  >
+    <Answer id="a" text="Filters items" />
+    <Answer id="b" text="Transforms/projects items" isCorrect />
+    <Answer id="c" text="Counts items" />
+  </Question>
+</Quiz>
+
+## Key Takeaways
+
+<InfoBox type="tip" title="Remember">
+- LINQ lets you query data with simple, readable code
+- `Where` filters (keeps matching items)
+- `Select` transforms (changes each item)
+- You can chain multiple methods together
+- Results are not computed until you use them!
+</InfoBox>
+
+> **Pro Tip:** Think of LINQ like an assembly line. Data goes in, operations happen in order, and transformed data comes out!

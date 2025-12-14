@@ -1,0 +1,77 @@
+# ASP.NET Core Overview
+
+ASP.NET Core is a **cross-platform, high-performance, open-source framework** for building modern, cloud-ready, internet-connected applications. It's a complete rewrite of ASP.NET Framework, designed for today's development needs.
+
+## What Can You Build?
+
+ASP.NET Core is versatile. You can create:
+
+1. **Web APIs** - RESTful services that power mobile apps, SPAs, and microservices
+2. **MVC Web Applications** - Server-rendered websites with Razor views
+3. **Razor Pages** - Simplified page-focused web apps
+4. **Real-time Applications** - Using SignalR for WebSocket communication
+5. **gRPC Services** - High-performance RPC for service-to-service communication
+6. **Blazor Apps** - Interactive web UIs using C# instead of JavaScript
+
+<AspNetCoreIntroVisualizer mode="intermediate" />
+
+## Framework vs Core: What Changed?
+
+| ASP.NET Framework | ASP.NET Core |
+|:------------------|:-------------|
+| Windows only | Cross-platform (Windows, Linux, macOS) |
+| System.Web dependency | Modular with NuGet packages |
+| IIS hosting only | Multiple hosting options (Kestrel, IIS, Docker) |
+| Large memory footprint | Lightweight and fast |
+| Closed development | Open source on GitHub |
+
+## Architecture Highlights
+
+### Request Pipeline
+
+ASP.NET Core uses a **middleware pipeline** architecture. Each middleware component can:
+- Handle the request and short-circuit the pipeline
+- Pass the request to the next middleware
+- Perform work before and after the next middleware
+
+```csharp
+// Each middleware processes requests in order
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+app.UseRouting();
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
+```
+
+### Built-in Dependency Injection
+
+Unlike its predecessor, ASP.NET Core has a **first-class DI container** built into the framework:
+
+```csharp
+// Register services
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddDbContext<AppDbContext>();
+
+// Inject anywhere
+public class UserController : ControllerBase
+{
+    private readonly IUserService _userService;
+    
+    public UserController(IUserService userService)
+    {
+        _userService = userService;
+    }
+}
+```
+
+## Performance Matters
+
+ASP.NET Core consistently ranks among the **top-performing web frameworks** in industry benchmarks like TechEmpower. Key performance features:
+
+- **Kestrel**: A blazing-fast, cross-platform web server
+- **Async everywhere**: Built on async/await patterns
+- **Memory efficiency**: Reduced allocations and smart pooling
+- **Span<T> and Memory<T>**: Low-allocation APIs for high throughput
+
+<ProgressCheckpoint section="aspnet-core-overview" xpReward={40} />

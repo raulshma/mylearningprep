@@ -1,0 +1,274 @@
+# LINQ: Advanced Queries and Deferred Execution
+
+Let's master advanced LINQ concepts including GroupBy, Join, and understanding how LINQ actually works.
+
+## GroupBy: Organizing Data
+
+Group items by a key:
+
+```csharp
+var products = new List<Product>
+{
+    new Product { Name = "Laptop", Category = "Electronics", Price = 999 },
+    new Product { Name = "Phone", Category = "Electronics", Price = 699 },
+    new Product { Name = "Book", Category = "Books", Price = 29 },
+    new Product { Name = "Tablet", Category = "Electronics", Price = 499 },
+    new Product { Name = "Novel", Category = "Books", Price = 15 }
+};
+
+// Group by category
+var grouped = products.GroupBy(p => p.Category);
+
+foreach (var group in grouped)
+{
+    Console.WriteLine($"Category: {group.Key}");
+    foreach (var product in group)
+    {
+        Console.WriteLine($"  - {product.Name}: ${product.Price}");
+    }
+}
+// Output:
+// Category: Electronics
+//   - Laptop: $999
+//   - Phone: $699
+//   - Tablet: $499
+// Category: Books
+//   - Book: $29
+//   - Novel: $15
+```
+
+<LinqQueryBuilder defaultOperator="groupby" />
+
+<ProgressCheckpoint section="linq-intro" xpReward={15} />
+
+## GroupBy with Aggregation
+
+Combine grouping with calculations:
+
+```csharp
+var categoryStats = products
+    .GroupBy(p => p.Category)
+    .Select(g => new
+    {
+        Category = g.Key,
+        Count = g.Count(),
+        TotalValue = g.Sum(p => p.Price),
+        AveragePrice = g.Average(p => p.Price),
+        MostExpensive = g.Max(p => p.Price)
+    });
+
+foreach (var stat in categoryStats)
+{
+    Console.WriteLine($"{stat.Category}: {stat.Count} items, Avg: ${stat.AveragePrice:F2}");
+}
+```
+
+## Join: Combining Data
+
+Join two collections by a common key:
+
+```csharp
+var orders = new List<Order>
+{
+    new Order { Id = 1, CustomerId = 101, Amount = 250 },
+    new Order { Id = 2, CustomerId = 102, Amount = 180 },
+    new Order { Id = 3, CustomerId = 101, Amount = 320 }
+};
+
+var customers = new List<Customer>
+{
+    new Customer { Id = 101, Name = "Alice" },
+    new Customer { Id = 102, Name = "Bob" }
+};
+
+// Join orders with customers
+var orderDetails = orders.Join(
+    customers,
+    order => order.CustomerId,      // Key from orders
+    customer => customer.Id,        // Key from customers
+    (order, customer) => new        // Result
+    {
+        OrderId = order.Id,
+        CustomerName = customer.Name,
+        Amount = order.Amount
+    }
+);
+
+// Or with query syntax (more readable for joins)
+var orderDetails2 = from order in orders
+                    join customer in customers on order.CustomerId equals customer.Id
+                    select new
+                    {
+                        OrderId = order.Id,
+                        CustomerName = customer.Name,
+                        Amount = order.Amount
+                    };
+```
+
+<ProgressCheckpoint section="query-syntax" xpReward={15} />
+
+## Deferred Execution (Lazy Evaluation)
+
+<KeyConcept title="LINQ is Lazy!" icon="clock">
+LINQ queries don't execute when you write them. They execute when you USE the results.
+
+This is called **deferred execution** and it's important to understand!
+</KeyConcept>
+
+```csharp
+List<int> numbers = new List<int> { 1, 2, 3, 4, 5 };
+
+// Query is DEFINED but not executed yet
+var query = numbers.Where(n => n > 2);
+
+// Add more items AFTER defining the query
+numbers.Add(10);
+
+// Query executes NOW when we iterate
+foreach (int n in query)
+{
+    Console.WriteLine(n);  // 3, 4, 5, 10 (includes the new item!)
+}
+```
+
+### Force Immediate Execution
+
+Use `ToList()` or `ToArray()` to execute immediately:
+
+```csharp
+// Deferred - query object, no results yet
+var deferred = numbers.Where(n => n > 2);
+
+// Immediate - results are calculated NOW
+List<int> immediate = numbers.Where(n => n > 2).ToList();
+
+numbers.Add(100);
+
+// deferred will include 100, immediate won't
+```
+
+<InfoBox type="tip" title="When to Use ToList()">
+- You need to cache results (access multiple times)
+- You're passing results to a method that modifies the source
+- You want a snapshot at a point in time
+- You receive data from a database (avoid multiple queries)
+</InfoBox>
+
+<ProgressCheckpoint section="method-syntax" xpReward={15} />
+
+## SelectMany: Flattening Nested Collections
+
+When you have collections of collections:
+
+```csharp
+var departments = new List<Department>
+{
+    new Department 
+    { 
+        Name = "Engineering",
+        Employees = new List<string> { "Alice", "Bob" }
+    },
+    new Department 
+    { 
+        Name = "Marketing",
+        Employees = new List<string> { "Charlie", "Diana" }
+    }
+};
+
+// Select: Get list of employee lists
+var listsOfEmployees = departments.Select(d => d.Employees);
+// Result: [["Alice", "Bob"], ["Charlie", "Diana"]]
+
+// SelectMany: Flatten into single list
+var allEmployees = departments.SelectMany(d => d.Employees);
+// Result: ["Alice", "Bob", "Charlie", "Diana"]
+```
+
+## Distinct and Union
+
+Remove duplicates and combine collections:
+
+```csharp
+var list1 = new List<int> { 1, 2, 2, 3, 3, 3 };
+var list2 = new List<int> { 3, 4, 5 };
+
+// Remove duplicates
+var distinct = list1.Distinct();    // 1, 2, 3
+
+// Combine (removes duplicates)
+var union = list1.Union(list2);     // 1, 2, 3, 4, 5
+
+// Combine (keeps duplicates)
+var concat = list1.Concat(list2);   // 1, 2, 2, 3, 3, 3, 3, 4, 5
+
+// Common items only
+var intersect = list1.Intersect(list2);  // 3
+
+// Items in list1 but not list2
+var except = list1.Except(list2);   // 1, 2
+```
+
+<ProgressCheckpoint section="common-operators" xpReward={15} />
+
+## Let Clause (Query Syntax)
+
+Store intermediate results:
+
+```csharp
+var result = from word in words
+             let lower = word.ToLower()
+             where lower.StartsWith("a")
+             select lower;
+```
+
+## Anonymous Types and Projections
+
+Create new shapes of data:
+
+```csharp
+var projections = products.Select(p => new
+{
+    p.Name,
+    PriceCategory = p.Price > 500 ? "Expensive" : "Affordable",
+    TaxedPrice = p.Price * 1.1
+});
+```
+
+## Quiz
+
+<Quiz id="linq-advanced">
+  <Question
+    id="q1"
+    text="What is deferred execution?"
+  >
+    <Answer id="a" text="LINQ queries run immediately when defined" />
+    <Answer id="b" text="LINQ queries run only when results are used" isCorrect />
+    <Answer id="c" text="LINQ queries run in a separate thread" />
+  </Question>
+  <Question
+    id="q2"
+    text="What does SelectMany do?"
+  >
+    <Answer id="a" text="Selects multiple properties" />
+    <Answer id="b" text="Flattens nested collections" isCorrect />
+    <Answer id="c" text="Selects many times" />
+  </Question>
+  <Question
+    id="q3"
+    text="How do you force immediate execution?"
+  >
+    <Answer id="a" text="Use Execute()" />
+    <Answer id="b" text="Use ToList() or ToArray()" isCorrect />
+    <Answer id="c" text="Use Run()" />
+  </Question>
+</Quiz>
+
+## Key Takeaways
+
+- `GroupBy` organizes data by a key
+- `Join` combines two collections by a common key
+- LINQ uses **deferred execution** - queries run when results are accessed
+- Use `ToList()` for immediate execution and caching
+- `SelectMany` flattens nested collections
+- `Distinct`, `Union`, `Intersect`, `Except` for set operations
+- Anonymous types let you create custom projections

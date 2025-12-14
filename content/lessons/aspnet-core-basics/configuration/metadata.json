@@ -1,0 +1,28 @@
+{
+  "id": "configuration",
+  "title": "Configuration & Settings",
+  "description": "Master the configuration system in ASP.NET Core - from appsettings.json to the Options pattern.",
+  "milestone": "aspnet-core-basics",
+  "order": 4,
+  "sections": [
+    "config-sources",
+    "accessing-config",
+    "options-pattern"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 8,
+      "xpReward": 20
+    },
+    "intermediate": {
+      "estimatedMinutes": 14,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 20,
+      "xpReward": 60
+    }
+  },
+  "prerequisites": ["program-startup"],
+  "tags": ["aspnet-core", "configuration", "appsettings", "options", "secrets"]
+}

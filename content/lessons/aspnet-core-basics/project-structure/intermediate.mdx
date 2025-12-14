@@ -1,0 +1,123 @@
+# ASP.NET Core Project Structure
+
+A well-organized project structure is crucial for maintainability. ASP.NET Core follows conventions that, once understood, make navigating any project intuitive.
+
+## Standard Project Layout
+
+When you create a new Web API project with `dotnet new webapi`, you get:
+
+```
+MyWebApi/
+├── Controllers/
+│   └── WeatherForecastController.cs
+├── Properties/
+│   └── launchSettings.json
+├── appsettings.json
+├── appsettings.Development.json
+├── Program.cs
+├── MyWebApi.csproj
+└── WeatherForecast.cs
+```
+
+<ProjectStructureExplorer mode="intermediate" />
+
+## Key Files Explained
+
+### Program.cs - Application Entry Point
+
+The heart of your application. Modern .NET uses **top-level statements** and the minimal hosting model:
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+// 1. Register services
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+var app = builder.Build();
+
+// 2. Configure middleware pipeline
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseHttpsRedirection();
+app.UseAuthorization();
+app.MapControllers();
+
+app.Run();
+```
+
+### appsettings.json - Configuration
+
+Hierarchical configuration in JSON format:
+
+```json
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*",
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=localhost;Database=MyDb;..."
+  }
+}
+```
+
+### .csproj - Project File
+
+Defines target framework, dependencies, and build settings:
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.0" />
+  </ItemGroup>
+</Project>
+```
+
+### launchSettings.json - Development Profiles
+
+Controls how the app runs during development:
+
+```json
+{
+  "profiles": {
+    "http": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "applicationUrl": "http://localhost:5000",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}
+```
+
+## Common Folder Conventions
+
+| Folder | Purpose |
+|:-------|:--------|
+| `Controllers/` | API endpoints (Web API) |
+| `Models/` | Data transfer objects, view models |
+| `Services/` | Business logic classes |
+| `Data/` | DbContext, repositories, migrations |
+| `wwwroot/` | Static files (CSS, JS, images) |
+| `Views/` | Razor views (MVC only) |
+| `Pages/` | Razor Pages |
+
+<ProgressCheckpoint section="project-structure" xpReward={35} />

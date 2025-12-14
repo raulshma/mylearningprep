@@ -1,0 +1,141 @@
+# Program.cs & Application Startup
+
+In modern ASP.NET Core (.NET 6+), application configuration is streamlined into a single `Program.cs` file using the **minimal hosting model**. Let's explore how services are registered and the request pipeline is configured.
+
+## The Minimal Hosting Model
+
+The minimal hosting model combines what used to be separate `Program.cs` and `Startup.cs` files:
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+// === SERVICE REGISTRATION ===
+// Services are registered with the DI container here
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+// Custom services
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
+
+var app = builder.Build();
+
+// === MIDDLEWARE PIPELINE ===
+// Order matters! Each middleware processes requests in sequence
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseHttpsRedirection();
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
+
+app.Run();
+```
+
+## WebApplicationBuilder
+
+The `WebApplicationBuilder` provides access to:
+
+| Property | Purpose |
+|:---------|:--------|
+| `Services` | DI container for registering services |
+| `Configuration` | Access appsettings.json and other config |
+| `Environment` | Check Development/Production/etc. |
+| `Logging` | Configure logging providers |
+| `Host` | Access IHostBuilder for advanced config |
+| `WebHost` | Access IWebHostBuilder for Kestrel config |
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+// Access configuration
+var connectionString = builder.Configuration.GetConnectionString("Default");
+
+// Check environment
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+}
+
+// Configure logging
+builder.Logging.AddConsole();
+builder.Logging.SetMinimumLevel(LogLevel.Debug);
+```
+
+## Service Lifetimes
+
+When registering services, choose the appropriate lifetime:
+
+```csharp
+// Singleton: One instance shared throughout the app's lifetime
+builder.Services.AddSingleton<ICacheService, CacheService>();
+
+// Scoped: One instance per HTTP request
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+
+// Transient: New instance every time it's requested
+builder.Services.AddTransient<IEmailSender, EmailSender>();
+```
+
+## Middleware Pipeline
+
+Middleware components form a **pipeline** that processes HTTP requests:
+
+<MiddlewarePipelineSimulator mode="intermediate" />
+
+### Common Middleware Order
+
+```csharp
+// 1. Exception handling (should be first to catch all errors)
+app.UseExceptionHandler("/Error");
+
+// 2. HSTS (only in production)
+app.UseHsts();
+
+// 3. HTTPS redirection
+app.UseHttpsRedirection();
+
+// 4. Static files (serve CSS, JS, images)
+app.UseStaticFiles();
+
+// 5. Routing (match URL to endpoint)
+app.UseRouting();
+
+// 6. CORS (if needed)
+app.UseCors();
+
+// 7. Authentication (who are you?)
+app.UseAuthentication();
+
+// 8. Authorization (what can you do?)
+app.UseAuthorization();
+
+// 9. Endpoint execution
+app.MapControllers();
+```
+
+## Minimal APIs vs Controllers
+
+In .NET 6+, you can define endpoints directly in Program.cs:
+
+```csharp
+// Minimal API approach
+app.MapGet("/hello", () => "Hello World!");
+
+app.MapPost("/users", async (User user, IUserService service) =>
+{
+    await service.CreateAsync(user);
+    return Results.Created($"/users/{user.Id}", user);
+});
+
+// vs Traditional Controllers
+app.MapControllers();  // Uses [ApiController] classes
+```
+
+<ProgressCheckpoint section="program-intermediate" xpReward={40} />

@@ -1,0 +1,271 @@
+# Open/Closed Principle (OCP)
+
+The Open/Closed Principle states: **"Software entities should be open for extension but closed for modification."** Let's explore what this means in practice.
+
+## Two Types of "Open/Closed"
+
+Bertrand Meyer's original OCP (1988) focused on **inheritance**. Robert Martin's modern interpretation emphasizes **polymorphism and abstraction**.
+
+| Approach | Mechanism | Example |
+|:---------|:----------|:--------|
+| **Classic OCP** | Inheritance | Extend base classes |
+| **Modern OCP** | Interfaces + Polymorphism | Implement abstractions |
+
+<InfoBox type="important">
+**Modern Best Practice:** Prefer **composition over inheritance**. Use interfaces and dependency injection to achieve OCP.
+</InfoBox>
+
+## The Problem: The Growing If-Else Chain
+
+Consider a discount calculator that keeps growing:
+
+<DotnetCodePreview
+  title="Violating OCP: If-Else Modification"
+  code={`public class DiscountCalculator
+{
+    public decimal CalculateDiscount(Order order)
+    {
+        if (order.CustomerType == "Regular")
+        {
+            return order.Total * 0.1m;  // 10%
+        }
+        else if (order.CustomerType == "Premium")
+        {
+            return order.Total * 0.2m;  // 20%
+        }
+        else if (order.CustomerType == "VIP")
+        {
+            return order.Total * 0.3m;  // 30%
+        }
+        // Every new customer type = modify this class!
+        else if (order.CustomerType == "Corporate")  // ❌ Added later
+        {
+            return order.Total * 0.25m;
+        }
+        else if (order.CustomerType == "Student")    // ❌ Added later
+        {
+            return order.Total * 0.15m;
+        }
+        // Chain keeps growing...
+        return 0;
+    }
+}`}
+  steps={[
+    {
+      lineNumbers: [5, 6, 7, 8],
+      highlight: "Original Code",
+      explanation: "Started with just Regular customers"
+    },
+    {
+      lineNumbers: [17, 18, 19, 20],
+      highlight: "First Modification",
+      explanation: "Added Corporate type - modified the class!"
+    },
+    {
+      lineNumbers: [21, 22, 23, 24],
+      highlight: "More Modifications",
+      explanation: "Added Student type - modified again! Where does it end?"
+    }
+  ]}
+/>
+
+**Problems with this approach:**
+
+- ❌ Must modify working code for every new type
+- ❌ Risk of breaking existing discount logic
+- ❌ Must retest ALL customer types
+- ❌ Single class keeps growing forever
+
+## The Solution: Strategy Pattern
+
+<DotnetCodePreview
+  title="Applying OCP: Strategy Pattern"
+  code={`// Abstraction: The "contract" for discounts
+public interface IDiscountStrategy
+{
+    decimal CalculateDiscount(Order order);
+}
+
+// Extension 1: Regular customer (NEW CLASS)
+public class RegularDiscount : IDiscountStrategy
+{
+    public decimal CalculateDiscount(Order order) 
+        => order.Total * 0.1m;  // 10%
+}
+
+// Extension 2: Premium customer (NEW CLASS)
+public class PremiumDiscount : IDiscountStrategy
+{
+    public decimal CalculateDiscount(Order order) 
+        => order.Total * 0.2m;  // 20%
+}
+
+// Extension 3: VIP customer (NEW CLASS)
+public class VipDiscount : IDiscountStrategy
+{
+    public decimal CalculateDiscount(Order order) 
+        => order.Total * 0.3m;  // 30%
+}
+
+// Calculator: CLOSED for modification
+public class DiscountCalculator
+{
+    private readonly IDiscountStrategy _strategy;
+    
+    public DiscountCalculator(IDiscountStrategy strategy)
+    {
+        _strategy = strategy;
+    }
+    
+    public decimal CalculateDiscount(Order order)
+    {
+        return _strategy.CalculateDiscount(order);
+    }
+}
+
+// Adding NEW discount = NEW CLASS, not modification!
+public class StudentDiscount : IDiscountStrategy
+{
+    public decimal CalculateDiscount(Order order) 
+        => order.Total * 0.15m;  // 15%
+}`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5],
+      highlight: "The Abstraction",
+      explanation: "Interface defines the contract - never needs to change"
+    },
+    {
+      lineNumbers: [7, 8, 9, 10, 11, 12],
+      highlight: "Concrete Strategies",
+      explanation: "Each customer type is its own class"
+    },
+    {
+      lineNumbers: [28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40],
+      highlight: "Closed Calculator",
+      explanation: "Calculator NEVER changes - just receives different strategies"
+    },
+    {
+      lineNumbers: [43, 44, 45, 46, 47],
+      highlight: "New Extension",
+      explanation: "Adding Student = new file, zero changes to existing code!"
+    }
+  ]}
+/>
+
+## ASP.NET Core Integration
+
+In real .NET applications, use dependency injection:
+
+```csharp
+// Startup.cs / Program.cs
+services.AddScoped<IDiscountStrategy, RegularDiscount>();
+
+// Or with factory pattern for runtime selection
+services.AddScoped<IDiscountStrategyFactory, DiscountStrategyFactory>();
+```
+
+```csharp
+// Factory: Returns correct strategy based on context
+public class DiscountStrategyFactory
+{
+    private readonly IEnumerable<IDiscountStrategy> _strategies;
+    
+    public IDiscountStrategy GetStrategy(string customerType)
+    {
+        return _strategies.FirstOrDefault(s => 
+            s.GetType().Name.StartsWith(customerType)) 
+            ?? new RegularDiscount();
+    }
+}
+```
+
+<SolidPrincipleDemo principle="O" mode="intermediate" />
+
+## Common OCP Patterns
+
+### 1. Template Method Pattern
+
+Base class defines the algorithm skeleton; subclasses fill in the details:
+
+```csharp
+public abstract class ReportGenerator
+{
+    // Template method - closed for modification
+    public void Generate()
+    {
+        GatherData();
+        FormatReport();  // Hook for extension
+        SaveReport();    // Hook for extension
+    }
+    
+    protected abstract void FormatReport();  // Open for extension
+    protected abstract void SaveReport();    // Open for extension
+}
+
+public class PdfReportGenerator : ReportGenerator
+{
+    protected override void FormatReport() => /* PDF formatting */;
+    protected override void SaveReport() => /* Save as .pdf */;
+}
+```
+
+### 2. Decorator Pattern
+
+Add behavior without modifying original:
+
+```csharp
+// Original
+public class BasicLogger : ILogger
+{
+    public void Log(string message) => Console.WriteLine(message);
+}
+
+// Decorator adds timestamp without modifying BasicLogger
+public class TimestampLogger : ILogger
+{
+    private readonly ILogger _inner;
+    
+    public TimestampLogger(ILogger inner) => _inner = inner;
+    
+    public void Log(string message) 
+        => _inner.Log($"[{DateTime.Now}] {message}");
+}
+
+// Usage: Stack decorators
+ILogger logger = new TimestampLogger(new BasicLogger());
+```
+
+## Testing Benefits
+
+OCP makes testing dramatically easier:
+
+```csharp
+// Before OCP: Must test every if-else branch
+[Test]
+public void CalculateDiscount_AllTypes()
+{
+    // Test Regular, Premium, VIP, Corporate, Student, ...
+    // One big test, many scenarios
+}
+
+// After OCP: Test each strategy in isolation
+[Test]
+public void PremiumDiscount_Returns20Percent()
+{
+    var strategy = new PremiumDiscount();
+    var order = new Order { Total = 100m };
+    
+    Assert.AreEqual(20m, strategy.CalculateDiscount(order));
+}
+```
+
+## Key Takeaways
+
+- 🔐 **Closed** = Don't modify existing, working code
+- 🔓 **Open** = Easy to add new implementations
+- 🎯 **Strategy Pattern** = Most common OCP technique
+- 🧩 **Interfaces** = The key to achieving OCP
+- 💉 **DI** = How to wire up strategies in .NET
+
+<ProgressCheckpoint section="ocp-understanding" xpReward={40} />

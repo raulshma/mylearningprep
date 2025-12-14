@@ -1,0 +1,28 @@
+{
+  "id": "project-structure",
+  "title": "Project Structure",
+  "description": "Understand how ASP.NET Core projects are organized - files, folders, and their purposes.",
+  "milestone": "aspnet-core-basics",
+  "order": 2,
+  "sections": [
+    "files-folders",
+    "key-files",
+    "project-file"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 8,
+      "xpReward": 20
+    },
+    "intermediate": {
+      "estimatedMinutes": 12,
+      "xpReward": 35
+    },
+    "advanced": {
+      "estimatedMinutes": 18,
+      "xpReward": 55
+    }
+  },
+  "prerequisites": ["what-is-aspnet-core"],
+  "tags": ["aspnet-core", "project", "structure", "files", "folders"]
+}

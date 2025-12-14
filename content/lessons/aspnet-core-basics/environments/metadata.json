@@ -1,0 +1,28 @@
+{
+  "id": "environments",
+  "title": "Environments (Dev, Staging, Prod)",
+  "description": "Learn how ASP.NET Core handles different environments and how to configure environment-specific behavior.",
+  "milestone": "aspnet-core-basics",
+  "order": 5,
+  "sections": [
+    "environment-basics",
+    "environment-config",
+    "environment-code"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 8,
+      "xpReward": 20
+    },
+    "intermediate": {
+      "estimatedMinutes": 12,
+      "xpReward": 35
+    },
+    "advanced": {
+      "estimatedMinutes": 18,
+      "xpReward": 55
+    }
+  },
+  "prerequisites": ["configuration"],
+  "tags": ["aspnet-core", "environments", "development", "staging", "production"]
+}

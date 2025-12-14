@@ -1,0 +1,29 @@
+{
+  "id": "collections",
+  "title": "Collections (List, Dictionary)",
+  "description": "Master essential C# collections - List for ordered data and Dictionary for key-value pairs.",
+  "milestone": "csharp-basics",
+  "order": 4,
+  "sections": [
+    "collections-intro",
+    "list-basics",
+    "dictionary-basics",
+    "choosing-collection"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 20,
+      "xpReward": 60
+    }
+  },
+  "prerequisites": ["oop-basics"],
+  "tags": ["csharp", "collections", "list", "dictionary", "generics"]
+}

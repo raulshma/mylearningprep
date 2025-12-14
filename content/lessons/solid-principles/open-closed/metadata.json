@@ -1,0 +1,28 @@
+{
+  "id": "open-closed",
+  "title": "Open/Closed Principle",
+  "description": "Learn the second SOLID principle: software entities should be open for extension but closed for modification.",
+  "milestone": "solid-principles",
+  "order": 2,
+  "sections": [
+    "ocp-introduction",
+    "ocp-understanding",
+    "ocp-application"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 12,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 18,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 25,
+      "xpReward": 60
+    }
+  },
+  "prerequisites": ["single-responsibility"],
+  "tags": ["solid", "ocp", "design-principles", "polymorphism", "csharp"]
+}

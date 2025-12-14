@@ -1,0 +1,242 @@
+# Control Flow: Pattern Matching and Switch Expressions
+
+C# has evolved beyond simple if/else and switch statements. Modern C# (7+) introduces powerful **pattern matching** that makes your code more expressive and concise.
+
+## Switch Expressions (C# 8+)
+
+The new switch expression syntax is more compact:
+
+```csharp
+// Traditional switch statement
+string GetDayType(int day)
+{
+    switch (day)
+    {
+        case 1: case 2: case 3: case 4: case 5:
+            return "Weekday";
+        case 6: case 7:
+            return "Weekend";
+        default:
+            return "Invalid";
+    }
+}
+
+// Modern switch expression
+string GetDayType(int day) => day switch
+{
+    >= 1 and <= 5 => "Weekday",
+    6 or 7 => "Weekend",
+    _ => "Invalid"
+};
+```
+
+<ControlFlowVisualizer type="pattern-match" />
+
+<ProgressCheckpoint section="conditionals-intro" xpReward={15} />
+
+## Pattern Types
+
+### Relational Patterns
+
+Compare values using `<`, `>`, `<=`, `>=`:
+
+```csharp
+string GetGrade(int score) => score switch
+{
+    >= 90 => "A",
+    >= 80 => "B", 
+    >= 70 => "C",
+    >= 60 => "D",
+    _ => "F"
+};
+```
+
+### Logical Patterns
+
+Combine patterns with `and`, `or`, `not`:
+
+```csharp
+string Classify(int number) => number switch
+{
+    < 0 => "Negative",
+    0 => "Zero",
+    > 0 and < 10 => "Small positive",
+    >= 10 and < 100 => "Medium positive",
+    _ => "Large positive"
+};
+
+// Using 'or' for multiple values
+string GetQuarter(int month) => month switch
+{
+    1 or 2 or 3 => "Q1",
+    4 or 5 or 6 => "Q2",
+    7 or 8 or 9 => "Q3",
+    10 or 11 or 12 => "Q4",
+    _ => "Invalid month"
+};
+```
+
+<ProgressCheckpoint section="if-else" xpReward={15} />
+
+## Type Patterns
+
+Check and cast types in one step:
+
+```csharp
+string Describe(object obj) => obj switch
+{
+    int i => $"Integer: {i}",
+    string s => $"String of length {s.Length}",
+    double d => $"Double: {d:F2}",
+    null => "It's null!",
+    _ => $"Unknown type: {obj.GetType().Name}"
+};
+
+// Using the pattern in if statements
+if (obj is string text)
+{
+    Console.WriteLine($"Got a string: {text}");
+}
+```
+
+### Property Patterns
+
+Match based on object properties:
+
+```csharp
+record Person(string Name, int Age);
+
+string Classify(Person person) => person switch
+{
+    { Age: < 13 } => "Child",
+    { Age: < 20 } => "Teenager",
+    { Age: < 65 } => "Adult",
+    { Age: >= 65 } => "Senior",
+    _ => "Unknown"
+};
+
+// More complex property patterns
+string DescribePerson(Person p) => p switch
+{
+    { Name: "Admin", Age: >= 18 } => "Adult admin",
+    { Name: var n, Age: var a } when a < 18 => $"{n} is a minor",
+    _ => "Regular person"
+};
+```
+
+<ProgressCheckpoint section="switch-basics" xpReward={15} />
+
+## When Guards
+
+Add extra conditions with `when`:
+
+```csharp
+string EvaluateStudent(int score, bool hasExtraCredit) => (score, hasExtraCredit) switch
+{
+    (>= 90, _) => "A",
+    (>= 80, true) => "A",  // B+ with extra credit becomes A
+    (>= 80, false) => "B",
+    (>= 70, _) => "C",
+    _ => "Needs improvement"
+};
+
+// Using when for complex logic
+string DescribeTemperature(double temp) => temp switch
+{
+    double.NaN => "Invalid reading",
+    < 0 => "Freezing",
+    >= 0 and < 15 => "Cold",
+    >= 15 and < 25 => "Comfortable",
+    >= 25 and < 35 => "Warm",
+    _ when temp >= 35 => "Hot!",
+    _ => "Unknown"
+};
+```
+
+## Tuple Patterns
+
+Match multiple values at once:
+
+```csharp
+string RockPaperScissors(string player1, string player2) => 
+    (player1, player2) switch
+{
+    ("rock", "scissors") => "Player 1 wins",
+    ("scissors", "paper") => "Player 1 wins",
+    ("paper", "rock") => "Player 1 wins",
+    ("scissors", "rock") => "Player 2 wins",
+    ("paper", "scissors") => "Player 2 wins",
+    ("rock", "paper") => "Player 2 wins",
+    (var a, var b) when a == b => "It's a tie!",
+    _ => "Invalid move"
+};
+```
+
+<ProgressCheckpoint section="pattern-matching" xpReward={15} />
+
+## Best Practices
+
+<InfoBox type="tip" title="Pattern Matching Guidelines">
+1. **Use switch expressions** for simple mappings
+2. **Order patterns from specific to general** (most restrictive first)
+3. **Always include a discard pattern** (`_`) as the last case
+4. **Use type patterns** instead of `is` + cast
+5. **Prefer patterns over complex if-else chains**
+</InfoBox>
+
+## Performance Considerations
+
+```csharp
+// Pattern matching is optimized by the compiler
+// This switch expression compiles to efficient jump tables
+
+var result = value switch
+{
+    1 => "One",
+    2 => "Two",
+    3 => "Three",
+    _ => "Other"
+};
+
+// Equivalent to optimized if-else or switch statement
+// The compiler chooses the best approach
+```
+
+## Quiz
+
+<Quiz id="control-flow-advanced">
+  <Question
+    id="q1"
+    text="What does the '_' (discard) pattern match?"
+  >
+    <Answer id="a" text="Only null values" />
+    <Answer id="b" text="Everything (catch-all)" isCorrect />
+    <Answer id="c" text="Empty strings" />
+  </Question>
+  <Question
+    id="q2"
+    text="What C# version introduced switch expressions?"
+  >
+    <Answer id="a" text="C# 7.0" />
+    <Answer id="b" text="C# 8.0" isCorrect />
+    <Answer id="c" text="C# 9.0" />
+  </Question>
+  <Question
+    id="q3"
+    text="What keyword adds extra conditions to pattern matching?"
+  >
+    <Answer id="a" text="if" />
+    <Answer id="b" text="where" />
+    <Answer id="c" text="when" isCorrect />
+  </Question>
+</Quiz>
+
+## Key Takeaways
+
+- Switch expressions (`=>`) are more concise than switch statements
+- Relational patterns (`<`, `>=`) compare values directly
+- Logical patterns (`and`, `or`, `not`) combine conditions
+- Type patterns check and cast in one operation
+- Property patterns match object properties
+- The `_` discard pattern is the catch-all case
+- `when` guards add extra conditions to patterns

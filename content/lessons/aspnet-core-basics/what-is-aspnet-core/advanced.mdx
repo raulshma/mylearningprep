@@ -1,0 +1,151 @@
+# ASP.NET Core Architecture Deep Dive
+
+ASP.NET Core represents a fundamental architectural shift from its predecessor, embracing modularity, cross-platform support, and cloud-native patterns. Let's explore the internals that make it one of the most performant web frameworks available.
+
+## The Hosting Model
+
+ASP.NET Core uses the **Generic Host** (`IHost`) as its foundation, which provides:
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+// WebApplicationBuilder wraps:
+// - IHostBuilder (for app lifetime, DI container, configuration)
+// - IWebHostBuilder (for web-specific concerns like Kestrel)
+// - IServiceCollection (for registering services)
+// - ConfigurationManager (for configuration)
+
+var app = builder.Build();  // Returns WebApplication
+
+app.Run();  // Starts the host and blocks
+```
+
+### Host Lifetime Management
+
+The host manages three key phases:
+1. **Configuration** - Loading settings, registering services
+2. **Start** - Starting hosted services, opening the HTTP listener
+3. **Shutdown** - Graceful termination with configurable timeout
+
+<AspNetCoreIntroVisualizer mode="advanced" />
+
+## Kestrel Web Server
+
+Kestrel is a **libuv-based** (or now **Socket-based** in recent versions) high-performance HTTP server:
+
+```csharp
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.Limits.MaxConcurrentConnections = 100;
+    serverOptions.Limits.MaxRequestBodySize = 10 * 1024 * 1024; // 10MB
+    serverOptions.Limits.KeepAliveTimeout = TimeSpan.FromMinutes(2);
+    
+    serverOptions.ListenAnyIP(5000); // HTTP
+    serverOptions.ListenAnyIP(5001, listenOptions =>
+    {
+        listenOptions.UseHttps("certificate.pfx", "password");
+    });
+});
+```
+
+### Kestrel vs IIS
+
+| Aspect | Kestrel | IIS (In-Process) |
+|:-------|:--------|:-----------------|
+| Role | Edge server or behind proxy | Windows-only edge server |
+| Performance | Excellent | Slightly higher throughput due to in-process |
+| Features | Basic HTTP | Full Windows authentication, compression |
+| Deployment | Cross-platform | Windows Server only |
+
+## Request Pipeline Internals
+
+The middleware pipeline is implemented as a **Russian doll pattern**:
+
+```csharp
+// Simplified internal representation
+public class MiddlewarePipeline
+{
+    private readonly RequestDelegate _next;
+    
+    public async Task InvokeAsync(HttpContext context)
+    {
+        // Before next middleware
+        await _next(context);
+        // After next middleware (response flowing back)
+    }
+}
+```
+
+### Endpoint Routing
+
+ASP.NET Core 3.0+ uses **endpoint routing** which separates route matching from endpoint execution:
+
+```csharp
+// Phase 1: Routing middleware matches the endpoint
+app.UseRouting();
+
+// Phase 2: Other middleware can inspect the matched endpoint
+app.UseAuthentication();
+app.UseAuthorization();
+
+// Phase 3: Endpoints execute
+app.MapControllers();
+app.MapRazorPages();
+```
+
+## DI Container Internals
+
+The built-in container supports three lifetimes:
+
+```csharp
+// Singleton: One instance for the entire app lifetime
+services.AddSingleton<ICacheService, CacheService>();
+
+// Scoped: One instance per request/scope
+services.AddScoped<IUserRepository, UserRepository>();
+
+// Transient: New instance every time
+services.AddTransient<IEmailSender, EmailSender>();
+```
+
+### Service Resolution Flow
+
+1. Check if service is already resolved (for Singleton/Scoped)
+2. Find registered service descriptor
+3. Create new instance (calling constructor with injected dependencies)
+4. Cache if Singleton or Scoped
+5. Return instance
+
+## Configuration System
+
+Multiple configuration providers are loaded in a specific order:
+
+```csharp
+// Default order (later overrides earlier):
+// 1. appsettings.json
+// 2. appsettings.{Environment}.json
+// 3. User secrets (Development only)
+// 4. Environment variables
+// 5. Command-line arguments
+
+var connectionString = builder.Configuration
+    .GetConnectionString("Default");
+    
+// Strongly-typed with Options pattern
+services.Configure<EmailSettings>(
+    builder.Configuration.GetSection("Email"));
+```
+
+## Feature Comparison: .NET 8
+
+.NET 8 (the latest LTS) brings significant improvements:
+
+| Feature | Description |
+|:--------|:------------|
+| **Native AOT** | Ahead-of-time compilation for minimal APIs |
+| **Request Decompression** | Built-in middleware for gzip/brotli requests |
+| **Short-circuit Routing** | Skip middleware for static routes |
+| **HTTP/3** | QUIC protocol support |
+| **Blazor Render Modes** | Server, WebAssembly, or Auto per-component |
+
+<ProgressCheckpoint section="aspnet-core-internals" xpReward={60} />

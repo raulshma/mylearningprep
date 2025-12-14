@@ -1,0 +1,221 @@
+# Single Responsibility Principle (SRP)
+
+The Single Responsibility Principle states that **a class should have only one reason to change**. But what exactly does "reason to change" mean?
+
+## Understanding "Reason to Change"
+
+A "reason to change" comes from a **stakeholder** or **actor** in your system:
+
+- **Business rules** change → Affects business logic classes
+- **UI requirements** change → Affects presentation classes
+- **Database schema** changes → Affects data access classes
+- **External API** changes → Affects integration classes
+
+<InfoBox type="important">
+**Key Insight:** SRP is about **organizing code by actor**, not just by functionality. Each class should serve ONE stakeholder or business domain.
+</InfoBox>
+
+## The Problem with Mixed Responsibilities
+
+Consider this common anti-pattern in .NET applications:
+
+<DotnetCodePreview
+  title="Violating SRP: The God Service"
+  code={`public class UserService
+{
+    private readonly DbContext _db;
+    private readonly SmtpClient _smtp;
+    
+    public User CreateUser(string email, string password)
+    {
+        // Responsibility 1: Business logic
+        var user = new User { Email = email };
+        user.PasswordHash = HashPassword(password);
+        
+        // Responsibility 2: Data persistence
+        _db.Users.Add(user);
+        _db.SaveChanges();
+        
+        // Responsibility 3: Notification
+        var message = new MailMessage("admin@app.com", email,
+            "Welcome!", "Welcome to our app!");
+        _smtp.Send(message);
+        
+        // Responsibility 4: Logging
+        File.AppendAllText("users.log", 
+            $"{DateTime.Now}: Created user {email}");
+        
+        return user;
+    }
+}`}
+  steps={[
+    {
+      lineNumbers: [7, 8, 9],
+      highlight: "Business Logic",
+      explanation: "Creating and validating user data - owned by Product team"
+    },
+    {
+      lineNumbers: [11, 12, 13],
+      highlight: "Data Persistence", 
+      explanation: "Database operations - owned by Database/Infrastructure team"
+    },
+    {
+      lineNumbers: [15, 16, 17, 18],
+      highlight: "Email Notifications",
+      explanation: "Sending emails - owned by Marketing/Communications team"
+    },
+    {
+      lineNumbers: [20, 21, 22],
+      highlight: "Logging",
+      explanation: "Audit trail - owned by Security/Compliance team"
+    }
+  ]}
+/>
+
+### Why This Is Problematic
+
+Each of these four responsibilities has **different stakeholders** who might request changes:
+
+| Responsibility | Stakeholder | Example Change Request |
+|:--------------|:------------|:----------------------|
+| Business Logic | Product Manager | "Add email verification step" |
+| Persistence | DBA | "Switch to stored procedure" |
+| Notifications | Marketing | "Use SendGrid instead of SMTP" |
+| Logging | Security | "Add structured logging with Serilog" |
+
+**Every change request requires modifying the same class!**
+
+## The Solution: Separation of Concerns
+
+<DotnetCodePreview
+  title="Applying SRP: Separated Services"
+  code={`// Responsibility 1: Business Logic
+public class UserService
+{
+    private readonly IUserRepository _repository;
+    private readonly IEventPublisher _events;
+    
+    public User CreateUser(CreateUserCommand cmd)
+    {
+        var user = new User 
+        { 
+            Email = cmd.Email,
+            PasswordHash = _passwordHasher.Hash(cmd.Password)
+        };
+        
+        _repository.Add(user);
+        _events.Publish(new UserCreatedEvent(user));
+        
+        return user;
+    }
+}
+
+// Responsibility 2: Data Persistence
+public class UserRepository : IUserRepository
+{
+    private readonly DbContext _db;
+    
+    public void Add(User user)
+    {
+        _db.Users.Add(user);
+        _db.SaveChanges();
+    }
+}
+
+// Responsibility 3: Notification (Event Handler)
+public class WelcomeEmailHandler : IHandle<UserCreatedEvent>
+{
+    private readonly IEmailService _email;
+    
+    public void Handle(UserCreatedEvent e)
+    {
+        _email.Send(e.User.Email, "Welcome!", "...");
+    }
+}`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19],
+      highlight: "UserService",
+      explanation: "Now ONLY handles business logic - orchestration and validation"
+    },
+    {
+      lineNumbers: [22, 23, 24, 25, 26, 27, 28, 29, 30],
+      highlight: "UserRepository",
+      explanation: "ONLY handles database persistence - can change DB without touching business logic"
+    },
+    {
+      lineNumbers: [33, 34, 35, 36, 37, 38, 39, 40, 41],
+      highlight: "WelcomeEmailHandler",
+      explanation: "ONLY handles welcome emails - can change email provider independently"
+    }
+  ]}
+/>
+
+## Cohesion: The Measure of SRP
+
+**Cohesion** measures how well the elements of a class belong together.
+
+| Cohesion Level | Description | Example |
+|:--------------|:------------|:--------|
+| **High** ✅ | All methods relate to ONE concept | `EmailValidator.IsValid()`, `.GetDomain()` |
+| **Low** ❌ | Methods serve unrelated purposes | `UserHelper.hash()`, `.sendEmail()`, `.formatDate()` |
+
+<InfoBox type="tip">
+**Cohesion Test:** Can you describe what your class does in ONE sentence without using "AND" or "OR"?
+</InfoBox>
+
+## Signs You're Violating SRP
+
+Watch for these code smells:
+
+1. **God Classes** - Classes with hundreds of lines
+2. **Utils/Helper Classes** - Dumping grounds for unrelated methods
+3. **Manager Classes** - "UserManager" that does everything user-related
+4. **Multiple Imports** - Importing unrelated namespaces (email + database + file system)
+
+## Refactoring Strategy
+
+When you find a class with multiple responsibilities:
+
+1. **Identify actors** - Who requests changes to this code?
+2. **Group by actor** - Separate code by stakeholder
+3. **Extract classes** - Create focused classes for each group
+4. **Define interfaces** - Use abstractions between classes
+5. **Compose** - Use dependency injection to assemble
+
+<SolidPrincipleDemo principle="S" mode="intermediate" />
+
+## Common Mistakes
+
+### ❌ Going Too Far
+
+Don't create a class for every single method:
+
+```csharp
+// Too granular - this is overkill!
+public class UserEmailGetter { string Get(User u) => u.Email; }
+public class UserEmailSetter { void Set(User u, string e) => u.Email = e; }
+```
+
+### ✅ Finding the Balance
+
+Classes should be **cohesive units** that change together:
+
+```csharp
+// Just right - cohesive and focused
+public class EmailService
+{
+    void Send(string to, string subject, string body);
+    void SendTemplate(string to, string templateId, object data);
+    bool Validate(string email);
+}
+```
+
+## Key Takeaways
+
+- 🎯 **One actor, one class** - Organize by who requests changes
+- 📏 **High cohesion** - Methods and data should belong together
+- 🔌 **Use interfaces** - Decouple responsibilities with abstractions
+- ⚖️ **Balance is key** - Don't over-engineer with micro-classes
+
+<ProgressCheckpoint section="srp-understanding" xpReward={40} />

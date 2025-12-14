@@ -1,0 +1,68 @@
+# Configuration & Settings
+
+Every app needs settings - like your database address, feature toggles, or API keys. ASP.NET Core makes it super easy to manage these with configuration files!
+
+## Your App's Settings Menu 📱
+
+Think of configuration like the **Settings app on your phone**:
+
+- You can change the background without reinstalling the whole phone
+- Some settings are for everyone, others are personal
+- Important settings (like passwords) are kept extra safe
+
+In ASP.NET Core, the main settings file is called `appsettings.json`.
+
+<ConfigurationVisualizer mode="beginner" />
+
+## What's Inside appsettings.json?
+
+```json
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information"
+    }
+  },
+  "AppSettings": {
+    "Title": "My Awesome App",
+    "MaxUsers": 100
+  }
+}
+```
+
+This is just a file with **organized settings** that your app can read!
+
+## Why Not Just Hardcode Values?
+
+You might wonder: why not just write values directly in code?
+
+| Hardcoded ❌ | Configuration ✅ |
+|:-------------|:-----------------|
+| Hard to change | Easy to update |
+| Same everywhere | Different per environment |
+| Secrets visible in code | Secrets kept safe |
+| Need to rebuild to change | Just edit the file |
+
+## A Simple Example
+
+Imagine you have a welcome message:
+
+**Hardcoded (bad):**
+```csharp
+string message = "Welcome to My App!";  // Can't change without code change
+```
+
+**From Configuration (good):**
+```csharp
+string message = Configuration["AppSettings:Title"];  // Reads from appsettings.json
+```
+
+Now you can change the title just by editing the JSON file - no code changes needed!
+
+## Key Takeaway
+
+> **Configuration = Your app's control panel**
+> 
+> Instead of baking values into your code, store them in configuration files. This makes your app flexible and easier to manage!
+
+<ProgressCheckpoint section="config-basics" xpReward={20} />

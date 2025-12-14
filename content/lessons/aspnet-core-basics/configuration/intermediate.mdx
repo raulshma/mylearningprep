@@ -1,0 +1,173 @@
+# Configuration System
+
+ASP.NET Core features a flexible, hierarchical configuration system that reads key-value settings from multiple sources. Understanding this system is crucial for building configurable, maintainable applications.
+
+## Configuration Sources
+
+Configuration is loaded from multiple providers in order, where later sources override earlier ones:
+
+<ConfigurationVisualizer mode="intermediate" />
+
+### Default Configuration Stack
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+// These are already configured by default:
+// 1. appsettings.json
+// 2. appsettings.{Environment}.json (e.g., appsettings.Development.json)
+// 3. User secrets (in Development environment)
+// 4. Environment variables
+// 5. Command-line arguments
+```
+
+## appsettings.json Structure
+
+```json
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*",
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=localhost;Database=MyDb;..."
+  },
+  "EmailSettings": {
+    "SmtpServer": "smtp.example.com",
+    "Port": 587,
+    "FromAddress": "noreply@example.com"
+  }
+}
+```
+
+## Accessing Configuration
+
+### Direct Access with IConfiguration
+
+```csharp
+public class EmailService
+{
+    private readonly IConfiguration _configuration;
+
+    public EmailService(IConfiguration configuration)
+    {
+        _configuration = configuration;
+    }
+
+    public void SendEmail()
+    {
+        // Access flat values
+        string smtpServer = _configuration["EmailSettings:SmtpServer"];
+        
+        // Access with GetValue<T> for type conversion
+        int port = _configuration.GetValue<int>("EmailSettings:Port");
+        
+        // Get connection strings (special method)
+        string connString = _configuration.GetConnectionString("DefaultConnection");
+    }
+}
+```
+
+### GetSection for Nested Configuration
+
+```csharp
+// Get a section as IConfigurationSection
+IConfigurationSection emailSection = _configuration.GetSection("EmailSettings");
+string server = emailSection["SmtpServer"];
+int port = emailSection.GetValue<int>("Port");
+```
+
+## Environment-Specific Configuration
+
+Create environment-specific files that override base settings:
+
+```
+appsettings.json              # Base settings (all environments)
+appsettings.Development.json  # Development overrides
+appsettings.Staging.json      # Staging overrides
+appsettings.Production.json   # Production overrides
+```
+
+**Example: appsettings.Development.json**
+```json
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Debug"  // More verbose logging in dev
+    }
+  },
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=localhost;Database=MyDb_Dev;..."
+  }
+}
+```
+
+## User Secrets (Development Only)
+
+Store sensitive data safely during development:
+
+```bash
+# Initialize user secrets for the project
+dotnet user-secrets init
+
+# Set a secret
+dotnet user-secrets set "EmailSettings:Password" "my-secret-password"
+
+# Secrets are stored outside your project folder
+# Windows: %APPDATA%\Microsoft\UserSecrets\<user_secrets_id>\secrets.json
+```
+
+Access them the same way as any other configuration:
+
+```csharp
+string password = _configuration["EmailSettings:Password"];
+```
+
+## Environment Variables
+
+Great for Docker containers and cloud deployments:
+
+```bash
+# Use double underscore for hierarchy (replaces colon)
+export EmailSettings__SmtpServer="smtp.production.com"
+export ConnectionStrings__DefaultConnection="Server=prod-db;..."
+```
+
+## The Options Pattern
+
+For strongly-typed configuration access:
+
+```csharp
+// 1. Define an options class
+public class EmailSettings
+{
+    public string SmtpServer { get; set; } = string.Empty;
+    public int Port { get; set; }
+    public string FromAddress { get; set; } = string.Empty;
+}
+
+// 2. Register in Program.cs
+builder.Services.Configure<EmailSettings>(
+    builder.Configuration.GetSection("EmailSettings"));
+
+// 3. Inject and use
+public class EmailService
+{
+    private readonly EmailSettings _settings;
+
+    public EmailService(IOptions<EmailSettings> options)
+    {
+        _settings = options.Value;
+    }
+
+    public void SendEmail()
+    {
+        Console.WriteLine($"Sending via {_settings.SmtpServer}:{_settings.Port}");
+    }
+}
+```
+
+<ProgressCheckpoint section="config-intermediate" xpReward={40} />

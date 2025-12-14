@@ -1,0 +1,225 @@
+# Collections: Dictionaries and Comparisons
+
+Now let's explore **Dictionary** - a powerful collection for key-value pairs!
+
+## Meet Dictionary&lt;TKey, TValue&gt;
+
+<KeyConcept title="The Phone Book Analogy" icon="book">
+A Dictionary is like a phone book:
+
+- You look up someone by their **name** (the key)
+- You get their **phone number** (the value)
+- Each name is unique
+- You don't care about order - you just need to find things fast!
+</KeyConcept>
+
+```csharp
+// Create a dictionary: key type, value type
+Dictionary<string, string> phoneBook = new Dictionary<string, string>();
+
+// Add entries (key, value)
+phoneBook.Add("Alice", "555-1234");
+phoneBook.Add("Bob", "555-5678");
+phoneBook.Add("Charlie", "555-9999");
+
+// Look up by key
+string alicePhone = phoneBook["Alice"];  // "555-1234"
+```
+
+<ProgressCheckpoint section="collections-intro" xpReward={10} />
+
+## Dictionary Operations
+
+```csharp
+var ages = new Dictionary<string, int>();
+
+// Add items
+ages.Add("Alice", 25);
+ages["Bob"] = 30;  // Alternative syntax
+
+// Update a value
+ages["Alice"] = 26;
+
+// Check if key exists
+if (ages.ContainsKey("Charlie"))
+{
+    Console.WriteLine(ages["Charlie"]);
+}
+
+// Safe way to get value
+if (ages.TryGetValue("Bob", out int bobAge))
+{
+    Console.WriteLine($"Bob is {bobAge}");
+}
+
+// Remove by key
+ages.Remove("Alice");
+
+// Count entries
+int count = ages.Count;
+```
+
+<CollectionExplorer type="dictionary" />
+
+<ProgressCheckpoint section="list-basics" xpReward={10} />
+
+## List vs Dictionary: When to Use Which?
+
+<Comparison 
+  left={{
+    title: "Use List when...",
+    items: [
+      "Order matters (first, second, third)",
+      "You access items by position",
+      "Items might repeat",
+      "You iterate through all items"
+    ]
+  }}
+  right={{
+    title: "Use Dictionary when...",
+    items: [
+      "You need fast lookup by key",
+      "Each item has a unique identifier",
+      "You want key-value pairs",
+      "Order doesn't matter"
+    ]
+  }}
+/>
+
+## Looping Through Collections
+
+### Looping Through a List
+
+```csharp
+List<string> names = new List<string> { "Alice", "Bob", "Charlie" };
+
+// Option 1: foreach
+foreach (string name in names)
+{
+    Console.WriteLine(name);
+}
+
+// Option 2: for loop with index
+for (int i = 0; i < names.Count; i++)
+{
+    Console.WriteLine($"{i}: {names[i]}");
+}
+```
+
+### Looping Through a Dictionary
+
+```csharp
+var scores = new Dictionary<string, int>
+{
+    ["Alice"] = 95,
+    ["Bob"] = 87,
+    ["Charlie"] = 92
+};
+
+// Loop through key-value pairs
+foreach (KeyValuePair<string, int> pair in scores)
+{
+    Console.WriteLine($"{pair.Key}: {pair.Value}");
+}
+
+// Or with var (simpler)
+foreach (var pair in scores)
+{
+    Console.WriteLine($"{pair.Key}: {pair.Value}");
+}
+
+// Just keys
+foreach (string name in scores.Keys)
+{
+    Console.WriteLine(name);
+}
+
+// Just values
+foreach (int score in scores.Values)
+{
+    Console.WriteLine(score);
+}
+```
+
+<ProgressCheckpoint section="dictionary-basics" xpReward={10} />
+
+## Collection Initializers
+
+Create populated collections easily:
+
+```csharp
+// List initializer
+List<int> numbers = new List<int> { 1, 2, 3, 4, 5 };
+
+// Dictionary initializer
+var capitals = new Dictionary<string, string>
+{
+    { "USA", "Washington D.C." },
+    { "UK", "London" },
+    { "France", "Paris" }
+};
+
+// Index initializer (cleaner for dictionaries)
+var colors = new Dictionary<string, string>
+{
+    ["red"] = "#FF0000",
+    ["green"] = "#00FF00",
+    ["blue"] = "#0000FF"
+};
+```
+
+<ProgressCheckpoint section="choosing-collection" xpReward={10} />
+
+## Common Mistakes
+
+<InfoBox type="warning" title="Watch Out!">
+1. **Accessing missing keys throws an error!**
+   ```csharp
+   var dict = new Dictionary<string, int>();
+   int value = dict["missing"];  // KeyNotFoundException!
+   // Use TryGetValue instead
+   ```
+
+2. **Duplicate keys are not allowed:**
+   ```csharp
+   dict.Add("key", 1);
+   dict.Add("key", 2);  // ArgumentException!
+   // Use dict["key"] = 2 to update instead
+   ```
+
+3. **List index out of range:**
+   ```csharp
+   var list = new List<int> { 1, 2, 3 };
+   int item = list[10];  // IndexOutOfRangeException!
+   ```
+</InfoBox>
+
+## Quiz
+
+<Quiz id="collections-intermediate">
+  <Question
+    id="q1"
+    text="What happens if you access a key that doesn't exist in a Dictionary?"
+  >
+    <Answer id="a" text="Returns null" />
+    <Answer id="b" text="Throws KeyNotFoundException" isCorrect />
+    <Answer id="c" text="Returns default value" />
+  </Question>
+  <Question
+    id="q2"
+    text="Can a Dictionary have duplicate keys?"
+  >
+    <Answer id="a" text="Yes" />
+    <Answer id="b" text="No" isCorrect />
+    <Answer id="c" text="Only with different value types" />
+  </Question>
+</Quiz>
+
+## Key Takeaways
+
+- `Dictionary<TKey, TValue>` stores key-value pairs
+- Keys must be unique; values can repeat
+- Use `TryGetValue` for safe key lookup
+- Use List for ordered data, Dictionary for key-based lookup
+- Both support collection initializers
+- Use `foreach` to loop through collections

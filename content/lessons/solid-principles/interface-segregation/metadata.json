@@ -1,0 +1,28 @@
+{
+  "id": "interface-segregation",
+  "title": "Interface Segregation Principle",
+  "description": "Learn the fourth SOLID principle: clients should not be forced to depend on interfaces they do not use.",
+  "milestone": "solid-principles",
+  "order": 4,
+  "sections": [
+    "isp-introduction",
+    "isp-understanding",
+    "isp-application"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 12,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 18,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 25,
+      "xpReward": 60
+    }
+  },
+  "prerequisites": ["single-responsibility", "open-closed", "liskov-substitution"],
+  "tags": ["solid", "isp", "design-principles", "interfaces", "csharp"]
+}

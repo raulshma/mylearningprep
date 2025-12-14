@@ -1,0 +1,178 @@
+# Environments in ASP.NET Core
+
+ASP.NET Core has first-class support for running your application in different environments - Development, Staging, and Production being the most common. The environment affects configuration, error handling, and feature availability.
+
+## Setting the Environment
+
+The environment is determined by the `ASPNETCORE_ENVIRONMENT` environment variable:
+
+<EnvironmentSwitcher mode="intermediate" />
+
+### Setting Methods
+
+**launchSettings.json (Development)**
+```json
+{
+  "profiles": {
+    "MyApp": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}
+```
+
+**Environment Variable (Any platform)**
+```bash
+# Windows (PowerShell)
+$env:ASPNETCORE_ENVIRONMENT="Production"
+
+# Linux/macOS
+export ASPNETCORE_ENVIRONMENT=Production
+
+# Docker
+docker run -e ASPNETCORE_ENVIRONMENT=Production myapp
+```
+
+**Azure App Service**
+- Configuration → Application settings → Add `ASPNETCORE_ENVIRONMENT`
+
+## Built-in Environment Names
+
+ASP.NET Core recognizes three environments by default:
+
+| Environment | Use Case |
+|:------------|:---------|
+| `Development` | Local development, debugging |
+| `Staging` | Pre-production testing |
+| `Production` | Live, customer-facing |
+
+You can also create custom environments (e.g., `Testing`, `QA`, `UAT`).
+
+## Checking the Environment
+
+### In Program.cs
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
+
+// Using extension methods
+if (app.Environment.IsDevelopment())
+{
+    app.UseDeveloperExceptionPage();
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+if (app.Environment.IsStaging())
+{
+    // Staging-specific middleware
+}
+
+if (app.Environment.IsProduction())
+{
+    app.UseExceptionHandler("/Error");
+    app.UseHsts();
+}
+
+// Check for custom environments
+if (app.Environment.IsEnvironment("Testing"))
+{
+    // Testing-specific configuration
+}
+```
+
+### In Services (Dependency Injection)
+
+```csharp
+public class MyService
+{
+    private readonly IWebHostEnvironment _env;
+
+    public MyService(IWebHostEnvironment env)
+    {
+        _env = env;
+    }
+
+    public void DoSomething()
+    {
+        if (_env.IsDevelopment())
+        {
+            // Development behavior
+            Console.WriteLine("Debug: Extra logging enabled");
+        }
+    }
+}
+```
+
+## Environment-Specific Configuration
+
+ASP.NET Core automatically loads environment-specific configuration files:
+
+```
+appsettings.json                  # Base settings (all environments)
+appsettings.Development.json      # Loaded when ASPNETCORE_ENVIRONMENT=Development
+appsettings.Staging.json          # Loaded when ASPNETCORE_ENVIRONMENT=Staging
+appsettings.Production.json       # Loaded when ASPNETCORE_ENVIRONMENT=Production
+```
+
+### Example: Different Log Levels
+
+**appsettings.json**
+```json
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Warning"
+    }
+  }
+}
+```
+
+**appsettings.Development.json**
+```json
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Debug",
+      "Microsoft.EntityFrameworkCore": "Information"
+    }
+  }
+}
+```
+
+## Common Environment Patterns
+
+### Error Handling
+
+```csharp
+if (app.Environment.IsDevelopment())
+{
+    // Shows detailed exception page with stack trace
+    app.UseDeveloperExceptionPage();
+}
+else
+{
+    // User-friendly error page
+    app.UseExceptionHandler("/Error");
+    // HTTP Strict Transport Security
+    app.UseHsts();
+}
+```
+
+### Database Seeding
+
+```csharp
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.EnsureCreated();
+    DbSeeder.SeedTestData(db);
+}
+```
+
+<ProgressCheckpoint section="env-intermediate" xpReward={35} />
