@@ -50,6 +50,12 @@ interface LessonPageClientProps {
   adjacentLessons?: AdjacentLessons | null;
 }
 
+// Internal props that includes the lifted level state
+interface LessonContentInternalProps extends LessonPageClientProps {
+  currentLevel: ExperienceLevel;
+  onLevelChange: (level: ExperienceLevel) => void;
+}
+
 // Inner component that uses the progress context
 function LessonContent({
   lessonId,
@@ -66,7 +72,9 @@ function LessonContent({
   initialGamification = null,
   nextLessonSuggestion = null,
   adjacentLessons = null,
-}: LessonPageClientProps) {
+  currentLevel,
+  onLevelChange: setCurrentLevel,
+}: LessonContentInternalProps) {
   const searchParams = useSearchParams();
   const { setAdjacentLessons, enterZenMode, isZenMode } = useZenMode();
 
@@ -83,7 +91,9 @@ function LessonContent({
       enterZenMode();
     }
   }, [searchParams, enterZenMode, isZenMode]);
-  const [level, setLevel] = useState<ExperienceLevel>(initialLevel);
+  // Use the lifted level state from parent
+  const level = currentLevel;
+  const setLevel = setCurrentLevel;
   const [mdxSource, setMdxSource] = useState<MDXRemoteSerializeResult>(initialMdxSource);
   const [isLoading, setIsLoading] = useState(false);
   const [gamification, setGamification] = useState<UserGamification | null>(initialGamification);
@@ -154,7 +164,7 @@ function LessonContent({
     Answer,
   }), [baseMdxComponents, completedSectionIds, markSectionComplete, handleQuizAnswerRecorded]);
 
-  // Handle level change - fetch new content via API
+  // Handle level change - fetch new content via API and update parent state
   const handleLevelChange = useCallback(async (newLevel: ExperienceLevel) => {
     if (newLevel === level || isLoading) return;
     
@@ -181,8 +191,8 @@ function LessonContent({
       });
       
       setMdxSource(serialized);
-      setLevel(newLevel);
-      resetProgress(); // Reset local progress for new level
+      setLevel(newLevel); // This updates parent state, triggering ProgressProvider recreation
+      // Note: resetProgress() is no longer needed as ProgressProvider is recreated with a new key
       
       // Check if this level was already completed
       const isLevelCompleted = gamification?.completedLessons?.some(
@@ -201,7 +211,7 @@ function LessonContent({
     } finally {
       setIsLoading(false);
     }
-  }, [level, lessonId, roadmapSlug, milestoneId, isLoading, resetProgress, gamification]);
+  }, [level, lessonId, roadmapSlug, milestoneId, isLoading, gamification, setLevel]);
 
   // Handle lesson completion
   const handleClaimRewards = useCallback(async () => {
@@ -476,7 +486,7 @@ function ZenModeContentWrapper({
 }
 
 // Inner content that needs zen mode context
-function LessonContentWithZen(props: LessonPageClientProps) {
+function LessonContentWithZen(props: LessonContentInternalProps) {
   return (
     <ZenModeContentWrapper
       lessonTitle={props.lessonTitle}
@@ -491,6 +501,9 @@ function LessonContentWithZen(props: LessonPageClientProps) {
 
 // Wrapper component that provides the progress context
 export function LessonPageClient(props: LessonPageClientProps) {
+  // Lift level state up to ensure ProgressProvider is recreated when level changes
+  const [currentLevel, setCurrentLevel] = useState<ExperienceLevel>(props.initialLevel);
+  
   const handleSectionComplete = useCallback((sectionId: string) => {
     // Could send to analytics, save to DB, etc.
     console.log(`Section completed: ${sectionId}`);
@@ -501,36 +514,37 @@ export function LessonPageClient(props: LessonPageClientProps) {
     console.log('Lesson completed!');
   }, []);
 
-  // Check if the initial level was already completed
-  const isInitialLevelCompleted = props.initialGamification?.completedLessons?.some(
-    l => l.lessonId === props.lessonId && l.experienceLevel === props.initialLevel
+  // Get completion data for the current level
+  const isLevelCompleted = props.initialGamification?.completedLessons?.some(
+    l => l.lessonId === props.lessonId && l.experienceLevel === currentLevel
   ) ?? false;
 
-  // Get completed sections for the initial level from gamification data
+  // Get completed sections for the current level from gamification data
   const completedLessonData = props.initialGamification?.completedLessons?.find(
-    l => l.lessonId === props.lessonId && l.experienceLevel === props.initialLevel
+    l => l.lessonId === props.lessonId && l.experienceLevel === currentLevel
   );
   
-  const initialCompletedSections = completedLessonData?.sectionsCompleted?.map(s => s.sectionId) 
-    ?? props.initialCompletedSections 
+  const completedSectionsForLevel = completedLessonData?.sectionsCompleted?.map(s => s.sectionId) 
+    ?? (currentLevel === props.initialLevel ? props.initialCompletedSections : [])
     ?? [];
 
   return (
     <ZenModeProvider>
       <ProgressProvider
+        key={`${props.lessonId}-${currentLevel}`}
         lessonId={props.lessonId}
-        level={props.initialLevel}
+        level={currentLevel}
         sections={props.sections}
         onSectionComplete={handleSectionComplete}
         onLessonComplete={handleLessonComplete}
         persistToStorage={true}
         initialState={{
-          completedSections: initialCompletedSections,
-          timeSpent: completedLessonData?.timeSpentSeconds ?? props.initialTimeSpent ?? 0,
-          isCompleted: isInitialLevelCompleted
+          completedSections: completedSectionsForLevel,
+          timeSpent: completedLessonData?.timeSpentSeconds ?? (currentLevel === props.initialLevel ? props.initialTimeSpent : 0) ?? 0,
+          isCompleted: isLevelCompleted
         }}
       >
-        <LessonContentWithZen {...props} />
+        <LessonContentWithZen {...props} currentLevel={currentLevel} onLevelChange={setCurrentLevel} />
       </ProgressProvider>
     </ZenModeProvider>
   );

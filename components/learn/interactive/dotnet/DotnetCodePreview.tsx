@@ -32,33 +32,102 @@ const csharpKeywords = [
   'base', 'null', 'true', 'false', 'in', 'out', 'ref', 'where', 'select', 'from',
 ];
 
+interface Token {
+  type: 'string' | 'comment' | 'keyword' | 'type' | 'number' | 'text';
+  value: string;
+}
+
+function tokenizeLine(line: string): Token[] {
+  const tokens: Token[] = [];
+  let remaining = line;
+  
+  while (remaining.length > 0) {
+    // Check for comments first (// ...)
+    const commentMatch = remaining.match(/^(\/\/.*)/);
+    if (commentMatch) {
+      tokens.push({ type: 'comment', value: commentMatch[1] });
+      remaining = remaining.slice(commentMatch[1].length);
+      continue;
+    }
+    
+    // Check for strings ("...")
+    const stringMatch = remaining.match(/^"([^"]*)"/);
+    if (stringMatch) {
+      tokens.push({ type: 'string', value: stringMatch[0] });
+      remaining = remaining.slice(stringMatch[0].length);
+      continue;
+    }
+    
+    // Check for keywords
+    const keywordPattern = new RegExp(`^\\b(${csharpKeywords.join('|')})\\b`);
+    const keywordMatch = remaining.match(keywordPattern);
+    if (keywordMatch) {
+      tokens.push({ type: 'keyword', value: keywordMatch[1] });
+      remaining = remaining.slice(keywordMatch[1].length);
+      continue;
+    }
+    
+    // Check for types (PascalCase identifiers)
+    const typeMatch = remaining.match(/^([A-Z][a-zA-Z0-9]+)(?=\s|<|>|\(|\)|\[|\]|,|\.|;|$)/);
+    if (typeMatch) {
+      tokens.push({ type: 'type', value: typeMatch[1] });
+      remaining = remaining.slice(typeMatch[1].length);
+      continue;
+    }
+    
+    // Check for numbers
+    const numberMatch = remaining.match(/^(\d+\.?\d*[fmdFMD]?)/);
+    if (numberMatch) {
+      tokens.push({ type: 'number', value: numberMatch[1] });
+      remaining = remaining.slice(numberMatch[1].length);
+      continue;
+    }
+    
+    // Check for identifiers (non-keyword words)
+    const identifierMatch = remaining.match(/^([a-zA-Z_][a-zA-Z0-9_]*)/);
+    if (identifierMatch) {
+      tokens.push({ type: 'text', value: identifierMatch[1] });
+      remaining = remaining.slice(identifierMatch[1].length);
+      continue;
+    }
+    
+    // Any other character
+    tokens.push({ type: 'text', value: remaining[0] });
+    remaining = remaining.slice(1);
+  }
+  
+  return tokens;
+}
+
+function renderToken(token: Token, index: number): React.ReactNode {
+  switch (token.type) {
+    case 'string':
+      return <span key={index} className="text-amber-400">{token.value}</span>;
+    case 'comment':
+      return <span key={index} className="text-gray-500">{token.value}</span>;
+    case 'keyword':
+      return <span key={index} className="text-purple-400">{token.value}</span>;
+    case 'type':
+      return <span key={index} className="text-cyan-400">{token.value}</span>;
+    case 'number':
+      return <span key={index} className="text-orange-400">{token.value}</span>;
+    default:
+      return <span key={index}>{token.value}</span>;
+  }
+}
+
 function highlightCSharp(code: string): React.ReactNode[] {
   const lines = code.split('\n');
   return lines.map((line, lineIndex) => {
-    // Simple syntax highlighting
-    let highlighted = line;
+    if (!line.trim()) {
+      return <div key={lineIndex}>&nbsp;</div>;
+    }
     
-    // Highlight strings
-    highlighted = highlighted.replace(/"([^"]*)"/g, '<span class="text-amber-400">"$1"</span>');
-    
-    // Highlight comments
-    highlighted = highlighted.replace(/(\/\/.*)/g, '<span class="text-gray-500">$1</span>');
-    
-    // Highlight keywords
-    csharpKeywords.forEach(keyword => {
-      const regex = new RegExp(`\\b(${keyword})\\b`, 'g');
-      highlighted = highlighted.replace(regex, '<span class="text-purple-400">$1</span>');
-    });
-    
-    // Highlight types (PascalCase)
-    highlighted = highlighted.replace(/\b([A-Z][a-zA-Z0-9]+)(?=\s|<|>|\(|\)|\[|\]|,|\.)/g, 
-      '<span class="text-cyan-400">$1</span>');
-    
-    // Highlight numbers
-    highlighted = highlighted.replace(/\b(\d+)\b/g, '<span class="text-orange-400">$1</span>');
-    
+    const tokens = tokenizeLine(line);
     return (
-      <div key={lineIndex} dangerouslySetInnerHTML={{ __html: highlighted || '&nbsp;' }} />
+      <div key={lineIndex}>
+        {tokens.map((token, tokenIndex) => renderToken(token, tokenIndex))}
+      </div>
     );
   });
 }
@@ -165,7 +234,7 @@ export function DotnetCodePreview({
                       </span>
                     )}
                     <span className="text-gray-200">
-                      {highlightCSharp(line)[0]}
+                      {tokenizeLine(line).map((token, tokenIndex) => renderToken(token, tokenIndex))}
                     </span>
                   </motion.div>
                 );
