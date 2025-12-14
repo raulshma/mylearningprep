@@ -1,0 +1,228 @@
+# while and do...while: Practical Applications
+
+Let's explore real-world patterns and practical uses for condition-based loops.
+
+## Input Validation Pattern
+
+One of the most common uses for `do...while` is validating user input:
+
+```javascript
+let userAge;
+
+do {
+  userAge = parseInt(prompt('Enter your age (1-120):'));
+} while (isNaN(userAge) || userAge < 1 || userAge > 120);
+
+console.log(`Your age is ${userAge}`);
+```
+
+This pattern:
+1. Asks for input at least once
+2. Keeps asking until valid input is received
+3. Guarantees `userAge` is valid after the loop
+
+<ProgressCheckpoint section="while-intro" xpReward={10} />
+
+## Reading Data Until Sentinel
+
+Use `while` when reading data until you hit a special "stop" value:
+
+```javascript
+const inputs = [];
+let value = prompt('Enter a number (or "done" to finish):');
+
+while (value !== 'done') {
+  const num = parseFloat(value);
+  if (!isNaN(num)) {
+    inputs.push(num);
+  }
+  value = prompt('Enter another number (or "done"):');
+}
+
+console.log('You entered:', inputs);
+console.log('Sum:', inputs.reduce((a, b) => a + b, 0));
+```
+
+<CodePlayground 
+  code={`// Simulating reading until sentinel
+const data = [10, 20, 30, -1]; // -1 is our sentinel
+let index = 0;
+let sum = 0;
+
+while (data[index] !== -1) {
+  sum += data[index];
+  console.log('Added:', data[index], '| Current sum:', sum);
+  index++;
+}
+
+console.log('Final sum:', sum);`}
+  title="Sentinel Value Pattern"
+/>
+
+<ProgressCheckpoint section="do-while" xpReward={10} />
+
+## Game Loop Pattern
+
+Games often use `while` loops for their main loop:
+
+```javascript
+let gameOver = false;
+let score = 0;
+let lives = 3;
+
+while (!gameOver) {
+  // Game logic would go here
+  const hit = Math.random() > 0.7;
+  
+  if (hit) {
+    score += 10;
+    console.log('Hit! Score:', score);
+  } else {
+    lives--;
+    console.log('Miss! Lives:', lives);
+  }
+  
+  if (lives <= 0) {
+    gameOver = true;
+  }
+}
+
+console.log('Game Over! Final Score:', score);
+```
+
+## Retry Pattern with Maximum Attempts
+
+Combine `while` with a counter for retry logic:
+
+```javascript
+const MAX_RETRIES = 3;
+let attempts = 0;
+let success = false;
+
+while (attempts < MAX_RETRIES && !success) {
+  attempts++;
+  console.log(`Attempt ${attempts}...`);
+  
+  // Simulate an operation that might fail
+  success = Math.random() > 0.6;
+  
+  if (!success && attempts < MAX_RETRIES) {
+    console.log('Failed, retrying...');
+  }
+}
+
+if (success) {
+  console.log('Operation succeeded!');
+} else {
+  console.log('All attempts failed.');
+}
+```
+
+<ProgressCheckpoint section="comparison" xpReward={10} />
+
+## Common Patterns Comparison
+
+### Searching with while
+
+```javascript
+const items = ['apple', 'banana', 'cherry', 'date'];
+let found = false;
+let i = 0;
+
+while (i < items.length && !found) {
+  if (items[i] === 'cherry') {
+    found = true;
+    console.log('Found at index:', i);
+  }
+  i++;
+}
+
+if (!found) console.log('Not found');
+```
+
+### Processing a Queue
+
+```javascript
+const queue = ['task1', 'task2', 'task3'];
+
+while (queue.length > 0) {
+  const task = queue.shift(); // Remove first item
+  console.log('Processing:', task);
+}
+console.log('All tasks completed!');
+```
+
+### Pagination/Chunking
+
+```javascript
+const allData = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+const pageSize = 3;
+let page = 0;
+
+while (page * pageSize < allData.length) {
+  const start = page * pageSize;
+  const chunk = allData.slice(start, start + pageSize);
+  console.log(`Page ${page + 1}:`, chunk);
+  page++;
+}
+```
+
+<CodePlayground 
+  code={`// Stack operations with while
+const stack = [];
+
+// Push items
+stack.push('first');
+stack.push('second');
+stack.push('third');
+
+console.log('Stack:', stack);
+
+// Pop all items (LIFO order)
+while (stack.length > 0) {
+  const item = stack.pop();
+  console.log('Popped:', item);
+}
+
+console.log('Stack is empty:', stack.length === 0);`}
+  title="Stack Processing"
+/>
+
+## Quiz: Practical Patterns
+
+<Quiz id="while-intermediate">
+  <Question
+    id="q1"
+    text="Which loop is best for 'ask for input until valid'?"
+  >
+    <Answer id="a" text="for loop" />
+    <Answer id="b" text="while loop" />
+    <Answer id="c" text="do...while loop" isCorrect />
+  </Question>
+  <Question
+    id="q2"
+    text="What does 'while (queue.length > 0)' do?"
+  >
+    <Answer id="a" text="Runs forever" />
+    <Answer id="b" text="Runs until the queue is empty" isCorrect />
+    <Answer id="c" text="Never runs" />
+  </Question>
+</Quiz>
+
+<ProgressCheckpoint section="use-cases" xpReward={15} />
+
+## When to Choose while over for
+
+| Use `while` when... | Use `for` when... |
+|:--------------------|:------------------|
+| You don't know iteration count | You know iteration count |
+| Waiting for a condition | Iterating a range |
+| Processing until empty | Iterating an array |
+| Event-driven loops | Counting scenarios |
+
+<InfoBox type="warning" title="Infinite Loop Prevention">
+Always ensure your `while` condition will eventually become `false`:
+- Update the variable in your condition
+- Have an exit strategy (break, flag, counter)
+- Test with small values first
+</InfoBox>

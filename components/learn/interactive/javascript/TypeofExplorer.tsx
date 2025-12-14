@@ -353,7 +353,7 @@ export function TypeofExplorer({
                       </div>
                       <p className="text-muted-foreground">
                         <code className="font-mono">{currentChallenge.expression}</code> returns{' '}
-                        <code className="font-mono text-primary">"{currentChallenge.correctAnswer}"</code>
+                        <code className="font-mono text-primary">&quot;{currentChallenge.correctAnswer}&quot;</code>
                       </p>
                     </motion.div>
                   )}
@@ -408,7 +408,7 @@ export function TypeofExplorer({
                           'font-mono font-semibold',
                           lastResult.isValid ? 'text-green-500' : 'text-yellow-500'
                         )}>
-                          "{lastResult.result}"
+                          &quot;{lastResult.result}&quot;
                         </code>
                       </div>
                       {!lastResult.isValid && (
@@ -462,7 +462,7 @@ export function TypeofExplorer({
                         <div className="flex items-center gap-2 flex-wrap">
                           <code className="font-mono text-sm">typeof {quirk.expression}</code>
                           <ArrowRight className="w-3 h-3 text-muted-foreground shrink-0" />
-                          <code className="font-mono text-sm font-semibold text-primary">"{quirk.result}"</code>
+                          <code className="font-mono text-sm font-semibold text-primary">&quot;{quirk.result}&quot;</code>
                           {quirk.isQuirk && (
                             <span className="px-1.5 py-0.5 text-[10px] rounded bg-yellow-500/20 text-yellow-600 font-medium">
                               QUIRK
@@ -489,15 +489,15 @@ export function TypeofExplorer({
                   <div className="p-3 rounded-lg bg-background border border-border">
                     <h5 className="font-medium text-primary mb-1">The typeof Operator Algorithm</h5>
                     <ol className="list-decimal list-inside text-muted-foreground space-y-1 text-xs">
-                      <li>If Type(val) is Undefined, return "undefined"</li>
-                      <li>If Type(val) is Null, return "object"</li>
-                      <li>If Type(val) is Boolean, return "boolean"</li>
-                      <li>If Type(val) is Number, return "number"</li>
-                      <li>If Type(val) is BigInt, return "bigint"</li>
-                      <li>If Type(val) is String, return "string"</li>
-                      <li>If Type(val) is Symbol, return "symbol"</li>
-                      <li>If Type(val) is Object and has [[Call]], return "function"</li>
-                      <li>If Type(val) is Object, return "object"</li>
+                      <li>If Type(val) is Undefined, return &quot;undefined&quot;</li>
+                      <li>If Type(val) is Null, return &quot;object&quot;</li>
+                      <li>If Type(val) is Boolean, return &quot;boolean&quot;</li>
+                      <li>If Type(val) is Number, return &quot;number&quot;</li>
+                      <li>If Type(val) is BigInt, return &quot;bigint&quot;</li>
+                      <li>If Type(val) is String, return &quot;string&quot;</li>
+                      <li>If Type(val) is Symbol, return &quot;symbol&quot;</li>
+                      <li>If Type(val) is Object and has [[Call]], return &quot;function&quot;</li>
+                      <li>If Type(val) is Object, return &quot;object&quot;</li>
                     </ol>
                   </div>
 

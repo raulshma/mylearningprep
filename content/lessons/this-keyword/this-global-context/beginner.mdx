@@ -1,0 +1,58 @@
+# The Stage Spotlight: Understanding `this` in Global Context
+
+Imagine you're at a theater. The **spotlight** is like JavaScript's `this` keyword - it always points to something important on stage.
+
+When the show hasn't started yet and no actors are performing, where does the spotlight shine? It shines on the **main stage itself** - the biggest, most important area.
+
+That's exactly how `this` works in the global context!
+
+## The Global Stage 🌍
+
+```javascript
+// At the top level of your code (no functions, no classes)
+console.log(this); // Points to the "main stage" - the global object!
+```
+
+In a **browser**, the "main stage" is called `window`. In **Node.js**, it's called `globalThis`.
+
+<ThisKeywordVisualizer context="global" showStrictMode={false} />
+
+## Think of `this` as a Name Tag
+
+| Location | What `this` Points To | Real World Analogy |
+|:---------|:---------------------|:-------------------|
+| Global (browser) | `window` | The main stage at a theater |
+| Global (Node.js) | `globalThis` | The central command center |
+| Inside a function | Depends... | Changes based on who calls it |
+
+## A Simple Example
+
+```javascript
+// In a browser
+console.log(this === window); // true!
+
+// You can even add things to the global stage
+this.myGreeting = "Hello, World!";
+console.log(window.myGreeting); // "Hello, World!"
+```
+
+Think of the global object as a **shared whiteboard** - anything you write there can be seen by everyone!
+
+## The Golden Rule 🏆
+
+> In the global context (outside any function or class), `this` always refers to the global object.
+
+This is the **default** behavior - like the spotlight returning to center stage when no actors are performing.
+
+## Why Does This Matter?
+
+Understanding where `this` points helps you:
+- 🔍 Debug mysterious bugs
+- 📦 Understand how libraries work
+- 🏗️ Build better code structures
+
+<KeyConcept title="Key Takeaway">
+At the top level of your code, `this` points to the global object (`window` in browsers, `globalThis` everywhere).
+</KeyConcept>
+
+<ProgressCheckpoint section="global-basics" xpReward={20} />

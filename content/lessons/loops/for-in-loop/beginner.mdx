@@ -1,0 +1,165 @@
+# for...in Loop: Touring Object Properties
+
+The `for...in` loop is designed for looping through the **properties** of an object. Let's explore how it works!
+
+## The Museum Tour Guide Analogy
+
+<KeyConcept title="Think Like a Tour Guide" icon="map">
+Imagine you're a **tour guide in a museum**:
+
+- You walk through each **room** (property) in the museum (object)
+- You announce the **name of each room** (property key)
+- You don't automatically describe what's inside (but you can look!)
+
+The `for...in` loop gives you the **keys** (room names), not the values (room contents).
+</KeyConcept>
+
+<ProgressCheckpoint section="intro" xpReward={5} />
+
+## Basic Syntax
+
+```javascript
+for (const key in object) {
+  // code to run for each property
+}
+```
+
+### Simple Example
+
+```javascript
+const person = {
+  name: 'Alice',
+  age: 25,
+  city: 'New York'
+};
+
+for (const key in person) {
+  console.log(key);
+}
+// Output: "name", "age", "city"
+```
+
+> **Notice:** We get the property *names* (keys), not the values!
+
+## Getting Both Keys and Values
+
+To get the value, use the key to access it:
+
+```javascript
+const car = {
+  brand: 'Toyota',
+  model: 'Camry',
+  year: 2022
+};
+
+for (const key in car) {
+  console.log(key + ': ' + car[key]);
+}
+// Output:
+// brand: Toyota
+// model: Camry
+// year: 2022
+```
+
+<LoopVisualizer type="for-in" />
+
+<ProgressCheckpoint section="object-iteration" xpReward={5} />
+
+## Keys vs Values - Understanding the Difference
+
+| What You Get | How to Access |
+|:-------------|:--------------|
+| Property **key** (name) | `key` |
+| Property **value** | `object[key]` |
+| Both together | `key + ': ' + object[key]` |
+
+<CodePlayground 
+  code={`const book = {
+  title: 'JavaScript Guide',
+  author: 'John Doe',
+  pages: 350
+};
+
+console.log('Book Details:');
+console.log('=============');
+
+for (const property in book) {
+  console.log(\`\${property}: \${book[property]}\`);
+}`}
+  title="Try It: Loop Through Object"
+/>
+
+<ProgressCheckpoint section="caveats" xpReward={5} />
+
+## Important Warning: Don't Use for...in with Arrays!
+
+While `for...in` works with arrays, it's **not recommended**:
+
+```javascript
+const colors = ['red', 'green', 'blue'];
+
+// ❌ Not recommended - gives you indices as strings
+for (const index in colors) {
+  console.log(index, typeof index);
+}
+// Output: "0" string, "1" string, "2" string
+
+// ✅ Better - use for...of for arrays
+for (const color of colors) {
+  console.log(color);
+}
+// Output: "red", "green", "blue"
+```
+
+<InfoBox type="warning" title="for...in vs for...of">
+- **for...in** → For **objects** (gives property names)
+- **for...of** → For **arrays** and iterables (gives values)
+
+Using the wrong one is a common beginner mistake!
+</InfoBox>
+
+## Quiz Time!
+
+<Quiz id="for-in-basics">
+  <Question
+    id="q1"
+    text="What does for...in give you from an object?"
+  >
+    <Answer id="a" text="The values" />
+    <Answer id="b" text="The property keys (names)" isCorrect />
+    <Answer id="c" text="Both keys and values" />
+  </Question>
+  <Question
+    id="q2"
+    text="Should you use for...in to loop through arrays?"
+  >
+    <Answer id="a" text="Yes, it's the best way" />
+    <Answer id="b" text="No, use for...of instead" isCorrect />
+    <Answer id="c" text="Arrays can't be looped" />
+  </Question>
+</Quiz>
+
+<ProgressCheckpoint section="best-practices" xpReward={10} />
+
+## Quick Reference
+
+```javascript
+const obj = { a: 1, b: 2, c: 3 };
+
+// Get keys only
+for (const key in obj) {
+  console.log(key);        // "a", "b", "c"
+}
+
+// Get values only
+for (const key in obj) {
+  console.log(obj[key]);   // 1, 2, 3
+}
+
+// Get both
+for (const key in obj) {
+  console.log(`${key} = ${obj[key]}`);  // "a = 1", "b = 2", "c = 3"
+}
+```
+
+> **Memory Tip:** "**in**" = "what's **in** the object" = property names!

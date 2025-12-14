@@ -1,0 +1,29 @@
+{
+  "id": "for-loop",
+  "title": "for Loop",
+  "description": "Master the for loop - the most versatile iteration tool in JavaScript for counting, array traversal, and controlled repetition.",
+  "milestone": "loops",
+  "order": 1,
+  "sections": [
+    "intro",
+    "syntax",
+    "examples",
+    "exercises"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 45
+    },
+    "advanced": {
+      "estimatedMinutes": 20,
+      "xpReward": 70
+    }
+  },
+  "prerequisites": [],
+  "tags": ["javascript", "loops", "for", "iteration", "counting"]
+}

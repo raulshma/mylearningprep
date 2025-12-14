@@ -1,0 +1,28 @@
+{
+  "id": "indexed-collections",
+  "title": "Indexed Collections (Arrays, Typed Arrays)",
+  "description": "Master JavaScript arrays and typed arrays - the fundamental indexed data structures for storing ordered collections of values.",
+  "milestone": "data-structures",
+  "order": 1,
+  "sections": [
+    "array-basics",
+    "array-methods",
+    "typed-arrays"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 20,
+      "xpReward": 50
+    },
+    "advanced": {
+      "estimatedMinutes": 25,
+      "xpReward": 75
+    }
+  },
+  "prerequisites": ["primitive-types", "object-type"],
+  "tags": ["javascript", "arrays", "typed-arrays", "data-structures"]
+}

@@ -1,0 +1,269 @@
+# Explicit Binding with call(), apply(), and bind()
+
+JavaScript provides three methods on the `Function.prototype` that allow you to explicitly set the value of `this` when calling a function. These methods give you precise control over the execution context.
+
+## Function.prototype.call()
+
+`call()` invokes a function with a specified `this` value and arguments provided individually:
+
+```javascript
+function.call(thisArg, arg1, arg2, ...)
+```
+
+<ThisKeywordVisualizer context="explicit" showStrictMode={true} />
+
+### Basic Usage
+
+```javascript
+function greet(greeting, punctuation) {
+  return `${greeting}, ${this.name}${punctuation}`;
+}
+
+const alice = { name: "Alice" };
+const bob = { name: "Bob" };
+
+console.log(greet.call(alice, "Hello", "!")); // "Hello, Alice!"
+console.log(greet.call(bob, "Hi", "?"));      // "Hi, Bob?"
+```
+
+### Using call() for Method Borrowing
+
+```javascript
+const arrayLike = {
+  0: "a",
+  1: "b",
+  2: "c",
+  length: 3
+};
+
+// Borrow array methods for array-like objects
+const realArray = Array.prototype.slice.call(arrayLike);
+console.log(realArray); // ["a", "b", "c"]
+
+// Borrow other methods
+const result = Array.prototype.join.call(arrayLike, "-");
+console.log(result); // "a-b-c"
+```
+
+## Function.prototype.apply()
+
+`apply()` is identical to `call()` except arguments are passed as an array:
+
+```javascript
+function.apply(thisArg, [argsArray])
+```
+
+### Basic Usage
+
+```javascript
+function introduce(greeting, question) {
+  console.log(`${greeting}! I'm ${this.name}. ${question}`);
+}
+
+const person = { name: "Carol" };
+const args = ["Hello", "How are you?"];
+
+introduce.apply(person, args); // "Hello! I'm Carol. How are you?"
+```
+
+### Spreading Arguments
+
+```javascript
+// Before ES6 spread operator, apply was used for this:
+const numbers = [5, 6, 2, 3, 7];
+
+// Old way with apply
+const max1 = Math.max.apply(null, numbers);
+
+// Modern way with spread
+const max2 = Math.max(...numbers);
+
+console.log(max1, max2); // 7, 7
+```
+
+### Appending Arrays
+
+```javascript
+const array1 = [1, 2, 3];
+const array2 = [4, 5, 6];
+
+// Push all items from array2 to array1
+Array.prototype.push.apply(array1, array2);
+console.log(array1); // [1, 2, 3, 4, 5, 6]
+
+// Modern alternative
+array1.push(...array2);
+```
+
+## Function.prototype.bind()
+
+`bind()` creates a new function with a permanently bound `this` value:
+
+```javascript
+const boundFunction = function.bind(thisArg, arg1, arg2, ...)
+```
+
+### Basic Usage
+
+```javascript
+const module = {
+  x: 42,
+  getX() {
+    return this.x;
+  }
+};
+
+const retrieveX = module.getX;
+console.log(retrieveX()); // undefined - 'this' is lost
+
+const boundGetX = module.getX.bind(module);
+console.log(boundGetX()); // 42 - 'this' is bound
+```
+
+### Partial Application
+
+`bind()` can also preset arguments:
+
+```javascript
+function multiply(a, b) {
+  return a * b;
+}
+
+// Create specialized functions
+const double = multiply.bind(null, 2);
+const triple = multiply.bind(null, 3);
+
+console.log(double(5));  // 10
+console.log(triple(5));  // 15
+
+// Multiple preset arguments
+function log(level, timestamp, message) {
+  console.log(`[${level}] ${timestamp}: ${message}`);
+}
+
+const infoLogger = log.bind(null, "INFO");
+const now = new Date().toISOString();
+infoLogger(now, "Application started"); // [INFO] 2024-01-15T...: Application started
+```
+
+## Practical Patterns
+
+### 1. Event Handlers with Methods
+
+```javascript
+class Button {
+  constructor(label) {
+    this.label = label;
+    this.element = document.createElement("button");
+    this.element.textContent = label;
+    
+    // Bind the handler to preserve 'this'
+    this.element.addEventListener("click", this.handleClick.bind(this));
+  }
+  
+  handleClick(event) {
+    console.log(`${this.label} button clicked!`);
+    this.element.classList.add("clicked");
+  }
+}
+```
+
+### 2. Callbacks with Context
+
+```javascript
+class DataProcessor {
+  constructor(multiplier) {
+    this.multiplier = multiplier;
+  }
+  
+  process(data) {
+    // 'this' would be lost in map callback without bind
+    return data.map(function(item) {
+      return item * this.multiplier;
+    }.bind(this));
+    
+    // Or use arrow function (simpler)
+    // return data.map(item => item * this.multiplier);
+  }
+}
+
+const processor = new DataProcessor(2);
+console.log(processor.process([1, 2, 3])); // [2, 4, 6]
+```
+
+### 3. Scheduled Execution
+
+```javascript
+const counter = {
+  count: 0,
+  
+  start() {
+    // bind ensures 'this' refers to counter
+    this.intervalId = setInterval(this.increment.bind(this), 1000);
+  },
+  
+  increment() {
+    this.count++;
+    console.log(`Count: ${this.count}`);
+  },
+  
+  stop() {
+    clearInterval(this.intervalId);
+  }
+};
+
+counter.start();
+// Count: 1
+// Count: 2
+// ...
+```
+
+### 4. Function Composition with Binding
+
+```javascript
+const pipe = (...fns) => (value) => fns.reduce((acc, fn) => fn(acc), value);
+
+const mathOps = {
+  base: 10,
+  add(n) { return n + this.base; },
+  multiply(n) { return n * this.base; }
+};
+
+// Create bound versions
+const addBase = mathOps.add.bind(mathOps);
+const multiplyBase = mathOps.multiply.bind(mathOps);
+
+const process = pipe(addBase, multiplyBase);
+console.log(process(5)); // (5 + 10) * 10 = 150
+```
+
+## Call vs Apply vs Bind
+
+| Feature | call() | apply() | bind() |
+|:--------|:-------|:--------|:-------|
+| Invokes immediately | Yes | Yes | No (returns function) |
+| Argument format | List | Array | List (partial) |
+| Returns | Function result | Function result | New function |
+| Use case | One-time call | Dynamic args | Callbacks, events |
+
+```javascript
+function example(a, b, c) {
+  console.log(this.name, a, b, c);
+}
+
+const obj = { name: "Test" };
+const args = [1, 2, 3];
+
+// All achieve the same result:
+example.call(obj, 1, 2, 3);       // "Test 1 2 3"
+example.apply(obj, args);          // "Test 1 2 3"
+example.bind(obj, 1, 2, 3)();      // "Test 1 2 3"
+example.bind(obj)(1, 2, 3);        // "Test 1 2 3"
+example.bind(obj, 1)(2, 3);        // "Test 1 2 3"
+```
+
+<InfoBox type="tip" title="Modern Alternative">
+For many use cases where you'd use `bind()`, arrow functions provide a cleaner solution. However, `bind()` is still useful for partial application and when working with existing functions you can't modify.
+</InfoBox>
+
+<ProgressCheckpoint section="bind-method" xpReward={45} />

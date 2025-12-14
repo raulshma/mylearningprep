@@ -122,6 +122,8 @@ export function JsTimelineExplorer({ mode = 'beginner' }: JsTimelineExplorerProp
     ? timelineEvents.filter(e => e.significance === 'high')
     : timelineEvents;
 
+  const maxIndex = filteredEvents.length - 1;
+
   const currentEvent = filteredEvents[selectedIndex];
 
   const handlePrev = useCallback(() => {
@@ -131,11 +133,10 @@ export function JsTimelineExplorer({ mode = 'beginner' }: JsTimelineExplorerProp
 
   const handleNext = useCallback(() => {
     setSelectedIndex(prev => {
-      const maxIndex = filteredEvents.length - 1;
       return Math.min(maxIndex, prev + 1);
     });
     setIsExpanded(false);
-  }, []);
+  }, [maxIndex]);
 
   return (
     <div className="my-8 p-6 rounded-2xl bg-gradient-to-br from-background to-muted/30 border border-border">

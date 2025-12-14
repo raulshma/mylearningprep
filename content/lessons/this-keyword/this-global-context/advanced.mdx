@@ -1,0 +1,253 @@
+# Deep Dive: `this` in Global Context
+
+Understanding the global `this` binding requires examining JavaScript's execution contexts, the evolution of the language, and how different runtime environments handle the global object.
+
+## Execution Context and `this` Binding
+
+When JavaScript code executes, it runs within an **execution context**. The global execution context is created before any code runs and establishes:
+
+1. **Global Object** - `window` (browser) or `global` (Node.js)
+2. **`this` Binding** - References the global object
+3. **Outer Environment** - `null` (no parent scope)
+4. **Variable Environment** - Stores global declarations
+
+```javascript
+// Understanding the global execution context
+console.log(this === globalThis); // true at global level
+
+// Global declarations become properties of the global object
+var globalVar = "I'm global";
+console.log(globalThis.globalVar); // "I'm global"
+
+// But let/const do NOT attach to global object
+let blockScoped = "I'm block-scoped";
+console.log(globalThis.blockScoped); // undefined
+```
+
+<ThisKeywordVisualizer context="global" showStrictMode={true} />
+
+## Strict Mode at Global Level
+
+Strict mode affects `this` inside functions, but NOT at the global level:
+
+```javascript
+"use strict";
+
+// Global this is still the global object in strict mode
+console.log(this === globalThis); // true
+
+function strictFunction() {
+  // But inside functions, strict mode changes this to undefined
+  console.log(this); // undefined (not called as method)
+}
+
+strictFunction();
+```
+
+### The Historical Context
+
+Before strict mode (ES5), `this` defaulting to the global object in functions was a common source of bugs:
+
+```javascript
+// Sloppy mode - accidental global pollution
+function oldFunction() {
+  this.accidentalGlobal = "oops"; // Creates window.accidentalGlobal
+}
+oldFunction();
+console.log(window.accidentalGlobal); // "oops" - unintended!
+
+// Strict mode prevents this
+"use strict";
+function newFunction() {
+  this.tryToPolluteGlobal = "oops"; // TypeError: Cannot set property of undefined
+}
+newFunction();
+```
+
+## ES Modules and `this`
+
+ES modules have a fundamentally different global `this` behavior:
+
+```javascript
+// file: module.mjs (or <script type="module">)
+console.log(this); // undefined (NOT the global object!)
+
+// This is intentional for module isolation
+// Use globalThis to access the global object explicitly
+console.log(globalThis); // window in browser
+```
+
+### Why Modules Use `undefined`
+
+1. **Encapsulation** - Modules should be self-contained
+2. **Prevent Pollution** - Discourages global variable creation
+3. **Strict Mode** - ES modules are always in strict mode
+4. **Consistency** - Same behavior across all JavaScript environments
+
+## The `globalThis` Proposal (TC39)
+
+Before `globalThis` (ES2020), accessing the global object was inconsistent:
+
+```javascript
+// Old approaches (pre-ES2020)
+const getGlobal = function() {
+  // Browser
+  if (typeof window !== 'undefined') return window;
+  // Node.js
+  if (typeof global !== 'undefined') return global;
+  // Web Workers
+  if (typeof self !== 'undefined') return self;
+  // Fallback (risky in strict mode)
+  if (typeof this !== 'undefined') return this;
+  
+  throw new Error('Unable to locate global object');
+};
+
+// Modern approach (ES2020+)
+const global = globalThis; // Just works everywhere
+```
+
+### Implementing a globalThis Polyfill
+
+```javascript
+// Robust polyfill for older environments
+(function() {
+  if (typeof globalThis === 'object') return;
+  
+  Object.defineProperty(Object.prototype, '__magic__', {
+    get: function() {
+      return this;
+    },
+    configurable: true
+  });
+  
+  __magic__.globalThis = __magic__;
+  delete Object.prototype.__magic__;
+})();
+```
+
+## Advanced Patterns
+
+### 1. Namespace Pattern with Global Object
+
+```javascript
+// Creating an application namespace
+globalThis.MyApp = globalThis.MyApp || {};
+MyApp.config = {
+  apiUrl: 'https://api.example.com',
+  debug: true
+};
+
+// Modules can access shared config
+console.log(globalThis.MyApp.config.apiUrl);
+```
+
+### 2. Feature Detection
+
+```javascript
+// Check for browser APIs
+const isSecureContext = globalThis.isSecureContext === true;
+const hasServiceWorker = 'serviceWorker' in globalThis.navigator;
+const hasWebGL = 'WebGLRenderingContext' in globalThis;
+
+// Environment-specific initialization
+if (typeof process !== 'undefined' && process.env) {
+  // Node.js environment
+  globalThis.config = process.env;
+} else if (typeof window !== 'undefined') {
+  // Browser environment
+  globalThis.config = window.__APP_CONFIG__ || {};
+}
+```
+
+### 3. Cross-Realm Object Identity
+
+```javascript
+// Objects from different realms (iframes) have different prototypes
+const iframe = document.createElement('iframe');
+document.body.appendChild(iframe);
+const iframeGlobal = iframe.contentWindow;
+
+// Array from iframe has different constructor
+const iframeArray = iframeGlobal.Array;
+console.log([] instanceof iframeArray); // false!
+console.log(Array.isArray([])); // true (works cross-realm)
+
+// globalThis is realm-specific
+console.log(globalThis === iframeGlobal.globalThis); // false
+```
+
+## Edge Cases and Gotchas
+
+### 1. `with` Statement (Deprecated)
+
+```javascript
+// The 'with' statement can temporarily change scope resolution
+// This is deprecated and banned in strict mode
+with (Math) {
+  console.log(this); // Still global object, not Math
+  console.log(PI); // 3.14159... (property looked up in Math)
+}
+```
+
+### 2. `eval` and Global `this`
+
+```javascript
+// Direct eval inherits the calling context
+function test() {
+  "use strict";
+  eval('console.log(this)'); // undefined (strict function context)
+}
+test();
+
+// Indirect eval uses global context
+const geval = eval;
+geval('console.log(this === globalThis)'); // true
+```
+
+### 3. Constructor Without `new`
+
+```javascript
+function User(name) {
+  // Without 'new', 'this' is global (or undefined in strict mode)
+  this.name = name;
+}
+
+User("Alice"); // Pollutes global! window.name = "Alice"
+const user = new User("Bob"); // Correct: creates new object
+```
+
+## Performance Considerations
+
+```javascript
+// Accessing global properties
+// Direct global access is slightly faster
+const start = performance.now();
+for (let i = 0; i < 1000000; i++) {
+  void globalThis.Math; // Accessing via globalThis
+}
+const globalThisTime = performance.now() - start;
+
+const start2 = performance.now();
+for (let i = 0; i < 1000000; i++) {
+  void Math; // Direct identifier access
+}
+const directTime = performance.now() - start2;
+
+// Direct access is marginally faster due to scope chain optimization
+console.log(`globalThis: ${globalThisTime}ms, direct: ${directTime}ms`);
+```
+
+<InfoBox type="warning" title="Security Consideration">
+Avoid attaching sensitive data to the global object. In browsers, any script (including third-party scripts) can access `window` properties. Use closures or modules for private state.
+</InfoBox>
+
+<KeyConcept title="Summary">
+- Global `this` is the global object (`window`/`globalThis`) at the top level
+- ES modules have `this` as `undefined` for encapsulation
+- Use `globalThis` for cross-environment compatibility (ES2020+)
+- `var` attaches to global object; `let`/`const` do not
+- Strict mode doesn't change global `this`, only function `this`
+</KeyConcept>
+
+<ProgressCheckpoint section="globalThis" xpReward={50} />

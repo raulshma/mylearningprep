@@ -1,0 +1,126 @@
+# The for Loop: Your First Counting Machine
+
+Welcome to the world of loops! A **loop** is a way to repeat code without writing it over and over. Let's start with the `for` loop - the most popular loop in JavaScript!
+
+## What is a for Loop?
+
+<KeyConcept title="The Race Track Analogy" icon="flag">
+Think of a `for` loop like a **race track**:
+
+1. **Starting Line** (initialization) - Where you begin: `let i = 0`
+2. **Finish Line Check** (condition) - "Have I crossed the finish line?" - `i < 5`
+3. **Run One Lap** (body) - Do something each lap
+4. **Move Forward** (update) - Take one step closer to the finish: `i++`
+</KeyConcept>
+
+<ProgressCheckpoint section="intro" xpReward={5} />
+
+## The for Loop Syntax
+
+Here's what a `for` loop looks like:
+
+```javascript
+for (initialization; condition; update) {
+  // code to repeat
+}
+```
+
+Let's break it down with a real example:
+
+```javascript
+for (let i = 0; i < 5; i++) {
+  console.log(i);
+}
+// Output: 0, 1, 2, 3, 4
+```
+
+| Part | Example | What it Does |
+|:-----|:--------|:-------------|
+| **Initialization** | `let i = 0` | Creates a counter starting at 0 |
+| **Condition** | `i < 5` | Keeps running while true |
+| **Update** | `i++` | Adds 1 after each loop |
+| **Body** | `console.log(i)` | The code that repeats |
+
+<ProgressCheckpoint section="syntax" xpReward={5} />
+
+## See It In Action
+
+Watch how the for loop works step by step:
+
+<LoopVisualizer type="for" />
+
+> **Notice:** The loop runs 5 times (for i = 0, 1, 2, 3, 4), but stops before i becomes 5 because the condition `i < 5` becomes false.
+
+<ProgressCheckpoint section="examples" xpReward={5} />
+
+## Real World Examples
+
+### Counting to 10
+
+Imagine you're a rocket scientist counting down... but let's count UP first:
+
+```javascript
+for (let number = 1; number <= 10; number++) {
+  console.log(number);
+}
+// Output: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10
+```
+
+### Looping Through an Array
+
+You have a basket of fruits. Let's look at each one:
+
+```javascript
+const fruits = ['apple', 'banana', 'cherry'];
+
+for (let i = 0; i < fruits.length; i++) {
+  console.log('I have a ' + fruits[i]);
+}
+// Output:
+// I have a apple
+// I have a banana
+// I have a cherry
+```
+
+<CodePlayground 
+  code={`const colors = ['red', 'green', 'blue'];
+
+for (let i = 0; i < colors.length; i++) {
+  console.log('Color #' + (i + 1) + ': ' + colors[i]);
+}`}
+  title="Try it: Loop Through Colors"
+/>
+
+## Quick Quiz
+
+<Quiz id="for-loop-basics">
+  <Question
+    id="q1"
+    text="In 'for (let i = 0; i < 3; i++)', how many times will the loop run?"
+  >
+    <Answer id="a" text="2 times" />
+    <Answer id="b" text="3 times" isCorrect />
+    <Answer id="c" text="4 times" />
+  </Question>
+  <Question
+    id="q2"
+    text="What does 'i++' do in a for loop?"
+  >
+    <Answer id="a" text="Sets i to 0" />
+    <Answer id="b" text="Checks if the loop should continue" />
+    <Answer id="c" text="Adds 1 to i after each loop" isCorrect />
+  </Question>
+</Quiz>
+
+<ProgressCheckpoint section="exercises" xpReward={10} />
+
+## Key Takeaways
+
+<InfoBox type="tip" title="Remember the 3 Parts">
+Every `for` loop has three parts separated by semicolons:
+1. **Start somewhere** - `let i = 0`
+2. **Keep going while** - `i < 10`
+3. **Move forward by** - `i++`
+</InfoBox>
+
+> **Pro Tip:** The variable `i` stands for "index" or "iterator" - it's the traditional name, but you can use any name like `count`, `step`, or `num`!

@@ -1,0 +1,199 @@
+# for...of Loop: Direct Access to Values
+
+The `for...of` loop is the modern way to iterate over collections in JavaScript. It gives you the **values directly** - no index needed!
+
+## The Sushi Conveyor Belt Analogy
+
+<KeyConcept title="Think of a Sushi Restaurant" icon="utensils">
+Imagine you're at a **conveyor belt sushi restaurant**:
+
+- Each plate of sushi (value) comes directly to you
+- You don't care about the plate number (index)
+- You just grab the sushi and enjoy it!
+
+The `for...of` loop gives you each **value** directly, one at a time.
+</KeyConcept>
+
+<ProgressCheckpoint section="intro" xpReward={5} />
+
+## Basic Syntax
+
+```javascript
+for (const value of iterable) {
+  // use the value
+}
+```
+
+### Simple Array Example
+
+```javascript
+const fruits = ['apple', 'banana', 'cherry'];
+
+for (const fruit of fruits) {
+  console.log(fruit);
+}
+// Output: "apple", "banana", "cherry"
+```
+
+> **So simple!** No index variable, no `.length` check - just the values you want!
+
+<LoopVisualizer type="for-of" />
+
+<ProgressCheckpoint section="iterables" xpReward={5} />
+
+## for...of vs for...in - Know the Difference!
+
+This is super important:
+
+| Loop | Returns | Best For |
+|:-----|:--------|:---------|
+| **for...of** | **Values** | Arrays, strings, iterables |
+| **for...in** | **Keys** (property names) | Objects |
+
+```javascript
+const colors = ['red', 'green', 'blue'];
+
+// for...of gives VALUES
+for (const color of colors) {
+  console.log(color);  // "red", "green", "blue"
+}
+
+// for...in gives KEYS (indices as strings!)
+for (const index in colors) {
+  console.log(index);  // "0", "1", "2"
+}
+```
+
+<InfoBox type="tip" title="Easy Memory Trick">
+- **of** = "get each **o**ne of the items" = values
+- **in** = "what's **in** here?" = property names/keys
+</InfoBox>
+
+<ProgressCheckpoint section="comparison" xpReward={5} />
+
+## What Can You Loop Over?
+
+`for...of` works with any **iterable**:
+
+### Arrays
+
+```javascript
+const numbers = [10, 20, 30];
+for (const num of numbers) {
+  console.log(num * 2);  // 20, 40, 60
+}
+```
+
+### Strings (Character by Character!)
+
+```javascript
+const word = 'Hello';
+for (const char of word) {
+  console.log(char);
+}
+// Output: "H", "e", "l", "l", "o"
+```
+
+### Sets
+
+```javascript
+const uniqueNumbers = new Set([1, 2, 2, 3, 3, 3]);
+for (const num of uniqueNumbers) {
+  console.log(num);
+}
+// Output: 1, 2, 3 (no duplicates!)
+```
+
+<CodePlayground 
+  code={`// Loop through a string
+const message = 'JavaScript';
+
+console.log('Letters in the word:');
+for (const letter of message) {
+  console.log('→ ' + letter);
+}`}
+  title="Try It: Loop Through a String"
+/>
+
+## Why Use for...of?
+
+### Cleaner Code
+
+```javascript
+const items = ['a', 'b', 'c'];
+
+// ❌ Old way - lots of boilerplate
+for (let i = 0; i < items.length; i++) {
+  console.log(items[i]);
+}
+
+// ✅ Modern way - clean and simple
+for (const item of items) {
+  console.log(item);
+}
+```
+
+### Can Use break and continue!
+
+```javascript
+const numbers = [1, 2, 3, 4, 5];
+
+for (const num of numbers) {
+  if (num === 3) continue;  // Skip 3
+  if (num === 5) break;     // Stop at 5
+  console.log(num);
+}
+// Output: 1, 2, 4
+```
+
+> **Note:** You can't use `break` or `continue` with `forEach`!
+
+## Quiz Time!
+
+<Quiz id="for-of-basics">
+  <Question
+    id="q1"
+    text="What does for...of give you from an array?"
+  >
+    <Answer id="a" text="The indices (0, 1, 2...)" />
+    <Answer id="b" text="The values directly" isCorrect />
+    <Answer id="c" text="The array length" />
+  </Question>
+  <Question
+    id="q2"
+    text="Which of these can you use for...of with?"
+  >
+    <Answer id="a" text="Only arrays" />
+    <Answer id="b" text="Arrays, strings, and other iterables" isCorrect />
+    <Answer id="c" text="Only objects" />
+  </Question>
+</Quiz>
+
+<ProgressCheckpoint section="advanced-usage" xpReward={10} />
+
+## Quick Comparison
+
+```javascript
+const data = ['x', 'y', 'z'];
+
+// Traditional for
+for (let i = 0; i < data.length; i++) {
+  console.log(data[i]);
+}
+
+// for...of (recommended for values)
+for (const item of data) {
+  console.log(item);
+}
+
+// forEach (functional style)
+data.forEach(item => console.log(item));
+```
+
+<InfoBox type="tip" title="When to Use for...of">
+Use `for...of` when you:
+- Need the **values** from an array
+- Want clean, readable code
+- Need to use `break` or `continue`
+- Are working with any iterable (arrays, strings, Sets, Maps)
+</InfoBox>

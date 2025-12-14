@@ -1,0 +1,204 @@
+# for...in Loop: Inherited Properties and Patterns
+
+Understand how `for...in` handles inherited properties and learn safer patterns for object iteration.
+
+## Inherited Properties Problem
+
+`for...in` iterates over **all enumerable properties**, including those inherited from the prototype chain:
+
+```javascript
+// Parent object
+const animal = {
+  type: 'mammal'
+};
+
+// Child object that inherits from animal
+const dog = Object.create(animal);
+dog.name = 'Buddy';
+dog.breed = 'Golden Retriever';
+
+for (const key in dog) {
+  console.log(key);
+}
+// Output: "name", "breed", "type" (inherited!)
+```
+
+<ProgressCheckpoint section="intro" xpReward={10} />
+
+## The hasOwnProperty Pattern
+
+To iterate only over an object's **own** properties (not inherited), use `hasOwnProperty`:
+
+```javascript
+const dog = Object.create({ type: 'mammal' });
+dog.name = 'Buddy';
+dog.breed = 'Golden Retriever';
+
+for (const key in dog) {
+  if (dog.hasOwnProperty(key)) {
+    console.log(key + ': ' + dog[key]);
+  }
+}
+// Output: "name: Buddy", "breed: Golden Retriever"
+// (type is filtered out)
+```
+
+<CodePlayground 
+  code={`// Create an object with inheritance
+const parent = { inherited: 'I come from parent' };
+const child = Object.create(parent);
+child.own = 'I belong to child';
+child.another = 'Me too';
+
+console.log('Without filter:');
+for (const key in child) {
+  console.log(key);
+}
+
+console.log('\\nWith hasOwnProperty:');
+for (const key in child) {
+  if (Object.hasOwn(child, key)) { // Modern alternative
+    console.log(key);
+  }
+}`}
+  title="Own vs Inherited Properties"
+/>
+
+<ProgressCheckpoint section="object-iteration" xpReward={10} />
+
+## Modern Alternatives to for...in
+
+### Object.keys() - Get Array of Keys
+
+```javascript
+const user = { name: 'Alice', age: 25, role: 'admin' };
+
+// Returns array of own property keys
+const keys = Object.keys(user);
+console.log(keys); // ["name", "age", "role"]
+
+// Then use forEach or for...of
+Object.keys(user).forEach(key => {
+  console.log(`${key}: ${user[key]}`);
+});
+```
+
+### Object.values() - Get Array of Values
+
+```javascript
+const scores = { math: 95, english: 88, science: 92 };
+
+const values = Object.values(scores);
+console.log(values); // [95, 88, 92]
+
+// Calculate average
+const average = values.reduce((a, b) => a + b) / values.length;
+console.log('Average:', average);
+```
+
+### Object.entries() - Get Array of [key, value] Pairs
+
+```javascript
+const product = { name: 'Laptop', price: 999, stock: 50 };
+
+for (const [key, value] of Object.entries(product)) {
+  console.log(`${key}: ${value}`);
+}
+// Output:
+// name: Laptop
+// price: 999
+// stock: 50
+```
+
+<ProgressCheckpoint section="caveats" xpReward={10} />
+
+## Comparison: for...in vs Modern Methods
+
+| Method | Returns | Includes Inherited | Use Case |
+|:-------|:--------|:-------------------|:---------|
+| `for...in` | Keys (one at a time) | Yes | Simple iteration |
+| `Object.keys()` | Array of keys | No | Functional patterns |
+| `Object.values()` | Array of values | No | When you only need values |
+| `Object.entries()` | Array of [key, value] | No | When you need both |
+
+### Which to Choose?
+
+```javascript
+const data = { a: 1, b: 2, c: 3 };
+
+// Need to iterate with conditions? → for...in
+for (const key in data) {
+  if (data[key] > 1) break; // Can break!
+}
+
+// Need to transform? → Object methods
+const doubled = Object.fromEntries(
+  Object.entries(data).map(([k, v]) => [k, v * 2])
+);
+// { a: 2, b: 4, c: 6 }
+```
+
+<CodePlayground 
+  code={`const inventory = {
+  apples: 50,
+  bananas: 30,
+  oranges: 45,
+  grapes: 20
+};
+
+// Find items with low stock (< 35)
+console.log('Low stock items:');
+Object.entries(inventory)
+  .filter(([_, qty]) => qty < 35)
+  .forEach(([item, qty]) => {
+    console.log(\`- \${item}: \${qty} remaining\`);
+  });
+
+// Total inventory
+const total = Object.values(inventory)
+  .reduce((sum, qty) => sum + qty, 0);
+console.log('\\nTotal items:', total);`}
+  title="Object Methods in Action"
+/>
+
+## Quiz
+
+<Quiz id="for-in-intermediate">
+  <Question
+    id="q1"
+    text="What does hasOwnProperty filter out?"
+  >
+    <Answer id="a" text="All properties" />
+    <Answer id="b" text="Inherited properties from the prototype" isCorrect />
+    <Answer id="c" text="Number values" />
+  </Question>
+  <Question
+    id="q2"
+    text="Which method gives you an array of [key, value] pairs?"
+  >
+    <Answer id="a" text="Object.keys()" />
+    <Answer id="b" text="Object.values()" />
+    <Answer id="c" text="Object.entries()" isCorrect />
+  </Question>
+</Quiz>
+
+<ProgressCheckpoint section="best-practices" xpReward={15} />
+
+## Best Practices Summary
+
+<InfoBox type="tip" title="When to Use Each Approach">
+1. **for...in + hasOwnProperty**: Legacy code, need break/continue
+2. **Object.keys()**: Need just the property names as array
+3. **Object.values()**: Need just the values as array
+4. **Object.entries()**: Need both keys and values with destructuring
+</InfoBox>
+
+```javascript
+// Modern recommended pattern
+const config = { host: 'localhost', port: 3000, debug: true };
+
+// Clean, predictable, only own properties
+for (const [key, value] of Object.entries(config)) {
+  console.log(`${key} = ${value}`);
+}
+```

@@ -1,0 +1,406 @@
+# Deep Dive: Explicit Binding and Advanced Patterns
+
+Mastering `call`, `apply`, and `bind` opens up powerful functional programming patterns, enables method borrowing, and provides fine-grained control over execution contexts.
+
+## Internal Mechanics
+
+Understanding how these methods work internally helps clarify their behavior:
+
+```javascript
+// Simplified polyfill of call()
+Function.prototype.myCall = function(context, ...args) {
+  // Handle null/undefined context
+  context = context ?? globalThis;
+  
+  // Handle primitives (box them)
+  if (typeof context !== 'object') {
+    context = Object(context);
+  }
+  
+  // Create unique property to avoid collision
+  const fnKey = Symbol('fn');
+  context[fnKey] = this;
+  
+  // Call the function as a method (implicit binding)
+  const result = context[fnKey](...args);
+  
+  // Cleanup
+  delete context[fnKey];
+  
+  return result;
+};
+
+// Usage works like native call
+function greet() {
+  return `Hello, ${this.name}`;
+}
+console.log(greet.myCall({ name: "World" })); // "Hello, World"
+```
+
+<ThisKeywordVisualizer context="explicit" showStrictMode={true} />
+
+## Bind Implementation Deep Dive
+
+```javascript
+// Comprehensive bind polyfill
+Function.prototype.myBind = function(context, ...boundArgs) {
+  const targetFn = this;
+  
+  // Return a new function
+  const boundFn = function(...callArgs) {
+    // Check if called with 'new'
+    const isNew = this instanceof boundFn;
+    
+    // If called with 'new', use the new instance as 'this'
+    // Otherwise, use the bound context
+    return targetFn.apply(
+      isNew ? this : context,
+      [...boundArgs, ...callArgs]
+    );
+  };
+  
+  // Preserve prototype chain for constructor usage
+  if (targetFn.prototype) {
+    boundFn.prototype = Object.create(targetFn.prototype);
+  }
+  
+  return boundFn;
+};
+```
+
+### Bind Precedence with `new`
+
+```javascript
+function Person(name) {
+  this.name = name;
+}
+
+const boundPerson = Person.bind({ name: "Bound" });
+
+// Normal call uses bound context
+const obj = {};
+boundPerson.call(obj, "Call");
+console.log(obj.name); // "Bound" (bound context wins over call)
+
+// But 'new' overrides bind!
+const instance = new boundPerson("New");
+console.log(instance.name); // "New" (new wins!)
+console.log(instance instanceof Person); // true
+```
+
+## Currying and Partial Application
+
+### Classic Curry Implementation
+
+```javascript
+function curry(fn) {
+  return function curried(...args) {
+    if (args.length >= fn.length) {
+      return fn.apply(this, args);
+    }
+    return function(...moreArgs) {
+      return curried.apply(this, [...args, ...moreArgs]);
+    };
+  };
+}
+
+// Usage
+function add(a, b, c) {
+  return a + b + c;
+}
+
+const curriedAdd = curry(add);
+console.log(curriedAdd(1)(2)(3));    // 6
+console.log(curriedAdd(1, 2)(3));    // 6
+console.log(curriedAdd(1)(2, 3));    // 6
+console.log(curriedAdd(1, 2, 3));    // 6
+```
+
+### Partial Application with Placeholders
+
+```javascript
+const _ = Symbol('placeholder');
+
+function partial(fn, ...presetArgs) {
+  return function(...laterArgs) {
+    const args = [];
+    let laterIndex = 0;
+    
+    for (const arg of presetArgs) {
+      if (arg === _) {
+        args.push(laterArgs[laterIndex++]);
+      } else {
+        args.push(arg);
+      }
+    }
+    
+    // Append remaining arguments
+    args.push(...laterArgs.slice(laterIndex));
+    
+    return fn.apply(this, args);
+  };
+}
+
+// Usage
+function greet(greeting, name, punctuation) {
+  return `${greeting}, ${name}${punctuation}`;
+}
+
+const greetAlice = partial(greet, _, "Alice", _);
+console.log(greetAlice("Hello", "!")); // "Hello, Alice!"
+console.log(greetAlice("Hi", "?"));    // "Hi, Alice?"
+```
+
+## Method Borrowing Patterns
+
+### Safely Borrowing from Prototypes
+
+```javascript
+// Safer than accessing prototype directly
+const { slice, map, forEach } = Array.prototype;
+const { hasOwnProperty } = Object.prototype;
+const { toString } = Object.prototype;
+
+// Type checking pattern
+function getType(value) {
+  return toString.call(value).slice(8, -1);
+}
+
+console.log(getType([]));       // "Array"
+console.log(getType({}));       // "Object"
+console.log(getType(null));     // "Null"
+console.log(getType(undefined)); // "Undefined"
+console.log(getType(/regex/));  // "RegExp"
+
+// Borrowing array methods for array-likes
+function convertArgs() {
+  return slice.call(arguments);
+}
+```
+
+### Borrowing Methods from Other Objects
+
+```javascript
+const mathUtils = {
+  sum(...nums) {
+    return nums.reduce((a, b) => a + b, 0);
+  },
+  average(...nums) {
+    return this.sum(...nums) / nums.length;
+  }
+};
+
+// Borrow without dependency
+const myObject = {
+  data: [10, 20, 30],
+  calculateSum() {
+    return mathUtils.sum.apply(null, this.data);
+  }
+};
+
+console.log(myObject.calculateSum()); // 60
+```
+
+## Advanced Binding Patterns
+
+### Binding with Preserved Arguments Object
+
+```javascript
+function logCall(fn) {
+  return function boundLogger() {
+    console.log(`Called with ${arguments.length} args:`, [...arguments]);
+    return fn.apply(this, arguments);
+  };
+}
+
+const add = (a, b) => a + b;
+const loggedAdd = logCall(add);
+
+console.log(loggedAdd(2, 3));
+// Called with 2 args: [2, 3]
+// 5
+```
+
+### Soft Binding (Fallback Context)
+
+```javascript
+Function.prototype.softBind = function(defaultCtx) {
+  const fn = this;
+  const boundArgs = Array.prototype.slice.call(arguments, 1);
+  
+  return function softBound() {
+    // Use passed 'this' if it's not global/undefined, else use default
+    const ctx = (!this || this === globalThis) ? defaultCtx : this;
+    return fn.apply(ctx, boundArgs.concat(Array.prototype.slice.call(arguments)));
+  };
+};
+
+function greet() {
+  console.log(`Hello, ${this.name}`);
+}
+
+const defaultPerson = { name: "Default" };
+const specificPerson = { name: "Specific" };
+
+const softGreet = greet.softBind(defaultPerson);
+
+softGreet();                    // "Hello, Default"
+softGreet.call(specificPerson); // "Hello, Specific"
+softGreet.call(null);           // "Hello, Default" (fallback)
+```
+
+### Uncurry `this`
+
+```javascript
+// Transform instance method to standalone function
+function uncurryThis(fn) {
+  return function(thisArg, ...args) {
+    return fn.call(thisArg, ...args);
+  };
+}
+
+const arrayPush = uncurryThis(Array.prototype.push);
+const stringSlice = uncurryThis(String.prototype.slice);
+
+const arr = [1, 2];
+arrayPush(arr, 3, 4);
+console.log(arr); // [1, 2, 3, 4]
+
+console.log(stringSlice("hello", 1, 3)); // "el"
+```
+
+## Real-World Applications
+
+### 1. Event Delegation with Context
+
+```javascript
+class List {
+  constructor(container) {
+    this.items = [];
+    this.container = container;
+    
+    // Single event listener for delegation
+    this.container.addEventListener(
+      "click",
+      this.handleClick.bind(this)
+    );
+  }
+  
+  handleClick(event) {
+    const item = event.target.closest("[data-item-id]");
+    if (!item) return;
+    
+    const id = item.dataset.itemId;
+    this.selectItem(id);
+  }
+  
+  selectItem(id) {
+    console.log(`Selected item ${id} from ${this.items.length} items`);
+  }
+}
+```
+
+### 2. Memoization with Context
+
+```javascript
+function memoize(fn) {
+  const cache = new Map();
+  
+  return function memoized(...args) {
+    const key = JSON.stringify(args);
+    
+    if (cache.has(key)) {
+      return cache.get(key);
+    }
+    
+    // Preserve 'this' context
+    const result = fn.apply(this, args);
+    cache.set(key, result);
+    return result;
+  };
+}
+
+const calculator = {
+  multiplier: 2,
+  expensiveOp: memoize(function(n) {
+    console.log("Computing...");
+    return n * this.multiplier;
+  })
+};
+
+console.log(calculator.expensiveOp(5)); // Computing... 10
+console.log(calculator.expensiveOp(5)); // 10 (cached)
+```
+
+### 3. Debounce/Throttle with Context
+
+```javascript
+function debounce(fn, delay) {
+  let timeoutId;
+  
+  return function debounced(...args) {
+    const context = this;
+    
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => {
+      fn.apply(context, args);
+    }, delay);
+  };
+}
+
+const searchInput = {
+  query: "",
+  search: debounce(function(query) {
+    this.query = query;
+    console.log(`Searching for: ${this.query}`);
+  }, 300)
+};
+
+searchInput.search("test"); // Debounced, preserves 'this'
+```
+
+## Performance Considerations
+
+```javascript
+// Pre-binding is more efficient than binding in hot paths
+class Renderer {
+  constructor() {
+    // Bind once in constructor
+    this.render = this.render.bind(this);
+  }
+  
+  render() {
+    // Called many times per second
+    requestAnimationFrame(this.render);
+    this.draw();
+  }
+  
+  draw() {
+    // Drawing logic
+  }
+}
+
+// Avoid: Creating new bound function every call
+function badPattern() {
+  requestAnimationFrame(this.render.bind(this)); // New function each time!
+}
+```
+
+<InfoBox type="warning" title="Arrow Functions vs Bind">
+While arrow functions provide automatic lexical `this`, explicit binding is still necessary when:
+- Working with external libraries that expect traditional functions
+- Implementing partial application patterns
+- Method borrowing from other objects
+- Dynamic `this` binding is required for different contexts
+</InfoBox>
+
+<KeyConcept title="Summary">
+- `call()` and `apply()` invoke immediately; `bind()` returns a new function
+- Bound functions can be used with `new` (new overrides bind)
+- Partial application pre-fills arguments
+- Soft binding provides fallback context
+- Method borrowing enables code reuse across objects
+- Pre-bind in constructors for performance in hot paths
+</KeyConcept>
+
+<ProgressCheckpoint section="practical-patterns" xpReward={65} />

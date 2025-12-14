@@ -1,0 +1,28 @@
+{
+  "id": "keyed-collections",
+  "title": "Keyed Collections (Map, WeakMap, Set, WeakSet)",
+  "description": "Learn about JavaScript's keyed collections - Map, WeakMap, Set, and WeakSet - for storing key-value pairs and unique values efficiently.",
+  "milestone": "data-structures",
+  "order": 2,
+  "sections": [
+    "map-set-basics",
+    "map-vs-object",
+    "weak-collections"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 20,
+      "xpReward": 50
+    },
+    "advanced": {
+      "estimatedMinutes": 25,
+      "xpReward": 75
+    }
+  },
+  "prerequisites": ["indexed-collections"],
+  "tags": ["javascript", "map", "set", "weakmap", "weakset", "data-structures"]
+}

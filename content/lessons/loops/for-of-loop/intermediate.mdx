@@ -1,0 +1,249 @@
+# for...of Loop: Beyond Arrays
+
+Explore using `for...of` with Maps, Sets, destructuring, and `Object.entries()` for powerful iteration patterns.
+
+## Iterating Maps
+
+A `Map` is a collection of key-value pairs. `for...of` gives you both:
+
+```javascript
+const userRoles = new Map([
+  ['alice', 'admin'],
+  ['bob', 'editor'],
+  ['charlie', 'viewer']
+]);
+
+for (const [user, role] of userRoles) {
+  console.log(`${user} is a ${role}`);
+}
+// Output:
+// alice is a admin
+// bob is a editor
+// charlie is a viewer
+```
+
+### Map Iteration Methods
+
+```javascript
+const scores = new Map([
+  ['Math', 95],
+  ['English', 88],
+  ['Science', 92]
+]);
+
+// Iterate keys only
+for (const subject of scores.keys()) {
+  console.log(subject);  // "Math", "English", "Science"
+}
+
+// Iterate values only
+for (const score of scores.values()) {
+  console.log(score);  // 95, 88, 92
+}
+
+// Iterate entries (default)
+for (const [subject, score] of scores.entries()) {
+  console.log(`${subject}: ${score}`);
+}
+```
+
+<ProgressCheckpoint section="intro" xpReward={10} />
+
+## Iterating Sets
+
+Sets contain unique values:
+
+```javascript
+const tags = new Set(['javascript', 'react', 'nodejs', 'react']); // 'react' added once
+
+for (const tag of tags) {
+  console.log(`#${tag}`);
+}
+// Output: #javascript, #react, #nodejs
+```
+
+### Practical Example: Remove Duplicates
+
+```javascript
+const numbers = [1, 2, 2, 3, 3, 3, 4, 4, 4, 4];
+const unique = [];
+
+for (const num of new Set(numbers)) {
+  unique.push(num);
+}
+console.log(unique);  // [1, 2, 3, 4]
+```
+
+<CodePlayground 
+  code={`// Using Set to track unique visitors
+const pageViews = [
+  'user1', 'user2', 'user1', 
+  'user3', 'user2', 'user1', 'user4'
+];
+
+const uniqueVisitors = new Set(pageViews);
+
+console.log('Total views:', pageViews.length);
+console.log('Unique visitors:', uniqueVisitors.size);
+
+console.log('\\nVisitor list:');
+for (const visitor of uniqueVisitors) {
+  console.log('- ' + visitor);
+}`}
+  title="Track Unique Visitors"
+/>
+
+<ProgressCheckpoint section="iterables" xpReward={10} />
+
+## Destructuring with for...of
+
+Combine destructuring for elegant code:
+
+### Array Destructuring
+
+```javascript
+const coordinates = [[0, 0], [10, 20], [30, 40]];
+
+for (const [x, y] of coordinates) {
+  console.log(`Point at (${x}, ${y})`);
+}
+// Output:
+// Point at (0, 0)
+// Point at (10, 20)
+// Point at (30, 40)
+```
+
+### Object Destructuring
+
+```javascript
+const users = [
+  { name: 'Alice', age: 25 },
+  { name: 'Bob', age: 30 },
+  { name: 'Charlie', age: 35 }
+];
+
+for (const { name, age } of users) {
+  console.log(`${name} is ${age} years old`);
+}
+```
+
+<ProgressCheckpoint section="comparison" xpReward={10} />
+
+## Making Objects Iterable with Object.entries()
+
+Regular objects aren't directly iterable, but `Object.entries()` makes them so:
+
+```javascript
+const car = {
+  brand: 'Toyota',
+  model: 'Camry',
+  year: 2022
+};
+
+// ❌ This doesn't work!
+// for (const [key, value] of car) { } // TypeError!
+
+// ✅ Use Object.entries()
+for (const [key, value] of Object.entries(car)) {
+  console.log(`${key}: ${value}`);
+}
+// Output:
+// brand: Toyota
+// model: Camry
+// year: 2022
+```
+
+### Object.keys() and Object.values()
+
+```javascript
+const product = { name: 'Laptop', price: 999, stock: 50 };
+
+// Just keys
+for (const key of Object.keys(product)) {
+  console.log(key);  // "name", "price", "stock"
+}
+
+// Just values
+for (const value of Object.values(product)) {
+  console.log(value);  // "Laptop", 999, 50
+}
+```
+
+## Getting Index with entries()
+
+Need the index? Use `.entries()`:
+
+```javascript
+const colors = ['red', 'green', 'blue'];
+
+for (const [index, color] of colors.entries()) {
+  console.log(`${index}: ${color}`);
+}
+// Output:
+// 0: red
+// 1: green
+// 2: blue
+```
+
+<CodePlayground 
+  code={`const tasks = ['Design', 'Develop', 'Test', 'Deploy'];
+
+console.log('Task List:');
+for (const [i, task] of tasks.entries()) {
+  console.log(\`\${i + 1}. \${task}\`);
+}
+
+// Find task by name
+let foundAt = -1;
+for (const [index, task] of tasks.entries()) {
+  if (task === 'Test') {
+    foundAt = index;
+    break;
+  }
+}
+console.log(\`\\n'Test' found at index \${foundAt}\`);`}
+  title="Array with Indices"
+/>
+
+## Quiz
+
+<Quiz id="for-of-intermediate">
+  <Question
+    id="q1"
+    text="How do you iterate over object properties with for...of?"
+  >
+    <Answer id="a" text="for (const prop of object)" />
+    <Answer id="b" text="for (const [key, val] of Object.entries(object))" isCorrect />
+    <Answer id="c" text="Objects can't be iterated with for...of" />
+  </Question>
+  <Question
+    id="q2"
+    text="What does array.entries() return?"
+  >
+    <Answer id="a" text="Just the values" />
+    <Answer id="b" text="Just the indices" />
+    <Answer id="c" text="Iterator of [index, value] pairs" isCorrect />
+  </Question>
+</Quiz>
+
+<ProgressCheckpoint section="advanced-usage" xpReward={15} />
+
+## Comparison Summary
+
+| Data Type | for...of Access | Example |
+|:----------|:----------------|:--------|
+| Array | Values | `for (const v of arr)` |
+| Array + Index | [index, value] | `for (const [i, v] of arr.entries())` |
+| String | Characters | `for (const char of str)` |
+| Map | [key, value] | `for (const [k, v] of map)` |
+| Set | Values | `for (const v of set)` |
+| Object | ❌ Not directly | Use `Object.entries(obj)` |
+
+<InfoBox type="tip" title="Pro Pattern">
+When you need both key and value from an object, this is the cleanest pattern:
+```javascript
+for (const [key, value] of Object.entries(obj)) {
+  // Use both key and value
+}
+```
+</InfoBox>

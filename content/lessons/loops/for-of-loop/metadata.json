@@ -1,0 +1,29 @@
+{
+  "id": "for-of-loop",
+  "title": "for...of Loop",
+  "description": "Master the modern for...of loop for iterating over arrays, strings, Maps, Sets, and other iterable objects.",
+  "milestone": "loops",
+  "order": 4,
+  "sections": [
+    "intro",
+    "iterables",
+    "comparison",
+    "advanced-usage"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 45
+    },
+    "advanced": {
+      "estimatedMinutes": 20,
+      "xpReward": 70
+    }
+  },
+  "prerequisites": ["for-loop", "for-in-loop"],
+  "tags": ["javascript", "loops", "for-of", "iterables", "arrays", "ES6"]
+}

@@ -1,0 +1,311 @@
+# break and continue: Performance and Clean Code
+
+Explore performance implications, alternative patterns, and professional recommendations for loop control.
+
+## Performance Implications
+
+### Early Exit Optimization
+
+`break` can significantly improve performance by avoiding unnecessary iterations:
+
+```javascript
+const largeArray = Array.from({ length: 1000000 }, (_, i) => i);
+
+// Without break - searches entire array every time
+console.time('Without break');
+let found1 = null;
+for (const item of largeArray) {
+  if (item === 100) {
+    found1 = item;
+    // No break - continues checking 999,900 more items!
+  }
+}
+console.timeEnd('Without break');
+
+// With break - exits immediately when found
+console.time('With break');
+let found2 = null;
+for (const item of largeArray) {
+  if (item === 100) {
+    found2 = item;
+    break;  // Done! Skip remaining 999,900 items
+  }
+}
+console.timeEnd('With break');
+```
+
+The difference can be orders of magnitude for large datasets!
+
+<ProgressCheckpoint section="break-intro" xpReward={15} />
+
+## Alternative Patterns
+
+### Array Methods vs break
+
+```javascript
+const users = [
+  { id: 1, active: false },
+  { id: 2, active: true },
+  { id: 3, active: true }
+];
+
+// Using find() - built-in early exit
+const firstActive = users.find(u => u.active);
+
+// Using some() - returns true on first match
+const hasActive = users.some(u => u.active);
+
+// Using every() - returns false on first non-match
+const allActive = users.every(u => u.active);
+```
+
+### Comparison: for-loop vs Array Methods
+
+| Pattern | For-loop + break | Array Method |
+|:--------|:-----------------|:-------------|
+| Find first | `for...break` | `.find()` |
+| Check if any | `for...break` | `.some()` |
+| Check if all | `for...break` | `.every()` |
+| Find index | `for...break` | `.findIndex()` |
+| Filter all | `for...continue` | `.filter()` |
+
+```javascript
+const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+// Imperative (break)
+let firstEven = null;
+for (const n of numbers) {
+  if (n % 2 === 0) {
+    firstEven = n;
+    break;
+  }
+}
+
+// Declarative (find)
+const firstEvenDeclarative = numbers.find(n => n % 2 === 0);
+
+// Both return: 2
+```
+
+<CodePlayground 
+  code={`const products = [
+  { name: 'Laptop', price: 999, inStock: true },
+  { name: 'Phone', price: 699, inStock: false },
+  { name: 'Tablet', price: 499, inStock: true },
+  { name: 'Watch', price: 299, inStock: true }
+];
+
+// Imperative approach with break
+function findFirstAffordable(items, budget) {
+  for (const item of items) {
+    if (item.inStock && item.price <= budget) {
+      return item;
+    }
+  }
+  return null;
+}
+
+// Declarative approach
+const findFirstAffordableFn = (items, budget) =>
+  items.find(item => item.inStock && item.price <= budget);
+
+// Compare both
+console.log('Imperative:', findFirstAffordable(products, 500));
+console.log('Declarative:', findFirstAffordableFn(products, 500));`}
+  title="Imperative vs Declarative"
+/>
+
+<ProgressCheckpoint section="continue-intro" xpReward={15} />
+
+## Clean Code Considerations
+
+### When break/continue Make Code Clearer
+
+```javascript
+// Complex validation - continue keeps it flat
+function processRecords(records) {
+  const results = [];
+  
+  for (const record of records) {
+    if (!record.id) continue;
+    if (!record.valid) continue;
+    if (record.archived) continue;
+    
+    // Only valid, non-archived records with IDs reach here
+    results.push(transformRecord(record));
+  }
+  
+  return results;
+}
+```
+
+Without `continue`, you'd need deeply nested if-statements.
+
+### When break/continue Make Code Harder to Read
+
+```javascript
+// ❌ Multiple breaks/continues scattered around
+for (const item of items) {
+  if (condition1) continue;
+  doSomething();
+  if (condition2) break;
+  doSomethingElse();
+  if (condition3) continue;
+  finalStep();
+}
+
+// ✅ Clearer with proper structure
+for (const item of items) {
+  if (!shouldProcess(item)) continue;
+  
+  const processed = processItem(item);
+  
+  if (processed.isComplete) break;
+}
+```
+
+<ProgressCheckpoint section="labels" xpReward={15} />
+
+## Professional Recommendations
+
+### 1. Prefer Early Returns Over Break in Functions
+
+```javascript
+// ❌ Using break in function
+function findItem(arr, target) {
+  let result = null;
+  for (const item of arr) {
+    if (item.id === target) {
+      result = item;
+      break;
+    }
+  }
+  return result;
+}
+
+// ✅ Using early return
+function findItem(arr, target) {
+  for (const item of arr) {
+    if (item.id === target) {
+      return item;
+    }
+  }
+  return null;
+}
+```
+
+### 2. Extract Complex Loops to Functions
+
+```javascript
+// ❌ Labeled break in main code
+outer: for (const group of groups) {
+  for (const item of group.items) {
+    if (/* condition */) {
+      break outer;
+    }
+  }
+}
+
+// ✅ Extract to function
+function findInGroups(groups) {
+  for (const group of groups) {
+    for (const item of group.items) {
+      if (/* condition */) {
+        return item;  // Clean exit
+      }
+    }
+  }
+  return null;
+}
+```
+
+### 3. Guard Clauses with continue
+
+```javascript
+// ✅ Guard clauses at start of loop
+for (const user of users) {
+  // Guards - skip invalid cases early
+  if (!user.active) continue;
+  if (!user.verified) continue;
+  if (user.role === 'admin') continue;
+  
+  // Main logic - only for valid users
+  sendNotification(user);
+  updateLastContact(user);
+  logActivity(user);
+}
+```
+
+<CodePlayground 
+  code={`// Refactoring labeled breaks to functions
+const data = {
+  categories: [
+    { name: 'Electronics', products: ['Phone', 'Laptop', 'Watch'] },
+    { name: 'Books', products: ['Fiction', 'Science', 'History'] },
+    { name: 'Clothing', products: ['Shoes', 'Shirts', 'Pants'] }
+  ]
+};
+
+// Clean function extraction
+function findProduct(data, target) {
+  for (const category of data.categories) {
+    const found = category.products.find(p => p === target);
+    if (found) {
+      return { category: category.name, product: found };
+    }
+  }
+  return null;
+}
+
+console.log(findProduct(data, 'Science'));
+console.log(findProduct(data, 'NotFound'));`}
+  title="Clean Code Pattern"
+/>
+
+## Quiz: Clean Code
+
+<Quiz id="break-continue-advanced">
+  <Question
+    id="q1"
+    text="What's preferred over break when inside a function?"
+  >
+    <Answer id="a" text="continue" />
+    <Answer id="b" text="return" isCorrect />
+    <Answer id="c" text="throw" />
+  </Question>
+  <Question
+    id="q2"
+    text="How can you avoid labeled breaks in nested loops?"
+  >
+    <Answer id="a" text="Use more continues" />
+    <Answer id="b" text="Extract to a function and use return" isCorrect />
+    <Answer id="c" text="Labels can't be avoided" />
+  </Question>
+</Quiz>
+
+<ProgressCheckpoint section="best-practices" xpReward={25} />
+
+## Summary: Decision Guide
+
+```
+Need to exit a loop early?
+├── Inside a function? → Use return
+└── Not in a function?
+    ├── Single loop? → Use break
+    └── Nested loops?
+        ├── Can extract to function? → Extract + return
+        └── Must stay inline? → Use labeled break (last resort)
+
+Need to skip items?
+├── Simple condition? → Use continue
+├── Filtering all items? → Consider .filter()
+└── Complex condition? → Use guard clauses with continue
+```
+
+<InfoBox type="tip" title="Final Guidelines">
+1. **Readability first** - Choose the pattern that's easiest to understand
+2. **Performance when needed** - Use break for early exit in large datasets
+3. **Functions over labels** - Extract nested loops to functions
+4. **Guard clauses** - Put continue conditions at the start of loops
+5. **Match the team style** - Consistency matters more than personal preference
+</InfoBox>

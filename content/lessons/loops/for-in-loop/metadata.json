@@ -1,0 +1,29 @@
+{
+  "id": "for-in-loop",
+  "title": "for...in Loop",
+  "description": "Learn to iterate over object properties using for...in, understand enumerable properties, and know when to use alternatives.",
+  "milestone": "loops",
+  "order": 3,
+  "sections": [
+    "intro",
+    "object-iteration",
+    "caveats",
+    "best-practices"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 45
+    },
+    "advanced": {
+      "estimatedMinutes": 20,
+      "xpReward": 70
+    }
+  },
+  "prerequisites": ["for-loop"],
+  "tags": ["javascript", "loops", "for-in", "objects", "properties", "enumeration"]
+}

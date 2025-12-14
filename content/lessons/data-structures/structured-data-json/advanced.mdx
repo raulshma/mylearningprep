@@ -1,0 +1,328 @@
+# Advanced JSON Techniques
+
+Master the full power of JSON with reviver functions, replacers, deep cloning, and handling edge cases like circular references.
+
+## The Reviver Function (JSON.parse)
+
+The reviver is a transformation function called for each key-value pair:
+
+```javascript
+JSON.parse(text, reviver)
+```
+
+### Reviving Dates
+
+JSON turns dates into strings. Revive them back:
+
+```javascript
+const json = '{"name": "Event", "date": "2024-12-25T10:00:00.000Z"}';
+
+const event = JSON.parse(json, (key, value) => {
+  // Check if value looks like a date string
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
+    return new Date(value);
+  }
+  return value;
+});
+
+console.log(event.date instanceof Date); // true!
+console.log(event.date.getFullYear());   // 2024
+```
+
+### More Reviver Examples
+
+```javascript
+// Double all numbers
+JSON.parse('[1, 2, 3]', (key, value) => {
+  return typeof value === 'number' ? value * 2 : value;
+}); // [2, 4, 6]
+
+// Rename keys
+JSON.parse('{"first_name": "Alice"}', (key, value) => {
+  if (key === 'first_name') return undefined; // Skip old key
+  return value;
+}); // {} - but you'd need to set the new key elsewhere
+
+// Remove sensitive data
+JSON.parse('{"name": "Alice", "password": "secret"}', (key, value) => {
+  return key === 'password' ? '[REDACTED]' : value;
+}); // { name: "Alice", password: "[REDACTED]" }
+```
+
+<JsonPlayground initialJson='{"date": "2024-12-25T10:00:00.000Z", "price": 99.99}' />
+
+## The Replacer Function (JSON.stringify)
+
+Control what gets stringified:
+
+```javascript
+JSON.stringify(value, replacer, space)
+```
+
+### Replacer as Array (Property Filter)
+
+```javascript
+const user = {
+  name: "Alice",
+  email: "alice@example.com",
+  password: "secret123",
+  internal_id: "usr_12345"
+};
+
+// Only include specific properties
+const safeJson = JSON.stringify(user, ["name", "email"], 2);
+/*
+{
+  "name": "Alice",
+  "email": "alice@example.com"
+}
+*/
+```
+
+### Replacer as Function
+
+```javascript
+const data = {
+  name: "Alice",
+  password: "secret123",
+  balance: 9999.99,
+  createdAt: new Date()
+};
+
+const json = JSON.stringify(data, (key, value) => {
+  // Hide sensitive data
+  if (key === 'password') return undefined;
+  
+  // Format numbers
+  if (key === 'balance') return `$${value.toFixed(2)}`;
+  
+  // Handle dates
+  if (value instanceof Date) return value.toISOString();
+  
+  return value;
+}, 2);
+
+/*
+{
+  "name": "Alice",
+  "balance": "$9999.99",
+  "createdAt": "2024-01-15T12:00:00.000Z"
+}
+*/
+```
+
+## Deep Cloning with JSON
+
+Create a true deep copy of an object:
+
+```javascript
+const original = {
+  name: "Alice",
+  hobbies: ["reading", "coding"],
+  address: { city: "NYC" }
+};
+
+// Deep clone
+const clone = JSON.parse(JSON.stringify(original));
+
+// Modify clone - original is unaffected
+clone.hobbies.push("gaming");
+clone.address.city = "LA";
+
+console.log(original.hobbies); // ["reading", "coding"]
+console.log(original.address.city); // "NYC"
+```
+
+### Limitations of JSON Cloning
+
+```javascript
+const complex = {
+  date: new Date(),           // ❌ Becomes string
+  regex: /pattern/,           // ❌ Becomes {}
+  func: () => "hi",           // ❌ Disappears
+  undef: undefined,           // ❌ Disappears
+  map: new Map([["a", 1]]),   // ❌ Becomes {}
+  set: new Set([1, 2, 3]),    // ❌ Becomes {}
+  circular: null              // Will cause error if self-referential
+};
+
+// Modern alternative: structuredClone() (ES2022+)
+const betterClone = structuredClone(original);
+// Handles Date, Map, Set, ArrayBuffer, etc.
+// (But still not functions or symbols)
+```
+
+## Handling Circular References
+
+JSON.stringify throws on circular references:
+
+```javascript
+const obj = { name: "Alice" };
+obj.self = obj; // Circular reference!
+
+JSON.stringify(obj); // TypeError: Converting circular structure to JSON
+```
+
+### Solution 1: Custom Replacer
+
+```javascript
+function stringifyWithCircular(obj) {
+  const seen = new WeakSet();
+  
+  return JSON.stringify(obj, (key, value) => {
+    if (typeof value === 'object' && value !== null) {
+      if (seen.has(value)) {
+        return '[Circular]';
+      }
+      seen.add(value);
+    }
+    return value;
+  }, 2);
+}
+
+const obj = { name: "Alice" };
+obj.self = obj;
+obj.friend = { name: "Bob", knows: obj };
+
+console.log(stringifyWithCircular(obj));
+/*
+{
+  "name": "Alice",
+  "self": "[Circular]",
+  "friend": {
+    "name": "Bob",
+    "knows": "[Circular]"
+  }
+}
+*/
+```
+
+### Solution 2: Libraries
+
+```javascript
+// Popular options:
+// - flatted: Supports circular structures
+// - superjson: Preserves types like Date, Map, Set
+// - devalue: Handles more edge cases
+
+import { stringify, parse } from 'flatted';
+
+const circular = { name: "Alice" };
+circular.self = circular;
+
+const json = stringify(circular); // Works!
+const restored = parse(json);
+console.log(restored.self === restored); // true
+```
+
+## Custom toJSON() Method
+
+Objects can define their own JSON serialization:
+
+```javascript
+class User {
+  constructor(name, password) {
+    this.name = name;
+    this.password = password;
+    this.createdAt = new Date();
+  }
+  
+  // Called automatically by JSON.stringify
+  toJSON() {
+    return {
+      name: this.name,
+      // password excluded!
+      createdAt: this.createdAt.toISOString(),
+      type: 'User'
+    };
+  }
+}
+
+const user = new User("Alice", "secret123");
+console.log(JSON.stringify(user, null, 2));
+/*
+{
+  "name": "Alice",
+  "createdAt": "2024-01-15T12:00:00.000Z",
+  "type": "User"
+}
+*/
+```
+
+## JSON Schema Validation
+
+For critical applications, validate JSON structure:
+
+```javascript
+// Simple validation
+function validateUser(data) {
+  if (typeof data !== 'object' || data === null) return false;
+  if (typeof data.name !== 'string') return false;
+  if (typeof data.email !== 'string') return false;
+  if (!data.email.includes('@')) return false;
+  return true;
+}
+
+// Or use libraries like Zod, Yup, or ajv
+import { z } from 'zod';
+
+const UserSchema = z.object({
+  name: z.string().min(1),
+  email: z.string().email(),
+  age: z.number().int().positive().optional()
+});
+
+const result = UserSchema.safeParse(JSON.parse(jsonString));
+if (result.success) {
+  const user = result.data; // Fully typed!
+} else {
+  console.error(result.error);
+}
+```
+
+## Performance Tips
+
+```javascript
+// 1. Avoid repeated stringify/parse
+const data = getSomeData();
+const json = JSON.stringify(data); // Do once
+
+// 2. For large data, consider streaming alternatives
+// - JSON.parse can block the main thread
+// - Use web workers for large datasets
+
+// 3. Minimize what you stringify
+const minimal = { id: user.id, name: user.name };
+localStorage.setItem("user", JSON.stringify(minimal));
+
+// 4. Consider compression for storage
+import { compress, decompress } from 'lz-string';
+const compressed = compress(JSON.stringify(hugeData));
+localStorage.setItem("data", compressed);
+```
+
+## Quick Reference: Edge Cases
+
+| Input | `JSON.stringify` Output |
+|:------|:------------------------|
+| `undefined` | Returns `undefined` (not a string!) |
+| `NaN`, `Infinity` | `"null"` |
+| `Date` | ISO string |
+| `Map`, `Set` | `"{}"` |
+| Function | `undefined` |
+| Symbol | `undefined` |
+| BigInt | Throws TypeError |
+| Circular | Throws TypeError |
+
+```javascript
+// BigInt workaround
+BigInt.prototype.toJSON = function() {
+  return this.toString();
+};
+
+JSON.stringify({ big: 12345678901234567890n }); // '{"big":"12345678901234567890"}'
+```
+
+Mastering these advanced techniques makes you a JSON power user, ready to handle any data serialization challenge!
+
+<ProgressCheckpoint section="advanced-json" xpReward={70} />

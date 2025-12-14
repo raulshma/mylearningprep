@@ -1,0 +1,151 @@
+# Keyed Collections: Map and Set
+
+JavaScript gives us two special collection types that solve common problems: **Map** for storing key-value pairs and **Set** for storing unique values. Let's explore them with real-world analogies!
+
+## Map: The Phone Book 📖
+
+Think of a **Map** as a phone book where you look up a name (key) to find a number (value):
+
+| Name (Key)    | Phone (Value)  |
+|:--------------|:---------------|
+| "Alice"       | "555-1234"     |
+| "Bob"         | "555-5678"     |
+| "Charlie"     | "555-9999"     |
+
+```javascript
+// Create a new Map (phone book)
+const phoneBook = new Map();
+
+// Add entries with set()
+phoneBook.set("Alice", "555-1234");
+phoneBook.set("Bob", "555-5678");
+phoneBook.set("Charlie", "555-9999");
+
+// Look up a number with get()
+console.log(phoneBook.get("Alice")); // "555-1234"
+
+// Check if someone exists with has()
+console.log(phoneBook.has("Bob")); // true
+console.log(phoneBook.has("David")); // false
+```
+
+## Set: The Guest List 📋
+
+Think of a **Set** as a party guest list - each person can only appear once (no duplicates!):
+
+```javascript
+// Create a guest list
+const guestList = new Set();
+
+// Add guests
+guestList.add("Alice");
+guestList.add("Bob");
+guestList.add("Alice"); // Ignored! Already on the list
+
+console.log(guestList.size); // 2 (not 3!)
+
+// Check if someone is invited
+console.log(guestList.has("Alice")); // true
+console.log(guestList.has("Charlie")); // false
+```
+
+> **Key insight**: Sets automatically remove duplicates. Add the same value 100 times - it only appears once!
+
+<KeyedCollectionExplorer collectionType="set" />
+
+## Why Not Just Use Objects and Arrays?
+
+| Traditional Way | Problem |
+|:----------------|:--------|
+| Object as dictionary | Keys must be strings |
+| Array for unique values | You must check for duplicates manually |
+
+### Objects Only Allow String Keys
+
+```javascript
+const obj = {};
+const key1 = { id: 1 };
+const key2 = { id: 2 };
+
+obj[key1] = "First";
+obj[key2] = "Second";
+
+console.log(obj[key1]); // "Second" - both became "[object Object]"!
+```
+
+### Map Allows Any Key Type
+
+```javascript
+const map = new Map();
+const key1 = { id: 1 };
+const key2 = { id: 2 };
+
+map.set(key1, "First");
+map.set(key2, "Second");
+
+console.log(map.get(key1)); // "First" ✓
+console.log(map.get(key2)); // "Second" ✓
+```
+
+## Common Operations
+
+### Map Operations
+
+```javascript
+const map = new Map();
+
+map.set("name", "Alice");  // Add/update
+map.get("name");           // Get value: "Alice"
+map.has("name");           // Check existence: true
+map.delete("name");        // Remove
+map.size;                  // Count: 0
+map.clear();               // Remove all
+```
+
+### Set Operations
+
+```javascript
+const set = new Set();
+
+set.add("apple");    // Add
+set.has("apple");    // Check: true
+set.delete("apple"); // Remove
+set.size;            // Count
+set.clear();         // Remove all
+```
+
+## Looping Through Collections
+
+```javascript
+// Map - loop through key-value pairs
+const scores = new Map([
+  ["Alice", 95],
+  ["Bob", 87],
+  ["Charlie", 92]
+]);
+
+for (const [name, score] of scores) {
+  console.log(`${name}: ${score}`);
+}
+
+// Set - loop through values
+const fruits = new Set(["Apple", "Banana", "Cherry"]);
+
+for (const fruit of fruits) {
+  console.log(fruit);
+}
+```
+
+## Quick Reference
+
+| Feature | Map | Set |
+|:--------|:----|:----|
+| Stores | Key-value pairs | Unique values only |
+| Access | `get(key)` | `has(value)` |
+| Add | `set(key, value)` | `add(value)` |
+| Size | `.size` | `.size` |
+| Remove | `delete(key)` | `delete(value)` |
+
+Maps and Sets are your go-to tools when you need fast lookups, unique collections, or keys that aren't just strings!
+
+<ProgressCheckpoint section="map-set-basics" xpReward={30} />

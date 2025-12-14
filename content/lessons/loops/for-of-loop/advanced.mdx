@@ -1,0 +1,329 @@
+# for...of Loop: Iterators, Generators, and Async
+
+Master the iterator protocol, create custom iterables, and handle async iteration with `for await...of`.
+
+## The Iterator Protocol
+
+Behind every `for...of` loop is the **iterator protocol**. An object is iterable if it has a `[Symbol.iterator]` method:
+
+```javascript
+const array = [1, 2, 3];
+
+// Get the iterator
+const iterator = array[Symbol.iterator]();
+
+// Manually iterate
+console.log(iterator.next()); // { value: 1, done: false }
+console.log(iterator.next()); // { value: 2, done: false }
+console.log(iterator.next()); // { value: 3, done: false }
+console.log(iterator.next()); // { value: undefined, done: true }
+```
+
+<ProgressCheckpoint section="intro" xpReward={15} />
+
+## Creating Custom Iterables
+
+Make any object work with `for...of`:
+
+```javascript
+const range = {
+  from: 1,
+  to: 5,
+
+  [Symbol.iterator]() {
+    let current = this.from;
+    const last = this.to;
+
+    return {
+      next() {
+        if (current <= last) {
+          return { value: current++, done: false };
+        }
+        return { done: true };
+      }
+    };
+  }
+};
+
+for (const num of range) {
+  console.log(num);
+}
+// Output: 1, 2, 3, 4, 5
+```
+
+### Class-Based Iterator
+
+```javascript
+class Countdown {
+  constructor(start) {
+    this.start = start;
+  }
+
+  [Symbol.iterator]() {
+    let current = this.start;
+    return {
+      next() {
+        if (current > 0) {
+          return { value: current--, done: false };
+        }
+        return { done: true };
+      }
+    };
+  }
+}
+
+for (const n of new Countdown(5)) {
+  console.log(n);
+}
+// Output: 5, 4, 3, 2, 1
+```
+
+<CodePlayground 
+  code={`// Custom iterator: Fibonacci sequence
+const fibonacci = {
+  [Symbol.iterator]() {
+    let prev = 0, curr = 1;
+    let count = 0;
+    const maxCount = 10;
+    
+    return {
+      next() {
+        if (count++ < maxCount) {
+          [prev, curr] = [curr, prev + curr];
+          return { value: prev, done: false };
+        }
+        return { done: true };
+      }
+    };
+  }
+};
+
+console.log('First 10 Fibonacci numbers:');
+for (const num of fibonacci) {
+  console.log(num);
+}`}
+  title="Fibonacci Iterator"
+/>
+
+<ProgressCheckpoint section="iterables" xpReward={15} />
+
+## Generator Functions
+
+Generators provide an easier way to create iterables:
+
+```javascript
+function* countUp(max) {
+  for (let i = 1; i <= max; i++) {
+    yield i;
+  }
+}
+
+for (const num of countUp(5)) {
+  console.log(num);
+}
+// Output: 1, 2, 3, 4, 5
+```
+
+### Infinite Generators
+
+```javascript
+function* infiniteSequence() {
+  let i = 0;
+  while (true) {
+    yield i++;
+  }
+}
+
+const gen = infiniteSequence();
+
+// Take first 5 values
+for (const num of gen) {
+  if (num >= 5) break;
+  console.log(num);
+}
+// Output: 0, 1, 2, 3, 4
+```
+
+### Generator Delegation
+
+```javascript
+function* inner() {
+  yield 2;
+  yield 3;
+}
+
+function* outer() {
+  yield 1;
+  yield* inner();  // Delegate to inner generator
+  yield 4;
+}
+
+for (const n of outer()) {
+  console.log(n);
+}
+// Output: 1, 2, 3, 4
+```
+
+<ProgressCheckpoint section="comparison" xpReward={15} />
+
+## Async Iteration: for await...of
+
+For iterating over async data sources:
+
+```javascript
+async function* asyncGenerator() {
+  yield await Promise.resolve(1);
+  yield await Promise.resolve(2);
+  yield await Promise.resolve(3);
+}
+
+async function process() {
+  for await (const num of asyncGenerator()) {
+    console.log(num);
+  }
+}
+
+process(); // Logs: 1, 2, 3 (with async delays)
+```
+
+### Practical Example: Paginated API
+
+```javascript
+async function* fetchAllPages(baseUrl) {
+  let page = 1;
+  let hasMore = true;
+
+  while (hasMore) {
+    const response = await fetch(`${baseUrl}?page=${page}`);
+    const data = await response.json();
+    
+    yield* data.items;  // Yield each item
+    
+    hasMore = data.hasNextPage;
+    page++;
+  }
+}
+
+async function processAllItems() {
+  for await (const item of fetchAllPages('/api/items')) {
+    console.log('Processing:', item);
+  }
+}
+```
+
+### Streaming Data
+
+```javascript
+async function* streamLines(url) {
+  const response = await fetch(url);
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() || '';
+    
+    for (const line of lines) {
+      yield line;
+    }
+  }
+  
+  if (buffer) yield buffer;
+}
+
+// Usage
+for await (const line of streamLines('/api/logs')) {
+  console.log(line);
+}
+```
+
+<CodePlayground 
+  code={`// Simulating async iteration
+async function* simulatedAsyncData() {
+  const items = ['Loading...', 'Processing...', 'Complete!'];
+  
+  for (const item of items) {
+    await new Promise(r => setTimeout(r, 500));
+    yield item;
+  }
+}
+
+async function main() {
+  console.log('Starting async iteration:');
+  
+  for await (const status of simulatedAsyncData()) {
+    console.log('Status:', status);
+  }
+  
+  console.log('Done!');
+}
+
+main();`}
+  title="Async Iterator Demo"
+/>
+
+## Quiz: Advanced Concepts
+
+<Quiz id="for-of-advanced">
+  <Question
+    id="q1"
+    text="What makes an object iterable with for...of?"
+  >
+    <Answer id="a" text="Having a length property" />
+    <Answer id="b" text="Having a [Symbol.iterator] method" isCorrect />
+    <Answer id="c" text="Being an array" />
+  </Question>
+  <Question
+    id="q2"
+    text="What is 'for await...of' used for?"
+  >
+    <Answer id="a" text="Making loops faster" />
+    <Answer id="b" text="Iterating over async iterables" isCorrect />
+    <Answer id="c" text="Creating infinite loops" />
+  </Question>
+</Quiz>
+
+<ProgressCheckpoint section="advanced-usage" xpReward={25} />
+
+## Performance Comparison
+
+```javascript
+const arr = Array.from({ length: 100000 }, (_, i) => i);
+
+console.time('for loop');
+for (let i = 0; i < arr.length; i++) {
+  const x = arr[i];
+}
+console.timeEnd('for loop');
+
+console.time('for...of');
+for (const x of arr) {
+  // minimal overhead
+}
+console.timeEnd('for...of');
+
+console.time('forEach');
+arr.forEach(x => {
+  // callback overhead
+});
+console.timeEnd('forEach');
+```
+
+Typical results:
+- **for loop**: Fastest (direct index access)
+- **for...of**: Very close (modern optimization)
+- **forEach**: Slightly slower (function call overhead)
+
+<InfoBox type="tip" title="When to Use Each">
+| Pattern | Use Case |
+|:--------|:---------|
+| `for...of` | General iteration, readability |
+| `for await...of` | Async data streams, paginated APIs |
+| Custom iterators | Lazy evaluation, infinite sequences |
+| Generators | Simplified iterator creation |
+</InfoBox>

@@ -1,0 +1,24 @@
+{
+  "id": "this-arrow-functions",
+  "title": "this in Arrow Functions",
+  "description": "Understand the unique lexical binding of 'this' in arrow functions and when to use them.",
+  "milestone": "this-keyword",
+  "order": 4,
+  "sections": ["lexical-binding", "use-cases", "limitations"],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 18,
+      "xpReward": 55
+    }
+  },
+  "prerequisites": ["this-keyword/this-function-context"],
+  "tags": ["javascript", "this", "arrow-functions", "lexical", "es6"]
+}

@@ -67,6 +67,17 @@ import { BuiltInObjectExplorer as BuiltInObjectExplorerBase } from './BuiltInObj
 // Variable Naming Validator component
 import { VariableNamingValidator as VariableNamingValidatorBase } from './VariableNamingValidator';
 
+// Data Structures components
+import { IndexedCollectionVisualizer as IndexedCollectionVisualizerBase } from './IndexedCollectionVisualizer';
+import { KeyedCollectionExplorer as KeyedCollectionExplorerBase } from './KeyedCollectionExplorer';
+import { JsonPlayground as JsonPlaygroundBase } from './JsonPlayground';
+
+// This Keyword components
+import { ThisKeywordVisualizer as ThisKeywordVisualizerBase } from './ThisKeywordVisualizer';
+
+// Loop Visualizer component
+import { LoopVisualizer as LoopVisualizerBase } from './LoopVisualizer';
+
 // Wrap all interactive components with error boundaries
 export const CodePlayground = withErrorBoundary(CodePlaygroundBase, 'CodePlayground');
 export const VariableVisualizer = withErrorBoundary(VariableVisualizerBase, 'VariableVisualizer');
@@ -108,6 +119,17 @@ export const BuiltInObjectExplorer = withErrorBoundary(BuiltInObjectExplorerBase
 
 // Variable Naming Validator
 export const VariableNamingValidator = withErrorBoundary(VariableNamingValidatorBase, 'VariableNamingValidator');
+
+// Data Structures components
+export const IndexedCollectionVisualizer = withErrorBoundary(IndexedCollectionVisualizerBase, 'IndexedCollectionVisualizer');
+export const KeyedCollectionExplorer = withErrorBoundary(KeyedCollectionExplorerBase, 'KeyedCollectionExplorer');
+export const JsonPlayground = withErrorBoundary(JsonPlaygroundBase, 'JsonPlayground');
+
+// This Keyword Visualizer
+export const ThisKeywordVisualizer = withErrorBoundary(ThisKeywordVisualizerBase, 'ThisKeywordVisualizer');
+
+// Loop Visualizer
+export const LoopVisualizer = withErrorBoundary(LoopVisualizerBase, 'LoopVisualizer');
 
 // Re-export types
 export type {
@@ -296,6 +318,33 @@ export type {
   EcmaScriptVersionExplorerProps,
 } from './EcmaScriptVersionExplorer';
 
+export type {
+  IndexedCollectionVisualizerProps,
+  ArrayOperation,
+  CollectionType,
+} from './IndexedCollectionVisualizer';
+
+export type {
+  KeyedCollectionExplorerProps,
+  KeyedCollectionType,
+} from './KeyedCollectionExplorer';
+
+export type {
+  JsonPlaygroundProps,
+  JsonMode,
+} from './JsonPlayground';
+
+export type {
+  ThisKeywordVisualizerProps,
+} from './ThisKeywordVisualizer';
+
+export type {
+  LoopVisualizerProps,
+  LoopType,
+  LoopStep,
+  LoopState,
+} from './LoopVisualizer';
+
 // Export base components for testing
 export { CodePlaygroundBase };
 export { VariableVisualizerBase };
@@ -333,3 +382,8 @@ export { TypeVisualizerBase };
 export { TypeofExplorerBase };
 export { BuiltInObjectExplorerBase };
 export { VariableNamingValidatorBase };
+export { IndexedCollectionVisualizerBase };
+export { KeyedCollectionExplorerBase };
+export { JsonPlaygroundBase };
+export { ThisKeywordVisualizerBase };
+export { LoopVisualizerBase };

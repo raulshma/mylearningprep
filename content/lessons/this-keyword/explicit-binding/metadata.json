@@ -1,0 +1,24 @@
+{
+  "id": "explicit-binding",
+  "title": "Explicit Binding (call, apply, bind)",
+  "description": "Take control of 'this' using call(), apply(), and bind() methods for flexible function invocation.",
+  "milestone": "this-keyword",
+  "order": 5,
+  "sections": ["call-apply-basics", "bind-method", "practical-patterns"],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 12,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 18,
+      "xpReward": 45
+    },
+    "advanced": {
+      "estimatedMinutes": 22,
+      "xpReward": 65
+    }
+  },
+  "prerequisites": ["this-keyword/this-arrow-functions"],
+  "tags": ["javascript", "this", "call", "apply", "bind", "explicit-binding"]
+}

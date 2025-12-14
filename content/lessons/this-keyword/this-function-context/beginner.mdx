@@ -1,0 +1,123 @@
+# The Name Tag Analogy: `this` in Functions
+
+Imagine every function is like a person at a party wearing a **name tag**. But here's the twist - the name on the tag changes depending on **who invited them**!
+
+## The Party Invite Rule 🎉
+
+When someone (an object) invites a function to their party, the function wears that host's name tag.
+
+```javascript
+const alice = {
+  name: "Alice",
+  greet() {
+    console.log("Hi, I'm " + this.name);
+  }
+};
+
+alice.greet(); // "Hi, I'm Alice"
+// Alice invited greet(), so greet() wears Alice's name tag!
+```
+
+<ThisKeywordVisualizer context="function" showStrictMode={false} />
+
+## Two Ways to Call a Function
+
+### 1. As a Method (With a Host) 🏠
+
+When a function is called **through an object**, that object becomes `this`:
+
+```javascript
+const dog = {
+  name: "Buddy",
+  bark() {
+    console.log(this.name + " says Woof!");
+  }
+};
+
+dog.bark(); // "Buddy says Woof!"
+// dog is before the dot, so this = dog
+```
+
+### 2. Standalone (No Host) 🚶
+
+When a function is called **alone**, it has no specific host:
+
+```javascript
+function sayHello() {
+  console.log("Hello, " + this.name);
+}
+
+sayHello(); // "Hello, undefined"
+// No one before the dot = no host!
+```
+
+## The Magic Rule ✨
+
+> **Look at what's before the dot!** That's your `this`.
+
+| How It's Called | What's Before the Dot | `this` Value |
+|:----------------|:---------------------|:-------------|
+| `dog.bark()` | `dog` | The dog object |
+| `user.greet()` | `user` | The user object |
+| `greet()` | Nothing | Global object |
+
+## A Story: The Borrowed Function
+
+```javascript
+const chef = {
+  name: "Gordon",
+  cook() {
+    console.log(this.name + " is cooking!");
+  }
+};
+
+const baker = {
+  name: "Paul"
+};
+
+// Gordon cooks for himself
+chef.cook(); // "Gordon is cooking!"
+
+// Baker borrows the cooking function
+baker.cook = chef.cook;
+baker.cook(); // "Paul is cooking!"
+// Now Paul is before the dot!
+```
+
+It's like borrowing a uniform - when you wear it, you take on that role!
+
+## The "Lost this" Problem 😱
+
+Sometimes `this` gets "lost" when you extract a function:
+
+```javascript
+const hero = {
+  name: "Spider-Man",
+  introduce() {
+    console.log("I am " + this.name);
+  }
+};
+
+// This works
+hero.introduce(); // "I am Spider-Man"
+
+// But this loses the context!
+const intro = hero.introduce;
+intro(); // "I am undefined" - Oh no!
+```
+
+When you take the function out, it forgets who it belongs to!
+
+## Quick Summary
+
+| Situation | `this` is... |
+|:----------|:------------|
+| `object.method()` | The object |
+| `function()` | Global (or undefined) |
+| Extracted method | Lost! 😢 |
+
+<KeyConcept title="Remember">
+The value of `this` is determined by **how** a function is called, not where it's defined. Look for what's before the dot!
+</KeyConcept>
+
+<ProgressCheckpoint section="function-basics" xpReward={25} />

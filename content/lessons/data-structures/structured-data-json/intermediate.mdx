@@ -1,0 +1,237 @@
+# JSON.parse() and JSON.stringify()
+
+These two methods are the workhorses of JSON handling in JavaScript. Let's master them with practical examples and edge cases.
+
+## JSON.parse() - String to Object
+
+```javascript
+const jsonString = '{"name": "Alice", "age": 28, "active": true}';
+
+const user = JSON.parse(jsonString);
+
+console.log(typeof user);    // "object"
+console.log(user.name);      // "Alice"
+console.log(user.age);       // 28
+console.log(user.active);    // true
+```
+
+### Handling Invalid JSON
+
+Invalid JSON throws a `SyntaxError`:
+
+```javascript
+try {
+  JSON.parse('{"name": "Alice",}'); // Trailing comma - invalid!
+} catch (error) {
+  console.log(error.name);    // "SyntaxError"
+  console.log(error.message); // "Unexpected token } in JSON"
+}
+
+// Always wrap in try-catch when parsing user input or API responses
+```
+
+### Safe Parsing Pattern
+
+```javascript
+function safeParseJSON(str) {
+  try {
+    return { data: JSON.parse(str), error: null };
+  } catch (error) {
+    return { data: null, error: error.message };
+  }
+}
+
+const result = safeParseJSON('{"valid": true}');
+if (result.error) {
+  console.log("Parse failed:", result.error);
+} else {
+  console.log("Parsed:", result.data);
+}
+```
+
+## JSON.stringify() - Object to String
+
+```javascript
+const user = {
+  name: "Bob",
+  age: 25,
+  city: "Paris"
+};
+
+// Basic usage
+const json = JSON.stringify(user);
+console.log(json); // '{"name":"Bob","age":25,"city":"Paris"}'
+
+// Pretty printing with indentation
+const prettyJson = JSON.stringify(user, null, 2);
+console.log(prettyJson);
+/*
+{
+  "name": "Bob",
+  "age": 25,
+  "city": "Paris"
+}
+*/
+```
+
+<JsonPlayground mode="stringify" />
+
+### Indentation Options
+
+```javascript
+const data = { a: 1, b: { c: 2 } };
+
+// No formatting (minified)
+JSON.stringify(data);
+// '{"a":1,"b":{"c":2}}'
+
+// 2 spaces
+JSON.stringify(data, null, 2);
+
+// 4 spaces
+JSON.stringify(data, null, 4);
+
+// Tab character
+JSON.stringify(data, null, "\t");
+```
+
+## Working with APIs
+
+### Fetching JSON Data
+
+```javascript
+async function fetchUser(id) {
+  const response = await fetch(`/api/users/${id}`);
+  
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+  
+  const user = await response.json(); // Automatically parses JSON!
+  return user;
+}
+```
+
+### Sending JSON Data
+
+```javascript
+async function createUser(userData) {
+  const response = await fetch('/api/users', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json', // Tell server we're sending JSON
+    },
+    body: JSON.stringify(userData), // Convert object to JSON string
+  });
+  
+  return response.json();
+}
+
+// Usage
+await createUser({ name: "Alice", email: "alice@example.com" });
+```
+
+## localStorage with JSON
+
+localStorage only stores strings, so JSON is essential:
+
+```javascript
+// Saving
+const settings = { theme: "dark", fontSize: 16 };
+localStorage.setItem("settings", JSON.stringify(settings));
+
+// Loading
+const stored = localStorage.getItem("settings");
+const settings = stored ? JSON.parse(stored) : { theme: "light", fontSize: 14 };
+```
+
+## Nested Objects and Arrays
+
+JSON handles any depth of nesting:
+
+```javascript
+const company = {
+  name: "TechCorp",
+  departments: [
+    {
+      name: "Engineering",
+      employees: [
+        { name: "Alice", role: "Developer" },
+        { name: "Bob", role: "Designer" }
+      ]
+    },
+    {
+      name: "Sales",
+      employees: [
+        { name: "Carol", role: "Manager" }
+      ]
+    }
+  ]
+};
+
+const json = JSON.stringify(company, null, 2);
+const restored = JSON.parse(json);
+
+console.log(restored.departments[0].employees[0].name); // "Alice"
+```
+
+## What Gets Lost in JSON Conversion?
+
+| JavaScript | JSON Result |
+|:-----------|:------------|
+| `undefined` | Omitted from objects, `null` in arrays |
+| Functions | Omitted |
+| Dates | Converted to ISO strings |
+| `Infinity`, `NaN` | `null` |
+| `RegExp` | `{}` (empty object) |
+| `Symbol` | Omitted |
+
+```javascript
+const data = {
+  date: new Date("2024-01-15"),
+  callback: () => console.log("hi"),
+  missing: undefined,
+  regex: /hello/,
+  infinity: Infinity
+};
+
+console.log(JSON.stringify(data, null, 2));
+/*
+{
+  "date": "2024-01-15T00:00:00.000Z",  // Date became string
+  "regex": {},                          // RegExp became empty object
+  "infinity": null                      // Infinity became null
+}
+*/
+// Notice: callback and missing are gone!
+```
+
+## Error Handling Cheat Sheet
+
+| Scenario | Solution |
+|:---------|:---------|
+| Parsing user input | Always use try-catch |
+| Fetching from API | Check `response.ok` first |
+| localStorage could be empty | Use nullish coalescing `??` |
+| Parsed data might not have expected shape | Validate the structure |
+
+```javascript
+// Complete safe pattern
+function loadSettings() {
+  try {
+    const stored = localStorage.getItem("settings");
+    if (!stored) return getDefaultSettings();
+    
+    const parsed = JSON.parse(stored);
+    // Validate expected properties exist
+    if (!parsed.theme || !parsed.fontSize) {
+      return getDefaultSettings();
+    }
+    return parsed;
+  } catch {
+    return getDefaultSettings();
+  }
+}
+```
+
+<ProgressCheckpoint section="parse-stringify" xpReward={45} />

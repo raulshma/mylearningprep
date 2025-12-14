@@ -1,0 +1,237 @@
+# Understanding `this` in ES6 Classes
+
+ES6 classes provide a cleaner syntax for working with prototypes and constructors. Understanding how `this` behaves in classes is crucial for object-oriented programming in JavaScript.
+
+## Constructor and Instance Creation
+
+When you call a class with `new`, JavaScript:
+1. Creates a new empty object
+2. Sets `this` to that new object
+3. Executes the constructor
+4. Returns `this` (implicitly)
+
+```javascript
+class User {
+  constructor(name, email) {
+    // 'this' is the newly created object
+    this.name = name;
+    this.email = email;
+    this.createdAt = new Date();
+    
+    console.log(this); // User { name: "Alice", email: "...", createdAt: ... }
+  }
+}
+
+const user = new User("Alice", "alice@example.com");
+console.log(user.name); // "Alice"
+```
+
+<ThisKeywordVisualizer context="class" showStrictMode={true} />
+
+## Instance Methods
+
+In instance methods, `this` refers to the instance calling the method:
+
+```javascript
+class Calculator {
+  constructor(initialValue = 0) {
+    this.value = initialValue;
+  }
+
+  add(n) {
+    this.value += n;
+    return this; // Enable method chaining
+  }
+
+  subtract(n) {
+    this.value -= n;
+    return this;
+  }
+
+  multiply(n) {
+    this.value *= n;
+    return this;
+  }
+
+  getResult() {
+    return this.value;
+  }
+}
+
+const calc = new Calculator(10);
+const result = calc.add(5).multiply(2).subtract(3).getResult();
+console.log(result); // 27
+```
+
+## Static Methods
+
+In static methods, `this` refers to the class itself, not an instance:
+
+```javascript
+class MathHelper {
+  static PI = 3.14159;
+  static count = 0;
+
+  constructor() {
+    MathHelper.count++; // Track instances
+  }
+
+  static circleArea(radius) {
+    // 'this' is MathHelper class
+    return this.PI * radius * radius;
+  }
+
+  static getInstanceCount() {
+    return this.count;
+  }
+}
+
+console.log(MathHelper.circleArea(5)); // 78.53975
+console.log(MathHelper.PI);             // 3.14159
+
+new MathHelper();
+new MathHelper();
+console.log(MathHelper.getInstanceCount()); // 2
+```
+
+## The Method Binding Problem
+
+When class methods are used as callbacks, `this` can be lost:
+
+```javascript
+class Timer {
+  constructor(name) {
+    this.name = name;
+    this.seconds = 0;
+  }
+
+  tick() {
+    this.seconds++;
+    console.log(`${this.name}: ${this.seconds}s`);
+  }
+
+  start() {
+    // Problem: this.tick loses context!
+    setInterval(this.tick, 1000);
+    // After 1 second: "undefined: NaN"
+  }
+}
+```
+
+### Solutions
+
+#### 1. Bind in Constructor
+
+```javascript
+class Timer {
+  constructor(name) {
+    this.name = name;
+    this.seconds = 0;
+    // Bind once in constructor
+    this.tick = this.tick.bind(this);
+  }
+
+  tick() {
+    this.seconds++;
+    console.log(`${this.name}: ${this.seconds}s`);
+  }
+
+  start() {
+    setInterval(this.tick, 1000); // Works!
+  }
+}
+```
+
+#### 2. Arrow Function as Class Field
+
+```javascript
+class Timer {
+  constructor(name) {
+    this.name = name;
+    this.seconds = 0;
+  }
+
+  // Arrow function captures 'this' lexically
+  tick = () => {
+    this.seconds++;
+    console.log(`${this.name}: ${this.seconds}s`);
+  };
+
+  start() {
+    setInterval(this.tick, 1000); // Works!
+  }
+}
+```
+
+#### 3. Arrow Function in Callback
+
+```javascript
+class Timer {
+  constructor(name) {
+    this.name = name;
+    this.seconds = 0;
+  }
+
+  tick() {
+    this.seconds++;
+    console.log(`${this.name}: ${this.seconds}s`);
+  }
+
+  start() {
+    // Wrap in arrow function
+    setInterval(() => this.tick(), 1000); // Works!
+  }
+}
+```
+
+## Getters and Setters
+
+`this` works the same in getters and setters:
+
+```javascript
+class Temperature {
+  constructor(celsius) {
+    this._celsius = celsius;
+  }
+
+  get celsius() {
+    return this._celsius;
+  }
+
+  set celsius(value) {
+    if (value < -273.15) {
+      throw new Error("Temperature below absolute zero!");
+    }
+    this._celsius = value;
+  }
+
+  get fahrenheit() {
+    // 'this' refers to the instance
+    return this._celsius * 9/5 + 32;
+  }
+
+  set fahrenheit(value) {
+    this._celsius = (value - 32) * 5/9;
+  }
+}
+
+const temp = new Temperature(25);
+console.log(temp.fahrenheit); // 77
+temp.fahrenheit = 100;
+console.log(temp.celsius);    // 37.777...
+```
+
+## Comparison: Instance vs Static
+
+| Feature | Instance Method | Static Method |
+|:--------|:---------------|:--------------|
+| `this` refers to | Instance object | The class itself |
+| Called on | `object.method()` | `Class.method()` |
+| Access instance data | Yes (`this.property`) | No |
+| Access static data | Via `ClassName.static` | Via `this.static` |
+
+<InfoBox type="tip" title="Best Practice">
+Use arrow function class fields for methods that will be passed as callbacks. This automatically binds `this` without manual binding in the constructor.
+</InfoBox>
+
+<ProgressCheckpoint section="constructor-this" xpReward={40} />

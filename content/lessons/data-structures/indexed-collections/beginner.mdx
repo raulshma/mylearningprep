@@ -1,0 +1,71 @@
+# Indexed Collections: Arrays
+
+Imagine you have a **filing cabinet** with numbered drawers. Each drawer has a number (0, 1, 2, 3...) and can hold one item. That's exactly what an **array** is in JavaScript - an ordered collection where each item has a numbered position called an **index**!
+
+## The Filing Cabinet Analogy
+
+Think of arrays like a row of numbered lockers:
+
+| Locker | Item inside |
+|:------:|:------------|
+| 0      | "Apple"     |
+| 1      | "Banana"    |
+| 2      | "Cherry"    |
+| 3      | "Date"      |
+
+> **Key insight**: Arrays always start counting from **0**, not 1! The first locker is locker 0.
+
+## Creating Your First Array
+
+```javascript
+// Method 1: Using square brackets (most common)
+const fruits = ["Apple", "Banana", "Cherry"];
+
+// Method 2: Empty array, then add items
+const colors = [];
+colors[0] = "Red";
+colors[1] = "Green";
+colors[2] = "Blue";
+```
+
+## Accessing Items
+
+Use the **index** (position number) to get items:
+
+```javascript
+const fruits = ["Apple", "Banana", "Cherry"];
+
+console.log(fruits[0]); // "Apple" - first item
+console.log(fruits[1]); // "Banana" - second item
+console.log(fruits[2]); // "Cherry" - third item
+```
+
+## How Many Items? Use `.length`
+
+```javascript
+const fruits = ["Apple", "Banana", "Cherry"];
+console.log(fruits.length); // 3
+```
+
+<IndexedCollectionVisualizer showTypedArrays={false} showOperations={false} />
+
+## Why Arrays Are Useful
+
+Arrays help you:
+
+- **Store lists** - Shopping items, user names, scores
+- **Keep things in order** - First, second, third...
+- **Process many items** - Loop through all items easily
+
+## Key Takeaways
+
+| Concept      | What it means                           |
+|:-------------|:----------------------------------------|
+| **Array**    | An ordered list with numbered positions |
+| **Index**    | The position number (starts at 0)       |
+| **Length**   | How many items are in the array         |
+| **[]**       | Square brackets to create or access     |
+
+Arrays are everywhere in JavaScript - from storing user data to managing game objects. Master them, and you'll unlock powerful programming patterns!
+
+<ProgressCheckpoint section="array-basics" xpReward={30} />

@@ -1,0 +1,119 @@
+# JSON: The Universal Language of Data
+
+Imagine you're sending a letter to someone who speaks a different language. You'd need a translator, right? **JSON** (JavaScript Object Notation) is the universal translator for computers! It lets different programs, written in different languages, share data easily.
+
+## What is JSON?
+
+JSON is a **text format** for representing structured data. It looks a lot like JavaScript objects, but with stricter rules.
+
+```json
+{
+  "name": "Alice",
+  "age": 28,
+  "isStudent": false,
+  "hobbies": ["reading", "coding", "hiking"],
+  "address": {
+    "city": "New York",
+    "zipCode": "10001"
+  }
+}
+```
+
+> **Fun fact**: JSON was derived from JavaScript, but now it's used by nearly every programming language - Python, Java, Go, Ruby, and more!
+
+## JSON Rules
+
+JSON has strict rules that make it readable by any system:
+
+| Rule | ✅ Correct | ❌ Wrong |
+|:-----|:----------|:---------|
+| Keys must be strings | `"name": "Alice"` | `name: "Alice"` |
+| Strings use double quotes | `"hello"` | `'hello'` |
+| No trailing commas | `["a", "b"]` | `["a", "b",]` |
+| No comments | (just data) | `// comment` |
+
+## Valid JSON Data Types
+
+JSON supports only these types:
+
+- **Strings**: `"hello"` (always double quotes!)
+- **Numbers**: `42`, `3.14`, `-10`
+- **Booleans**: `true`, `false`
+- **null**: `null`
+- **Arrays**: `[1, 2, 3]`
+- **Objects**: `{"key": "value"}`
+
+> ⚠️ **Not allowed in JSON**: `undefined`, functions, dates, symbols, or comments!
+
+## JavaScript Object vs JSON
+
+```javascript
+// JavaScript Object (flexible)
+const jsObject = {
+  name: 'Alice',          // Single quotes OK
+  greet() { return 'Hi'; }, // Functions allowed
+  joined: new Date(),     // Dates allowed
+};
+
+// JSON (strict)
+const jsonString = `{
+  "name": "Alice"
+}`;
+```
+
+## Where is JSON Used?
+
+📡 **APIs** - When your app talks to a server:
+```
+Your App → "Give me user data" → Server
+Server → '{"name": "Alice", "age": 28}' → Your App
+```
+
+💾 **Configuration Files** - `package.json`, `tsconfig.json`
+
+🗄️ **Data Storage** - Databases like MongoDB store JSON-like documents
+
+📋 **localStorage** - Saving data in the browser
+
+<JsonPlayground mode="parse" showComparison={false} />
+
+## Reading JSON (Parsing)
+
+Convert a JSON string into a JavaScript object:
+
+```javascript
+const jsonString = '{"name": "Alice", "age": 28}';
+
+const user = JSON.parse(jsonString);
+
+console.log(user.name); // "Alice"
+console.log(user.age);  // 28
+```
+
+## Creating JSON (Stringifying)
+
+Convert a JavaScript object into a JSON string:
+
+```javascript
+const user = {
+  name: "Bob",
+  age: 32
+};
+
+const jsonString = JSON.stringify(user);
+
+console.log(jsonString); // '{"name":"Bob","age":32}'
+```
+
+## Key Takeaways
+
+| Term | Meaning |
+|:-----|:--------|
+| **JSON** | Text format for data exchange |
+| **Parse** | Convert JSON string → JavaScript object |
+| **Stringify** | Convert JavaScript object → JSON string |
+| **Keys** | Always strings, always quoted |
+
+JSON is the glue that connects modern web applications. Every time you fetch data from an API, load settings, or save user preferences, JSON is working behind the scenes!
+
+<ProgressCheckpoint section="json-basics" xpReward={25} />

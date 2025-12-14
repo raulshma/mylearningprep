@@ -1,0 +1,237 @@
+# WeakMap and WeakSet: Memory-Efficient Collections
+
+WeakMap and WeakSet are specialized collections that hold **weak references** to their keys (or values). This means they don't prevent garbage collection - a crucial feature for memory management in complex applications.
+
+## The Garbage Collection Problem
+
+Regular Map and Set hold **strong references**:
+
+```javascript
+let user = { name: "Alice" };
+const map = new Map();
+map.set(user, "some data");
+
+user = null; // We're done with the user object
+
+// But the Map still references it!
+// The object cannot be garbage collected
+```
+
+WeakMap solves this:
+
+```javascript
+let user = { name: "Alice" };
+const weakMap = new WeakMap();
+weakMap.set(user, "some data");
+
+user = null; // The only reference is now gone
+
+// The WeakMap entry becomes eligible for garbage collection!
+```
+
+> **Think of it this way**: A normal Map is like a photograph album - the photos keep the memories alive. A WeakMap is like a mirror - it shows what exists, but doesn't prevent things from fading away.
+
+## WeakMap Constraints
+
+| Feature | Map | WeakMap |
+|:--------|:----|:--------|
+| Key types | Any value | Objects and non-registered Symbols only |
+| Enumerable | Yes (`.keys()`, `.values()`) | No |
+| `.size` property | Yes | No |
+| Iteration | Yes | No |
+| Garbage collection | Keys prevent GC | Keys don't prevent GC |
+
+<KeyedCollectionExplorer collectionType="weakmap" />
+
+## Why No Iteration?
+
+WeakMap doesn't support `keys()`, `values()`, `entries()`, or `.size` because:
+
+```javascript
+// Imagine if this were possible:
+for (const key of weakMap.keys()) {
+  // This would require knowing what keys exist
+  // But garbage collection happens unpredictably!
+  // The list could change at any moment
+}
+```
+
+The set of keys depends on the garbage collector's state, which is non-deterministic.
+
+## Use Case 1: Private Data for Classes
+
+Store private data without polluting the object:
+
+```javascript
+const _privateData = new WeakMap();
+
+class User {
+  constructor(name, password) {
+    this.name = name;
+    // Password is private!
+    _privateData.set(this, { password });
+  }
+
+  checkPassword(input) {
+    const data = _privateData.get(this);
+    return data.password === input;
+  }
+}
+
+const user = new User("Alice", "secret123");
+console.log(user.name);           // "Alice"
+console.log(user.password);       // undefined (it's private!)
+console.log(user.checkPassword("secret123")); // true
+```
+
+When the User instance is garbage collected, the private data goes with it!
+
+## Use Case 2: Caching Computed Results
+
+Cache expensive computations without memory leaks:
+
+```javascript
+const cache = new WeakMap();
+
+function expensiveOperation(obj) {
+  // Check cache first
+  if (cache.has(obj)) {
+    console.log("Cache hit!");
+    return cache.get(obj);
+  }
+
+  // Compute result
+  console.log("Computing...");
+  const result = /* expensive calculation based on obj */ obj.x * 1000;
+  
+  // Cache it
+  cache.set(obj, result);
+  return result;
+}
+
+let data = { x: 42 };
+expensiveOperation(data); // "Computing..." → 42000
+expensiveOperation(data); // "Cache hit!"   → 42000
+
+data = null; // Object goes away, cache entry cleaned up automatically!
+```
+
+## Use Case 3: DOM Element Metadata
+
+Associate data with DOM elements safely:
+
+```javascript
+const elementMetadata = new WeakMap();
+
+document.querySelectorAll(".trackable").forEach(element => {
+  elementMetadata.set(element, {
+    createdAt: new Date(),
+    interactions: 0
+  });
+});
+
+// When elements are removed from DOM, their metadata is automatically cleaned up!
+```
+
+## WeakSet: Weak Value Collection
+
+WeakSet is like Set but with weak references:
+
+```javascript
+const visitedPages = new WeakSet();
+
+function trackVisit(pageObject) {
+  if (visitedPages.has(pageObject)) {
+    console.log("Already visited!");
+    return;
+  }
+  visitedPages.add(pageObject);
+  console.log("First visit!");
+}
+
+let page = { url: "/home" };
+trackVisit(page); // "First visit!"
+trackVisit(page); // "Already visited!"
+
+page = null; // Page can be garbage collected
+```
+
+<KeyedCollectionExplorer collectionType="weakset" />
+
+## Use Case: Object Branding/Tagging
+
+Mark objects without modifying them:
+
+```javascript
+const validated = new WeakSet();
+
+function validateUser(user) {
+  // Perform validation...
+  if (user.email && user.name) {
+    validated.add(user);
+    return true;
+  }
+  return false;
+}
+
+function processUser(user) {
+  if (!validated.has(user)) {
+    throw new Error("User must be validated first!");
+  }
+  // Process validated user...
+}
+
+const user = { name: "Alice", email: "alice@example.com" };
+validateUser(user);
+processUser(user); // Works!
+```
+
+## Non-Registered Symbols as Keys (ES2023+)
+
+WeakMaps now accept non-registered symbols:
+
+```javascript
+const key = Symbol("private"); // Non-registered (not from Symbol.for())
+const weakMap = new WeakMap();
+
+weakMap.set(key, "secret data"); // OK!
+
+// But registered symbols don't work:
+const registered = Symbol.for("shared");
+// weakMap.set(registered, "data"); // TypeError!
+```
+
+Why? Registered symbols are globally accessible forever - they can't be garbage collected.
+
+## Comparison Table
+
+| Feature | Map/Set | WeakMap/WeakSet |
+|:--------|:--------|:----------------|
+| Keys | Any type | Objects/Symbols only |
+| Values GC | Never | When key is GC'd |
+| Enumerable | Yes | No |
+| Size known | Yes (`.size`) | No |
+| Clear method | Yes | No |
+| Memory leaks | Possible | Prevented |
+
+## When to Use Weak Collections
+
+✅ **Use WeakMap when:**
+- Storing metadata for objects you don't own
+- Implementing caches that should auto-clean
+- Storing private data for classes
+- Tracking object state without preventing GC
+
+✅ **Use WeakSet when:**
+- Tagging/branding objects
+- Tracking object membership
+- Marking objects as "seen" or "processed"
+
+❌ **Don't use when:**
+- You need to iterate over keys/values
+- You need to know the size
+- Keys are primitives (strings, numbers)
+
+Weak collections are powerful tools for building memory-efficient applications that clean up after themselves!
+
+<ProgressCheckpoint section="weak-collections" xpReward={75} />

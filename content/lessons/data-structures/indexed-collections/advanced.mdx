@@ -1,0 +1,179 @@
+# Typed Arrays and Performance
+
+While regular JavaScript arrays are incredibly flexible (they can hold any type of data), this flexibility comes at a cost. **Typed Arrays** provide a way to work with raw binary data with better performance and memory efficiency.
+
+## The Problem with Regular Arrays
+
+```javascript
+// Regular arrays can hold anything
+const mixed = [42, "hello", true, { x: 1 }];
+
+// But this flexibility has overhead:
+// - Each element is a full JavaScript object
+// - No memory contiguity guarantee
+// - Type checking at runtime
+```
+
+## Enter ArrayBuffer and Typed Arrays
+
+Typed Arrays are built on top of **ArrayBuffer** - a raw chunk of memory:
+
+```javascript
+// Allocate 16 bytes of raw memory
+const buffer = new ArrayBuffer(16);
+
+// Create views into this buffer
+const int32View = new Int32Array(buffer); // 4 32-bit integers
+const uint8View = new Uint8Array(buffer); // 16 8-bit integers
+
+int32View[0] = 42;
+console.log(uint8View[0]); // 42 - same memory, different view!
+```
+
+> **Analogy**: ArrayBuffer is like a blank canvas. Typed Arrays are different "lenses" to view and interpret that canvas.
+
+<IndexedCollectionVisualizer 
+  initialArray={[10, 20, 30, 40, 50]}
+  collectionType="int32"
+/>
+
+## Available Typed Array Types
+
+| Type | Bytes | Range | Use Case |
+|:-----|:-----:|:------|:---------|
+| `Int8Array` | 1 | -128 to 127 | Small signed integers |
+| `Uint8Array` | 1 | 0 to 255 | Pixel data, binary files |
+| `Int16Array` | 2 | -32,768 to 32,767 | Audio samples |
+| `Uint16Array` | 2 | 0 to 65,535 | Character codes |
+| `Int32Array` | 4 | -2B to 2B | Standard integers |
+| `Uint32Array` | 4 | 0 to 4B | Large positive integers |
+| `Float32Array` | 4 | ±3.4e38 | Graphics, physics |
+| `Float64Array` | 8 | ±1.8e308 | Scientific computation |
+
+## Memory Layout Comparison
+
+```javascript
+// Regular array - scattered in memory
+const regular = [1, 2, 3, 4, 5];
+// Each element could be anywhere in heap memory
+
+// Typed array - contiguous in memory
+const typed = new Int32Array([1, 2, 3, 4, 5]);
+// All 20 bytes are sequential: [0x01 0x00 0x00 0x00 | 0x02 0x00 ...]
+```
+
+**Why contiguous memory matters:**
+- Better CPU cache utilization
+- Faster bulk operations
+- Direct access by offset
+
+## Practical Use Cases
+
+### 1. WebGL and Graphics
+
+```javascript
+// Vertex positions for 3D graphics
+const vertices = new Float32Array([
+  -1.0, -1.0, 0.0,  // vertex 1
+   1.0, -1.0, 0.0,  // vertex 2
+   0.0,  1.0, 0.0   // vertex 3
+]);
+
+// Pass directly to GPU
+gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+```
+
+### 2. Audio Processing
+
+```javascript
+// Process audio samples
+const audioData = new Float32Array(audioBuffer.length);
+for (let i = 0; i < audioData.length; i++) {
+  audioData[i] = Math.sin(i * 0.1) * 0.5; // Generate sine wave
+}
+```
+
+### 3. Binary File Handling
+
+```javascript
+// Read binary file
+const response = await fetch('/data.bin');
+const buffer = await response.arrayBuffer();
+const data = new Uint8Array(buffer);
+
+// Parse binary protocol
+const header = data.slice(0, 4);
+const payload = data.slice(4);
+```
+
+## Typed Array Methods
+
+Typed Arrays share most methods with regular arrays, plus some extras:
+
+```javascript
+const source = new Uint8Array([1, 2, 3, 4, 5]);
+const target = new Uint8Array(10);
+
+// set() - Copy data efficiently
+target.set(source, 2); // [0, 0, 1, 2, 3, 4, 5, 0, 0, 0]
+
+// subarray() - Create a view (no copy!)
+const view = source.subarray(1, 4); // [2, 3, 4]
+view[0] = 99; // Also changes source!
+
+// Note: Unlike slice(), subarray shares memory
+```
+
+## Performance Comparison
+
+```javascript
+const SIZE = 1_000_000;
+
+// Regular Array
+const regular = new Array(SIZE).fill(0).map((_, i) => i);
+console.time('Regular sum');
+let sum1 = regular.reduce((a, b) => a + b, 0);
+console.timeEnd('Regular sum'); // ~5ms
+
+// Typed Array
+const typed = new Int32Array(SIZE).fill(0).map((_, i) => i);
+console.time('Typed sum');
+let sum2 = typed.reduce((a, b) => a + b, 0);
+console.timeEnd('Typed sum'); // ~2ms
+```
+
+## When to Use What
+
+| Scenario | Best Choice |
+|:---------|:------------|
+| General purpose lists | Regular `Array` |
+| Mixed data types | Regular `Array` |
+| Binary data handling | `Uint8Array` |
+| Graphics (WebGL) | `Float32Array` |
+| Audio processing | `Float32Array` |
+| Large numerical datasets | Typed Arrays |
+| Network protocols | `Uint8Array` |
+
+## DataView - Ultimate Flexibility
+
+When you need to read mixed types from binary data:
+
+```javascript
+const buffer = new ArrayBuffer(12);
+const view = new DataView(buffer);
+
+// Write different types at different offsets
+view.setInt32(0, 42);        // 4 bytes
+view.setFloat32(4, 3.14);    // 4 bytes  
+view.setUint16(8, 1000);     // 2 bytes
+view.setUint8(10, 255);      // 1 byte
+view.setUint8(11, 128);      // 1 byte
+
+// Read them back
+console.log(view.getInt32(0));    // 42
+console.log(view.getFloat32(4)); // 3.14
+```
+
+Typed Arrays unlock JavaScript's ability to work with systems-level data efficiently - essential for graphics, audio, networking, and high-performance applications!
+
+<ProgressCheckpoint section="typed-arrays" xpReward={75} />

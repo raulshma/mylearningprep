@@ -1,0 +1,274 @@
+# break and continue: Labeled Statements and Patterns
+
+Learn to use labeled statements for nested loops and explore practical patterns for `break` and `continue`.
+
+## The Nested Loop Problem
+
+With nested loops, `break` only exits the **inner** loop:
+
+```javascript
+for (let i = 0; i < 3; i++) {
+  for (let j = 0; j < 3; j++) {
+    if (i === 1 && j === 1) {
+      break;  // Only breaks inner loop!
+    }
+    console.log(`i=${i}, j=${j}`);
+  }
+}
+// Output includes i=2 rows because outer loop continues!
+```
+
+<ProgressCheckpoint section="break-intro" xpReward={10} />
+
+## Labeled Statements
+
+Labels let you control which loop to break or continue:
+
+```javascript
+outerLoop: for (let i = 0; i < 3; i++) {
+  for (let j = 0; j < 3; j++) {
+    if (i === 1 && j === 1) {
+      break outerLoop;  // Breaks OUTER loop!
+    }
+    console.log(`i=${i}, j=${j}`);
+  }
+}
+// Stops completely when i=1, j=1
+```
+
+### Syntax
+
+```javascript
+labelName: for (...) {
+  for (...) {
+    break labelName;     // Break labeled loop
+    continue labelName;  // Continue labeled loop
+  }
+}
+```
+
+### Practical Example: Search in 2D Grid
+
+```javascript
+const grid = [
+  ['a', 'b', 'c'],
+  ['d', 'e', 'f'],
+  ['g', 'h', 'i']
+];
+
+const target = 'e';
+let found = false;
+let position = null;
+
+search: for (let row = 0; row < grid.length; row++) {
+  for (let col = 0; col < grid[row].length; col++) {
+    if (grid[row][col] === target) {
+      found = true;
+      position = { row, col };
+      break search;  // Exit both loops
+    }
+  }
+}
+
+console.log(found ? `Found at row ${position.row}, col ${position.col}` : 'Not found');
+```
+
+<CodePlayground 
+  code={`// Find matching pair
+const pairs = [
+  [1, 2], [3, 4], [5, 6],
+  [7, 8], [9, 10], [11, 12]
+];
+
+const target = 9;
+let result = null;
+
+findPair: for (const pair of pairs) {
+  for (const num of pair) {
+    if (num === target) {
+      result = pair;
+      break findPair;
+    }
+  }
+}
+
+console.log('Found in pair:', result);`}
+  title="Break from Nested Loops"
+/>
+
+<ProgressCheckpoint section="continue-intro" xpReward={10} />
+
+## Continue with Labels
+
+Labels also work with `continue`:
+
+```javascript
+outer: for (let i = 0; i < 3; i++) {
+  for (let j = 0; j < 3; j++) {
+    if (j === 1) {
+      continue outer;  // Skip to next outer iteration
+    }
+    console.log(`i=${i}, j=${j}`);
+  }
+}
+// For each i, only j=0 is printed
+```
+
+## Common Patterns
+
+### Pattern 1: Early Exit Search
+
+```javascript
+function findUser(users, id) {
+  for (const user of users) {
+    if (user.id === id) {
+      return user;  // Found it - exit function
+    }
+  }
+  return null;  // Not found
+}
+```
+
+### Pattern 2: Filter and Process
+
+```javascript
+const data = [
+  { valid: true, value: 1 },
+  { valid: false, value: 2 },
+  { valid: true, value: 3 }
+];
+
+const results = [];
+for (const item of data) {
+  if (!item.valid) continue;  // Skip invalid
+  results.push(item.value * 10);
+}
+console.log(results);  // [10, 30]
+```
+
+### Pattern 3: Process Until Sentinel
+
+```javascript
+const stream = [1, 2, 3, -1, 4, 5];  // -1 is sentinel
+
+let sum = 0;
+for (const num of stream) {
+  if (num === -1) break;  // Stop at sentinel
+  sum += num;
+}
+console.log(sum);  // 6 (1+2+3)
+```
+
+### Pattern 4: Skip Known Bad Data
+
+```javascript
+const responses = [
+  { status: 200, data: 'ok' },
+  { status: 500, data: null },
+  { status: 200, data: 'good' },
+  { status: 404, data: null }
+];
+
+console.log('Successful responses:');
+for (const res of responses) {
+  if (res.status !== 200) continue;
+  console.log('-', res.data);
+}
+```
+
+<ProgressCheckpoint section="labels" xpReward={10} />
+
+## break vs return in Loops
+
+Inside a function, you have another option:
+
+```javascript
+function processData(items) {
+  for (const item of items) {
+    if (item.isTarget) {
+      return item;  // Exits function AND loop
+    }
+  }
+  return null;
+}
+```
+
+| Statement | Function | Loop |
+|:----------|:---------|:-----|
+| `break` | Continues function | Exits loop |
+| `return` | Exits function | Exits loop |
+| `continue` | Continues function | Next iteration |
+
+<CodePlayground 
+  code={`// Nested loop with labeled continue
+const matrix = [
+  [1, 2, 3],
+  [4, 5, 6],
+  [7, 8, 9]
+];
+
+console.log('Row sums (skip if > 15):');
+
+nextRow: for (let row = 0; row < matrix.length; row++) {
+  let sum = 0;
+  
+  for (const num of matrix[row]) {
+    sum += num;
+    
+    // Skip entire row if sum gets too high
+    if (sum > 15) {
+      console.log(\`Row \${row}: skipped (sum exceeded 15)\`);
+      continue nextRow;
+    }
+  }
+  
+  console.log(\`Row \${row}: sum = \${sum}\`);
+}`}
+  title="Labeled Continue Pattern"
+/>
+
+## Quiz
+
+<Quiz id="break-continue-intermediate">
+  <Question
+    id="q1"
+    text="What does 'break outerLoop;' do in nested loops?"
+  >
+    <Answer id="a" text="Breaks only the inner loop" />
+    <Answer id="b" text="Breaks the loop labeled 'outerLoop'" isCorrect />
+    <Answer id="c" text="Causes an error" />
+  </Question>
+  <Question
+    id="q2"
+    text="Which is more appropriate when you've found what you need in a function?"
+  >
+    <Answer id="a" text="break" />
+    <Answer id="b" text="continue" />
+    <Answer id="c" text="return" isCorrect />
+  </Question>
+</Quiz>
+
+<ProgressCheckpoint section="best-practices" xpReward={15} />
+
+## Best Practices
+
+<InfoBox type="tip" title="Guidelines">
+1. **Use `return` over `break`** when inside a function
+2. **Use labels sparingly** - they can make code harder to read
+3. **Consider extracting to a function** instead of using labeled breaks
+4. **Document why** you're using break/continue for maintainability
+</InfoBox>
+
+```javascript
+// Instead of labeled breaks, consider:
+function findInMatrix(matrix, target) {
+  for (const [rowIdx, row] of matrix.entries()) {
+    for (const [colIdx, cell] of row.entries()) {
+      if (cell === target) {
+        return { row: rowIdx, col: colIdx };  // Clean exit
+      }
+    }
+  }
+  return null;
+}
+```

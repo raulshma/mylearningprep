@@ -1,0 +1,130 @@
+# Arrays: Methods and Patterns
+
+Arrays become powerful when you master their **built-in methods**. These methods let you add, remove, search, and transform data without writing complex loops.
+
+## The Core Operations
+
+### Adding and Removing Elements
+
+```javascript
+const fruits = ["Apple", "Banana"];
+
+// Add to END
+fruits.push("Cherry");        // ["Apple", "Banana", "Cherry"]
+
+// Remove from END
+const last = fruits.pop();    // "Cherry", array is now ["Apple", "Banana"]
+
+// Add to BEGINNING
+fruits.unshift("Mango");      // ["Mango", "Apple", "Banana"]
+
+// Remove from BEGINNING
+const first = fruits.shift(); // "Mango", array is now ["Apple", "Banana"]
+```
+
+> **Memory tip**: `push`/`pop` work on the **end** (like a stack of plates). `shift`/`unshift` work on the **beginning** (like a queue).
+
+## Finding Elements
+
+```javascript
+const numbers = [10, 20, 30, 40, 50];
+
+// Find by value
+numbers.indexOf(30);        // 2 (position of 30)
+numbers.includes(25);       // false
+
+// Find with condition
+numbers.find(n => n > 25);  // 30 (first match)
+numbers.findIndex(n => n > 25); // 2 (position of first match)
+```
+
+## Transforming Arrays
+
+### map() - Transform Each Element
+
+```javascript
+const numbers = [1, 2, 3, 4, 5];
+const doubled = numbers.map(n => n * 2);
+// [2, 4, 6, 8, 10]
+```
+
+### filter() - Keep Elements That Pass a Test
+
+```javascript
+const numbers = [1, 2, 3, 4, 5, 6, 7, 8];
+const evens = numbers.filter(n => n % 2 === 0);
+// [2, 4, 6, 8]
+```
+
+### reduce() - Combine Into Single Value
+
+```javascript
+const numbers = [1, 2, 3, 4, 5];
+const sum = numbers.reduce((acc, n) => acc + n, 0);
+// 15
+```
+
+<IndexedCollectionVisualizer 
+  initialArray={[1, 2, 3, 4, 5]} 
+  showTypedArrays={false} 
+/>
+
+## Slicing and Splicing
+
+```javascript
+const letters = ["a", "b", "c", "d", "e"];
+
+// slice() - Copy a portion (original unchanged)
+letters.slice(1, 4);      // ["b", "c", "d"]
+
+// splice() - Modify in place
+letters.splice(2, 1);     // Removes "c", returns ["c"]
+// letters is now ["a", "b", "d", "e"]
+
+letters.splice(2, 0, "X"); // Insert "X" at position 2
+// ["a", "b", "X", "d", "e"]
+```
+
+## Modern Array Features (ES6+)
+
+```javascript
+const arr = [1, 2, 3, 4, 5];
+
+// at() - Access with negative indices
+arr.at(-1);              // 5 (last element)
+arr.at(-2);              // 4 (second to last)
+
+// flat() - Flatten nested arrays
+[[1, 2], [3, 4]].flat(); // [1, 2, 3, 4]
+
+// Array.from() - Create from iterables
+Array.from("hello");     // ["h", "e", "l", "l", "o"]
+Array.from({length: 5}, (_, i) => i); // [0, 1, 2, 3, 4]
+```
+
+## Method Chaining
+
+Combine methods for powerful transformations:
+
+```javascript
+const transactions = [10, -5, 20, -3, 15];
+
+const totalProfit = transactions
+  .filter(t => t > 0)      // Keep positive [10, 20, 15]
+  .map(t => t * 1.1)       // Add 10% [11, 22, 16.5]
+  .reduce((a, b) => a + b, 0); // Sum: 49.5
+```
+
+## Quick Reference Table
+
+| Method | Action | Returns | Mutates? |
+|:-------|:-------|:--------|:---------|
+| `push()` | Add to end | New length | Yes |
+| `pop()` | Remove from end | Removed item | Yes |
+| `map()` | Transform all | New array | No |
+| `filter()` | Keep matching | New array | No |
+| `reduce()` | Combine all | Single value | No |
+| `slice()` | Copy portion | New array | No |
+| `splice()` | Add/remove | Removed items | Yes |
+
+<ProgressCheckpoint section="array-methods" xpReward={50} />

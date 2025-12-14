@@ -1,0 +1,24 @@
+{
+  "id": "this-class-context",
+  "title": "this in Class Context",
+  "description": "Master how 'this' works inside ES6 classes, constructors, and methods.",
+  "milestone": "this-keyword",
+  "order": 3,
+  "sections": ["class-basics", "constructor-this", "method-binding"],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 18,
+      "xpReward": 55
+    }
+  },
+  "prerequisites": ["this-keyword/this-function-context"],
+  "tags": ["javascript", "this", "class", "constructor", "instance", "oop"]
+}

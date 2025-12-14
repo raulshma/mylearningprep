@@ -1,0 +1,28 @@
+{
+  "id": "structured-data-json",
+  "title": "Structured Data (JSON)",
+  "description": "Master JSON - the universal format for data exchange. Learn to parse, stringify, and work with JSON in JavaScript applications.",
+  "milestone": "data-structures",
+  "order": 3,
+  "sections": [
+    "json-basics",
+    "parse-stringify",
+    "advanced-json"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 12,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 18,
+      "xpReward": 45
+    },
+    "advanced": {
+      "estimatedMinutes": 22,
+      "xpReward": 70
+    }
+  },
+  "prerequisites": ["indexed-collections", "object-type"],
+  "tags": ["javascript", "json", "data-structures", "api", "serialization"]
+}

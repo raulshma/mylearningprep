@@ -1,0 +1,201 @@
+# Understanding `this` in Function Context
+
+The value of `this` inside a function is determined by **how the function is called** (runtime binding), not where it's defined. This is one of the most important concepts in JavaScript.
+
+## Default Binding
+
+When a function is called without any context (standalone call), `this` defaults to the global object (or `undefined` in strict mode):
+
+```javascript
+function showThis() {
+  console.log(this);
+}
+
+showThis(); // window (browser) or global (Node.js)
+
+// In strict mode:
+"use strict";
+function strictShowThis() {
+  console.log(this);
+}
+strictShowThis(); // undefined
+```
+
+<ThisKeywordVisualizer context="function" showStrictMode={true} />
+
+## Implicit Binding (Method Calls)
+
+When a function is called as a method of an object, `this` is set to the object:
+
+```javascript
+const user = {
+  name: "Alice",
+  age: 30,
+  greet() {
+    console.log(`Hello, I'm ${this.name}`);
+  },
+  getAge() {
+    return this.age;
+  }
+};
+
+user.greet();     // "Hello, I'm Alice" - this = user
+user.getAge();    // 30 - this = user
+```
+
+### The Dot Rule
+
+The object **immediately before the dot** becomes `this`:
+
+```javascript
+const company = {
+  name: "TechCorp",
+  department: {
+    name: "Engineering",
+    getName() {
+      return this.name;
+    }
+  }
+};
+
+// Which name?
+console.log(company.department.getName()); // "Engineering"
+// this = company.department (immediately before the dot)
+```
+
+## The Lost `this` Problem
+
+When you extract a method from an object, `this` binding is lost:
+
+```javascript
+const counter = {
+  count: 0,
+  increment() {
+    this.count++;
+    console.log(`Count: ${this.count}`);
+  }
+};
+
+// Works fine
+counter.increment(); // "Count: 1"
+
+// Problem: extracting the method
+const inc = counter.increment;
+inc(); // "Count: NaN" - this is window, window.count is undefined!
+
+// Common scenario: callbacks
+setTimeout(counter.increment, 1000);
+// After 1 second: "Count: NaN" - this is lost!
+```
+
+### Solutions to Lost `this`
+
+#### 1. Arrow Function Wrapper
+
+```javascript
+setTimeout(() => counter.increment(), 1000);
+// Arrow function preserves the calling context
+```
+
+#### 2. Using `bind()`
+
+```javascript
+setTimeout(counter.increment.bind(counter), 1000);
+// Creates a new function with `this` permanently set
+```
+
+#### 3. Storing Reference
+
+```javascript
+const self = this; // Store reference before callback
+setTimeout(function() {
+  self.increment(); // Use stored reference
+}, 1000);
+```
+
+## Strict Mode Differences
+
+| Call Type | Sloppy Mode | Strict Mode |
+|:----------|:------------|:------------|
+| `func()` | `window` | `undefined` |
+| `obj.method()` | `obj` | `obj` |
+| Callback | `window` | `undefined` |
+
+```javascript
+"use strict";
+
+const obj = {
+  name: "Test",
+  method() {
+    console.log(this); // obj
+
+    function inner() {
+      console.log(this); // undefined (not obj!)
+    }
+    inner();
+  }
+};
+
+obj.method();
+// Logs: { name: "Test", ... }
+// Logs: undefined
+```
+
+## Function Borrowing
+
+Objects can borrow methods from each other:
+
+```javascript
+const runner = {
+  name: "Usain",
+  sprint() {
+    console.log(`${this.name} is sprinting!`);
+  }
+};
+
+const swimmer = {
+  name: "Michael",
+  swim() {
+    console.log(`${this.name} is swimming!`);
+  }
+};
+
+// Borrow the sprint method
+swimmer.sprint = runner.sprint;
+swimmer.sprint(); // "Michael is sprinting!"
+// this = swimmer (what's before the dot)
+```
+
+## Practical Example: Event Handlers
+
+```javascript
+class Button {
+  constructor(label) {
+    this.label = label;
+    this.clicks = 0;
+  }
+
+  handleClick() {
+    this.clicks++;
+    console.log(`${this.label} clicked ${this.clicks} times`);
+  }
+}
+
+const btn = new Button("Submit");
+
+// Problem: this is lost in event handler
+document.querySelector("#btn").addEventListener("click", btn.handleClick);
+// When clicked: "undefined clicked NaN times" - this = button element!
+
+// Solution 1: Bind
+document.querySelector("#btn").addEventListener("click", btn.handleClick.bind(btn));
+
+// Solution 2: Arrow function
+document.querySelector("#btn").addEventListener("click", () => btn.handleClick());
+```
+
+<InfoBox type="tip" title="Pro Tip">
+When passing methods as callbacks (to `setTimeout`, `addEventListener`, `map`, etc.), always consider whether `this` will be preserved. Use `bind()` or arrow functions to ensure correct context.
+</InfoBox>
+
+<ProgressCheckpoint section="method-calls" xpReward={40} />

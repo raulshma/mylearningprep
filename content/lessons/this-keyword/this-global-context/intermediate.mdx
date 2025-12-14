@@ -1,0 +1,118 @@
+# The `this` Keyword in Global Context
+
+In JavaScript, the value of `this` depends on the execution context. At the global level (top-level code), `this` has a predictable value that varies slightly between environments.
+
+## Global Context Behavior
+
+When code runs at the top level of a script (not inside any function, class, or module), `this` refers to the **global object**.
+
+```javascript
+// Browser environment
+console.log(this);           // Window {...}
+console.log(this === window); // true
+
+// Node.js REPL
+console.log(this === globalThis); // true
+```
+
+<ThisKeywordVisualizer context="global" showStrictMode={true} />
+
+## Environment Differences
+
+### Browser (Script Tag)
+
+In a traditional `<script>` tag, global `this` is the `window` object:
+
+```javascript
+// In a <script> tag
+this.userName = "Alice";
+console.log(window.userName); // "Alice"
+console.log(this === window); // true
+```
+
+### Node.js
+
+Node.js has some differences based on context:
+
+```javascript
+// In a Node.js MODULE (CommonJS)
+console.log(this); // {} (module.exports, empty by default)
+console.log(this === module.exports); // true
+
+// In Node.js REPL or global scope
+console.log(this === globalThis); // true
+```
+
+### ES Modules
+
+In ES modules (using `import`/`export`), the module-level `this` is `undefined`:
+
+```javascript
+// In an ES module (.mjs or type="module")
+console.log(this); // undefined
+```
+
+## The `globalThis` Standard (ES2020)
+
+To provide consistent access to the global object across all environments, ES2020 introduced `globalThis`:
+
+```javascript
+// Works EVERYWHERE - browser, Node.js, Web Workers, etc.
+console.log(globalThis); // The global object
+
+// Setting global variables
+globalThis.appName = "MyApp";
+
+// Browser-specific check
+if (typeof window !== 'undefined') {
+  console.log("Running in browser");
+}
+```
+
+| Environment | `this` at Global Level | `globalThis` |
+|:------------|:----------------------|:-------------|
+| Browser (`<script>`) | `window` | `window` |
+| Browser (ES module) | `undefined` | `window` |
+| Node.js (CommonJS) | `module.exports` | `global` |
+| Node.js (ES module) | `undefined` | `global` |
+| Web Worker | `self` | `self` |
+
+## Practical Use Cases
+
+### 1. Polyfilling Modern Features
+
+```javascript
+// Check if a feature exists globally
+if (!globalThis.fetch) {
+  globalThis.fetch = customFetchImplementation;
+}
+```
+
+### 2. Cross-Environment Libraries
+
+```javascript
+// Works in any JavaScript environment
+const root = typeof globalThis !== 'undefined' 
+  ? globalThis 
+  : typeof window !== 'undefined' 
+    ? window 
+    : typeof global !== 'undefined' 
+      ? global 
+      : this;
+```
+
+### 3. Checking the Environment
+
+```javascript
+function getEnvironment() {
+  if (typeof window !== 'undefined') return 'browser';
+  if (typeof process !== 'undefined') return 'node';
+  return 'unknown';
+}
+```
+
+<InfoBox type="tip" title="Best Practice">
+Use `globalThis` when you need to access the global object. It's the modern, cross-platform solution that works everywhere.
+</InfoBox>
+
+<ProgressCheckpoint section="environment-differences" xpReward={35} />

@@ -1,0 +1,138 @@
+# The Costume Change: Explicit Binding with call, apply, and bind
+
+Imagine you're an actor who can instantly put on different costumes to play different roles. With `call`, `apply`, and `bind`, you can make any function "wear" whatever identity you want!
+
+## The Three Magic Words 🎩
+
+JavaScript gives us three ways to control what `this` a function uses:
+
+| Method | What It Does | Analogy |
+|:-------|:------------|:--------|
+| `call()` | Use this costume NOW (individual items) | Quick costume change for one scene |
+| `apply()` | Use this costume NOW (box of items) | Same, but you hand over a costume box |
+| `bind()` | Make a new actor with this costume | Permanently assigned costume |
+
+<ThisKeywordVisualizer context="explicit" showStrictMode={false} />
+
+## `call()` - Quick Costume Change
+
+`call()` runs a function immediately with a specific `this`:
+
+```javascript
+function introduce() {
+  console.log(`Hi, I'm ${this.name}!`);
+}
+
+const superhero = { name: "Spider-Man" };
+const villain = { name: "Green Goblin" };
+
+// Make 'introduce' wear different costumes
+introduce.call(superhero); // "Hi, I'm Spider-Man!"
+introduce.call(villain);   // "Hi, I'm Green Goblin!"
+```
+
+### With Arguments
+
+```javascript
+function greet(greeting, punctuation) {
+  console.log(`${greeting}, ${this.name}${punctuation}`);
+}
+
+const person = { name: "Alice" };
+
+// Pass arguments after the 'this' value
+greet.call(person, "Hello", "!");    // "Hello, Alice!"
+greet.call(person, "Goodbye", "..."); // "Goodbye, Alice..."
+```
+
+## `apply()` - Costume Box Delivery 📦
+
+`apply()` is just like `call()`, but you pass arguments as an **array**:
+
+```javascript
+function orderFood(drink, main, dessert) {
+  console.log(`${this.name} ordered: ${drink}, ${main}, ${dessert}`);
+}
+
+const customer = { name: "Bob" };
+
+// Using call - list each argument
+orderFood.call(customer, "Cola", "Burger", "Ice Cream");
+
+// Using apply - pass an array
+orderFood.apply(customer, ["Cola", "Burger", "Ice Cream"]);
+
+// Both output: "Bob ordered: Cola, Burger, Ice Cream"
+```
+
+### Remember the Difference
+
+> **A**pply = **A**rray  
+> **C**all = **C**ommas (individual arguments)
+
+## `bind()` - The Permanent Costume 🎭
+
+`bind()` creates a **new function** with a fixed `this`:
+
+```javascript
+const hero = {
+  name: "Batman",
+  fight() {
+    console.log(`${this.name} fights crime!`);
+  }
+};
+
+// Later, we need to pass this function somewhere
+const fightFunction = hero.fight;
+fightFunction(); // "undefined fights crime!" - 'this' is lost!
+
+// bind() to the rescue!
+const boundFight = hero.fight.bind(hero);
+boundFight(); // "Batman fights crime!" - 'this' is fixed!
+```
+
+### Why `bind()` is Amazing
+
+```javascript
+const timer = {
+  seconds: 0,
+  tick() {
+    this.seconds++;
+    console.log(`${this.seconds} seconds`);
+  }
+};
+
+// Without bind - broken
+setInterval(timer.tick, 1000); // NaN seconds, NaN seconds...
+
+// With bind - works!
+setInterval(timer.tick.bind(timer), 1000); // 1 seconds, 2 seconds...
+```
+
+## Quick Comparison
+
+```javascript
+function sayHi(greeting) {
+  console.log(`${greeting}, I'm ${this.name}`);
+}
+
+const person = { name: "Charlie" };
+
+// call - use now, list arguments
+sayHi.call(person, "Hey");     // "Hey, I'm Charlie"
+
+// apply - use now, array of arguments
+sayHi.apply(person, ["Hello"]); // "Hello, I'm Charlie"
+
+// bind - save for later
+const boundSayHi = sayHi.bind(person, "Hi");
+boundSayHi();                   // "Hi, I'm Charlie"
+```
+
+<KeyConcept title="Summary">
+- **call()**: Run now with custom `this` + individual args
+- **apply()**: Run now with custom `this` + array of args
+- **bind()**: Create new function with fixed `this` (and optionally preset args)
+</KeyConcept>
+
+<ProgressCheckpoint section="call-apply-basics" xpReward={30} />

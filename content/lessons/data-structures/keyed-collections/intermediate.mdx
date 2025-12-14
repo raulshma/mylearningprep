@@ -1,0 +1,174 @@
+# Map vs Object: When to Use What
+
+Both Map and Object can store key-value pairs, but they have important differences that affect performance and usability.
+
+## Key Differences at a Glance
+
+| Feature | Object | Map |
+|:--------|:-------|:----|
+| Key types | Strings and Symbols only | Any value (objects, functions, primitives) |
+| Key order | Not guaranteed | Insertion order guaranteed |
+| Size | `Object.keys(obj).length` | `map.size` |
+| Iteration | Not directly iterable | Natively iterable |
+| Prototype | Has default keys | No prototype pollution |
+| Performance | Optimized for static keys | Better for frequent add/remove |
+
+<KeyedCollectionExplorer collectionType="map" showComparison={true} />
+
+## The Prototype Problem
+
+Objects come with inherited properties that can cause bugs:
+
+```javascript
+const obj = {};
+
+// Looks empty, right?
+console.log("toString" in obj); // true! (inherited from Object.prototype)
+console.log("hasOwnProperty" in obj); // true!
+
+// This can cause unexpected behavior
+const userRoles = {};
+userRoles["admin"] = true;
+userRoles["constructor"] = true; // Overwrites Object.prototype.constructor!
+```
+
+Maps have no such issues:
+
+```javascript
+const map = new Map();
+console.log(map.has("toString")); // false - clean slate!
+```
+
+## Practical Examples
+
+### Counting Word Frequency
+
+```javascript
+const text = "hello world hello javascript hello world";
+const words = text.split(" ");
+
+// Using Map
+const wordCount = new Map();
+for (const word of words) {
+  wordCount.set(word, (wordCount.get(word) || 0) + 1);
+}
+
+console.log(wordCount.get("hello")); // 3
+console.log(wordCount.get("world")); // 2
+```
+
+### Using Objects as Keys
+
+```javascript
+// Track metadata for DOM elements
+const elementData = new Map();
+
+const button = document.querySelector("#myButton");
+const input = document.querySelector("#myInput");
+
+elementData.set(button, { clicks: 0, lastClicked: null });
+elementData.set(input, { changes: 0, lastValue: "" });
+
+// Later, retrieve the data
+button.addEventListener("click", () => {
+  const data = elementData.get(button);
+  data.clicks++;
+  data.lastClicked = new Date();
+});
+```
+
+## Set Methods (ES2024+)
+
+Modern JavaScript adds powerful set operations:
+
+```javascript
+const frontEnd = new Set(["HTML", "CSS", "JavaScript", "React"]);
+const backEnd = new Set(["Node.js", "Python", "JavaScript", "SQL"]);
+
+// Union - all skills from both
+const allSkills = frontEnd.union(backEnd);
+// Set {"HTML", "CSS", "JavaScript", "React", "Node.js", "Python", "SQL"}
+
+// Intersection - skills in both
+const shared = frontEnd.intersection(backEnd);
+// Set {"JavaScript"}
+
+// Difference - only in front-end
+const frontOnly = frontEnd.difference(backEnd);
+// Set {"HTML", "CSS", "React"}
+
+// Symmetric Difference - in either but not both
+const unique = frontEnd.symmetricDifference(backEnd);
+// Set {"HTML", "CSS", "React", "Node.js", "Python", "SQL"}
+```
+
+## Converting Between Types
+
+### Array ↔ Set
+
+```javascript
+// Array to Set (removes duplicates!)
+const arr = [1, 2, 2, 3, 3, 3];
+const unique = new Set(arr); // Set {1, 2, 3}
+
+// Set to Array
+const backToArray = [...unique]; // [1, 2, 3]
+```
+
+### Object ↔ Map
+
+```javascript
+// Object to Map
+const obj = { name: "Alice", age: 25 };
+const map = new Map(Object.entries(obj));
+
+// Map to Object  
+const backToObj = Object.fromEntries(map);
+```
+
+## Performance Comparison
+
+```javascript
+const SIZE = 100000;
+
+// Object insertion
+console.time("Object insert");
+const obj = {};
+for (let i = 0; i < SIZE; i++) {
+  obj[`key${i}`] = i;
+}
+console.timeEnd("Object insert"); // ~15ms
+
+// Map insertion
+console.time("Map insert");
+const map = new Map();
+for (let i = 0; i < SIZE; i++) {
+  map.set(`key${i}`, i);
+}
+console.timeEnd("Map insert"); // ~10ms
+
+// Map is faster for frequent insertions/deletions!
+```
+
+## When to Use Each
+
+### Use Object when:
+- Serializing to JSON (Maps don't serialize directly)
+- Working with static, known keys
+- Using the syntax `object.property`
+- Defining class instances or records
+
+### Use Map when:
+- Keys are not strings (objects, functions)
+- Order of insertion matters
+- Frequently adding/removing keys
+- Need the `.size` property
+- Avoiding prototype pollution risks
+
+### Use Set when:
+- Storing unique values only
+- Fast membership testing (`has()`)
+- Removing duplicates from arrays
+- Mathematical set operations
+
+<ProgressCheckpoint section="map-vs-object" xpReward={50} />

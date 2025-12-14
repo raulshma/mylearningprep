@@ -1,6 +1,7 @@
-import { getIterationStatus, getUserProfile } from "@/lib/actions/user";
+import { getIterationStatus, getUserProfile, getPixelPetPreferences } from "@/lib/actions/user";
 import { isAdmin } from "@/lib/auth/get-user";
 import { SidebarUi } from "./sidebar-ui";
+import type { PixelPetPreferences } from "@/lib/db/schemas/user";
 
 export interface SidebarData {
   isAdmin: boolean;
@@ -16,6 +17,7 @@ export interface SidebarData {
     email: string | null;
     imageUrl: string | null;
   };
+  pixelPet: PixelPetPreferences | null;
 }
 
 /**
@@ -27,10 +29,11 @@ export interface SidebarData {
 export async function getSidebarData(): Promise<SidebarData> {
   // All three calls use React cache() internally, so they deduplicate
   // and share the same underlying auth/DB calls
-  const [userIsAdmin, iterationResult, profileResult] = await Promise.all([
+  const [userIsAdmin, iterationResult, profileResult, pixelPetResult] = await Promise.all([
     isAdmin(),
     getIterationStatus(),
     getUserProfile(),
+    getPixelPetPreferences(),
   ]);
 
   const iterationData = iterationResult.success
@@ -54,6 +57,8 @@ export async function getSidebarData(): Promise<SidebarData> {
         imageUrl: null,
       };
 
+  const pixelPet = pixelPetResult.success ? pixelPetResult.data : null;
+
   return {
     isAdmin: userIsAdmin,
     usage: {
@@ -71,6 +76,7 @@ export async function getSidebarData(): Promise<SidebarData> {
       email: profile.email,
       imageUrl: profile.imageUrl,
     },
+    pixelPet,
   };
 }
 

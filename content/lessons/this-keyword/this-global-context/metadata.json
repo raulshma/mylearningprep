@@ -1,0 +1,24 @@
+{
+  "id": "this-global-context",
+  "title": "this in Global Context",
+  "description": "Understand what 'this' refers to at the top level of your code, in both browser and Node.js environments.",
+  "milestone": "this-keyword",
+  "order": 1,
+  "sections": ["global-basics", "environment-differences", "globalThis"],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 8,
+      "xpReward": 20
+    },
+    "intermediate": {
+      "estimatedMinutes": 12,
+      "xpReward": 35
+    },
+    "advanced": {
+      "estimatedMinutes": 15,
+      "xpReward": 50
+    }
+  },
+  "prerequisites": [],
+  "tags": ["javascript", "this", "global", "context", "window", "globalThis"]
+}

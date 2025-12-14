@@ -44,6 +44,33 @@ export const UserPreferencesSchema = z.object({
   generation: GenerationPreferencesSchema.optional(),
 });
 
+// Pixel Pet Schemas
+export const PixelPetIdSchema = z.enum([
+  'pixel_dog',
+  'pixel_plane',
+  'pixel_toyota_corolla_e80',
+]);
+
+export const PixelPetEdgeSchema = z.enum(['top', 'right', 'bottom', 'left']);
+
+export const PixelPetOffsetSchema = z.object({
+  x: z.number().int().min(-200).max(200).default(0),
+  y: z.number().int().min(-200).max(200).default(0),
+});
+
+export const PixelPetPreferencesSchema = z.object({
+  schemaVersion: z.number().int().min(1).default(1),
+  enabled: z.boolean().default(false),
+  selectedId: PixelPetIdSchema.default('pixel_dog'),
+  /** Which opted-in edge container the pet is currently attached to */
+  surfaceId: z.string().default('app-shell'),
+  edge: PixelPetEdgeSchema.default('bottom'),
+  /** Progress along the current edge, normalized to [0, 1] */
+  progress: z.number().min(0).max(1).default(0.5),
+  /** Small user-adjustable pixel offset applied after snapping */
+  offset: PixelPetOffsetSchema.default({ x: 0, y: 0 }),
+});
+
 // Gamification Schemas
 export const BadgeSchema = z.object({
   id: z.string(),
@@ -90,6 +117,7 @@ export const UserSchema = z.object({
   interviews: UserInterviewsSchema.optional(),
   chatMessages: UserChatMessagesSchema.optional(),
   preferences: UserPreferencesSchema,
+  pixelPet: PixelPetPreferencesSchema.optional(),
   gamification: UserGamificationSchema.optional(),
   suspended: z.boolean().default(false),
   createdAt: z.date(),
@@ -115,3 +143,8 @@ export type CreateUser = z.infer<typeof CreateUserSchema>;
 export type UserGamification = z.infer<typeof UserGamificationSchema>;
 export type CompletedLesson = z.infer<typeof CompletedLessonSchema>;
 export type Badge = z.infer<typeof BadgeSchema>;
+
+export type PixelPetId = z.infer<typeof PixelPetIdSchema>;
+export type PixelPetEdge = z.infer<typeof PixelPetEdgeSchema>;
+export type PixelPetOffset = z.infer<typeof PixelPetOffsetSchema>;
+export type PixelPetPreferences = z.infer<typeof PixelPetPreferencesSchema>;

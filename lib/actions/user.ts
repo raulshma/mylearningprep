@@ -10,9 +10,18 @@ import { cache } from "react";
 import { getAuthUserId, getAuthUser, hasByokApiKey } from "@/lib/auth/get-user";
 import { userRepository } from "@/lib/db/repositories/user-repository";
 import { createAPIError, type APIError } from "@/lib/schemas/error";
-import type { User, UserPreferences, GenerationPreferences } from "@/lib/db/schemas/user";
-import { GENERATION_LIMITS } from "@/lib/db/schemas/user";
+import type {
+  User,
+  UserPreferences,
+  GenerationPreferences,
+  PixelPetPreferences,
+  PixelPetId,
+  PixelPetEdge,
+  PixelPetOffset,
+} from "@/lib/db/schemas/user";
+import { GENERATION_LIMITS, PixelPetPreferencesSchema } from "@/lib/db/schemas/user";
 import type { AIProviderType } from "@/lib/ai/types";
+import { canAccess } from "@/lib/utils/feature-gate";
 
 /**
  * Result type for server actions
@@ -32,6 +41,9 @@ function getDefaultResetDate(): Date {
   resetDate.setHours(0, 0, 0, 0);
   return resetDate;
 }
+
+const DEFAULT_PIXEL_PET_PREFERENCES: PixelPetPreferences =
+  PixelPetPreferencesSchema.parse({});
 
 /**
  * Cached DB user lookup with auto-creation - shared across all user actions within a request
@@ -266,6 +278,121 @@ export async function updateGenerationPreferences(
     return {
       success: false,
       error: createAPIError("DATABASE_ERROR", "Failed to update generation preferences"),
+    };
+  }
+}
+
+/**
+ * Get pixel pet preferences for the current user (defaults applied if missing)
+ */
+export async function getPixelPetPreferences(): Promise<
+  ActionResult<PixelPetPreferences>
+> {
+  try {
+    const clerkId = await getAuthUserId();
+    const user = await getCachedDbUser(clerkId);
+
+    if (!user) {
+      return {
+        success: false,
+        error: createAPIError("NOT_FOUND", "User not found"),
+      };
+    }
+
+    return {
+      success: true,
+      data: PixelPetPreferencesSchema.parse(user.pixelPet ?? {}),
+    };
+  } catch (error) {
+    console.error("getPixelPetPreferences error:", error);
+    return {
+      success: false,
+      error: createAPIError(
+        "DATABASE_ERROR",
+        "Failed to get pixel pet preferences"
+      ),
+    };
+  }
+}
+
+export interface UpdatePixelPetInput {
+  enabled?: boolean;
+  selectedId?: PixelPetId;
+  surfaceId?: string;
+  edge?: PixelPetEdge;
+  progress?: number;
+  offset?: Partial<PixelPetOffset>;
+}
+
+/**
+ * Update pixel pet preferences (PRO+ only)
+ */
+export async function updatePixelPetPreferences(
+  input: UpdatePixelPetInput
+): Promise<ActionResult<User>> {
+  try {
+    const clerkId = await getAuthUserId();
+    const user = await userRepository.findByClerkId(clerkId);
+
+    if (!user) {
+      return {
+        success: false,
+        error: createAPIError("NOT_FOUND", "User not found"),
+      };
+    }
+
+    const access = canAccess("pixel_pet", user.plan);
+    if (!access.allowed) {
+      return {
+        success: false,
+        error: createAPIError(
+          "PLAN_REQUIRED",
+          access.upgradeMessage ?? "Pixel pets require PRO plan or higher"
+        ),
+      };
+    }
+
+    if (input.progress !== undefined && (input.progress < 0 || input.progress > 1)) {
+      return {
+        success: false,
+        error: createAPIError(
+          "VALIDATION_ERROR",
+          "progress must be between 0 and 1"
+        ),
+      };
+    }
+
+    const update: Parameters<typeof userRepository.updatePixelPetPreferences>[1] = {
+      schemaVersion: 1,
+      ...(input.enabled !== undefined ? { enabled: input.enabled } : {}),
+      ...(input.selectedId !== undefined ? { selectedId: input.selectedId } : {}),
+      ...(input.surfaceId !== undefined ? { surfaceId: input.surfaceId } : {}),
+      ...(input.edge !== undefined ? { edge: input.edge } : {}),
+      ...(input.progress !== undefined ? { progress: input.progress } : {}),
+      ...(input.offset !== undefined ? { offset: input.offset } : {}),
+    };
+
+    const updatedUser = await userRepository.updatePixelPetPreferences(clerkId, update);
+
+    if (!updatedUser) {
+      return {
+        success: false,
+        error: createAPIError(
+          "DATABASE_ERROR",
+          "Failed to update pixel pet preferences"
+        ),
+      };
+    }
+
+    return { success: true, data: updatedUser };
+  } catch (error) {
+    console.error("updatePixelPetPreferences error:", error);
+    return {
+      success: false,
+      error: createAPIError(
+        "DATABASE_ERROR",
+        "Failed to update pixel pet preferences"
+      ),
     };
   }
 }
@@ -528,6 +655,7 @@ export interface SettingsPageData {
       mcqCount: number;
       rapidFireCount: number;
     };
+    pixelPet?: PixelPetPreferences;
   };
   subscription: {
     plan: "FREE" | "PRO" | "MAX";
@@ -595,6 +723,7 @@ const getSettingsPageDataInternal = cache(
         mcqCount: GENERATION_LIMITS.mcqs.default,
         rapidFireCount: GENERATION_LIMITS.rapidFire.default,
       },
+      pixelPet: PixelPetPreferencesSchema.parse(dbUser?.pixelPet ?? {}),
     };
 
     const subscription = {

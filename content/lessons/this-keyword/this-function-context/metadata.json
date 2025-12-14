@@ -1,0 +1,24 @@
+{
+  "id": "this-function-context",
+  "title": "this in Function Context",
+  "description": "Learn how 'this' behaves differently in regular functions based on how they're called.",
+  "milestone": "this-keyword",
+  "order": 2,
+  "sections": ["function-basics", "method-calls", "lost-this"],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 18,
+      "xpReward": 55
+    }
+  },
+  "prerequisites": ["this-keyword/this-global-context"],
+  "tags": ["javascript", "this", "function", "method", "implicit-binding"]
+}

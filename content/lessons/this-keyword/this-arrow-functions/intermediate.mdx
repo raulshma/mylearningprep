@@ -1,0 +1,264 @@
+# Lexical `this` in Arrow Functions
+
+Arrow functions, introduced in ES6, have a fundamentally different `this` binding than regular functions. They don't have their own `this` - instead, they **lexically inherit** `this` from the enclosing scope.
+
+## Lexical vs Dynamic Binding
+
+Regular functions bind `this` **dynamically** (at call time), while arrow functions bind `this` **lexically** (at definition time):
+
+```javascript
+const obj = {
+  value: 42,
+  
+  // Dynamic binding - 'this' determined at call time
+  regularMethod: function() {
+    console.log(this.value);
+  },
+  
+  // Lexical binding - 'this' captured at definition time
+  arrowMethod: () => {
+    console.log(this.value);
+  }
+};
+
+obj.regularMethod(); // 42 (this = obj)
+obj.arrowMethod();   // undefined (this = enclosing scope, likely window)
+```
+
+<ThisKeywordVisualizer context="arrow" showStrictMode={true} />
+
+## The Enclosing Scope Rule
+
+Arrow functions look "outward" to find `this`:
+
+```javascript
+class Timer {
+  constructor() {
+    this.seconds = 0;
+  }
+  
+  start() {
+    // 'this' here is the Timer instance
+    
+    setInterval(() => {
+      // Arrow function inherits 'this' from start()
+      this.seconds++;
+      console.log(this.seconds);
+    }, 1000);
+  }
+}
+
+const timer = new Timer();
+timer.start(); // Logs: 1, 2, 3, ... every second
+```
+
+### Contrast with Regular Functions
+
+```javascript
+class BrokenTimer {
+  constructor() {
+    this.seconds = 0;
+  }
+  
+  start() {
+    setInterval(function() {
+      // Regular function - 'this' is NOT inherited!
+      this.seconds++; // 'this' is window or undefined
+      console.log(this.seconds); // NaN or error in strict mode
+    }, 1000);
+  }
+}
+```
+
+## Cannot Be Rebound
+
+Arrow functions' `this` cannot be changed with `call()`, `apply()`, or `bind()`:
+
+```javascript
+const arrow = () => this;
+const regular = function() { return this; };
+
+const obj = { name: "Object" };
+
+// Regular function - can be rebound
+console.log(regular.call(obj)); // { name: "Object" }
+console.log(regular.apply(obj)); // { name: "Object" }
+console.log(regular.bind(obj)()); // { name: "Object" }
+
+// Arrow function - ignores rebinding attempts
+console.log(arrow.call(obj));   // window (or globalThis)
+console.log(arrow.apply(obj));  // window
+console.log(arrow.bind(obj)()); // window
+```
+
+## Practical Use Cases
+
+### 1. Array Methods
+
+```javascript
+const users = [
+  { name: "Alice", age: 30 },
+  { name: "Bob", age: 25 }
+];
+
+class UserProcessor {
+  constructor(minAge) {
+    this.minAge = minAge;
+  }
+  
+  getAdults(users) {
+    return users.filter(user => user.age >= this.minAge);
+  }
+}
+
+const processor = new UserProcessor(18);
+console.log(processor.getAdults(users)); // Both users
+```
+
+### 2. Event Handlers in Classes
+
+```javascript
+class ClickCounter {
+  constructor(buttonId) {
+    this.count = 0;
+    this.button = document.getElementById(buttonId);
+    
+    // Arrow function preserves 'this'
+    this.button.addEventListener("click", () => {
+      this.count++;
+      this.updateDisplay();
+    });
+  }
+  
+  updateDisplay() {
+    this.button.textContent = `Clicked: ${this.count}`;
+  }
+}
+```
+
+### 3. Promise Chains
+
+```javascript
+class DataFetcher {
+  constructor(apiUrl) {
+    this.apiUrl = apiUrl;
+    this.data = null;
+  }
+  
+  fetch() {
+    return fetch(this.apiUrl)
+      .then(response => response.json())
+      .then(data => {
+        this.data = data;  // 'this' refers to DataFetcher instance
+        return this.data;
+      })
+      .catch(error => {
+        console.error(`Error fetching from ${this.apiUrl}:`, error);
+        throw error;
+      });
+  }
+}
+```
+
+### 4. Nested Callbacks
+
+```javascript
+const app = {
+  name: "MyApp",
+  
+  init() {
+    document.addEventListener("DOMContentLoaded", () => {
+      console.log(`${this.name} DOM ready`);
+      
+      fetch("/api/data")
+        .then(res => res.json())
+        .then(data => {
+          console.log(`${this.name} received data`);
+          this.process(data);
+        });
+    });
+  },
+  
+  process(data) {
+    console.log(`${this.name} processing...`, data);
+  }
+};
+
+app.init();
+```
+
+## Anti-Patterns
+
+### Don't Use Arrows for Object Methods
+
+```javascript
+// ❌ Bad: Arrow as object method
+const calculator = {
+  value: 0,
+  add: (n) => {
+    this.value += n; // 'this' is NOT calculator
+    return this;
+  }
+};
+
+// ✅ Good: Regular method
+const calculator2 = {
+  value: 0,
+  add(n) {
+    this.value += n;
+    return this;
+  }
+};
+```
+
+### Don't Use Arrows for Prototype Methods
+
+```javascript
+// ❌ Bad: Arrow on prototype
+function Counter() {
+  this.count = 0;
+}
+Counter.prototype.increment = () => {
+  this.count++; // 'this' is NOT the instance
+};
+
+// ✅ Good: Regular function on prototype
+Counter.prototype.increment = function() {
+  this.count++;
+};
+```
+
+### Don't Use Arrows for Event Handlers (when `this` needs to be the element)
+
+```javascript
+// ❌ Bad: If you need access to the element via 'this'
+button.addEventListener("click", () => {
+  this.classList.add("clicked"); // 'this' is NOT the button
+});
+
+// ✅ Good: Use event.target or regular function
+button.addEventListener("click", function() {
+  this.classList.add("clicked"); // 'this' is the button
+});
+
+// ✅ Also good: Use event.target with arrow
+button.addEventListener("click", (e) => {
+  e.target.classList.add("clicked");
+});
+```
+
+## Summary Table
+
+| Feature | Arrow Function | Regular Function |
+|:--------|:---------------|:-----------------|
+| Own `this` | No | Yes |
+| Binding | Lexical | Dynamic |
+| `call`/`apply`/`bind` | Ignored | Works |
+| Use as method | ❌ Avoid | ✓ OK |
+| Use for callbacks | ✓ Great | Needs binding |
+
+<InfoBox type="tip" title="When to Use Arrows">
+Use arrow functions when you want to preserve `this` from the outer scope, especially in callbacks, array methods, and promise chains.
+</InfoBox>
+
+<ProgressCheckpoint section="use-cases" xpReward={40} />

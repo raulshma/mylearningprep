@@ -28,6 +28,9 @@ export {
   updatePreferences,
   getCurrentUser,
   getIterationStatus,
+  getPixelPetPreferences,
+  updatePixelPetPreferences,
+  type UpdatePixelPetInput,
 } from "./user";
 
 // Topic actions

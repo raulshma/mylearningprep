@@ -1,0 +1,29 @@
+{
+  "id": "while-loops",
+  "title": "while and do...while",
+  "description": "Learn when and how to use while and do...while loops for conditional iteration when the number of iterations isn't known upfront.",
+  "milestone": "loops",
+  "order": 2,
+  "sections": [
+    "while-intro",
+    "do-while",
+    "comparison",
+    "use-cases"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 45
+    },
+    "advanced": {
+      "estimatedMinutes": 20,
+      "xpReward": 70
+    }
+  },
+  "prerequisites": ["for-loop"],
+  "tags": ["javascript", "loops", "while", "do-while", "iteration", "conditional"]
+}

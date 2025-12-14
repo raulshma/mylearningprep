@@ -82,6 +82,11 @@ import { BuiltInObjectExplorer } from '@/components/learn/interactive/javascript
 import { CallbackVisualizer } from '@/components/learn/interactive/javascript/CallbackVisualizer';
 import { TimerPlayground } from '@/components/learn/interactive/javascript/TimerPlayground';
 import { VariableNamingValidator } from '@/components/learn/interactive/javascript/VariableNamingValidator';
+import { ThisKeywordVisualizer } from '@/components/learn/interactive/javascript/ThisKeywordVisualizer';
+import { IndexedCollectionVisualizer } from '@/components/learn/interactive/javascript/IndexedCollectionVisualizer';
+import { KeyedCollectionExplorer } from '@/components/learn/interactive/javascript/KeyedCollectionExplorer';
+import { JsonPlayground } from '@/components/learn/interactive/javascript/JsonPlayground';
+import { LoopVisualizer } from '@/components/learn/interactive/javascript/LoopVisualizer';
 
 // React Lesson Components
 import {
@@ -244,6 +249,11 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     CallbackVisualizer,
     TimerPlayground,
     VariableNamingValidator,
+    IndexedCollectionVisualizer,
+    KeyedCollectionExplorer,
+    JsonPlayground,
+    ThisKeywordVisualizer,
+    LoopVisualizer,
 
     // React Lesson Components
     ReactPlayground,

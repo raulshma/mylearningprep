@@ -1,0 +1,189 @@
+# while and do...while Loops
+
+Sometimes you don't know how many times you need to repeat something. That's where `while` and `do...while` loops come in!
+
+## The while Loop - Check First
+
+<KeyConcept title="The Bouncer Analogy" icon="user-check">
+A `while` loop is like a **bouncer at a club**:
+
+- The bouncer checks your ID **before** letting you in
+- If you don't pass the check, you never get in
+- Each time you want to re-enter, they check again
+
+The condition is checked **before** each iteration!
+</KeyConcept>
+
+### Syntax
+
+```javascript
+while (condition) {
+  // code to repeat
+}
+```
+
+### Simple Example
+
+```javascript
+let count = 0;
+
+while (count < 3) {
+  console.log(count);
+  count++;
+}
+// Output: 0, 1, 2
+```
+
+<LoopVisualizer type="while" />
+
+<ProgressCheckpoint section="while-intro" xpReward={5} />
+
+## The do...while Loop - Try First
+
+<KeyConcept title="The Try-Before-You-Buy Analogy" icon="shopping-bag">
+A `do...while` loop is like a **try-before-you-buy store**:
+
+- You **always get to try once** (the body runs first)
+- Then they check if you want to continue
+- Even if the condition is false, you still tried once!
+
+The code runs **at least once**, then checks the condition.
+</KeyConcept>
+
+### Syntax
+
+```javascript
+do {
+  // code to repeat (runs at least once!)
+} while (condition);
+```
+
+### Simple Example
+
+```javascript
+let num = 0;
+
+do {
+  console.log(num);
+  num++;
+} while (num < 3);
+// Output: 0, 1, 2
+```
+
+<LoopVisualizer type="do-while" />
+
+<ProgressCheckpoint section="do-while" xpReward={5} />
+
+## The Key Difference
+
+Let's see what happens when the condition is **false from the start**:
+
+```javascript
+let x = 10;
+
+// while - checks first, never runs
+while (x < 5) {
+  console.log('while:', x);
+  x++;
+}
+// No output!
+
+// do...while - runs once, then checks
+let y = 10;
+do {
+  console.log('do-while:', y);
+  y++;
+} while (y < 5);
+// Output: "do-while: 10"
+```
+
+| Feature | while | do...while |
+|:--------|:------|:-----------|
+| Checks condition | **Before** body | **After** body |
+| Minimum runs | 0 times | **1 time** |
+| Use when | Maybe don't need to run | Need to run at least once |
+
+<ProgressCheckpoint section="comparison" xpReward={5} />
+
+## Real World Examples
+
+### Guessing Game (while)
+
+```javascript
+let secretNumber = 7;
+let guess = 0;
+
+while (guess !== secretNumber) {
+  guess = Math.floor(Math.random() * 10) + 1;
+  console.log('Guessed:', guess);
+}
+console.log('Got it!');
+```
+
+### Menu Selection (do...while)
+
+```javascript
+let choice;
+
+do {
+  console.log('1. Play Game');
+  console.log('2. Settings');
+  console.log('3. Exit');
+  choice = prompt('Choose an option:');
+} while (choice !== '3');
+
+console.log('Goodbye!');
+```
+
+> **Perfect for menus!** You always want to show the menu at least once.
+
+<CodePlayground 
+  code={`// Countdown example
+let countdown = 5;
+
+while (countdown > 0) {
+  console.log(countdown + '...');
+  countdown--;
+}
+console.log('Blast off! 🚀');`}
+  title="Try It: Countdown"
+/>
+
+## Quiz Time!
+
+<Quiz id="while-basics">
+  <Question
+    id="q1"
+    text="Which loop guarantees the code runs at least once?"
+  >
+    <Answer id="a" text="while" />
+    <Answer id="b" text="do...while" isCorrect />
+    <Answer id="c" text="Both run at least once" />
+  </Question>
+  <Question
+    id="q2"
+    text="If count = 10 and condition is count < 5, what happens with 'while (count < 5)'?"
+  >
+    <Answer id="a" text="Runs 5 times" />
+    <Answer id="b" text="Runs once" />
+    <Answer id="c" text="Never runs" isCorrect />
+  </Question>
+</Quiz>
+
+<ProgressCheckpoint section="use-cases" xpReward={10} />
+
+## When to Use Each Loop
+
+<InfoBox type="tip" title="Choosing the Right Loop">
+- Use `for` when you know how many times to loop
+- Use `while` when you don't know how many times
+- Use `do...while` when you need at least one iteration
+</InfoBox>
+
+| Scenario | Best Loop |
+|:---------|:----------|
+| Count 1 to 10 | `for` |
+| Read until end of file | `while` |
+| Show menu at least once | `do...while` |
+| Loop through array | `for` or `for...of` |
+| Wait for valid input | `do...while` |

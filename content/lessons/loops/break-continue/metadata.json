@@ -1,0 +1,29 @@
+{
+  "id": "break-continue",
+  "title": "break and continue",
+  "description": "Control loop flow with break to exit early and continue to skip iterations. Master labeled statements for nested loops.",
+  "milestone": "loops",
+  "order": 5,
+  "sections": [
+    "break-intro",
+    "continue-intro",
+    "labels",
+    "best-practices"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 45
+    },
+    "advanced": {
+      "estimatedMinutes": 20,
+      "xpReward": 70
+    }
+  },
+  "prerequisites": ["for-loop", "while-loops"],
+  "tags": ["javascript", "loops", "break", "continue", "control-flow", "labels"]
+}

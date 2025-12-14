@@ -1,0 +1,225 @@
+# break and continue: Controlling Loop Flow
+
+Sometimes you need to stop a loop early or skip certain items. That's what `break` and `continue` are for!
+
+## break - The Emergency Stop Button
+
+<KeyConcept title="The Emergency Stop Button" icon="stop-circle">
+Think of `break` like the **emergency stop button** on a conveyor belt:
+
+- When you press it, **everything stops immediately**
+- The belt doesn't finish its current cycle
+- You exit the loop right away!
+</KeyConcept>
+
+### Syntax
+
+```javascript
+for (let i = 0; i < 10; i++) {
+  if (someCondition) {
+    break;  // Exit the loop NOW!
+  }
+}
+```
+
+### Example: Find First Match
+
+```javascript
+const numbers = [5, 12, 8, 130, 44];
+
+let found = null;
+for (const num of numbers) {
+  if (num > 10) {
+    found = num;
+    break;  // Stop! We found what we need
+  }
+}
+
+console.log('First number > 10:', found);  // 12
+```
+
+> **Why break?** We found the first match, so why keep searching?
+
+<CodePlayground 
+  code={`const names = ['Alice', 'Bob', 'Charlie', 'Diana'];
+const searchFor = 'Charlie';
+
+for (const name of names) {
+  console.log('Checking:', name);
+  
+  if (name === searchFor) {
+    console.log('Found ' + searchFor + '!');
+    break;  // Stop searching
+  }
+}
+
+console.log('Search complete');`}
+  title="Search with Break"
+/>
+
+<ProgressCheckpoint section="break-intro" xpReward={5} />
+
+## continue - Skip to the Next Song
+
+<KeyConcept title="Skipping Songs on a Playlist" icon="skip-forward">
+Think of `continue` like **skipping a song** on a playlist:
+
+- You don't stop the music entirely
+- You just skip to the **next song**
+- The playlist keeps playing!
+</KeyConcept>
+
+### Syntax
+
+```javascript
+for (let i = 0; i < 10; i++) {
+  if (shouldSkip) {
+    continue;  // Skip this one, go to next iteration
+  }
+  // This code runs only if we didn't skip
+}
+```
+
+### Example: Skip Unwanted Items
+
+```javascript
+const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+console.log('Odd numbers only:');
+for (const num of numbers) {
+  if (num % 2 === 0) {
+    continue;  // Skip even numbers
+  }
+  console.log(num);
+}
+// Output: 1, 3, 5, 7, 9
+```
+
+<CodePlayground 
+  code={`const items = ['apple', '', 'banana', '', 'cherry'];
+
+console.log('Non-empty items:');
+for (const item of items) {
+  if (item === '') {
+    continue;  // Skip empty strings
+  }
+  console.log('- ' + item);
+}`}
+  title="Skip Empty Items"
+/>
+
+<ProgressCheckpoint section="continue-intro" xpReward={5} />
+
+## break vs continue - The Difference
+
+| Statement | What it Does | Analogy |
+|:----------|:-------------|:--------|
+| `break` | **Exits the entire loop** | Emergency stop - machine shuts down |
+| `continue` | **Skips to next iteration** | Skip song - music keeps playing |
+
+### Side-by-Side Comparison
+
+```javascript
+// With break - stops early
+for (let i = 1; i <= 5; i++) {
+  if (i === 3) break;
+  console.log(i);
+}
+// Output: 1, 2
+
+// With continue - skips 3
+for (let i = 1; i <= 5; i++) {
+  if (i === 3) continue;
+  console.log(i);
+}
+// Output: 1, 2, 4, 5
+```
+
+<ProgressCheckpoint section="labels" xpReward={5} />
+
+## Real World Examples
+
+### Find and Stop (break)
+
+```javascript
+const users = [
+  { id: 1, active: true },
+  { id: 2, active: false },
+  { id: 3, active: true }
+];
+
+// Find first inactive user
+let inactiveUser = null;
+for (const user of users) {
+  if (!user.active) {
+    inactiveUser = user;
+    break;  // Found it, stop looking
+  }
+}
+
+console.log('Found:', inactiveUser);  // { id: 2, active: false }
+```
+
+### Filter While Processing (continue)
+
+```javascript
+const orders = [
+  { id: 1, status: 'pending' },
+  { id: 2, status: 'shipped' },
+  { id: 3, status: 'pending' },
+  { id: 4, status: 'delivered' }
+];
+
+console.log('Pending orders:');
+for (const order of orders) {
+  if (order.status !== 'pending') {
+    continue;  // Skip non-pending orders
+  }
+  console.log('Order #' + order.id + ' needs attention');
+}
+```
+
+## Quiz Time!
+
+<Quiz id="break-continue-basics">
+  <Question
+    id="q1"
+    text="What happens when 'break' is executed inside a loop?"
+  >
+    <Answer id="a" text="Skips to the next iteration" />
+    <Answer id="b" text="Exits the loop completely" isCorrect />
+    <Answer id="c" text="Restarts the loop" />
+  </Question>
+  <Question
+    id="q2"
+    text="Which statement should you use to skip invalid items but keep processing?"
+  >
+    <Answer id="a" text="break" />
+    <Answer id="b" text="continue" isCorrect />
+    <Answer id="c" text="return" />
+  </Question>
+</Quiz>
+
+<ProgressCheckpoint section="best-practices" xpReward={10} />
+
+## Quick Reference
+
+```javascript
+// BREAK - Exit loop early
+for (const item of items) {
+  if (foundIt) break;    // Goodbye loop!
+}
+
+// CONTINUE - Skip and proceed
+for (const item of items) {
+  if (skipThis) continue;  // Skip to next item
+  process(item);           // Only runs if not skipped
+}
+```
+
+<InfoBox type="tip" title="When to Use Each">
+- **break**: When you've found what you need - stop searching!
+- **continue**: When an item doesn't meet criteria - skip it!
+
+Both save processing time by avoiding unnecessary work.
+</InfoBox>

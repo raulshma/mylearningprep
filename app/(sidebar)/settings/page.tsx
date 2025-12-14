@@ -10,6 +10,7 @@ import { BYOKUsageStatsSection } from '@/app/settings/components/byok-usage-stat
 import { CustomThemeSection } from '@/app/settings/components/custom-theme-section';
 import { PlanFeaturesSection } from '@/app/settings/components/plan-features-section';
 import { GenerationPreferencesSection } from '@/app/settings/components/generation-preferences-section';
+import { PixelPetSection } from '@/app/settings/components/pixel-pet-section';
 
 export default async function SettingsPage() {
   // Single optimized call fetches all settings data
@@ -44,6 +45,7 @@ export default async function SettingsPage() {
             plan={profile.plan} 
             generationPreferences={profile.generationPreferences} 
           />
+          <PixelPetSection plan={profile.plan} pixelPet={profile.pixelPet} />
           <BYOKUsageStatsSection hasByokKey={profile.hasByokKey} />
           <CustomThemeSection plan={profile.plan} />
           <DataManagementSection />

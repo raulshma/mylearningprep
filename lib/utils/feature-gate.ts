@@ -19,7 +19,8 @@ export type PlanFeature =
   | 'analytics'
   | 'web_search_crawl'
   | 'ai_tools'
-  | 'ai_chat';
+  | 'ai_chat'
+  | 'pixel_pet';
 
 /**
  * Result of a feature access check
@@ -45,6 +46,7 @@ export const FEATURE_ACCESS_MAP: Record<PlanFeature, UserPlan[]> = {
   web_search_crawl: ['PRO', 'MAX'],
   ai_tools: ['PRO', 'MAX'],
   ai_chat: ['FREE', 'PRO', 'MAX'], // All plans have AI chat, but with different limits
+  pixel_pet: ['PRO', 'MAX'],
 };
 
 /**

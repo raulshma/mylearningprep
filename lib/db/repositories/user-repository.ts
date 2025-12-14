@@ -1,7 +1,17 @@
 import { ObjectId } from 'mongodb';
 import { cache } from 'react';
 import { getUsersCollection } from '../collections';
-import { User, UserPlan, CreateUser, UserPreferences, GenerationPreferences } from '../schemas/user';
+import {
+  User,
+  UserPlan,
+  CreateUser,
+  UserPreferences,
+  GenerationPreferences,
+  PixelPetPreferences,
+  PixelPetId,
+  PixelPetEdge,
+  PixelPetOffset,
+} from '../schemas/user';
 
 export interface UserRepository {
   create(data: Omit<CreateUser, 'iterations' | 'interviews'> & { iterations?: Partial<CreateUser['iterations']>; interviews?: Partial<NonNullable<CreateUser['interviews']>> }): Promise<User>;
@@ -20,6 +30,18 @@ export interface UserRepository {
   resetChatMessages(clerkId: string): Promise<User | null>;
   updatePreferences(clerkId: string, preferences: Partial<UserPreferences>): Promise<User | null>;
   updateGenerationPreferences(clerkId: string, generation: Partial<GenerationPreferences>): Promise<User | null>;
+  updatePixelPetPreferences(
+    clerkId: string,
+    pixelPet: Partial<
+      Pick<PixelPetPreferences, 'enabled' | 'schemaVersion'> & {
+        selectedId: PixelPetId;
+        surfaceId: string;
+        edge: PixelPetEdge;
+        progress: number;
+        offset: Partial<PixelPetOffset>;
+      }
+    >
+  ): Promise<User | null>;
   handlePlanChange(clerkId: string, newPlan: UserPlan, previousPlan: UserPlan): Promise<void>;
   getChatMessageUsage(clerkId: string): Promise<{ count: number; limit: number; remaining: number } | null>;
 }
@@ -31,6 +53,18 @@ function getDefaultResetDate(): Date {
   resetDate.setDate(1);
   resetDate.setHours(0, 0, 0, 0);
   return resetDate;
+}
+
+function getDefaultPixelPetPreferences(): PixelPetPreferences {
+  return {
+    schemaVersion: 1,
+    enabled: false,
+    selectedId: 'pixel_dog',
+    surfaceId: 'app-shell',
+    edge: 'bottom',
+    progress: 0.5,
+    offset: { x: 0, y: 0 },
+  };
 }
 
 import {
@@ -128,6 +162,7 @@ export const userRepository: UserRepository = {
         theme: 'dark',
         defaultAnalogy: 'professional',
       },
+      pixelPet: data.pixelPet ?? getDefaultPixelPetPreferences(),
       suspended: false,
       createdAt: now,
       updatedAt: now,
@@ -404,6 +439,48 @@ export const userRepository: UserRepository = {
     const result = await collection.findOneAndUpdate(
       { clerkId },
       { $set: updateFields },
+      { returnDocument: 'after' }
+    );
+
+    return result as User | null;
+  },
+
+  async updatePixelPetPreferences(clerkId, pixelPet) {
+    const collection = await getUsersCollection();
+    const now = new Date();
+
+    const updateFields: Record<string, unknown> = { updatedAt: now };
+
+    if (pixelPet.schemaVersion !== undefined) {
+      updateFields['pixelPet.schemaVersion'] = pixelPet.schemaVersion;
+    }
+    if (pixelPet.enabled !== undefined) {
+      updateFields['pixelPet.enabled'] = pixelPet.enabled;
+    }
+    if (pixelPet.selectedId !== undefined) {
+      updateFields['pixelPet.selectedId'] = pixelPet.selectedId;
+    }
+    if (pixelPet.surfaceId !== undefined) {
+      updateFields['pixelPet.surfaceId'] = pixelPet.surfaceId;
+    }
+    if (pixelPet.edge !== undefined) {
+      updateFields['pixelPet.edge'] = pixelPet.edge;
+    }
+    if (pixelPet.progress !== undefined) {
+      updateFields['pixelPet.progress'] = pixelPet.progress;
+    }
+    if (pixelPet.offset?.x !== undefined) {
+      updateFields['pixelPet.offset.x'] = pixelPet.offset.x;
+    }
+    if (pixelPet.offset?.y !== undefined) {
+      updateFields['pixelPet.offset.y'] = pixelPet.offset.y;
+    }
+
+    const result = await collection.findOneAndUpdate(
+      { clerkId },
+      {
+        $set: updateFields,
+      },
       { returnDocument: 'after' }
     );
 
