@@ -1,0 +1,300 @@
+# Variables & Data Types in C#
+
+Understanding C#'s type system at a deep level is essential for building high-performance .NET applications. Let's explore the memory layout, boxing/unboxing implications, and advanced type patterns.
+
+## Memory Layout: Stack vs Heap
+
+The CLR manages memory in two regions:
+
+**Stack**: 
+- Fast allocation/deallocation (LIFO)
+- Stores value types and reference pointers
+- Per-thread, limited size (~1MB default)
+
+**Heap**:
+- Dynamic allocation, garbage collected
+- Stores reference type instances
+- Shared across threads, larger
+
+<DotnetCodePreview
+  title="Memory Allocation"
+  code={`public void MemoryDemo()
+{
+    // Stack allocation
+    int x = 42;           // 4 bytes on stack
+    Point p = new(1, 2);  // struct on stack (if local)
+    
+    // Heap allocation
+    string s = "Hello";   // Reference on stack, string on heap
+    int[] arr = [1, 2];   // Reference on stack, array on heap
+    
+    // Stack frame destroyed when method returns
+}`}
+  steps={[
+    {
+      lineNumbers: [4, 5],
+      highlight: "Stack Allocation",
+      explanation: "Value types (int, struct) live on the stack when local. Extremely fast.",
+      variables: { x: "42 (stack)", p: "{X:1, Y:2} (stack)" }
+    },
+    {
+      lineNumbers: [8, 9],
+      highlight: "Heap Allocation",
+      explanation: "Reference types allocate on the heap. The variable holds only a pointer.",
+      variables: { s: "ptr→\"Hello\"", arr: "ptr→[1,2]" }
+    }
+  ]}
+/>
+
+## Boxing and Unboxing
+
+Boxing wraps value types in object references - a performance concern:
+
+<DotnetCodePreview
+  title="Boxing Performance Impact"
+  code={`// Boxing - value type → object (heap allocation!)
+int value = 42;
+object boxed = value;  // Boxing occurs here
+
+// Unboxing - object → value type (type check + copy)
+int unboxed = (int)boxed;
+
+// Performance trap: ArrayList boxes everything
+ArrayList list = new();
+for (int i = 0; i < 1000000; i++)
+{
+    list.Add(i);  // Boxing 1 million times!
+}
+
+// Solution: Generic collections avoid boxing
+List<int> genericList = new();  // No boxing!`}
+  steps={[
+    {
+      lineNumbers: [2, 3],
+      highlight: "Boxing Operation",
+      explanation: "CLR allocates heap memory, copies value, stores type info. ~20x slower!",
+      variables: { value: "42 (stack)", boxed: "ptr→42 (heap)" }
+    },
+    {
+      lineNumbers: [6],
+      highlight: "Unboxing",
+      explanation: "Requires runtime type check, then copies value back to stack.",
+      variables: { unboxed: "42 (stack)" }
+    },
+    {
+      lineNumbers: [9, 10, 11, 12],
+      highlight: "Performance Trap",
+      explanation: "Non-generic collections cause boxing. 1M allocations = GC pressure!",
+      variables: {}
+    },
+    {
+      lineNumbers: [15],
+      highlight: "Generic Solution",
+      explanation: "List<int> stores ints directly, no boxing overhead.",
+      variables: {}
+    }
+  ]}
+/>
+
+## Span&lt;T&gt; and Memory&lt;T&gt;
+
+Modern C# offers stack-only buffers for high-performance scenarios:
+
+<DotnetCodePreview
+  title="Span<T> for Zero-Copy Operations"
+  code={`// Span wraps existing memory - no allocation!
+int[] array = [1, 2, 3, 4, 5];
+Span<int> span = array.AsSpan();
+
+// Slice without copying
+Span<int> slice = span.Slice(1, 3);  // [2, 3, 4]
+slice[0] = 99;  // Modifies original array!
+
+// Stack allocation with stackalloc
+Span<byte> buffer = stackalloc byte[256];
+buffer[0] = 42;  // No heap allocation!
+
+// String slicing without allocation
+ReadOnlySpan<char> chars = "Hello World".AsSpan();
+ReadOnlySpan<char> word = chars.Slice(0, 5);  // "Hello"`}
+  steps={[
+    {
+      lineNumbers: [2, 3],
+      highlight: "Span Creation",
+      explanation: "Span is a ref struct - lives only on stack, points to existing memory.",
+      variables: { span: "→[1,2,3,4,5]" }
+    },
+    {
+      lineNumbers: [6, 7],
+      highlight: "Zero-Copy Slicing",
+      explanation: "Slice creates a view, not a copy. Modifications affect original!",
+      variables: { slice: "→[99,3,4]" }
+    },
+    {
+      lineNumbers: [10, 11],
+      highlight: "Stack Allocation",
+      explanation: "stackalloc allocates on stack instead of heap. Great for temp buffers.",
+      variables: { buffer: "[256 bytes on stack]" }
+    }
+  ]}
+/>
+
+## ref, in, and out Parameters
+
+Parameter modifiers for performance-critical code:
+
+<DotnetCodePreview
+  title="Reference Parameters"
+  code={`public struct LargeStruct  // 64+ bytes
+{
+    public long A, B, C, D, E, F, G, H;
+}
+
+// Pass by value - COPIES entire struct!
+void ProcessByValue(LargeStruct data) { }
+
+// Pass by reference - no copy, allows modification
+void ProcessByRef(ref LargeStruct data) { data.A = 1; }
+
+// Pass by readonly reference - no copy, no modification
+void ProcessByIn(in LargeStruct data) 
+{ 
+    // data.A = 1;  // Compile error!
+    Console.WriteLine(data.A);
+}
+
+// Out parameter - must assign before return
+bool TryGetValue(out int result)
+{
+    result = 42;  // Must assign!
+    return true;
+}`}
+  steps={[
+    {
+      lineNumbers: [7],
+      highlight: "Value Parameter",
+      explanation: "Copies 64 bytes every call. Expensive for large structs!",
+      variables: {}
+    },
+    {
+      lineNumbers: [10],
+      highlight: "ref Parameter",
+      explanation: "Passes pointer (8 bytes). Caller sees modifications.",
+      variables: {}
+    },
+    {
+      lineNumbers: [13, 14, 15, 16, 17],
+      highlight: "in Parameter",
+      explanation: "Readonly reference. Best for large readonly structs.",
+      variables: {}
+    },
+    {
+      lineNumbers: [20, 21, 22, 23, 24],
+      highlight: "out Parameter",
+      explanation: "Must be assigned before method returns. Used for multi-value returns.",
+      variables: {}
+    }
+  ]}
+/>
+
+## Records and Value Equality
+
+C# 9+ records provide value-based equality semantics:
+
+<DotnetCodePreview
+  title="Record Types"
+  code={`// Reference record (class-based)
+public record Person(string Name, int Age);
+
+// Value record (struct-based)
+public readonly record struct Point(int X, int Y);
+
+// Usage
+var p1 = new Person("Alice", 30);
+var p2 = new Person("Alice", 30);
+Console.WriteLine(p1 == p2);  // True! Value equality
+
+// With-expressions for immutable updates
+var p3 = p1 with { Age = 31 };
+
+// Deconstruction
+var (name, age) = p1;`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "Record Class",
+      explanation: "Reference type with value-based equality and immutability.",
+      variables: {}
+    },
+    {
+      lineNumbers: [5],
+      highlight: "Record Struct",
+      explanation: "Value type with generated equality. Great for small data.",
+      variables: {}
+    },
+    {
+      lineNumbers: [10],
+      highlight: "Value Equality",
+      explanation: "Records compare by value, not reference. Perfect for DTOs.",
+      variables: { "p1 == p2": "true" }
+    },
+    {
+      lineNumbers: [13],
+      highlight: "Non-Destructive Mutation",
+      explanation: "with creates a copy with specified changes. Immutability preserved.",
+      variables: { p3: "Person { Name = \"Alice\", Age = 31 }" }
+    }
+  ]}
+/>
+
+## Performance Considerations
+
+| Pattern | When to Use | Avoid When |
+|:--------|:------------|:-----------|
+| `struct` | Small (<16 bytes), short-lived | Frequent copying needed |
+| `class` | Complex, shared, long-lived | Simple data containers |
+| `record class` | Immutable reference data | Needs traditional class features |
+| `record struct` | Small immutable value data | Large data structures |
+| `Span<T>` | High-perf buffer operations | Need to store on heap |
+| `ref returns` | Return large data efficiently | Simple value returns |
+
+## Advanced: Custom Conversions
+
+Define implicit and explicit conversions for custom types:
+
+<DotnetCodePreview
+  title="User-Defined Conversions"
+  code={`public readonly struct Celsius
+{
+    public double Value { get; }
+    public Celsius(double value) => Value = value;
+    
+    // Implicit from double
+    public static implicit operator Celsius(double d) 
+        => new(d);
+    
+    // Explicit to Fahrenheit (lossy conceptually)
+    public static explicit operator double(Celsius c) 
+        => c.Value * 9 / 5 + 32;
+}
+
+// Usage
+Celsius temp = 100;           // Implicit conversion
+double fahrenheit = (double)temp;  // Explicit: 212`}
+  steps={[
+    {
+      lineNumbers: [7, 8],
+      highlight: "Implicit Conversion",
+      explanation: "No cast required. Use for safe, lossless conversions.",
+      variables: { temp: "100°C" }
+    },
+    {
+      lineNumbers: [11, 12],
+      highlight: "Explicit Conversion",
+      explanation: "Requires cast. Use when conversion might lose information.",
+      variables: { fahrenheit: "212" }
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="intro-variables" xpReward={60} />

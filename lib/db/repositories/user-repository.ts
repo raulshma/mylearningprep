@@ -33,12 +33,13 @@ export interface UserRepository {
   updatePixelPetPreferences(
     clerkId: string,
     pixelPet: Partial<
-      Pick<PixelPetPreferences, 'enabled' | 'schemaVersion'> & {
+      Pick<PixelPetPreferences, 'enabled' | 'schemaVersion' | 'size'> & {
         selectedId: PixelPetId;
         surfaceId: string;
         edge: PixelPetEdge;
         progress: number;
         offset: Partial<PixelPetOffset>;
+        position: { x: number; y: number };
       }
     >
   ): Promise<User | null>;
@@ -64,6 +65,8 @@ function getDefaultPixelPetPreferences(): PixelPetPreferences {
     edge: 'bottom',
     progress: 0.5,
     offset: { x: 0, y: 0 },
+    size: 1,
+    position: { x: 100, y: 100 },
   };
 }
 
@@ -474,6 +477,15 @@ export const userRepository: UserRepository = {
     }
     if (pixelPet.offset?.y !== undefined) {
       updateFields['pixelPet.offset.y'] = pixelPet.offset.y;
+    }
+    if (pixelPet.size !== undefined) {
+      updateFields['pixelPet.size'] = pixelPet.size;
+    }
+    if (pixelPet.position?.x !== undefined) {
+      updateFields['pixelPet.position.x'] = pixelPet.position.x;
+    }
+    if (pixelPet.position?.y !== undefined) {
+      updateFields['pixelPet.position.y'] = pixelPet.position.y;
     }
 
     const result = await collection.findOneAndUpdate(

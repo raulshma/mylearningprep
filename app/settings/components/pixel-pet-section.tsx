@@ -6,8 +6,10 @@ import { PawPrint, Crown, Loader2, Check, Sparkles } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
 import {
   Select,
   SelectContent,
@@ -34,46 +36,44 @@ export function PixelPetSection({ plan, pixelPet }: PixelPetSectionProps) {
   const hydrate = usePixelPetStore((s) => s.hydrate);
   const enabled = usePixelPetStore((s) => s.prefs.enabled);
   const selectedId = usePixelPetStore((s) => s.prefs.selectedId);
+  const size = usePixelPetStore((s) => s.prefs.size);
   const setEnabled = usePixelPetStore((s) => s.setEnabled);
   const setSelectedId = usePixelPetStore((s) => s.setSelectedId);
+  const setSize = usePixelPetStore((s) => s.setSize);
 
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
   // Hydrate the shared store from server-provided prefs
-  // (store persists across sidebar navigation)
   useEffect(() => {
     if (pixelPet) hydrate(pixelPet);
   }, [pixelPet, hydrate]);
+
+  // Use store size directly, with fallback
+  const localSize = size ?? 1;
 
   const selected = useMemo(
     () => PIXEL_PET_REGISTRY.find((p) => p.id === selectedId),
     [selectedId]
   );
 
-  const handleSave = async (next: Partial<{ enabled: boolean; selectedId: PixelPetId }>) => {
-    if (!isProPlus) return;
+  const handleSizeChange = (value: number[]) => {
+    const newSize = value[0];
+    setSize(newSize); // Update store immediately for live preview
+  };
 
-    setIsSaving(true);
-    setSaved(false);
-
+  const handleSizeCommit = async (value: number[]) => {
+    const newSize = value[0];
     try {
-      const result = await updatePixelPetPreferences({
-        enabled: next.enabled ?? enabled,
-        selectedId: next.selectedId ?? selectedId,
-      });
-
-      if (result.success) {
-        setSaved(true);
-        setTimeout(() => setSaved(false), 2000);
-      } else {
-        toast.error(result.error.message ?? "Failed to save pixel pet settings");
+      const result = await updatePixelPetPreferences({ size: newSize });
+      if (!result.success) {
+        toast.error(result.error.message ?? "Failed to save pet size");
+        setSize(size ?? 1);
       }
     } catch (error) {
-      console.error("Failed to save pixel pet preferences:", error);
-      toast.error("Failed to save pixel pet settings");
-    } finally {
-      setIsSaving(false);
+      console.error("Failed to save pet size:", error);
+      toast.error("Failed to save pet size");
+      setSize(size ?? 1);
     }
   };
 
@@ -91,7 +91,7 @@ export function PixelPetSection({ plan, pixelPet }: PixelPetSectionProps) {
         <div className="flex-1 min-w-0">
           <h2 className="text-lg font-bold text-foreground">Pixel Pets</h2>
           <p className="text-sm text-muted-foreground">
-            Choose a 3D pixel companion that walks along your app&apos;s edges.
+            Choose a 3D pixel companion that roams around your screen.
           </p>
         </div>
         {isProPlus && (
@@ -127,7 +127,7 @@ export function PixelPetSection({ plan, pixelPet }: PixelPetSectionProps) {
             <div className="space-y-1">
               <Label className="text-sm font-medium">Enable pixel pet</Label>
               <p className="text-xs text-muted-foreground">
-                Tip: you can pick it up and drag it; it snaps to edges.
+                Your pet will walk around the screen and take rests. Pick it up to move it!
               </p>
             </div>
             <Switch
@@ -203,26 +203,59 @@ export function PixelPetSection({ plan, pixelPet }: PixelPetSectionProps) {
             )}
           </div>
 
-          <div className="pt-2">
-            <Button
-              onClick={() => handleSave({})}
-              disabled={isSaving}
-              className="w-full h-11 rounded-xl"
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Saving...
-                </>
-              ) : saved ? (
-                <>
-                  <Check className="w-4 h-4 mr-2" />
-                  Saved!
-                </>
-              ) : (
-                "Save"
-              )}
-            </Button>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">Pet size</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  value={Math.round(localSize * 100)}
+                  onChange={(e) => {
+                    const percent = parseInt(e.target.value, 10);
+                    if (!isNaN(percent)) {
+                      const clamped = Math.max(30, Math.min(300, percent));
+                      setSize(clamped / 100);
+                    }
+                  }}
+                  onBlur={async () => {
+                    try {
+                      const result = await updatePixelPetPreferences({ size: localSize });
+                      if (!result.success) {
+                        toast.error(result.error.message ?? "Failed to save pet size");
+                      }
+                    } catch (error) {
+                      console.error("Failed to save pet size:", error);
+                      toast.error("Failed to save pet size");
+                    }
+                  }}
+                  className="w-20 h-8 text-center text-sm font-mono"
+                  min={30}
+                  max={300}
+                />
+                <span className="text-xs text-muted-foreground">%</span>
+              </div>
+            </div>
+            <Slider
+              value={[localSize]}
+              onValueChange={handleSizeChange}
+              onValueCommit={handleSizeCommit}
+              min={0.3}
+              max={3}
+              step={0.05}
+              className="w-full"
+            />
+            <p className="text-xs text-muted-foreground">
+              Adjust how big your pet appears on screen (30% - 300%).
+            </p>
+          </div>
+
+          <div className="pt-2 flex items-center gap-2">
+            {saved && (
+              <div className="flex items-center gap-1.5 text-sm text-green-500">
+                <Check className="w-4 h-4" />
+                <span>Saved</span>
+              </div>
+            )}
           </div>
         </div>
       )}

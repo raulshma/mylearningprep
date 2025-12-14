@@ -19,8 +19,10 @@ const rect: RectLike = {
 describe("pixel-pet geometry", () => {
   it("computes a point on each edge", () => {
     expect(getPointOnEdge(rect, "top", 0.5)).toEqual({ x: 100, y: 0 });
-    expect(getPointOnEdge(rect, "bottom", 0)).toEqual({ x: 0, y: 100 });
-    expect(getPointOnEdge(rect, "left", 1)).toEqual({ x: 0, y: 100 });
+    // Bottom edge goes Right -> Left (clockwise), so progress 0 starts at right
+    expect(getPointOnEdge(rect, "bottom", 0)).toEqual({ x: 200, y: 100 });
+    // Left edge goes Bottom -> Top (clockwise), so progress 1 is at top
+    expect(getPointOnEdge(rect, "left", 1)).toEqual({ x: 0, y: 0 });
     expect(getPointOnEdge(rect, "right", 0.25)).toEqual({ x: 200, y: 25 });
   });
 

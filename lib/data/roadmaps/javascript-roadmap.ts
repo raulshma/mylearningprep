@@ -14,7 +14,7 @@ export const javascriptRoadmap: CreateRoadmap = {
   description:
     'Comprehensive JavaScript learning path covering fundamentals to advanced concepts including variables, data types, functions, async programming, and more.',
   category: 'frontend',
-  version: '2024.1',
+  version: '2025.1',
   parentRoadmapSlug: 'frontend',
   parentNodeId: 'javascript',
   showInListing: true, // Show as standalone roadmap in listing

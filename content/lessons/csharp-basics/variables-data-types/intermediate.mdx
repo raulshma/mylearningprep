@@ -1,0 +1,211 @@
+# Variables & Data Types in C#
+
+In C#, variables are strongly-typed containers that store data. Understanding the type system is fundamental to writing robust .NET applications. Let's explore the core data types and their practical applications.
+
+## Value Types vs Reference Types
+
+C# has two fundamental categories of types:
+
+**Value Types** store data directly in memory:
+- `int`, `double`, `float`, `decimal` (numbers)
+- `bool` (boolean)
+- `char` (single character)
+- `struct` (custom value types)
+
+**Reference Types** store a reference to where data is located:
+- `string` (text)
+- `class` (objects)
+- `array` (collections)
+
+<DotnetCodePreview
+  title="Value vs Reference Types"
+  code={`// Value types - stored directly
+int x = 10;
+int y = x;  // Copy of value
+y = 20;     // x is still 10!
+
+// Reference types - stored by reference
+string greeting = "Hello";
+string message = greeting;  // Points to same string
+`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4],
+      highlight: "Value Type Behavior",
+      explanation: "When you assign a value type, it creates a copy. Changing y doesn't affect x.",
+      variables: { x: "10", y: "20" }
+    },
+    {
+      lineNumbers: [7, 8],
+      highlight: "Reference Type Behavior",
+      explanation: "Reference types share the same underlying data (though strings are immutable).",
+      variables: { greeting: "\"Hello\"", message: "\"Hello\"" }
+    }
+  ]}
+/>
+
+## Numeric Types in Detail
+
+Choose the right numeric type based on your needs:
+
+| Type | Size | Range | Use Case |
+|:-----|:-----|:------|:---------|
+| `byte` | 8 bits | 0 to 255 | Small positive numbers |
+| `int` | 32 bits | ±2.1 billion | General-purpose integers |
+| `long` | 64 bits | ±9.2 quintillion | Large integers |
+| `float` | 32 bits | ±3.4E38 | Scientific calculations |
+| `double` | 64 bits | ±1.7E308 | General decimals |
+| `decimal` | 128 bits | 28-29 digits | Financial calculations |
+
+<DotnetCodePreview
+  title="Choosing Numeric Types"
+  code={`// Integer types
+byte age = 25;              // 0-255
+int population = 1000000;   // Most common
+long worldPop = 8000000000; // Very large
+
+// Floating-point types
+float temperature = 98.6f;   // Note the 'f' suffix
+double distance = 384400.5;  // More precision
+decimal price = 19.99m;      // Financial - 'm' suffix`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4],
+      highlight: "Integer Types",
+      explanation: "Use int for most cases. byte for small numbers, long for very large ones.",
+      variables: { age: "25", population: "1000000", worldPop: "8000000000" }
+    },
+    {
+      lineNumbers: [7, 8, 9],
+      highlight: "Floating-Point Types",
+      explanation: "Use decimal for money (no rounding errors), double for science/math.",
+      variables: { temperature: "98.6", distance: "384400.5", price: "19.99" }
+    }
+  ]}
+/>
+
+## The var Keyword
+
+C# supports type inference with `var`. The compiler determines the type at compile time:
+
+<DotnetCodePreview
+  title="Implicit Typing with var"
+  code={`// Explicit typing
+int count = 10;
+string name = "John";
+
+// Implicit typing - same result!
+var count2 = 10;      // Inferred as int
+var name2 = "John";   // Inferred as string
+
+// var requires initialization
+// var unknown;  // Error! No type to infer`}
+  steps={[
+    {
+      lineNumbers: [2, 3],
+      highlight: "Explicit Typing",
+      explanation: "You explicitly state the type before the variable name.",
+      variables: { count: "10", name: "\"John\"" }
+    },
+    {
+      lineNumbers: [6, 7],
+      highlight: "Type Inference",
+      explanation: "var lets the compiler figure out the type from the value.",
+      variables: { count2: "10 (int)", name2: "\"John\" (string)" }
+    }
+  ]}
+/>
+
+## Type Conversion
+
+Converting between types is common. C# supports implicit and explicit conversions:
+
+<DotnetCodePreview
+  title="Type Conversion"
+  code={`// Implicit conversion (safe, no data loss)
+int num = 100;
+long bigNum = num;    // int → long is safe
+double dec = num;     // int → double is safe
+
+// Explicit conversion (casting - possible data loss)
+double pi = 3.14159;
+int rounded = (int)pi;  // Loses .14159!
+
+// Parse strings to numbers
+string input = "42";
+int parsed = int.Parse(input);
+int safeParse = int.TryParse(input, out int result) 
+  ? result : 0;`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4],
+      highlight: "Implicit Conversion",
+      explanation: "Compiler automatically converts smaller types to larger ones.",
+      variables: { num: "100", bigNum: "100", dec: "100.0" }
+    },
+    {
+      lineNumbers: [7, 8],
+      highlight: "Explicit Casting",
+      explanation: "Use (type) syntax to force conversion. May lose precision!",
+      variables: { pi: "3.14159", rounded: "3" }
+    },
+    {
+      lineNumbers: [11, 12, 13, 14],
+      highlight: "String Parsing",
+      explanation: "TryParse is safer - it doesn't throw exceptions on invalid input.",
+      variables: { input: "\"42\"", parsed: "42" }
+    }
+  ]}
+/>
+
+## Nullable Types
+
+Sometimes you need to represent "no value". Use nullable types:
+
+<DotnetCodePreview
+  title="Nullable Value Types"
+  code={`// Regular int cannot be null
+int count = 0;
+
+// Nullable int can be null
+int? nullableCount = null;
+
+// Check if it has a value
+if (nullableCount.HasValue)
+{
+    Console.WriteLine(nullableCount.Value);
+}
+
+// Null-coalescing operator
+int result = nullableCount ?? -1;  // -1 if null`}
+  steps={[
+    {
+      lineNumbers: [5],
+      highlight: "Nullable Declaration",
+      explanation: "The ? suffix makes a value type nullable.",
+      variables: { nullableCount: "null" }
+    },
+    {
+      lineNumbers: [8, 9, 10, 11],
+      highlight: "Safe Access",
+      explanation: "Always check HasValue before accessing Value to avoid exceptions.",
+      variables: {}
+    },
+    {
+      lineNumbers: [14],
+      highlight: "Null Coalescing",
+      explanation: "The ?? operator provides a default value when null.",
+      variables: { result: "-1" }
+    }
+  ]}
+/>
+
+## Best Practices
+
+1. **Use meaningful names**: `customerAge` not `x`
+2. **Prefer var for complex types**: `var customers = new List<Customer>()`
+3. **Use decimal for money**: Avoid floating-point rounding errors
+4. **Initialize variables**: Prevent unexpected null references
+5. **Use const for constants**: `const double PI = 3.14159;`
+
+<ProgressCheckpoint section="intro-variables" xpReward={40} />

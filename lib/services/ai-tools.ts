@@ -384,7 +384,7 @@ export function createTechTrendsTool(
         if (isSearchEnabled()) {
           const query = `${technologies.join(
             " "
-          )} technology trends 2024 job market demand`;
+          )} technology trends 2025 job market demand`;
           const results = await searchService.query(query, 5);
           searchResults = results.results
             .map((r) => `${r.title}: ${r.snippet}`)
@@ -702,7 +702,7 @@ export async function analyzeTechTrends(
   if (isSearchEnabled()) {
     const query = `${technologies.join(
       " OR "
-    )} technology trends 2024 2025 job market demand growth`;
+    )} technology trends 2025 job market demand growth`;
     searchQueries.push(query);
     loggerCtx.addSearchQuery(query);
     const results = await searchService.query(query, 5);

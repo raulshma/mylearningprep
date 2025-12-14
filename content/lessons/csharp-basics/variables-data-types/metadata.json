@@ -1,0 +1,29 @@
+{
+  "id": "variables-data-types",
+  "title": "Variables & Data Types",
+  "description": "Learn the fundamental building blocks of C# - variables and data types that store and manipulate information.",
+  "milestone": "csharp-basics",
+  "order": 1,
+  "sections": [
+    "intro-variables",
+    "value-types",
+    "reference-types",
+    "type-conversion"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 12,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 18,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 25,
+      "xpReward": 60
+    }
+  },
+  "prerequisites": [],
+  "tags": ["csharp", "variables", "data-types", "fundamentals"]
+}

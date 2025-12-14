@@ -151,6 +151,14 @@ import {
 import { OAuthPkceFlowSimulator } from '@/components/learn/interactive/auth/OAuthPkceFlowSimulator';
 import { SessionVsTokenVisualizer } from '@/components/learn/interactive/auth/SessionVsTokenVisualizer';
 
+// .NET Lesson Components
+import { DotnetCodePreview } from '@/components/learn/interactive/dotnet/DotnetCodePreview';
+import { DependencyInjectionVisualizer } from '@/components/learn/interactive/dotnet/DependencyInjectionVisualizer';
+import { MiddlewarePipelineSimulator } from '@/components/learn/interactive/dotnet/MiddlewarePipelineSimulator';
+import { EntityFrameworkVisualizer } from '@/components/learn/interactive/dotnet/EntityFrameworkVisualizer';
+import { ApiEndpointBuilder as DotnetApiEndpointBuilder } from '@/components/learn/interactive/dotnet/ApiEndpointBuilder';
+import { SolidPrincipleDemo } from '@/components/learn/interactive/dotnet/SolidPrincipleDemo';
+
 /**
  * MDX Components Configuration
  * This file provides custom components for MDX content rendering.
@@ -311,6 +319,14 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     // Authentication Lesson Components
     OAuthPkceFlowSimulator,
     SessionVsTokenVisualizer,
+
+    // .NET Lesson Components
+    DotnetCodePreview,
+    DependencyInjectionVisualizer,
+    MiddlewarePipelineSimulator,
+    EntityFrameworkVisualizer,
+    DotnetApiEndpointBuilder,
+    SolidPrincipleDemo,
 
     // Enhanced HTML elements with proper styling
     h1: ({ children, ...props }) => (

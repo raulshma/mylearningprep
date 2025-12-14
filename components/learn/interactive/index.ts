@@ -64,6 +64,14 @@ import { ServerClientBoundaryVisualizer as ServerClientBoundaryVisualizerBase } 
 import { ComponentTypeSelector as ComponentTypeSelectorBase } from './react/ComponentTypeSelector';
 import { ServerDataFlowDiagram as ServerDataFlowDiagramBase } from './react/ServerDataFlowDiagram';
 
+// .NET components
+import { DotnetCodePreview as DotnetCodePreviewBase } from './dotnet/DotnetCodePreview';
+import { DependencyInjectionVisualizer as DependencyInjectionVisualizerBase } from './dotnet/DependencyInjectionVisualizer';
+import { MiddlewarePipelineSimulator as MiddlewarePipelineSimulatorBase } from './dotnet/MiddlewarePipelineSimulator';
+import { EntityFrameworkVisualizer as EntityFrameworkVisualizerBase } from './dotnet/EntityFrameworkVisualizer';
+import { ApiEndpointBuilder as ApiEndpointBuilderBase } from './dotnet/ApiEndpointBuilder';
+import { SolidPrincipleDemo as SolidPrincipleDemoBase } from './dotnet/SolidPrincipleDemo';
+
 // Wrap all interactive components with error boundaries
 export const HostingTypeSelector = withErrorBoundary(HostingTypeSelectorBase, 'HostingTypeSelector');
 export const ServerArchitectureDiagram = withErrorBoundary(ServerArchitectureDiagramBase, 'ServerArchitectureDiagram');
@@ -119,6 +127,14 @@ export const ServerClientBoundaryVisualizer = withErrorBoundary(ServerClientBoun
 export const ComponentTypeSelector = withErrorBoundary(ComponentTypeSelectorBase, 'ComponentTypeSelector');
 export const ServerDataFlowDiagram = withErrorBoundary(ServerDataFlowDiagramBase, 'ServerDataFlowDiagram');
 
+// .NET components
+export const DotnetCodePreview = withErrorBoundary(DotnetCodePreviewBase, 'DotnetCodePreview');
+export const DependencyInjectionVisualizer = withErrorBoundary(DependencyInjectionVisualizerBase, 'DependencyInjectionVisualizer');
+export const MiddlewarePipelineSimulator = withErrorBoundary(MiddlewarePipelineSimulatorBase, 'MiddlewarePipelineSimulator');
+export const EntityFrameworkVisualizer = withErrorBoundary(EntityFrameworkVisualizerBase, 'EntityFrameworkVisualizer');
+export const ApiEndpointBuilder = withErrorBoundary(ApiEndpointBuilderBase, 'ApiEndpointBuilder');
+export const SolidPrincipleDemo = withErrorBoundary(SolidPrincipleDemoBase, 'SolidPrincipleDemo');
+
 // Re-export types and utilities
 export type { HostingType, HostingTypeInfo } from './hosting/HostingTypeSelector';
 export type { DiagramType } from './hosting/ServerArchitectureDiagram';
@@ -161,3 +177,11 @@ export type { RouteMatcherProps, RoutePattern, MatchResult } from './react/Route
 export type { ServerClientBoundaryVisualizerProps, ServerClientComponent } from './react/ServerClientBoundaryVisualizer';
 export type { ComponentTypeSelectorProps, ComponentScenario } from './react/ComponentTypeSelector';
 export type { ServerDataFlowDiagramProps } from './react/ServerDataFlowDiagram';
+
+// .NET component types
+export type { DotnetCodePreviewProps, CodeStep } from './dotnet/DotnetCodePreview';
+export type { DependencyInjectionVisualizerProps, ServiceLifetime, Service } from './dotnet/DependencyInjectionVisualizer';
+export type { MiddlewarePipelineSimulatorProps, MiddlewareItem } from './dotnet/MiddlewarePipelineSimulator';
+export type { EntityFrameworkVisualizerProps, EntityExample } from './dotnet/EntityFrameworkVisualizer';
+export type { ApiEndpointBuilderProps, ApiEndpoint, HttpMethod as DotnetHttpMethod } from './dotnet/ApiEndpointBuilder';
+export type { SolidPrincipleDemoProps, SolidPrinciple, CodeComparison } from './dotnet/SolidPrincipleDemo';

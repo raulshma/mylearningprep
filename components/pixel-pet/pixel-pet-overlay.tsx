@@ -3,16 +3,10 @@
 import * as React from "react";
 import { Canvas } from "@react-three/fiber";
 import { Center } from "@react-three/drei";
+import { motion, useMotionValue, useSpring, animate } from "framer-motion";
 
-import type { PixelPetPreferences } from "@/lib/db/schemas/user";
+import type { PixelPetPreferences, PixelPetPosition } from "@/lib/db/schemas/user";
 import { getPixelPetDefinition } from "@/lib/pixel-pet/registry";
-import {
-  advanceEdgeProgress,
-  findNearestEdgeTarget,
-  getPointOnEdge,
-  type Point,
-  type RectLike,
-} from "@/lib/pixel-pet/geometry";
 import { PixelPetModel } from "@/components/pixel-pet/pixel-pet-model";
 import { updatePixelPetPreferences } from "@/lib/actions/user";
 import { usePixelPetStore } from "@/hooks/use-pixel-pet";
@@ -22,14 +16,13 @@ interface PixelPetOverlayProps {
   plan: string;
 }
 
-const PET_SIZE = 96;
-// Tuned for a calmer "desktop companion" pace
-const WALK_SPEED_PX_PER_S = 20;
-const SNAP_THRESHOLD_PX = 44;
-const JUMP_CHECK_EVERY_MS = 900;
-const JUMP_DISTANCE_PX = 28;
-const JUMP_DURATION_MS = 420;
-const EDGE_INSET_PX = 10;
+const BASE_PET_SIZE = 96;
+const WALK_SPEED = 15; // pixels per second
+const MIN_REST_TIME = 3000; // ms
+const MAX_REST_TIME = 8000; // ms
+const MIN_WALK_DISTANCE = 50; // px
+const MAX_WALK_DISTANCE = 200; // px
+const SCREEN_PADDING = 50; // px from edges
 
 const DEFAULT_PREFS: PixelPetPreferences = {
   schemaVersion: 1,
@@ -39,6 +32,8 @@ const DEFAULT_PREFS: PixelPetPreferences = {
   edge: "bottom",
   progress: 0.5,
   offset: { x: 0, y: 0 },
+  size: 1,
+  position: { x: 100, y: 100 },
 };
 
 function prefersReducedMotion(): boolean {
@@ -46,45 +41,30 @@ function prefersReducedMotion(): boolean {
   return window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
 }
 
-function rectFromDomRect(r: DOMRect): RectLike {
+function randomBetween(min: number, max: number): number {
+  return Math.random() * (max - min) + min;
+}
+
+function clampToScreen(x: number, y: number, petSize: number): PixelPetPosition {
+  if (typeof window === "undefined") return { x, y };
+  
+  const halfSize = petSize / 2;
   return {
-    left: r.left,
-    top: r.top,
-    right: r.right,
-    bottom: r.bottom,
-    width: r.width,
-    height: r.height,
+    x: Math.max(SCREEN_PADDING, Math.min(window.innerWidth - SCREEN_PADDING - halfSize, x)),
+    y: Math.max(SCREEN_PADDING, Math.min(window.innerHeight - SCREEN_PADDING - halfSize, y)),
   };
 }
 
-function clampRectToViewport(rect: RectLike): RectLike {
-  if (typeof window === "undefined") return rect;
-
-  const left = Math.max(0, rect.left);
-  const top = Math.max(0, rect.top);
-  const right = Math.min(window.innerWidth, rect.right);
-  const bottom = Math.min(window.innerHeight, rect.bottom);
-  const width = Math.max(0, right - left);
-  const height = Math.max(0, bottom - top);
-
-  return { left, top, right, bottom, width, height };
-}
-
-function applyEdgeInset(point: Point, rect: RectLike, edge: PixelPetPreferences["edge"]): Point {
-  switch (edge) {
-    case "top":
-      return { x: point.x, y: Math.min(rect.bottom, point.y + EDGE_INSET_PX) };
-    case "bottom":
-      return { x: point.x, y: Math.max(rect.top, point.y - EDGE_INSET_PX) };
-    case "left":
-      return { x: Math.min(rect.right, point.x + EDGE_INSET_PX), y: point.y };
-    case "right":
-      return { x: Math.max(rect.left, point.x - EDGE_INSET_PX), y: point.y };
-  }
-}
-
-function nowMs() {
-  return typeof performance !== "undefined" ? performance.now() : Date.now();
+function getRandomTarget(currentX: number, currentY: number, petSize: number): PixelPetPosition {
+  if (typeof window === "undefined") return { x: currentX, y: currentY };
+  
+  const angle = Math.random() * Math.PI * 2;
+  const distance = randomBetween(MIN_WALK_DISTANCE, MAX_WALK_DISTANCE);
+  
+  const targetX = currentX + Math.cos(angle) * distance;
+  const targetY = currentY + Math.sin(angle) * distance;
+  
+  return clampToScreen(targetX, targetY, petSize);
 }
 
 export function PixelPetOverlay({ initialPreferences, plan }: PixelPetOverlayProps) {
@@ -92,289 +72,188 @@ export function PixelPetOverlay({ initialPreferences, plan }: PixelPetOverlayPro
 
   const hydrate = usePixelPetStore((s) => s.hydrate);
   const prefs = usePixelPetStore((s) => s.prefs);
-  const setPlacement = usePixelPetStore((s) => s.setPlacement);
+  const currentPos = usePixelPetStore((s) => s.currentPos);
+  const petState = usePixelPetStore((s) => s.petState);
+  const direction = usePixelPetStore((s) => s.direction);
+  const setCurrentPos = usePixelPetStore((s) => s.setCurrentPos);
+  const setPetState = usePixelPetStore((s) => s.setPetState);
+  const setDirection = usePixelPetStore((s) => s.setDirection);
+  const setPosition = usePixelPetStore((s) => s.setPosition);
 
-  // Hydrate on mount and when server-provided preferences change
+  const enabled = isProPlus && prefs.enabled;
+  const sizeMultiplier = prefs.size ?? 1;
+  const petSize = BASE_PET_SIZE * sizeMultiplier;
+
+  // Motion values for smooth animation
+  const x = useMotionValue(currentPos.x);
+  const y = useMotionValue(currentPos.y);
+  
+  // Spring config for smooth following
+  const springX = useSpring(x, { stiffness: 300, damping: 30 });
+  const springY = useSpring(y, { stiffness: 300, damping: 30 });
+
+  const isDragging = React.useRef(false);
+  const animationRef = React.useRef<ReturnType<typeof animate> | null>(null);
+  const [cursorStyle, setCursorStyle] = React.useState<"grab" | "grabbing">("grab");
+
+  // Hydrate on mount
   React.useEffect(() => {
     hydrate(initialPreferences ?? DEFAULT_PREFS);
   }, [hydrate, initialPreferences]);
 
-  const enabled = isProPlus && prefs.enabled;
-
-  const [pos, setPos] = React.useState<Point>({ x: -9999, y: -9999 });
-  const containersRef = React.useRef<Array<{ id: string; rect: RectLike }>>([]);
-
-  const dragRef = React.useRef<
-    | {
-        pointerId: number;
-        dx: number;
-        dy: number;
-        dragging: boolean;
-      }
-    | null
-  >(null);
-
-  const jumpRef = React.useRef<
-    | {
-        start: Point;
-        end: Point;
-        startAt: number;
-        target: { containerId: string; edge: PixelPetPreferences["edge"]; progress: number };
-      }
-    | null
-  >(null);
-
-  const lastTickRef = React.useRef<number | null>(null);
-  const lastJumpCheckRef = React.useRef<number>(0);
-
-  const selectedDef = React.useMemo(
-    () => getPixelPetDefinition(prefs.selectedId),
-    [prefs.selectedId]
-  );
-
-  const collectContainers = React.useCallback(() => {
-    const nodes = Array.from(
-      document.querySelectorAll<HTMLElement>("[data-pet-edge-container]")
+  // Initialize position on screen
+  React.useEffect(() => {
+    if (!enabled || typeof window === "undefined") return;
+    
+    const initialPos = clampToScreen(
+      prefs.position?.x ?? window.innerWidth / 2,
+      prefs.position?.y ?? window.innerHeight - 150,
+      petSize
     );
+    
+    x.set(initialPos.x);
+    y.set(initialPos.y);
+    setCurrentPos(initialPos);
+  }, [enabled, prefs.position?.x, prefs.position?.y, petSize, x, y, setCurrentPos]);
 
-    const containers = nodes
-      .map((el, idx) => {
-        const id =
-          el.getAttribute("data-pet-edge-id") ||
-          el.getAttribute("data-pet-surface") ||
-          `container-${idx}`;
-        const rect = el.getBoundingClientRect();
-        // Clamp to viewport so scrollable/oversized containers don't push the pet off-screen
-        return { id, rect: clampRectToViewport(rectFromDomRect(rect)) };
-      })
-      // Filter out degenerate rects
-      .filter((c) => c.rect.width > 20 && c.rect.height > 20);
-
-    containersRef.current = containers;
-  }, []);
-
+  // Main behavior loop: walk -> rest -> walk
   React.useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || prefersReducedMotion()) return;
 
-    collectContainers();
+    let timeoutId: NodeJS.Timeout;
+    let mounted = true;
 
-    const ro = new ResizeObserver(() => collectContainers());
-    for (const el of document.querySelectorAll<HTMLElement>("[data-pet-edge-container]")) {
-      ro.observe(el);
-    }
+    const startWalking = () => {
+      if (!mounted || isDragging.current) return;
+      
+      const currentX = x.get();
+      const currentY = y.get();
+      const target = getRandomTarget(currentX, currentY, petSize);
+      
+      // Set direction based on movement
+      const newDirection = target.x > currentX ? 1 : -1;
+      setDirection(newDirection);
+      setPetState("walking");
 
-    const onScrollOrResize = () => collectContainers();
-    window.addEventListener("resize", onScrollOrResize);
-    window.addEventListener("scroll", onScrollOrResize, true);
+      // Calculate duration based on distance
+      const distance = Math.sqrt(
+        Math.pow(target.x - currentX, 2) + Math.pow(target.y - currentY, 2)
+      );
+      const duration = distance / WALK_SPEED;
 
-    return () => {
-      ro.disconnect();
-      window.removeEventListener("resize", onScrollOrResize);
-      window.removeEventListener("scroll", onScrollOrResize, true);
-    };
-  }, [enabled, collectContainers]);
-
-  React.useEffect(() => {
-    if (!enabled) return;
-
-    const reduced = prefersReducedMotion();
-
-    const tick = () => {
-      const t = nowMs();
-      const last = lastTickRef.current;
-      lastTickRef.current = t;
-      const dtMs = last == null ? 16 : t - last;
-      const dtS = Math.min(0.05, Math.max(0, dtMs / 1000));
-
-      // Jump animation
-      const jump = jumpRef.current;
-      if (jump) {
-        const u = Math.min(1, (t - jump.startAt) / JUMP_DURATION_MS);
-        // Simple arc: ease + sine bump
-        const ease = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
-        const arc = Math.sin(Math.PI * u) * 18;
-        const x = jump.start.x + (jump.end.x - jump.start.x) * ease;
-        const y = jump.start.y + (jump.end.y - jump.start.y) * ease - arc;
-        setPos({ x, y });
-
-        if (u >= 1) {
-          jumpRef.current = null;
-          setPlacement({
-            surfaceId: jump.target.containerId,
-            edge: jump.target.edge,
-            progress: jump.target.progress,
-          });
-        }
-
-        requestAnimationFrame(tick);
-        return;
+      // Cancel any existing animation
+      if (animationRef.current) {
+        animationRef.current.stop();
       }
 
-      // Dragging
-      if (dragRef.current?.dragging) {
-        requestAnimationFrame(tick);
-        return;
-      }
-
-      const containers = containersRef.current;
-      const active =
-        containers.find((c) => c.id === prefs.surfaceId) ??
-        containers.find((c) => c.id === "app-shell") ??
-        containers[0];
-
-      if (!active) {
-        requestAnimationFrame(tick);
-        return;
-      }
-
-      // Compute updated prefs (walk)
-      const nextWalk = reduced
-        ? { edge: prefs.edge, progress: prefs.progress }
-        : advanceEdgeProgress(
-            active.rect,
-            prefs.edge,
-            prefs.progress,
-            WALK_SPEED_PX_PER_S * dtS
-          );
-
-      if (!reduced && (nextWalk.edge !== prefs.edge || nextWalk.progress !== prefs.progress)) {
-        // Update in-memory placement (do not persist every tick)
-        setPlacement({
-          surfaceId: active.id,
-          edge: nextWalk.edge,
-          progress: nextWalk.progress,
-        });
-      }
-
-      // Current position
-      const p0 = getPointOnEdge(active.rect, nextWalk.edge, nextWalk.progress);
-      const pinset = applyEdgeInset(p0, active.rect, nextWalk.edge);
-      const pFinal = {
-        x: pinset.x + (prefs.offset?.x ?? 0),
-        y: pinset.y + (prefs.offset?.y ?? 0),
-      };
-      setPos(pFinal);
-
-      // Jump check (keep it light)
-      if (!reduced && t - lastJumpCheckRef.current > JUMP_CHECK_EVERY_MS) {
-        lastJumpCheckRef.current = t;
-
-        const nearestOther = findNearestEdgeTarget(
-          containers.filter((c) => c.id !== active.id),
-          pFinal
-        );
-
-        if (
-          nearestOther.distance < JUMP_DISTANCE_PX &&
-          nearestOther.containerId !== active.id
-        ) {
-          const targetContainer = containers.find((c) => c.id === nearestOther.containerId);
-          if (targetContainer) {
-            const rawTarget = getPointOnEdge(
-              targetContainer.rect,
-              nearestOther.edge,
-              nearestOther.progress
-            );
-            const targetInset = applyEdgeInset(rawTarget, targetContainer.rect, nearestOther.edge);
-
-            jumpRef.current = {
-              start: pFinal,
-              end: {
-                x: targetInset.x + (prefs.offset?.x ?? 0),
-                y: targetInset.y + (prefs.offset?.y ?? 0),
-              },
-              startAt: t,
-              target: {
-                containerId: nearestOther.containerId,
-                edge: nearestOther.edge,
-                progress: nearestOther.progress,
-              },
-            };
-          }
-        }
-      }
-
-      requestAnimationFrame(tick);
-    };
-
-    const raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [enabled, prefs.edge, prefs.progress, prefs.offset?.x, prefs.offset?.y, prefs.surfaceId, setPlacement]);
-
-  const handlePointerDown = (e: React.PointerEvent) => {
-    if (!enabled) return;
-    dragRef.current = {
-      pointerId: e.pointerId,
-      dx: pos.x - e.clientX,
-      dy: pos.y - e.clientY,
-      dragging: true,
-    };
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-  };
-
-  const handlePointerMove = (e: React.PointerEvent) => {
-    const drag = dragRef.current;
-    if (!drag?.dragging || drag.pointerId !== e.pointerId) return;
-
-    const x = e.clientX + drag.dx;
-    const y = e.clientY + drag.dy;
-    setPos({ x, y });
-  };
-
-  const handlePointerUp = async (e: React.PointerEvent) => {
-    const drag = dragRef.current;
-    if (!drag?.dragging || drag.pointerId !== e.pointerId) return;
-
-    dragRef.current = null;
-
-    const containers = containersRef.current;
-    const nearest = findNearestEdgeTarget(containers, { x: e.clientX + drag.dx, y: e.clientY + drag.dy });
-
-    if (nearest.distance <= SNAP_THRESHOLD_PX) {
-      setPlacement({
-        surfaceId: nearest.containerId,
-        edge: nearest.edge,
-        progress: nearest.progress,
+      // Animate to target
+      animationRef.current = animate(x, target.x, {
+        duration,
+        ease: "linear",
+        onUpdate: (v) => setCurrentPos({ x: v, y: y.get() }),
       });
 
-      // Persist placement (one write on drop)
-      try {
-        await updatePixelPetPreferences({
-          surfaceId: nearest.containerId,
-          edge: nearest.edge,
-          progress: nearest.progress,
-        });
-      } catch (error) {
-        console.error("Failed to persist pixel pet placement:", error);
+      animate(y, target.y, {
+        duration,
+        ease: "linear",
+        onUpdate: (v) => setCurrentPos({ x: x.get(), y: v }),
+        onComplete: () => {
+          if (!mounted || isDragging.current) return;
+          startResting();
+        },
+      });
+    };
+
+    const startResting = () => {
+      if (!mounted || isDragging.current) return;
+      
+      setPetState("resting");
+      const restTime = randomBetween(MIN_REST_TIME, MAX_REST_TIME);
+      
+      timeoutId = setTimeout(() => {
+        if (mounted && !isDragging.current) {
+          startWalking();
+        }
+      }, restTime);
+    };
+
+    // Start the behavior loop after a short delay
+    timeoutId = setTimeout(startWalking, 1000);
+
+    return () => {
+      mounted = false;
+      clearTimeout(timeoutId);
+      if (animationRef.current) {
+        animationRef.current.stop();
       }
+    };
+  }, [enabled, petSize, x, y, setCurrentPos, setPetState, setDirection]);
+
+  // Drag handlers
+  const handleDragStart = () => {
+    isDragging.current = true;
+    setPetState("dragging");
+    setCursorStyle("grabbing");
+    
+    // Stop any ongoing animation
+    if (animationRef.current) {
+      animationRef.current.stop();
+    }
+  };
+
+  const handleDrag = (_: unknown, info: { point: { x: number; y: number } }) => {
+    const clamped = clampToScreen(info.point.x, info.point.y, petSize);
+    setCurrentPos(clamped);
+  };
+
+  const handleDragEnd = async () => {
+    isDragging.current = false;
+    setCursorStyle("grab");
+    
+    const finalPos = { x: x.get(), y: y.get() };
+    const clamped = clampToScreen(finalPos.x, finalPos.y, petSize);
+    
+    setPosition(clamped);
+    setCurrentPos(clamped);
+    setPetState("resting");
+
+    // Persist position
+    try {
+      await updatePixelPetPreferences({ position: clamped });
+    } catch (error) {
+      console.error("Failed to persist pixel pet position:", error);
     }
   };
 
   if (!enabled) return null;
 
-  const left = pos.x - PET_SIZE / 2;
-  const top = pos.y - PET_SIZE / 2;
+  const selectedDef = getPixelPetDefinition(prefs.selectedId);
 
   return (
-    <div
-      aria-hidden
-      className="fixed inset-0 z-[90] pointer-events-none"
-    >
-      <div
+    <div aria-hidden className="fixed inset-0 z-[90] pointer-events-none">
+      <motion.div
         className="absolute will-change-transform"
         style={{
-          width: PET_SIZE,
-          height: PET_SIZE,
-          transform: `translate3d(${left}px, ${top}px, 0)`,
+          width: petSize,
+          height: petSize,
+          x: springX,
+          y: springY,
+          translateX: "-50%",
+          translateY: "-50%",
           pointerEvents: "auto",
-          cursor: "grab",
+          cursor: cursorStyle,
         }}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
+        drag
+        dragMomentum={false}
+        dragElastic={0}
+        onDragStart={handleDragStart}
+        onDrag={handleDrag}
+        onDragEnd={handleDragEnd}
+        whileDrag={{ scale: 1.1 }}
+        whileHover={{ scale: 1.05 }}
       >
         <Canvas
-          key={selectedDef.fileName}
+          key={`${selectedDef.fileName}-${sizeMultiplier}`}
           dpr={[1, 1.5]}
           frameloop="demand"
           gl={{ antialias: true, alpha: true, powerPreference: "low-power" }}
@@ -385,7 +264,10 @@ export function PixelPetOverlay({ initialPreferences, plan }: PixelPetOverlayPro
           <directionalLight position={[3, 6, 5]} intensity={0.7} />
           <React.Suspense fallback={null}>
             <Center>
-              <group position={[0, -0.6, 0]}>
+              <group 
+                position={[0, -0.6, 0]} 
+                scale={[direction, 1, 1]}
+              >
                 <PixelPetModel
                   fileName={selectedDef.fileName}
                   modelScale={selectedDef.modelScale}
@@ -394,7 +276,14 @@ export function PixelPetOverlay({ initialPreferences, plan }: PixelPetOverlayPro
             </Center>
           </React.Suspense>
         </Canvas>
-      </div>
+        
+        {/* State indicator (subtle) */}
+        {petState === "resting" && (
+          <div className="absolute -top-2 left-1/2 -translate-x-1/2 text-xs opacity-60">
+            💤
+          </div>
+        )}
+      </motion.div>
     </div>
   );
 }

@@ -58,6 +58,11 @@ export const PixelPetOffsetSchema = z.object({
   y: z.number().int().min(-200).max(200).default(0),
 });
 
+export const PixelPetPositionSchema = z.object({
+  x: z.number().default(100),
+  y: z.number().default(100),
+});
+
 export const PixelPetPreferencesSchema = z.object({
   schemaVersion: z.number().int().min(1).default(1),
   enabled: z.boolean().default(false),
@@ -69,6 +74,10 @@ export const PixelPetPreferencesSchema = z.object({
   progress: z.number().min(0).max(1).default(0.5),
   /** Small user-adjustable pixel offset applied after snapping */
   offset: PixelPetOffsetSchema.default({ x: 0, y: 0 }),
+  /** Pet size multiplier (0.3 to 3.0) */
+  size: z.number().min(0.3).max(3).default(1),
+  /** Current position on screen */
+  position: PixelPetPositionSchema.default({ x: 100, y: 100 }),
 });
 
 // Gamification Schemas
@@ -147,4 +156,5 @@ export type Badge = z.infer<typeof BadgeSchema>;
 export type PixelPetId = z.infer<typeof PixelPetIdSchema>;
 export type PixelPetEdge = z.infer<typeof PixelPetEdgeSchema>;
 export type PixelPetOffset = z.infer<typeof PixelPetOffsetSchema>;
+export type PixelPetPosition = z.infer<typeof PixelPetPositionSchema>;
 export type PixelPetPreferences = z.infer<typeof PixelPetPreferencesSchema>;

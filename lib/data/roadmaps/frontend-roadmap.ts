@@ -10,9 +10,9 @@ import type { CreateRoadmap } from '@/lib/db/schemas/roadmap';
 export const frontendRoadmap: CreateRoadmap = {
   slug: 'frontend',
   title: 'Front-end Developer',
-  description: 'Step by step guide to becoming a modern frontend developer in 2024. Learn HTML, CSS, JavaScript, and modern frameworks.',
+  description: 'Step by step guide to becoming a modern frontend developer. Learn HTML, CSS, JavaScript, and modern frameworks.',
   category: 'frontend',
-  version: '2024.1',
+  version: '2025.1',
   estimatedHours: 200,
   difficulty: 5,
   prerequisites: [],
@@ -298,7 +298,7 @@ export const frontendRoadmap: CreateRoadmap = {
       resources: [
         { title: 'Vue.js Official Documentation', url: 'https://vuejs.org/', type: 'documentation', description: 'Official Vue 3 documentation with Composition API guide' },
         { title: 'Vue Mastery', url: 'https://www.vuemastery.com/', type: 'course', description: 'Vue.js courses including Real World Vue 3 (Composition API)' },
-        { title: 'Vue School', url: 'https://vueschool.io/', type: 'course', description: 'Vue.js Masterclass updated for 2024 with Pinia and TypeScript' },
+        { title: 'Vue School', url: 'https://vueschool.io/', type: 'course', description: 'Vue.js Masterclass updated for 2025 with Pinia and TypeScript' },
         { title: 'Udemy: Vue - Complete Guide', url: 'https://www.udemy.com/course/vuejs-2-the-complete-guide/', type: 'course', description: 'Vue 3 from basics including Composition API by Maximilian (paid)' },
         { title: 'Vue JS 3 Tutorial (Net Ninja)', url: 'https://www.youtube.com/playlist?list=PL4cUxeGkcC9hYYGbV60Vq3IXYNfDk8At1', type: 'video', description: 'Free Vue 3 tutorial series on YouTube' },
         { title: 'Zero to Mastery: Complete Vue Developer', url: 'https://zerotomastery.io/courses/learn-vue-js/', type: 'course', description: 'Project-based Vue course with Composition API and Pinia (paid)' },

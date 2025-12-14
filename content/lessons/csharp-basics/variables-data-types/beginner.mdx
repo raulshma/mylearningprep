@@ -1,0 +1,100 @@
+# Variables & Data Types in C#
+
+Imagine you're organizing a toy box. Each toy needs a labeled container - a box for blocks, a box for cars, and a box for dolls. In C#, **variables** are like those labeled containers, and **data types** tell us what kind of toy (data) can go inside!
+
+## What is a Variable?
+
+A variable is simply a container with a name that holds some information. Just like you might label a jar "cookies" to remember what's inside, we name our variables to remember what data they store.
+
+> **Think of it this way:**
+>
+> A variable is like a labeled box in your room. The label is the variable name, and whatever's inside is the value!
+
+<DotnetCodePreview
+  title="Your First Variable"
+  code={`// Creating a variable is like labeling a box
+string petName = "Fluffy";
+int petAge = 3;
+bool isHappy = true;`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "Creating a text variable",
+      explanation: "string means this box holds text (words)",
+      variables: { petName: "\"Fluffy\"" }
+    },
+    {
+      lineNumbers: [3],
+      highlight: "Creating a number variable",
+      explanation: "int means this box holds whole numbers",
+      variables: { petName: "\"Fluffy\"", petAge: "3" }
+    },
+    {
+      lineNumbers: [4],
+      highlight: "Creating a true/false variable",
+      explanation: "bool means this box holds true or false",
+      variables: { petName: "\"Fluffy\"", petAge: "3", isHappy: "true" }
+    }
+  ]}
+/>
+
+## The Most Common Data Types
+
+Here are the data types you'll use most often, explained with simple analogies:
+
+| Type | What it Holds | Example | Analogy |
+|:-----|:--------------|:--------|:--------|
+| `int` | Whole numbers | `42`, `-7` | Counting apples |
+| `string` | Text/words | `"Hello"` | A sentence in a book |
+| `bool` | True or false | `true`, `false` | A light switch (on/off) |
+| `double` | Decimal numbers | `3.14`, `99.99` | Measuring ingredients |
+
+## Naming Your Variables
+
+Just like naming a pet, there are some rules for naming variables:
+
+- ✅ Start with a letter (like `score` or `playerName`)
+- ✅ Can include numbers after the first letter (`player1`)
+- ✅ Use camelCase for readability (`totalScore`, not `totalscore`)
+- ❌ No spaces allowed (`player name` is wrong)
+- ❌ Can't start with a number (`1stPlace` is wrong)
+
+## Let's Practice!
+
+<DotnetCodePreview
+  title="Variable Playground"
+  code={`// Create variables for a simple game
+string playerName = "Alex";
+int score = 100;
+double health = 99.5;
+bool isAlive = true;
+
+// Use the variables
+Console.WriteLine("Player: " + playerName);
+Console.WriteLine("Score: " + score);`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5],
+      highlight: "Setting up game data",
+      explanation: "We create four boxes to hold different game information",
+      variables: { playerName: "\"Alex\"", score: "100", health: "99.5", isAlive: "true" }
+    },
+    {
+      lineNumbers: [8, 9],
+      highlight: "Using our variables",
+      explanation: "We can read what's in our boxes and display it",
+      output: "Player: Alex\nScore: 100"
+    }
+  ]}
+/>
+
+## Quick Summary
+
+- **Variables** = labeled containers for storing data
+- **Data types** = rules about what kind of data can go in the container
+- **int** = whole numbers
+- **string** = text
+- **bool** = true/false
+- **double** = decimal numbers
+
+<ProgressCheckpoint section="intro-variables" xpReward={25} />

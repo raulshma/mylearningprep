@@ -18,6 +18,7 @@ import type {
   PixelPetId,
   PixelPetEdge,
   PixelPetOffset,
+  PixelPetPosition,
 } from "@/lib/db/schemas/user";
 import { GENERATION_LIMITS, PixelPetPreferencesSchema } from "@/lib/db/schemas/user";
 import type { AIProviderType } from "@/lib/ai/types";
@@ -322,6 +323,8 @@ export interface UpdatePixelPetInput {
   edge?: PixelPetEdge;
   progress?: number;
   offset?: Partial<PixelPetOffset>;
+  size?: number;
+  position?: PixelPetPosition;
 }
 
 /**
@@ -370,6 +373,8 @@ export async function updatePixelPetPreferences(
       ...(input.edge !== undefined ? { edge: input.edge } : {}),
       ...(input.progress !== undefined ? { progress: input.progress } : {}),
       ...(input.offset !== undefined ? { offset: input.offset } : {}),
+      ...(input.size !== undefined ? { size: input.size } : {}),
+      ...(input.position !== undefined ? { position: input.position } : {}),
     };
 
     const updatedUser = await userRepository.updatePixelPetPreferences(clerkId, update);

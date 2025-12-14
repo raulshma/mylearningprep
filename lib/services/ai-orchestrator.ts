@@ -564,7 +564,7 @@ function createOrchestratorTools(
         if (isSearchEnabled()) {
           const query = `${technologies.join(
             " ",
-          )} technology trends 2024 job market demand`;
+          )} technology trends 2025 job market demand`;
           const results = await searchService.query(query, 5);
           searchData = results.results
             .map((r) => `${r.title}: ${r.snippet}`)

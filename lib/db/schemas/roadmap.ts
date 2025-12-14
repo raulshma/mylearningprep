@@ -10,6 +10,7 @@ export const RoadmapCategorySchema = z.enum([
   'data-science',
   'system-design',
   'full-stack',
+  'dotnet',
 ]);
 
 // Node types for visual differentiation
