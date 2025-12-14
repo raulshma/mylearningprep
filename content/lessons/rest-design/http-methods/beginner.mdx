@@ -1,0 +1,311 @@
+# HTTP Methods & Status Codes: The Language of the Web
+
+When computers talk to each other on the web, they use a specific language. Just like you need verbs to communicate ("get," "create," "delete"), web APIs use **HTTP Methods**. And just like you need feedback ("done!", "error!"), APIs use **Status Codes**.
+
+Let's learn this language together!
+
+## The HTTP Methods: Your Action Verbs 🎬
+
+Think of HTTP methods as commands you give to a librarian:
+
+### 1. GET - "Please Show Me" 📖
+
+**What it does:** Retrieves information without changing anything.
+
+**Real-world analogy:** 
+- Looking at a book in the library (you don't take it home)
+- Checking your bank balance (just viewing, not withdrawing)
+- Reading a menu at a restaurant
+
+**Example:**
+```
+GET /api/users/123
+→ "Show me information about user 123"
+```
+
+**Key rule:** GET should NEVER change data. It's read-only!
+
+<ProgressCheckpoint section="get-method" xpReward={5} />
+
+### 2. POST - "Please Add This" ➕
+
+**What it does:** Creates something new.
+
+**Real-world analogy:**
+- Submitting a new library card application
+- Posting a new photo on Instagram
+- Placing an order at a restaurant
+
+**Example:**
+```
+POST /api/users
+Body: { "name": "John", "email": "john@example.com" }
+→ "Create a new user with this information"
+```
+
+**Key rule:** POST creates new things. Each time you POST, you create another one!
+
+<ProgressCheckpoint section="post-method" xpReward={5} />
+
+### 3. PUT - "Replace Everything" 🔄
+
+**What it does:** Replaces an entire resource with new data.
+
+**Real-world analogy:**
+- Replacing your entire profile information
+- Rewriting a document completely
+- Replacing all ingredients in a recipe
+
+**Example:**
+```
+PUT /api/users/123
+Body: { "name": "John Doe", "email": "john@example.com", "age": 30 }
+→ "Replace ALL information for user 123 with this"
+```
+
+**Key rule:** You must send the COMPLETE object. Missing fields get deleted!
+
+<ProgressCheckpoint section="put-method" xpReward={5} />
+
+### 4. DELETE - "Remove This" 🗑️
+
+**What it does:** Removes a resource.
+
+**Real-world analogy:**
+- Canceling your library card
+- Deleting a photo from your phone
+- Canceling an order
+
+**Example:**
+```
+DELETE /api/users/123
+→ "Remove user 123 from the system"
+```
+
+**Key rule:** Once deleted, it's gone! (Usually)
+
+<ProgressCheckpoint section="delete-method" xpReward={5} />
+
+## Quick Comparison Table 📊
+
+| Method | Action | Example | Changes Data? |
+|:-------|:-------|:--------|:--------------|
+| **GET** | Read/View | "Show me user 123" | ❌ No |
+| **POST** | Create | "Add a new user" | ✅ Yes |
+| **PUT** | Replace | "Replace user 123's info" | ✅ Yes |
+| **DELETE** | Remove | "Delete user 123" | ✅ Yes |
+
+<InfoBox type="tip">
+  **Memory trick:** Think of CRUD operations!
+  - **C**reate = POST
+  - **R**ead = GET
+  - **U**pdate = PUT
+  - **D**elete = DELETE
+</InfoBox>
+
+<ProgressCheckpoint section="methods-overview" xpReward={10} />
+
+## Status Codes: The Server's Response 🚦
+
+When you make a request, the server responds with a 3-digit number. Think of them like traffic lights telling you what happened!
+
+### 🟢 2xx Series: Success! (Green Light)
+
+Everything worked perfectly!
+
+**200 OK** - "Here's what you asked for!"
+```
+GET /api/users/123
+← 200 OK
+{ "id": 123, "name": "John" }
+```
+
+**201 Created** - "I successfully created the new thing!"
+```
+POST /api/users
+← 201 Created
+{ "id": 456, "name": "Jane" }
+```
+
+**204 No Content** - "Done! But there's nothing to show you."
+```
+DELETE /api/users/123
+← 204 No Content
+(No body - just success)
+```
+
+<ProgressCheckpoint section="2xx-codes" xpReward={5} />
+
+### 🟡 4xx Series: You Made a Mistake (Yellow Light)
+
+These mean **YOU** (the client/browser/app) did something wrong.
+
+**400 Bad Request** - "I don't understand what you're asking for."
+```
+POST /api/users
+Body: { "name": "" }  ← Empty name!
+← 400 Bad Request
+{ "error": "Name is required" }
+```
+
+**401 Unauthorized** - "Who are you? Please log in first!"
+```
+GET /api/account/settings
+(No login token provided)
+← 401 Unauthorized
+{ "error": "Please log in" }
+```
+
+**403 Forbidden** - "I know who you are, but you can't do that!"
+```
+DELETE /api/users/123
+(Regular user trying to delete someone)
+← 403 Forbidden
+{ "error": "Only admins can delete users" }
+```
+
+**404 Not Found** - "I can't find what you're looking for."
+```
+GET /api/users/99999
+← 404 Not Found
+{ "error": "User not found" }
+```
+
+<InfoBox type="warning">
+  **401 vs 403 - What's the difference?**
+  - **401:** "I don't know who you are" (not logged in)
+  - **403:** "I know who you are, but you're not allowed" (logged in but no permission)
+</InfoBox>
+
+<ProgressCheckpoint section="4xx-codes" xpReward={5} />
+
+### 🔴 5xx Series: Server Error (Red Light)
+
+These mean the **SERVER** messed up. Not your fault!
+
+**500 Internal Server Error** - "Something broke on our end. Sorry!"
+```
+GET /api/users/123
+← 500 Internal Server Error
+{ "error": "Database connection failed" }
+```
+
+**503 Service Unavailable** - "We're temporarily down. Try again later."
+```
+GET /api/users
+← 503 Service Unavailable
+{ "error": "Server is under maintenance" }
+```
+
+<InfoBox type="info">
+  When you see a 5xx error, it's usually not something you can fix. The server team needs to investigate!
+</InfoBox>
+
+<ProgressCheckpoint section="5xx-codes" xpReward={5} />
+
+## Status Code Cheat Sheet 📝
+
+| Code | Name | Meaning | When to Use |
+|:-----|:-----|:--------|:------------|
+| **200** | OK | Success | GET, PUT requests |
+| **201** | Created | New resource created | POST requests |
+| **204** | No Content | Success, no data to return | DELETE, PUT requests |
+| **400** | Bad Request | Invalid data sent | Validation errors |
+| **401** | Unauthorized | Not logged in | Missing auth token |
+| **403** | Forbidden | No permission | Insufficient privileges |
+| **404** | Not Found | Resource doesn't exist | Invalid ID |
+| **500** | Server Error | Server crashed | Bugs, database errors |
+
+## Real-World Example: Creating a User 👤
+
+Let's see how methods and status codes work together:
+
+**Scenario 1: Success**
+```
+POST /api/users
+Body: { "name": "Alice", "email": "alice@example.com" }
+
+← 201 Created
+{
+  "id": 789,
+  "name": "Alice",
+  "email": "alice@example.com"
+}
+```
+
+**Scenario 2: Validation Error**
+```
+POST /api/users
+Body: { "name": "", "email": "not-an-email" }
+
+← 400 Bad Request
+{
+  "errors": {
+    "name": "Name is required",
+    "email": "Invalid email format"
+  }
+}
+```
+
+**Scenario 3: Not Logged In**
+```
+POST /api/users
+(No authentication token)
+
+← 401 Unauthorized
+{
+  "error": "Please log in to create users"
+}
+```
+
+## Test Your Knowledge! 🎯
+
+<Quiz
+  question="You want to remove a user from the system. Which method should you use?"
+  options={[
+    "GET",
+    "POST",
+    "DELETE",
+    "REMOVE"
+  ]}
+  correctAnswer={2}
+  explanation="DELETE is the standard HTTP method for removing resources. REMOVE is not a real HTTP method!"
+/>
+
+<Quiz
+  question="You successfully created a new product. Which status code should the server return?"
+  options={[
+    "200 OK",
+    "201 Created",
+    "204 No Content",
+    "301 Moved"
+  ]}
+  correctAnswer={1}
+  explanation="201 Created is the correct status code for successful resource creation. It tells the client that a new resource was created."
+/>
+
+<Quiz
+  question="A user tries to access admin settings but they're not an admin. Which status code should you return?"
+  options={[
+    "401 Unauthorized",
+    "403 Forbidden",
+    "404 Not Found",
+    "400 Bad Request"
+  ]}
+  correctAnswer={1}
+  explanation="403 Forbidden is correct because the user is authenticated (we know who they are) but they don't have permission. 401 would be if they weren't logged in at all."
+/>
+
+<Quiz
+  question="Which HTTP method should NEVER change data on the server?"
+  options={[
+    "POST",
+    "GET",
+    "PUT",
+    "DELETE"
+  ]}
+  correctAnswer={1}
+  explanation="GET should always be read-only and never modify data. This allows GET requests to be cached safely and called multiple times without side effects."
+/>
+
+<ProgressCheckpoint section="methods-intro" xpReward={20} />

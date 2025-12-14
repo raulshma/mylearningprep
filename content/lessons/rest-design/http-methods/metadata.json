@@ -1,0 +1,15 @@
+{
+  "id": "http-methods",
+  "title": "HTTP Methods & Status Codes",
+  "description": "Master the verbs and language of the web.",
+  "milestone": "rest-design",
+  "order": 2,
+  "sections": ["methods-intro", "status-codes", "idempotency"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 10, "xpReward": 20 },
+    "intermediate": { "estimatedMinutes": 15, "xpReward": 30 },
+    "advanced": { "estimatedMinutes": 20, "xpReward": 50 }
+  },
+  "prerequisites": ["rest-principles"],
+  "tags": ["http", "rest", "api"]
+}

@@ -1,0 +1,272 @@
+# API Versioning: Don't Break Your Users' Apps!
+
+Imagine you release a popular video game. Millions of people are playing it. One day, you decide to "improve" the controls: the "X" button no longer makes you jump - now it quits the game!
+
+**Result:** 😡 Everyone gets angry, apps break, and users leave.
+
+This is exactly what happens when you change an API without versioning!
+
+## The API Contract 📜
+
+An API is a **contract** (promise) between you and everyone using it.
+
+**The Promise:**
+```
+"If you call GET /api/users/123, 
+I will return a user object with these fields:
+- id (number)
+- name (string)
+- email (string)"
+```
+
+**Breaking the Promise (Bad!):**
+```
+"Actually, I changed my mind. 
+Now 'name' is called 'fullName' 
+and I added a required 'phoneNumber' field."
+```
+
+**What Happens:**
+- Mobile apps crash (looking for 'name' field that doesn't exist)
+- Websites show errors
+- Integrations break
+- Users get angry
+- Your phone rings non-stop with complaints
+
+<InfoBox type="warning">
+  **Breaking Change:** Any change that makes existing client code stop working. Examples: renaming fields, removing endpoints, changing data types, adding required parameters.
+</InfoBox>
+
+<ProgressCheckpoint section="api-contract" xpReward={5} />
+
+## The Solution: Versioning 🎮
+
+Instead of changing the existing "game," you release a **sequel**!
+
+**Version 1 (The Original):**
+- "X" button jumps
+- People who like this can keep playing
+- Works exactly as promised
+
+**Version 2 (The Sequel):**
+- "A" button jumps (new controls!)
+- New players use this version
+- Old players can upgrade when ready
+
+**Both versions exist at the same time!**
+
+### In API Terms
+
+**Version 1 (Original API):**
+```
+GET /api/v1/users/123
+{
+  "id": 123,
+  "name": "John Doe",
+  "email": "john@example.com"
+}
+```
+
+**Version 2 (New API):**
+```
+GET /api/v2/users/123
+{
+  "id": 123,
+  "fullName": "John Doe",
+  "email": "john@example.com",
+  "phoneNumber": "+1234567890",
+  "createdAt": "2025-01-15T10:30:00Z"
+}
+```
+
+**Key Point:** Both work! Old apps use v1, new apps use v2. Nobody breaks!
+
+<ProgressCheckpoint section="versioning-solution" xpReward={5} />
+
+## How Versioning Looks in URLs 🌐
+
+The most common way to version APIs is to put the version number right in the URL:
+
+### Example 1: Twitter-style
+```
+https://api.twitter.com/1.1/statuses/home_timeline
+https://api.twitter.com/2/tweets
+```
+
+### Example 2: Stripe-style
+```
+https://api.stripe.com/v1/charges
+https://api.stripe.com/v1/customers
+```
+
+### Example 3: Your API
+```
+https://api.myapp.com/v1/users
+https://api.myapp.com/v1/products
+https://api.myapp.com/v2/users    ← New version!
+https://api.myapp.com/v2/products ← New version!
+```
+
+<InfoBox type="success">
+  **Why This Works:** Each version is a completely separate path. Old apps keep using `/v1/`, new apps use `/v2/`. No conflicts!
+</InfoBox>
+
+<ProgressCheckpoint section="url-versioning" xpReward={5} />
+
+## Real-World Example: Adding a Feature 🚀
+
+Let's say you're building a recipe API.
+
+**Version 1 (Initial Release):**
+```json
+GET /api/v1/recipes/42
+{
+  "id": 42,
+  "title": "Chocolate Cake",
+  "ingredients": ["flour", "sugar", "cocoa"],
+  "steps": ["Mix ingredients", "Bake at 350°F"]
+}
+```
+
+**Six months later, you want to add:**
+- Cooking time
+- Difficulty level
+- Nutritional information
+
+**Option A: Change v1 (BAD! 💥)**
+```json
+GET /api/v1/recipes/42
+{
+  "id": 42,
+  "title": "Chocolate Cake",
+  "cookingTime": 45,        ← NEW FIELD
+  "difficulty": "medium",   ← NEW FIELD
+  "nutrition": { ... }      ← NEW FIELD
+  ...
+}
+```
+**Problem:** Old apps don't expect these fields. Some might crash!
+
+**Option B: Create v2 (GOOD! ✅)**
+```json
+GET /api/v2/recipes/42
+{
+  "id": 42,
+  "title": "Chocolate Cake",
+  "cookingTime": 45,
+  "difficulty": "medium",
+  "nutrition": {
+    "calories": 350,
+    "protein": 5
+  },
+  "ingredients": ["flour", "sugar", "cocoa"],
+  "steps": ["Mix ingredients", "Bake at 350°F"]
+}
+```
+**Meanwhile, v1 still works:**
+```json
+GET /api/v1/recipes/42
+{
+  "id": 42,
+  "title": "Chocolate Cake",
+  "ingredients": ["flour", "sugar", "cocoa"],
+  "steps": ["Mix ingredients", "Bake at 350°F"]
+}
+```
+
+**Result:** Everyone's happy! 🎉
+
+<ProgressCheckpoint section="real-world-example" xpReward={10} />
+
+## When Do You Need a New Version? 🤔
+
+### ✅ Create a New Version When:
+
+1. **Removing fields**
+   ```
+   v1: { "name": "John" }
+   v2: { }  ← "name" removed
+   ```
+
+2. **Renaming fields**
+   ```
+   v1: { "name": "John" }
+   v2: { "fullName": "John" }  ← renamed
+   ```
+
+3. **Changing data types**
+   ```
+   v1: { "price": "19.99" }  ← string
+   v2: { "price": 19.99 }    ← number
+   ```
+
+4. **Changing behavior**
+   ```
+   v1: Returns all users
+   v2: Returns only active users
+   ```
+
+### ✅ DON'T Need New Version When:
+
+1. **Adding optional fields**
+   ```
+   v1: { "name": "John" }
+   v1: { "name": "John", "age": 30 }  ← OK! age is optional
+   ```
+
+2. **Adding new endpoints**
+   ```
+   v1: GET /api/v1/users
+   v1: GET /api/v1/users/stats  ← OK! New endpoint
+   ```
+
+3. **Bug fixes**
+   ```
+   v1: Fixed calculation error  ← OK! It's a fix, not a change
+   ```
+
+<InfoBox type="tip">
+  **Rule of Thumb:** If existing client code might break, you need a new version. If existing code keeps working, you don't!
+</InfoBox>
+
+<ProgressCheckpoint section="when-to-version" xpReward={10} />
+
+## Test Your Understanding! 🎯
+
+<Quiz
+  question="Why do we version APIs?"
+  options={[
+    "To make URLs look professional",
+    "To prevent breaking changes for existing users",
+    "To increase server speed",
+    "It is required by law"
+  ]}
+  correctAnswer={1}
+  explanation="Versioning allows us to introduce changes without breaking the applications that rely on the old API structure. It's about maintaining backward compatibility!"
+/>
+
+<Quiz
+  question="Which change requires a new API version?"
+  options={[
+    "Adding a new optional field to the response",
+    "Renaming an existing field from 'name' to 'fullName'",
+    "Fixing a bug in the calculation logic",
+    "Adding a new endpoint"
+  ]}
+  correctAnswer={1}
+  explanation="Renaming a field is a breaking change because existing clients expect the old field name. They will break when it's renamed. Adding optional fields or new endpoints doesn't break existing clients."
+/>
+
+<Quiz
+  question="What's the most common way to version APIs?"
+  options={[
+    "Put the version in the URL path (e.g., /v1/users)",
+    "Send an email to users about the version",
+    "Change the server port number",
+    "Use different domain names"
+  ]}
+  correctAnswer={0}
+  explanation="Putting the version in the URL path (like /api/v1/users) is the most common and visible approach. It's easy to understand and test."
+/>
+
+<ProgressCheckpoint section="versioning-intro" xpReward={20} />

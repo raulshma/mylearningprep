@@ -1,0 +1,305 @@
+# REST Principles: The 6 Architectural Constraints
+
+REST (Representational State Transfer) is an architectural style defined by Roy Fielding in his 2000 doctoral dissertation. It's not a protocol or standard - it's a set of **constraints** that, when followed, create scalable, maintainable, and performant web services.
+
+<InfoBox type="info">
+  Think of REST constraints like building codes for houses. You can build a house without following them, but following the codes ensures safety, efficiency, and compatibility with utilities.
+</InfoBox>
+
+If your API follows all these constraints, it's truly "RESTful". Let's explore each one.
+
+## 1. Client-Server Separation 🔄
+
+**The Principle:** The client and server are separate entities that communicate only through requests and responses.
+
+**Why It Matters:**
+- **Client** handles the user interface and experience
+- **Server** handles data storage and business logic
+- They can evolve independently without breaking each other
+
+**Real-World Analogy:**
+Think of a restaurant (again!). The kitchen (server) can renovate, hire new chefs, or change suppliers without affecting how customers (clients) order food. As long as the menu interface stays consistent, both sides can improve independently.
+
+**Benefits:**
+- Frontend teams can redesign the UI without touching backend code
+- Backend can optimize databases without affecting mobile apps
+- Multiple clients (web, mobile, desktop) can use the same API
+
+<ProgressCheckpoint section="client-server" xpReward={5} />
+
+## 2. Stateless Communication 🧠
+
+**The Principle:** The server must NOT store any session state about the client between requests.
+
+This is the most critical REST constraint. Every request from client to server must contain **all** information needed to understand and process it.
+
+### The Problem with State
+
+**❌ NOT Stateless (Session-based):**
+```csharp
+// BAD: Server stores user info in session
+[HttpGet("my-orders")]
+public IActionResult GetMyOrders()
+{
+    // Depends on server-side session from a previous login request
+    var user = Session["CurrentUser"]; // ⚠️ Server state dependency!
+    
+    if (user == null)
+        return Unauthorized();
+    
+    return Ok(_repo.GetOrders(user.Id));
+}
+```
+
+**Problems:**
+- Server must remember every user's session
+- Can't easily add more servers (session data isn't shared)
+- If server restarts, all sessions are lost
+- Memory usage grows with active users
+
+### The REST Solution
+
+**✅ Stateless (Token-based):**
+```csharp
+// GOOD: Client sends identity with EVERY request
+[HttpGet("my-orders")]
+[Authorize] // Validates token from Authorization header
+public IActionResult GetMyOrders()
+{
+    // User identity extracted from JWT token in THIS request
+    var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+    
+    if (string.IsNullOrEmpty(userId))
+        return Unauthorized();
+    
+    return Ok(_repo.GetOrders(userId));
+}
+```
+
+**How It Works:**
+1. Client logs in once, receives a JWT token
+2. Client includes token in **every** subsequent request
+3. Server validates token and extracts user info
+4. Server processes request without checking any stored session
+
+**Benefits:**
+- **Scalability:** Any server can handle any request
+- **Reliability:** Server crashes don't lose user state
+- **Simplicity:** No session management complexity
+- **Load Balancing:** Requests can go to any server in the cluster
+
+<InfoBox type="tip">
+  Modern authentication uses JWT (JSON Web Tokens) or OAuth tokens. The client stores the token and sends it with every request in the `Authorization` header.
+</InfoBox>
+
+<ProgressCheckpoint section="stateless" xpReward={10} />
+
+## 3. Cacheable Responses 💾
+
+**The Principle:** Responses must explicitly indicate whether they can be cached.
+
+**Why It Matters:**
+Caching dramatically improves performance by reusing responses instead of regenerating them.
+
+### How Caching Works
+
+```csharp
+[HttpGet("products/{id}")]
+[ResponseCache(Duration = 3600)] // Cache for 1 hour
+public IActionResult GetProduct(int id)
+{
+    var product = _repo.GetProduct(id);
+    
+    if (product == null)
+        return NotFound();
+    
+    // Response includes: Cache-Control: public, max-age=3600
+    return Ok(product);
+}
+```
+
+**What Happens:**
+1. First request: Server processes and returns product data
+2. Response header says: "You can cache this for 1 hour"
+3. Next 100 requests: Client/CDN returns cached copy
+4. After 1 hour: Cache expires, next request hits server again
+
+**Benefits:**
+- **Speed:** Cached responses are instant (no server processing)
+- **Reduced Load:** Server handles fewer requests
+- **Cost Savings:** Less bandwidth and compute usage
+- **Better UX:** Faster page loads
+
+**When NOT to Cache:**
+```csharp
+[HttpGet("account/balance")]
+[ResponseCache(NoStore = true)] // Never cache sensitive data
+public IActionResult GetBalance()
+{
+    var balance = _repo.GetCurrentBalance(UserId);
+    return Ok(balance);
+}
+```
+
+<ProgressCheckpoint section="cacheable" xpReward={5} />
+
+## 4. Uniform Interface 🎯
+
+**The Principle:** All APIs should follow consistent, standardized patterns.
+
+This is what makes REST APIs predictable and easy to learn. It has four sub-constraints:
+
+### 4.1 Resource Identification
+
+Resources are identified by URIs (URLs):
+```
+GET /api/users/123        ← User with ID 123
+GET /api/users/123/orders ← Orders for user 123
+GET /api/products?category=electronics ← Filtered products
+```
+
+### 4.2 Resource Manipulation Through Representations
+
+You manipulate resources by sending representations (usually JSON):
+```csharp
+// Update user by sending new representation
+PUT /api/users/123
+{
+  "name": "John Doe",
+  "email": "john@example.com"
+}
+```
+
+### 4.3 Self-Descriptive Messages
+
+Each message includes metadata about how to process it:
+```http
+GET /api/users/123
+Accept: application/json
+Authorization: Bearer eyJhbGc...
+
+HTTP/1.1 200 OK
+Content-Type: application/json
+Cache-Control: max-age=3600
+
+{ "id": 123, "name": "John" }
+```
+
+### 4.4 Hypermedia (HATEOAS)
+
+Responses include links to related resources (we'll cover this in advanced):
+```json
+{
+  "id": 123,
+  "name": "John",
+  "_links": {
+    "self": "/api/users/123",
+    "orders": "/api/users/123/orders"
+  }
+}
+```
+
+<ProgressCheckpoint section="uniform-interface" xpReward={5} />
+
+## 5. Layered System 🏗️
+
+**The Principle:** The client cannot tell whether it's connected directly to the end server or to an intermediary.
+
+**The Architecture:**
+```
+Client → CDN → Load Balancer → API Gateway → Web Server → Database
+```
+
+The client just sees: `https://api.example.com/users`
+
+It doesn't know (and doesn't care) about:
+- CDN caching responses
+- Load balancer distributing requests
+- API gateway handling authentication
+- Multiple web servers processing requests
+
+**Benefits:**
+- **Security:** Hide internal architecture
+- **Scalability:** Add caching layers, load balancers
+- **Flexibility:** Change infrastructure without affecting clients
+- **Performance:** CDNs serve cached content from nearby locations
+
+**Example in .NET:**
+```csharp
+// Your API code doesn't change whether you have:
+// - 1 server or 100 servers
+// - A CDN or no CDN
+// - A load balancer or direct connection
+
+[HttpGet("users/{id}")]
+public IActionResult GetUser(int id)
+{
+    return Ok(_repo.GetUser(id));
+}
+```
+
+<ProgressCheckpoint section="layered-system" xpReward={5} />
+
+## 6. Code on Demand (Optional) 📦
+
+**The Principle:** Servers can extend client functionality by sending executable code.
+
+**Example:** A server could send JavaScript code that the client executes.
+
+**Why It's Optional:**
+- Rarely used in modern APIs
+- Security concerns with executing server-provided code
+- Most clients prefer static, predictable behavior
+
+**Where You Might See It:**
+- Embedded JavaScript widgets
+- Dynamic form validation rules
+- Client-side plugins
+
+<InfoBox type="warning">
+  This constraint is optional and rarely implemented in modern REST APIs. Most teams skip it entirely.
+</InfoBox>
+
+<ProgressCheckpoint section="code-on-demand" xpReward={5} />
+
+## REST vs RPC: Different Philosophies 🤔
+
+<Comparison
+  leftTitle="RPC (Remote Procedure Call)"
+  rightTitle="REST (Resource-Oriented)"
+  leftContent={[
+    "Action-oriented (verbs in URLs)",
+    "Function calls over network",
+    "Example: POST /deleteUser?id=1",
+    "Example: POST /getUserOrders?userId=1",
+    "Focuses on operations"
+  ]}
+  rightContent={[
+    "Resource-oriented (nouns in URLs)",
+    "State manipulation via HTTP methods",
+    "Example: DELETE /users/1",
+    "Example: GET /users/1/orders",
+    "Focuses on resources and their state"
+  ]}
+/>
+
+**Key Difference:**
+- **RPC:** "Call this function with these parameters"
+- **REST:** "Perform this action on this resource"
+
+**Example Comparison:**
+```
+RPC Style:
+POST /api/createUser
+POST /api/updateUser
+POST /api/deleteUser
+POST /api/getUser
+
+REST Style:
+POST   /api/users      (create)
+PUT    /api/users/1    (update)
+DELETE /api/users/1    (delete)
+GET    /api/users/1    (retrieve)
+```
+
+<ProgressCheckpoint section="constraints" xpReward={30} />

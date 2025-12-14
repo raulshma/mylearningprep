@@ -1,0 +1,15 @@
+{
+  "id": "rest-principles",
+  "title": "REST Principles",
+  "description": "Understand the core constraints that make an API 'RESTful'.",
+  "milestone": "rest-design",
+  "order": 1,
+  "sections": ["rest-intro", "constraints", "statelessness"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 10, "xpReward": 20 },
+    "intermediate": { "estimatedMinutes": 15, "xpReward": 30 },
+    "advanced": { "estimatedMinutes": 20, "xpReward": 50 }
+  },
+  "prerequisites": ["web-apis"],
+  "tags": ["rest", "architecture", "api"]
+}

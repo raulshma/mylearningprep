@@ -1,0 +1,526 @@
+# Advanced HTTP: Idempotency, Safety, and Production Patterns
+
+Building production-grade APIs requires deep understanding of HTTP semantics, especially **safety** and **idempotency**. These properties are critical for building reliable, fault-tolerant systems.
+
+## Understanding Safety 🛡️
+
+**Definition:** A method is **safe** if it doesn't modify server state.
+
+### Safe Methods
+
+**GET, HEAD, OPTIONS, TRACE**
+
+These methods are read-only. Calling them should never change data.
+
+**Why It Matters:**
+- Browsers can prefetch safe requests
+- Proxies and CDNs can cache them aggressively
+- They can be retried without consequences
+- Search engines can crawl them
+
+**Example:**
+```csharp
+// ✅ SAFE - Read-only
+[HttpGet("users/{id}")]
+public IActionResult GetUser(int id)
+{
+    var user = _repository.GetById(id);
+    return Ok(user);
+}
+
+// ❌ UNSAFE - Modifies data (WRONG!)
+[HttpGet("users/{id}/activate")]
+public IActionResult ActivateUser(int id)
+{
+    _repository.Activate(id); // DON'T DO THIS!
+    return Ok();
+}
+```
+
+<InfoBox type="warning">
+  **Common Mistake:** Never use GET for operations that modify data! Use POST, PUT, or PATCH instead. GET requests can be cached, prefetched, and called by web crawlers.
+</InfoBox>
+
+**Correct Approach:**
+```csharp
+// ✅ CORRECT - Use POST for state-changing operations
+[HttpPost("users/{id}/activate")]
+public IActionResult ActivateUser(int id)
+{
+    _repository.Activate(id);
+    return NoContent();
+}
+```
+
+<ProgressCheckpoint section="safety" xpReward={10} />
+
+## Understanding Idempotency 🔁
+
+**Definition:** A method is **idempotent** if making the request N times has the same effect as making it once.
+
+### Idempotency Matrix
+
+| Method | Idempotent? | Explanation |
+|:-------|:------------|:------------|
+| **GET** | ✅ YES | Reading data 5 times doesn't change anything |
+| **PUT** | ✅ YES | Setting name to "John" 5 times results in name being "John" |
+| **DELETE** | ✅ YES | Deleting ID 123 five times: first succeeds, rest return 404. Final state: ID 123 is gone |
+| **POST** | ❌ NO | Creating an order 5 times creates 5 orders |
+| **PATCH** | ⚠️ DEPENDS | `{"age": 30}` is idempotent. `{"age": "+1"}` is NOT |
+| **HEAD** | ✅ YES | Same as GET but without body |
+| **OPTIONS** | ✅ YES | Metadata request |
+
+<ProgressCheckpoint section="idempotency-basics" xpReward={10} />
+
+### Why Idempotency Matters: The Payment Problem 💳
+
+**Scenario:** A user clicks "Pay Now" on a mobile app.
+
+```
+1. App sends: POST /api/payments
+2. Server processes payment and charges card
+3. Server sends: 200 OK
+4. ⚠️ NETWORK FAILURE - Response lost!
+5. App thinks it failed
+6. App retries: POST /api/payments
+7. Server charges card AGAIN
+8. User charged twice! 😱
+```
+
+**The Problem:** POST is not idempotent. Each call creates a new payment.
+
+<ProgressCheckpoint section="payment-problem" xpReward={5} />
+
+### Solution 1: Idempotency Keys 🔑
+
+**Pattern:** Client generates a unique key and sends it with the request. Server uses the key to detect duplicates.
+
+**Implementation:**
+```csharp
+[HttpPost("payments")]
+public async Task<IActionResult> CreatePayment(
+    [FromHeader(Name = "Idempotency-Key")] string idempotencyKey,
+    [FromBody] PaymentRequest request)
+{
+    // Validate idempotency key
+    if (string.IsNullOrEmpty(idempotencyKey))
+        return BadRequest(new { error = "Idempotency-Key header is required" });
+    
+    // Check if we've seen this key before
+    var cachedResult = await _cache.GetAsync<PaymentResponse>($"payment:{idempotencyKey}");
+    
+    if (cachedResult != null)
+    {
+        // We've processed this request before - return cached result
+        _logger.LogInformation("Duplicate payment request detected: {Key}", idempotencyKey);
+        return Ok(cachedResult);
+    }
+    
+    // Process payment
+    var result = await _paymentService.ProcessPayment(request);
+    
+    // Cache the result for 24 hours
+    await _cache.SetAsync(
+        $"payment:{idempotencyKey}",
+        result,
+        TimeSpan.FromHours(24)
+    );
+    
+    return CreatedAtAction(nameof(GetPayment), new { id = result.Id }, result);
+}
+```
+
+**Client Usage:**
+```javascript
+// Client generates a unique key (UUID)
+const idempotencyKey = crypto.randomUUID();
+
+try {
+  const response = await fetch('/api/payments', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Idempotency-Key': idempotencyKey
+    },
+    body: JSON.stringify(paymentData)
+  });
+  
+  if (!response.ok) {
+    // Safe to retry with the SAME key
+    throw new Error('Payment failed');
+  }
+} catch (error) {
+  // Retry with the SAME idempotency key
+  // Server will return the cached result if payment succeeded
+  await retryPayment(idempotencyKey, paymentData);
+}
+```
+
+**Benefits:**
+- Safe to retry requests
+- Prevents duplicate charges
+- Works across server restarts (if using distributed cache)
+- Industry standard (Stripe, PayPal use this pattern)
+
+<ProgressCheckpoint section="idempotency-keys" xpReward={15} />
+
+### Solution 2: Natural Idempotency with PUT 🎯
+
+**Pattern:** Use PUT with a client-generated ID instead of POST.
+
+**Non-Idempotent (POST):**
+```csharp
+// ❌ Creates a new order every time
+[HttpPost("orders")]
+public IActionResult CreateOrder([FromBody] OrderRequest request)
+{
+    var order = _repository.Create(request);
+    return CreatedAtAction(nameof(GetOrder), new { id = order.Id }, order);
+}
+```
+
+**Idempotent (PUT):**
+```csharp
+// ✅ Idempotent - calling multiple times with same ID has same effect
+[HttpPut("orders/{id}")]
+public IActionResult CreateOrUpdateOrder(Guid id, [FromBody] OrderRequest request)
+{
+    var existingOrder = _repository.GetById(id);
+    
+    if (existingOrder != null)
+    {
+        // Order already exists - return it (idempotent)
+        return Ok(existingOrder);
+    }
+    
+    // Create new order with client-provided ID
+    var order = _repository.Create(id, request);
+    return CreatedAtAction(nameof(GetOrder), new { id }, order);
+}
+```
+
+**Client Usage:**
+```javascript
+// Client generates the ID
+const orderId = crypto.randomUUID();
+
+// Safe to call multiple times
+await fetch(`/api/orders/${orderId}`, {
+  method: 'PUT',
+  body: JSON.stringify(orderData)
+});
+```
+
+<ProgressCheckpoint section="natural-idempotency" xpReward={10} />
+
+## Advanced Status Code Patterns 🎯
+
+### 409 Conflict - Resource State Conflicts
+
+Use when the request conflicts with the current state of the resource.
+
+```csharp
+[HttpPost("orders/{id}/cancel")]
+public IActionResult CancelOrder(int id)
+{
+    var order = _repository.GetById(id);
+    
+    if (order == null)
+        return NotFound();
+    
+    // Can't cancel if already shipped
+    if (order.Status == OrderStatus.Shipped)
+    {
+        return Conflict(new
+        {
+            error = "Cannot cancel order",
+            reason = "Order has already been shipped",
+            currentStatus = order.Status
+        });
+    }
+    
+    order.Status = OrderStatus.Cancelled;
+    _repository.Save(order);
+    
+    return NoContent();
+}
+```
+
+### 422 Unprocessable Entity - Semantic Errors
+
+Use when the request is well-formed but semantically incorrect.
+
+```csharp
+[HttpPost("transfers")]
+public IActionResult CreateTransfer([FromBody] TransferRequest request)
+{
+    // Syntax is valid (400 would be for invalid JSON)
+    if (!ModelState.IsValid)
+        return BadRequest(ModelState);
+    
+    var account = _repository.GetAccount(request.FromAccountId);
+    
+    // Semantic error - insufficient funds
+    if (account.Balance < request.Amount)
+    {
+        return UnprocessableEntity(new
+        {
+            error = "Insufficient funds",
+            available = account.Balance,
+            requested = request.Amount
+        });
+    }
+    
+    _transferService.Process(request);
+    return Ok();
+}
+```
+
+### 429 Too Many Requests - Rate Limiting
+
+```csharp
+[HttpGet("api/data")]
+[RateLimit(MaxRequests = 100, WindowMinutes = 1)]
+public IActionResult GetData()
+{
+    // Rate limiting middleware handles 429 responses
+    return Ok(_data);
+}
+
+// Middleware implementation
+public class RateLimitMiddleware
+{
+    public async Task InvokeAsync(HttpContext context)
+    {
+        var key = $"ratelimit:{context.User.Identity.Name}";
+        var count = await _cache.IncrementAsync(key);
+        
+        if (count == 1)
+            await _cache.ExpireAsync(key, TimeSpan.FromMinutes(1));
+        
+        if (count > 100)
+        {
+            context.Response.StatusCode = 429;
+            context.Response.Headers["Retry-After"] = "60";
+            await context.Response.WriteAsJsonAsync(new
+            {
+                error = "Rate limit exceeded",
+                retryAfter = 60
+            });
+            return;
+        }
+        
+        await _next(context);
+    }
+}
+```
+
+<ProgressCheckpoint section="advanced-status-codes" xpReward={10} />
+
+## Conditional Requests: ETags and If-Match 🏷️
+
+**Pattern:** Use ETags to prevent lost updates and enable efficient caching.
+
+### What is an ETag?
+
+An ETag (Entity Tag) is a version identifier for a resource. It changes when the resource changes.
+
+**Implementation:**
+```csharp
+public class User
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public string Email { get; set; }
+    public int Version { get; set; } // Incremented on each update
+}
+
+[HttpGet("users/{id}")]
+public IActionResult GetUser(int id)
+{
+    var user = _repository.GetById(id);
+    
+    if (user == null)
+        return NotFound();
+    
+    // Generate ETag from version
+    var etag = $"\"{user.Version}\"";
+    
+    // Add ETag header
+    Response.Headers.ETag = etag;
+    
+    // Check If-None-Match header (for caching)
+    if (Request.Headers.IfNoneMatch == etag)
+    {
+        // Resource hasn't changed
+        return StatusCode(304); // Not Modified
+    }
+    
+    return Ok(user);
+}
+
+[HttpPut("users/{id}")]
+public IActionResult UpdateUser(
+    int id,
+    [FromBody] UpdateUserDto dto,
+    [FromHeader(Name = "If-Match")] string? ifMatch)
+{
+    var user = _repository.GetById(id);
+    
+    if (user == null)
+        return NotFound();
+    
+    var currentETag = $"\"{user.Version}\"";
+    
+    // Check If-Match header (for optimistic locking)
+    if (!string.IsNullOrEmpty(ifMatch) && ifMatch != currentETag)
+    {
+        // Someone else modified the resource
+        return StatusCode(412, new // Precondition Failed
+        {
+            error = "Resource has been modified by another user",
+            currentVersion = user.Version
+        });
+    }
+    
+    // Update the resource
+    user.Name = dto.Name;
+    user.Email = dto.Email;
+    user.Version++; // Increment version
+    
+    _repository.Save(user);
+    
+    // Return new ETag
+    Response.Headers.ETag = $"\"{user.Version}\"";
+    
+    return NoContent();
+}
+```
+
+**Client Usage:**
+```javascript
+// 1. Get the resource
+const response1 = await fetch('/api/users/123');
+const user = await response1.json();
+const etag = response1.headers.get('ETag');
+
+// 2. Update with If-Match header
+const response2 = await fetch('/api/users/123', {
+  method: 'PUT',
+  headers: {
+    'Content-Type': 'application/json',
+    'If-Match': etag // Ensures we're updating the version we read
+  },
+  body: JSON.stringify(updatedUser)
+});
+
+if (response2.status === 412) {
+  // Someone else updated it - refresh and try again
+  alert('Resource was modified by another user. Please refresh.');
+}
+```
+
+**Benefits:**
+- Prevents lost updates (optimistic locking)
+- Reduces bandwidth (304 Not Modified)
+- Enables efficient caching
+- Industry standard pattern
+
+<ProgressCheckpoint section="etags" xpReward={15} />
+
+## Content Negotiation 🌐
+
+**Pattern:** Support multiple response formats based on client preferences.
+
+```csharp
+[HttpGet("users/{id}")]
+[Produces("application/json", "application/xml", "text/csv")]
+public IActionResult GetUser(int id)
+{
+    var user = _repository.GetById(id);
+    
+    if (user == null)
+        return NotFound();
+    
+    // ASP.NET Core automatically negotiates based on Accept header
+    return Ok(user);
+}
+
+// Custom formatter for CSV
+public class CsvOutputFormatter : TextOutputFormatter
+{
+    public CsvOutputFormatter()
+    {
+        SupportedMediaTypes.Add("text/csv");
+        SupportedEncodings.Add(Encoding.UTF8);
+    }
+    
+    public override async Task WriteResponseBodyAsync(
+        OutputFormatterWriteContext context,
+        Encoding selectedEncoding)
+    {
+        var response = context.HttpContext.Response;
+        var buffer = new StringBuilder();
+        
+        if (context.Object is IEnumerable<User> users)
+        {
+            buffer.AppendLine("Id,Name,Email");
+            foreach (var user in users)
+            {
+                buffer.AppendLine($"{user.Id},{user.Name},{user.Email}");
+            }
+        }
+        
+        await response.WriteAsync(buffer.ToString(), selectedEncoding);
+    }
+}
+```
+
+**Client Usage:**
+```http
+GET /api/users/123
+Accept: application/json
+→ Returns JSON
+
+GET /api/users/123
+Accept: application/xml
+→ Returns XML
+
+GET /api/users
+Accept: text/csv
+→ Returns CSV
+```
+
+<ProgressCheckpoint section="content-negotiation" xpReward={10} />
+
+## Best Practices Summary 📋
+
+<KeyConcept title="Production API Checklist">
+  1. **Use idempotency keys** for critical operations (payments, orders)
+  2. **Implement ETags** for optimistic locking and caching
+  3. **Return appropriate status codes** (not just 200 and 500)
+  4. **Use PUT for updates** when possible (idempotent)
+  5. **Implement rate limiting** to prevent abuse
+  6. **Support content negotiation** for flexibility
+  7. **Never modify data in GET requests**
+  8. **Log all state-changing operations**
+  9. **Use distributed caching** for idempotency keys
+  10. **Document retry behavior** in your API docs
+</KeyConcept>
+
+### Idempotency Decision Tree
+
+```
+Is the operation naturally idempotent?
+├─ YES (e.g., "set status to X")
+│  └─ Use PUT or PATCH
+└─ NO (e.g., "create new order")
+   ├─ Can client generate ID?
+   │  ├─ YES → Use PUT with client-generated ID
+   │  └─ NO → Use POST with Idempotency-Key header
+   └─ Is it critical (payments, orders)?
+      ├─ YES → MUST use Idempotency-Key
+      └─ NO → POST is acceptable
+```
+
+<ProgressCheckpoint section="idempotency" xpReward={50} />

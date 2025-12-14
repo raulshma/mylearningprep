@@ -1,0 +1,708 @@
+# Advanced OpenAPI: Authentication, Client Generation, and Design-First
+
+Let's explore enterprise-grade OpenAPI features: securing Swagger UI, generating client code, and design-first development workflows.
+
+## Adding Authentication to Swagger UI 🔐
+
+### JWT Bearer Token Authentication
+
+If your API uses JWT authentication, you need to configure Swagger to send tokens:
+
+```csharp
+builder.Services.AddSwaggerGen(options =>
+{
+    // Define the Bearer security scheme
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = @"JWT Authorization header using the Bearer scheme. 
+                      Enter 'Bearer' [space] and then your token in the text input below.
+                      Example: 'Bearer 12345abcdef'",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer",
+        BearerFormat = "JWT"
+    });
+
+    // Apply the security scheme globally
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                },
+                Scheme = "oauth2",
+                Name = "Bearer",
+                In = ParameterLocation.Header
+            },
+            new List<string>()
+        }
+    });
+});
+```
+
+**Result:** A green "Authorize" button appears in Swagger UI! 🟢
+
+**How to Use:**
+1. Click "Authorize" button
+2. Enter: `Bearer your-jwt-token-here`
+3. Click "Authorize"
+4. All requests now include the token!
+
+<ProgressCheckpoint section="jwt-auth" xpReward={15} />
+
+### OAuth 2.0 Authentication
+
+For OAuth 2.0 flows:
+
+```csharp
+options.AddSecurityDefinition("oauth2", new OpenApiSecurityScheme
+{
+    Type = SecuritySchemeType.OAuth2,
+    Flows = new OpenApiOAuthFlows
+    {
+        AuthorizationCode = new OpenApiOAuthFlow
+        {
+            AuthorizationUrl = new Uri("https://auth.example.com/authorize"),
+            TokenUrl = new Uri("https://auth.example.com/token"),
+            Scopes = new Dictionary<string, string>
+            {
+                { "read", "Read access" },
+                { "write", "Write access" },
+                { "admin", "Admin access" }
+            }
+        }
+    }
+});
+
+options.AddSecurityRequirement(new OpenApiSecurityRequirement
+{
+    {
+        new OpenApiSecurityScheme
+        {
+            Reference = new OpenApiReference
+            {
+                Type = ReferenceType.SecurityScheme,
+                Id = "oauth2"
+            }
+        },
+        new[] { "read", "write" }
+    }
+});
+
+// Configure OAuth in UI
+app.UseSwaggerUI(options =>
+{
+    options.OAuthClientId("swagger-ui");
+    options.OAuthAppName("Swagger UI");
+    options.OAuthUsePkce();
+});
+```
+
+<ProgressCheckpoint section="oauth" xpReward={10} />
+
+### API Key Authentication
+
+For API key-based authentication:
+
+```csharp
+options.AddSecurityDefinition("ApiKey", new OpenApiSecurityScheme
+{
+    Description = "API Key needed to access the endpoints. X-API-Key: {your-api-key}",
+    In = ParameterLocation.Header,
+    Name = "X-API-Key",
+    Type = SecuritySchemeType.ApiKey
+});
+
+options.AddSecurityRequirement(new OpenApiSecurityRequirement
+{
+    {
+        new OpenApiSecurityScheme
+        {
+            Reference = new OpenApiReference
+            {
+                Type = ReferenceType.SecurityScheme,
+                Id = "ApiKey"
+            }
+        },
+        Array.Empty<string>()
+    }
+});
+```
+
+<ProgressCheckpoint section="api-key" xpReward={10} />
+
+## Client Code Generation 🤖
+
+### The Power of Automation
+
+OpenAPI's biggest advantage: **machines can read it and generate code!**
+
+**The Problem:**
+- Frontend needs to call your API
+- Manually writing fetch calls is tedious
+- Types get out of sync
+- Endpoints change, breaking code
+
+**The Solution:**
+- Generate TypeScript/JavaScript client from OpenAPI spec
+- Types are always correct
+- Endpoints are always up-to-date
+- Changes are caught at compile time
+
+<ProgressCheckpoint section="codegen-intro" xpReward={5} />
+
+### Using NSwag for TypeScript Generation
+
+**Step 1: Install NSwag**
+
+```bash
+dotnet tool install -g NSwag.ConsoleCore
+```
+
+**Step 2: Create nswag.json Configuration**
+
+```json
+{
+  "runtime": "Net80",
+  "defaultVariables": null,
+  "documentGenerator": {
+    "aspNetCoreToOpenApi": {
+      "project": "MyApi.csproj",
+      "msBuildProjectExtensionsPath": null,
+      "configuration": null,
+      "runtime": null,
+      "targetFramework": null,
+      "noBuild": false,
+      "verbose": false,
+      "workingDirectory": null,
+      "requireParametersWithoutDefault": false,
+      "apiGroupNames": null,
+      "defaultPropertyNameHandling": "Default",
+      "defaultReferenceTypeNullHandling": "Null",
+      "defaultDictionaryValueReferenceTypeNullHandling": "NotNull",
+      "defaultResponseReferenceTypeNullHandling": "NotNull",
+      "defaultEnumHandling": "Integer",
+      "flattenInheritanceHierarchy": false,
+      "generateKnownTypes": true,
+      "generateEnumMappingDescription": false,
+      "generateXmlObjects": false,
+      "generateAbstractProperties": false,
+      "generateAbstractSchemas": true,
+      "ignoreObsoleteProperties": false,
+      "allowReferencesWithProperties": false,
+      "excludedTypeNames": [],
+      "serviceHost": null,
+      "serviceBasePath": null,
+      "serviceSchemes": [],
+      "infoTitle": "My API",
+      "infoDescription": null,
+      "infoVersion": "1.0.0",
+      "documentTemplate": null,
+      "documentProcessorTypes": [],
+      "operationProcessorTypes": [],
+      "typeNameGeneratorType": null,
+      "schemaNameGeneratorType": null,
+      "contractResolverType": null,
+      "serializerSettingsType": null,
+      "useDocumentProvider": true,
+      "documentName": "v1",
+      "aspNetCoreEnvironment": null,
+      "createWebHostBuilderMethod": null,
+      "startupType": null,
+      "allowNullableBodyParameters": true,
+      "output": "swagger.json",
+      "outputType": "OpenApi3",
+      "assemblyPaths": [],
+      "assemblyConfig": null,
+      "referencePaths": [],
+      "useNuGetCache": false
+    }
+  },
+  "codeGenerators": {
+    "openApiToTypeScriptClient": {
+      "className": "ApiClient",
+      "moduleName": "",
+      "namespace": "",
+      "typeScriptVersion": 4.3,
+      "template": "Fetch",
+      "promiseType": "Promise",
+      "httpClass": "HttpClient",
+      "withCredentials": false,
+      "useSingletonProvider": false,
+      "injectionTokenType": "InjectionToken",
+      "rxJsVersion": 7.0,
+      "dateTimeType": "Date",
+      "nullValue": "Undefined",
+      "generateClientClasses": true,
+      "generateClientInterfaces": false,
+      "generateOptionalParameters": false,
+      "exportTypes": true,
+      "wrapDtoExceptions": false,
+      "exceptionClass": "ApiException",
+      "clientBaseClass": null,
+      "wrapResponses": false,
+      "wrapResponseMethods": [],
+      "generateResponseClasses": true,
+      "responseClass": "SwaggerResponse",
+      "protectedMethods": [],
+      "configurationClass": null,
+      "useTransformOptionsMethod": false,
+      "useTransformResultMethod": false,
+      "generateDtoTypes": true,
+      "operationGenerationMode": "MultipleClientsFromOperationId",
+      "markOptionalProperties": true,
+      "generateCloneMethod": false,
+      "typeStyle": "Class",
+      "classTypes": [],
+      "extendedClasses": [],
+      "extensionCode": null,
+      "generateDefaultValues": true,
+      "excludedTypeNames": [],
+      "excludedParameterNames": [],
+      "handleReferences": false,
+      "generateConstructorInterface": true,
+      "convertConstructorInterfaceData": false,
+      "importRequiredTypes": true,
+      "useGetBaseUrlMethod": false,
+      "baseUrlTokenName": "API_BASE_URL",
+      "queryNullValue": "",
+      "inlineNamedDictionaries": false,
+      "inlineNamedAny": false,
+      "templateDirectory": null,
+      "typeNameGeneratorType": null,
+      "propertyNameGeneratorType": null,
+      "enumNameGeneratorType": null,
+      "serviceHost": null,
+      "serviceSchemes": null,
+      "output": "../frontend/src/api/generated-client.ts"
+    }
+  }
+}
+```
+
+**Step 3: Generate Client**
+
+```bash
+nswag run nswag.json
+```
+
+**Step 4: Use Generated Client**
+
+```typescript
+// frontend/src/api/generated-client.ts is auto-generated!
+
+import { ApiClient, CreateUserDto } from './api/generated-client';
+
+const client = new ApiClient('https://api.example.com');
+
+// Fully typed!
+async function createUser() {
+  const newUser: CreateUserDto = {
+    name: 'John Doe',
+    email: 'john@example.com',
+    age: 30
+  };
+  
+  try {
+    const user = await client.users_Create(newUser);
+    console.log('Created user:', user);
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
+
+// TypeScript knows all available methods and types!
+async function getUser(id: number) {
+  const user = await client.users_GetById(id);
+  // user is fully typed with all properties!
+  console.log(user.name, user.email);
+}
+```
+
+**Benefits:**
+- ✅ Full TypeScript types
+- ✅ Autocomplete in IDE
+- ✅ Compile-time error checking
+- ✅ Always in sync with API
+- ✅ No manual API calls
+
+<ProgressCheckpoint section="nswag" xpReward={20} />
+
+### Using OpenAPI Generator
+
+Alternative to NSwag, supports more languages:
+
+```bash
+# Install
+npm install @openapitools/openapi-generator-cli -g
+
+# Generate TypeScript client
+openapi-generator-cli generate \
+  -i https://localhost:5001/swagger/v1/swagger.json \
+  -g typescript-fetch \
+  -o ./src/api/generated
+
+# Generate C# client
+openapi-generator-cli generate \
+  -i https://localhost:5001/swagger/v1/swagger.json \
+  -g csharp \
+  -o ./ClientLibrary
+
+# Generate Python client
+openapi-generator-cli generate \
+  -i https://localhost:5001/swagger/v1/swagger.json \
+  -g python \
+  -o ./python-client
+```
+
+**Supports 50+ languages:**
+- TypeScript/JavaScript
+- C#
+- Java
+- Python
+- Go
+- Ruby
+- PHP
+- Kotlin
+- Swift
+- And many more!
+
+<ProgressCheckpoint section="openapi-generator" xpReward={10} />
+
+## Design-First vs Code-First 🎨
+
+### Code-First Approach (What We've Been Doing)
+
+**Workflow:**
+1. Write C# controllers
+2. Add attributes and XML comments
+3. Run application
+4. Swagger generates OpenAPI spec
+5. Generate client code from spec
+
+**Pros:**
+- ✅ Natural for developers
+- ✅ Less upfront work
+- ✅ Code is source of truth
+
+**Cons:**
+- ❌ API design happens during coding
+- ❌ Hard to get stakeholder approval before coding
+- ❌ Changes require code changes
+
+<ProgressCheckpoint section="code-first" xpReward={5} />
+
+### Design-First Approach
+
+**Workflow:**
+1. Write OpenAPI spec (YAML/JSON)
+2. Review with stakeholders
+3. Generate server interfaces
+4. Implement the interfaces
+5. Generate client code
+
+**Pros:**
+- ✅ API design before coding
+- ✅ Stakeholder approval early
+- ✅ Contract-driven development
+- ✅ Frontend and backend can work in parallel
+
+**Cons:**
+- ❌ More upfront work
+- ❌ Need to maintain YAML file
+- ❌ Learning curve for OpenAPI syntax
+
+<ProgressCheckpoint section="design-first" xpReward={5} />
+
+### Design-First Example
+
+**Step 1: Write OpenAPI Spec (openapi.yaml)**
+
+```yaml
+openapi: 3.0.1
+info:
+  title: Product API
+  version: 1.0.0
+paths:
+  /api/products:
+    get:
+      tags:
+        - Products
+      summary: Get all products
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Product'
+    post:
+      tags:
+        - Products
+      summary: Create a product
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProductDto'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          description: Bad Request
+
+  /api/products/{id}:
+    get:
+      tags:
+        - Products
+      summary: Get product by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '404':
+          description: Not Found
+
+components:
+  schemas:
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        price:
+          type: number
+          format: double
+        category:
+          type: string
+      required:
+        - id
+        - name
+        - price
+
+    CreateProductDto:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        price:
+          type: number
+          format: double
+          minimum: 0.01
+        category:
+          type: string
+      required:
+        - name
+        - price
+```
+
+**Step 2: Generate Server Interfaces**
+
+```bash
+nswag openapi2cscontroller \
+  /input:openapi.yaml \
+  /classname:ProductsController \
+  /namespace:MyApi.Controllers \
+  /output:Controllers/ProductsController.cs
+```
+
+**Step 3: Implement Generated Interface**
+
+```csharp
+// Generated interface
+public partial interface IProductsController
+{
+    Task<IActionResult> GetAllProducts();
+    Task<IActionResult> CreateProduct(CreateProductDto dto);
+    Task<IActionResult> GetProductById(int id);
+}
+
+// Your implementation
+public partial class ProductsController : IProductsController
+{
+    private readonly IProductRepository _repository;
+    
+    public async Task<IActionResult> GetAllProducts()
+    {
+        var products = await _repository.GetAllAsync();
+        return Ok(products);
+    }
+    
+    public async Task<IActionResult> CreateProduct(CreateProductDto dto)
+    {
+        var product = await _repository.CreateAsync(dto);
+        return CreatedAtAction(nameof(GetProductById), new { id = product.Id }, product);
+    }
+    
+    public async Task<IActionResult> GetProductById(int id)
+    {
+        var product = await _repository.GetByIdAsync(id);
+        if (product == null)
+            return NotFound();
+        return Ok(product);
+    }
+}
+```
+
+<ProgressCheckpoint section="design-first-example" xpReward={15} />
+
+## Advanced Swagger Customization 🎨
+
+### Custom Operation Filters
+
+Add custom logic to modify Swagger documentation:
+
+```csharp
+public class AddResponseHeadersFilter : IOperationFilter
+{
+    public void Apply(OpenApiOperation operation, OperationFilterContext context)
+    {
+        if (operation.Responses.ContainsKey("200"))
+        {
+            operation.Responses["200"].Headers = new Dictionary<string, OpenApiHeader>
+            {
+                {
+                    "X-Rate-Limit",
+                    new OpenApiHeader
+                    {
+                        Description = "Number of requests remaining",
+                        Schema = new OpenApiSchema { Type = "integer" }
+                    }
+                }
+            };
+        }
+    }
+}
+
+// Register the filter
+builder.Services.AddSwaggerGen(options =>
+{
+    options.OperationFilter<AddResponseHeadersFilter>();
+});
+```
+
+<ProgressCheckpoint section="operation-filters" xpReward={10} />
+
+### Document Filters
+
+Modify the entire OpenAPI document:
+
+```csharp
+public class CustomDocumentFilter : IDocumentFilter
+{
+    public void Apply(OpenApiDocument swaggerDoc, DocumentFilterContext context)
+    {
+        // Add custom extensions
+        swaggerDoc.Extensions.Add("x-api-id", new OpenApiString("my-api-123"));
+        
+        // Remove unwanted endpoints
+        var pathsToRemove = swaggerDoc.Paths
+            .Where(p => p.Key.Contains("/internal/"))
+            .Select(p => p.Key)
+            .ToList();
+        
+        foreach (var path in pathsToRemove)
+        {
+            swaggerDoc.Paths.Remove(path);
+        }
+    }
+}
+
+builder.Services.AddSwaggerGen(options =>
+{
+    options.DocumentFilter<CustomDocumentFilter>();
+});
+```
+
+<ProgressCheckpoint section="document-filters" xpReward={10} />
+
+## Best Practices Summary 📋
+
+<KeyConcept title="Production OpenAPI Checklist">
+  1. **Enable XML comments** for rich documentation
+  2. **Add authentication** configuration to Swagger UI
+  3. **Use ProducesResponseType** attributes for all endpoints
+  4. **Provide example values** in DTOs
+  5. **Generate client code** automatically in CI/CD
+  6. **Version your API** and document in Swagger
+  7. **Exclude internal endpoints** from public docs
+  8. **Add contact information** and terms of service
+  9. **Use tags** to organize endpoints
+  10. **Keep OpenAPI spec** in source control
+</KeyConcept>
+
+### CI/CD Integration
+
+```yaml
+# .github/workflows/generate-clients.yml
+name: Generate API Clients
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**/*.cs'
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '8.0.x'
+      
+      - name: Build API
+        run: dotnet build
+      
+      - name: Start API
+        run: dotnet run &
+        working-directory: ./src/MyApi
+      
+      - name: Wait for API
+        run: sleep 10
+      
+      - name: Generate TypeScript Client
+        run: |
+          npm install -g @openapitools/openapi-generator-cli
+          openapi-generator-cli generate \
+            -i http://localhost:5000/swagger/v1/swagger.json \
+            -g typescript-fetch \
+            -o ./clients/typescript
+      
+      - name: Commit generated clients
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add clients/
+          git commit -m "Update generated API clients" || echo "No changes"
+          git push
+```
+
+<ProgressCheckpoint section="customization" xpReward={50} />

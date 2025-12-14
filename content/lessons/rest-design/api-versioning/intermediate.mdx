@@ -1,0 +1,428 @@
+# API Versioning Strategies: Choosing the Right Approach
+
+There are multiple ways to implement API versioning, each with trade-offs. Let's explore the three main strategies and learn how to implement them in ASP.NET Core.
+
+## The Three Main Versioning Strategies 🎯
+
+### 1. URI Path Versioning (Most Popular) 🌟
+
+**Pattern:** Version number in the URL path
+
+**Examples:**
+```
+GET /api/v1/users
+GET /api/v2/users
+GET /api/v1/products/123
+```
+
+**Pros:**
+- ✅ Extremely visible and obvious
+- ✅ Easy to test in browser
+- ✅ Simple to understand
+- ✅ Easy to route to different controllers
+- ✅ Can cache different versions separately
+- ✅ Industry standard (Twitter, Stripe, GitHub use this)
+
+**Cons:**
+- ❌ Technically violates "pure" REST (URI should identify resource, not version)
+- ❌ Version appears in every URL
+- ❌ Can't version individual endpoints easily
+
+**When to Use:**
+- Public APIs
+- When you want maximum clarity
+- When you have major version changes
+- When different versions have significantly different implementations
+
+<ProgressCheckpoint section="uri-versioning" xpReward={5} />
+
+### 2. Query String Versioning 🔗
+
+**Pattern:** Version as a query parameter
+
+**Examples:**
+```
+GET /api/users?api-version=1.0
+GET /api/users?api-version=2.0
+GET /api/products/123?api-version=1.0
+```
+
+**Pros:**
+- ✅ Keeps base URI clean (`/api/users`)
+- ✅ Easy to add to existing APIs
+- ✅ Can have default version
+- ✅ Flexible (can combine with other parameters)
+
+**Cons:**
+- ❌ Easy to forget the parameter
+- ❌ Harder to cache (query strings affect cache keys)
+- ❌ Less visible than URI versioning
+- ❌ Can be stripped by proxies
+
+**When to Use:**
+- Internal APIs
+- When you want clean URIs
+- When versioning is optional (with defaults)
+- Microservices communication
+
+<ProgressCheckpoint section="query-versioning" xpReward={5} />
+
+### 3. Header Versioning 📋
+
+**Pattern:** Version in custom header
+
+**Examples:**
+```http
+GET /api/users
+X-API-Version: 1.0
+
+GET /api/users
+X-API-Version: 2.0
+
+GET /api/users
+Accept: application/vnd.myapp.v2+json
+```
+
+**Pros:**
+- ✅ Cleanest URLs (no version pollution)
+- ✅ Follows REST principles (URI identifies resource)
+- ✅ Can version individual endpoints
+- ✅ Supports content negotiation
+- ✅ Professional/enterprise approach
+
+**Cons:**
+- ❌ Not visible in browser address bar
+- ❌ Harder to test (need Postman/curl)
+- ❌ More complex for clients
+- ❌ Can be lost by proxies
+
+**When to Use:**
+- Enterprise APIs
+- When following strict REST principles
+- When you want clean, resource-focused URLs
+- APIs consumed by sophisticated clients
+
+<ProgressCheckpoint section="header-versioning" xpReward={5} />
+
+## Comparison Table 📊
+
+| Strategy | Visibility | Ease of Use | REST Compliance | Caching | Best For |
+|:---------|:-----------|:------------|:----------------|:--------|:---------|
+| **URI Path** | ⭐⭐⭐ | ⭐⭐⭐ | ⭐ | ⭐⭐⭐ | Public APIs |
+| **Query String** | ⭐⭐ | ⭐⭐ | ⭐⭐ | ⭐⭐ | Internal APIs |
+| **Header** | ⭐ | ⭐ | ⭐⭐⭐ | ⭐⭐ | Enterprise APIs |
+
+<ProgressCheckpoint section="comparison" xpReward={5} />
+
+## Implementing in ASP.NET Core 🛠️
+
+### Step 1: Install Package
+
+```bash
+dotnet add package Asp.Versioning.Mvc
+```
+
+### Step 2: Configure Services
+
+```csharp
+// Program.cs
+using Asp.Versioning;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add API versioning
+builder.Services.AddApiVersioning(options =>
+{
+    // Default version when not specified
+    options.DefaultApiVersion = new ApiVersion(1, 0);
+    
+    // Use default version if client doesn't specify
+    options.AssumeDefaultVersionWhenUnspecified = true;
+    
+    // Add headers showing supported/deprecated versions
+    options.ReportApiVersions = true;
+    
+    // Choose versioning strategy (can combine multiple)
+    options.ApiVersionReader = ApiVersionReader.Combine(
+        new UrlSegmentApiVersionReader(),      // /v1/users
+        new QueryStringApiVersionReader(),      // ?api-version=1.0
+        new HeaderApiVersionReader("X-API-Version") // X-API-Version: 1.0
+    );
+}).AddApiExplorer(options =>
+{
+    // Format version as 'v'major[.minor]
+    options.GroupNameFormat = "'v'VVV";
+    
+    // Substitute version in route template
+    options.SubstituteApiVersionInUrl = true;
+});
+
+builder.Services.AddControllers();
+
+var app = builder.Build();
+app.MapControllers();
+app.Run();
+```
+
+<ProgressCheckpoint section="setup" xpReward={10} />
+
+### Step 3: URI Path Versioning Implementation
+
+```csharp
+[ApiController]
+[Route("api/v{version:apiVersion}/[controller]")]
+[ApiVersion("1.0")]
+public class UsersV1Controller : ControllerBase
+{
+    [HttpGet]
+    public IActionResult GetUsers()
+    {
+        return Ok(new[]
+        {
+            new { Id = 1, Name = "John" },
+            new { Id = 2, Name = "Jane" }
+        });
+    }
+    
+    [HttpGet("{id}")]
+    public IActionResult GetUser(int id)
+    {
+        return Ok(new { Id = id, Name = "John" });
+    }
+}
+
+[ApiController]
+[Route("api/v{version:apiVersion}/[controller]")]
+[ApiVersion("2.0")]
+public class UsersV2Controller : ControllerBase
+{
+    [HttpGet]
+    public IActionResult GetUsers()
+    {
+        return Ok(new[]
+        {
+            new { 
+                Id = 1, 
+                FullName = "John Doe",  // Changed from Name
+                Email = "john@example.com",  // New field
+                CreatedAt = DateTime.UtcNow  // New field
+            }
+        });
+    }
+    
+    [HttpGet("{id}")]
+    public IActionResult GetUser(int id)
+    {
+        return Ok(new { 
+            Id = id, 
+            FullName = "John Doe",
+            Email = "john@example.com",
+            CreatedAt = DateTime.UtcNow
+        });
+    }
+}
+```
+
+**Usage:**
+```http
+GET /api/v1/users  → Returns v1 format
+GET /api/v2/users  → Returns v2 format
+```
+
+<ProgressCheckpoint section="uri-implementation" xpReward={10} />
+
+### Step 4: Multiple Versions in One Controller
+
+```csharp
+[ApiController]
+[Route("api/v{version:apiVersion}/[controller]")]
+[ApiVersion("1.0")]
+[ApiVersion("2.0")]
+public class ProductsController : ControllerBase
+{
+    // Available in both v1 and v2
+    [HttpGet]
+    public IActionResult GetProducts()
+    {
+        return Ok(new[] { "Product1", "Product2" });
+    }
+    
+    // Only in v1
+    [HttpGet("{id}")]
+    [MapToApiVersion("1.0")]
+    public IActionResult GetProductV1(int id)
+    {
+        return Ok(new { Id = id, Name = "Product" });
+    }
+    
+    // Only in v2
+    [HttpGet("{id}")]
+    [MapToApiVersion("2.0")]
+    public IActionResult GetProductV2(int id)
+    {
+        return Ok(new { 
+            Id = id, 
+            Name = "Product",
+            Description = "Detailed description",  // New field
+            Price = 99.99  // New field
+        });
+    }
+    
+    // Only in v2
+    [HttpGet("{id}/reviews")]
+    [MapToApiVersion("2.0")]
+    public IActionResult GetProductReviews(int id)
+    {
+        return Ok(new[] { "Great product!", "Love it!" });
+    }
+}
+```
+
+<ProgressCheckpoint section="multiple-versions" xpReward={10} />
+
+### Step 5: Query String Versioning
+
+```csharp
+// In Program.cs, use QueryStringApiVersionReader
+options.ApiVersionReader = new QueryStringApiVersionReader("api-version");
+
+// Controller stays the same
+[ApiController]
+[Route("api/[controller]")]
+[ApiVersion("1.0")]
+[ApiVersion("2.0")]
+public class OrdersController : ControllerBase
+{
+    [HttpGet]
+    public IActionResult GetOrders()
+    {
+        var version = HttpContext.GetRequestedApiVersion();
+        
+        if (version?.MajorVersion == 1)
+        {
+            return Ok(new[] { new { Id = 1, Total = 100 } });
+        }
+        
+        return Ok(new[] { 
+            new { 
+                Id = 1, 
+                Total = 100,
+                Currency = "USD",  // New in v2
+                Status = "Completed"  // New in v2
+            } 
+        });
+    }
+}
+```
+
+**Usage:**
+```http
+GET /api/orders?api-version=1.0  → v1 format
+GET /api/orders?api-version=2.0  → v2 format
+GET /api/orders                  → Default version (1.0)
+```
+
+<ProgressCheckpoint section="query-implementation" xpReward={10} />
+
+### Step 6: Header Versioning
+
+```csharp
+// In Program.cs
+options.ApiVersionReader = new HeaderApiVersionReader("X-API-Version");
+
+// Controller
+[ApiController]
+[Route("api/[controller]")]
+[ApiVersion("1.0")]
+[ApiVersion("2.0")]
+public class CustomersController : ControllerBase
+{
+    [HttpGet("{id}")]
+    public IActionResult GetCustomer(int id)
+    {
+        var version = HttpContext.GetRequestedApiVersion();
+        
+        if (version?.MajorVersion == 1)
+        {
+            return Ok(new { Id = id, Name = "Customer" });
+        }
+        
+        return Ok(new { 
+            Id = id, 
+            FullName = "Customer Name",
+            Email = "customer@example.com",
+            Phone = "+1234567890"
+        });
+    }
+}
+```
+
+**Usage:**
+```http
+GET /api/customers/123
+X-API-Version: 1.0
+→ Returns v1 format
+
+GET /api/customers/123
+X-API-Version: 2.0
+→ Returns v2 format
+```
+
+<ProgressCheckpoint section="header-implementation" xpReward={10} />
+
+## Best Practices 📋
+
+### 1. Start with v1
+
+```csharp
+// Don't start with v0 or no version
+❌ /api/users
+✅ /api/v1/users
+```
+
+### 2. Use Major Versions Only in URLs
+
+```csharp
+✅ /api/v1/users
+✅ /api/v2/users
+❌ /api/v1.1/users  // Confusing!
+❌ /api/v1.2.3/users  // Too detailed!
+```
+
+### 3. Document Version Differences
+
+```csharp
+/// <summary>
+/// Gets all users (v1)
+/// </summary>
+/// <remarks>
+/// Version 1 returns: Id, Name
+/// Version 2 returns: Id, FullName, Email, CreatedAt
+/// </remarks>
+[HttpGet]
+public IActionResult GetUsers() { }
+```
+
+### 4. Support Multiple Versions
+
+```csharp
+// Support at least 2 versions simultaneously
+[ApiVersion("1.0")]
+[ApiVersion("2.0")]  // Current
+[ApiVersion("3.0", Deprecated = true)]  // Deprecated
+```
+
+### 5. Add Version Info to Responses
+
+```csharp
+[HttpGet]
+public IActionResult GetData()
+{
+    Response.Headers.Add("X-API-Version", "2.0");
+    Response.Headers.Add("X-Supported-Versions", "1.0, 2.0");
+    
+    return Ok(data);
+}
+```
+
+<ProgressCheckpoint section="strategies" xpReward={30} />

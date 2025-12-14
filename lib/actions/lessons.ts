@@ -3,7 +3,6 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { serialize } from 'next-mdx-remote/serialize';
-import { unstable_cache } from 'next/cache';
 import remarkGfm from 'remark-gfm';
 import rehypeSlug from 'rehype-slug';
 import type { ExperienceLevel } from '@/lib/db/schemas/lesson-progress';
@@ -46,43 +45,39 @@ export async function getLessonMetadata(lessonPath: string) {
 
 /**
  * Get MDX content for a specific lesson and experience level
- * Cached for optimal performance - MDX compilation is expensive
+ * No caching during development to ensure fresh content
  */
-export const getLessonContent = unstable_cache(
-  async (lessonPath: string, level: ExperienceLevel) => {
-    try {
-      // Validate the experience level to prevent injection in filename
-      const validLevels: ExperienceLevel[] = ['beginner', 'intermediate', 'advanced'];
-      if (!validLevels.includes(level)) {
-        console.error('Invalid experience level:', level);
-        return null;
-      }
-      
-      const mdxPath = await resolvePathWithinRoot(CONTENT_DIR, lessonPath, `${level}.mdx`);
-      if (!mdxPath) {
-        return null;
-      }
-      const source = await fs.readFile(mdxPath, 'utf-8');
-      
-      const mdxSource = await serialize(source, {
-        mdxOptions: {
-          remarkPlugins: [remarkGfm],
-          rehypePlugins: [rehypeSlug],
-        },
-      });
-      
-      return mdxSource;
-    } catch (error) {
-      console.error('Failed to load lesson content:', error);
+export async function getLessonContent(lessonPath: string, level: ExperienceLevel) {
+  try {
+    // Validate the experience level to prevent injection in filename
+    const validLevels: ExperienceLevel[] = ['beginner', 'intermediate', 'advanced'];
+    if (!validLevels.includes(level)) {
+      console.error('Invalid experience level:', level);
       return null;
     }
-  },
-  ['lesson-content'],
-  {
-    revalidate: 3600, // Cache for 1 hour in production
-    tags: ['lessons'],
+    
+    const mdxPath = await resolvePathWithinRoot(CONTENT_DIR, lessonPath, `${level}.mdx`);
+    if (!mdxPath) {
+      console.error('Could not resolve MDX path for:', lessonPath, level);
+      return null;
+    }
+    
+    // Read fresh content from disk
+    const source = await fs.readFile(mdxPath, 'utf-8');
+    
+    const mdxSource = await serialize(source, {
+      mdxOptions: {
+        remarkPlugins: [remarkGfm],
+        rehypePlugins: [rehypeSlug],
+      },
+    });
+    
+    return mdxSource;
+  } catch (error) {
+    console.error('Failed to load lesson content:', lessonPath, level, error);
+    return null;
   }
-);
+}
 
 /**
  * Check if a lesson exists

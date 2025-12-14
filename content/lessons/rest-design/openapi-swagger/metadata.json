@@ -1,0 +1,15 @@
+{
+  "id": "openapi-swagger",
+  "title": "OpenAPI & Swagger",
+  "description": "Document your API automatically.",
+  "milestone": "rest-design",
+  "order": 4,
+  "sections": ["swagger-intro", "integration", "customization"],
+  "levels": {
+    "beginner": { "estimatedMinutes": 10, "xpReward": 20 },
+    "intermediate": { "estimatedMinutes": 15, "xpReward": 30 },
+    "advanced": { "estimatedMinutes": 20, "xpReward": 50 }
+  },
+  "prerequisites": ["api-versioning"],
+  "tags": ["swagger", "openapi", "documentation"]
+}

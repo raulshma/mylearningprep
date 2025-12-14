@@ -5,6 +5,10 @@ import { LessonPageClient } from './lesson-page-client';
 import type { ExperienceLevel } from '@/lib/db/schemas/lesson-progress';
 import { getUserGamificationAction } from '@/lib/actions/gamification';
 
+// Force dynamic rendering to ensure fresh content
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 interface LearnObjectivePageProps {
   params: Promise<{
     slug: string;

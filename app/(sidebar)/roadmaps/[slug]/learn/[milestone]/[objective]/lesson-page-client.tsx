@@ -54,6 +54,10 @@ interface LessonPageClientProps {
 interface LessonContentInternalProps extends LessonPageClientProps {
   currentLevel: ExperienceLevel;
   onLevelChange: (level: ExperienceLevel) => void;
+  mdxSource: MDXRemoteSerializeResult;
+  onMdxSourceChange: (mdxSource: MDXRemoteSerializeResult) => void;
+  mdxKey: number;
+  bumpMdxKey: () => void;
 }
 
 // Inner component that uses the progress context
@@ -74,6 +78,10 @@ function LessonContent({
   adjacentLessons = null,
   currentLevel,
   onLevelChange: setCurrentLevel,
+  mdxSource,
+  onMdxSourceChange,
+  mdxKey,
+  bumpMdxKey,
 }: LessonContentInternalProps) {
   const searchParams = useSearchParams();
   const { setAdjacentLessons, enterZenMode, isZenMode } = useZenMode();
@@ -94,7 +102,6 @@ function LessonContent({
   // Use the lifted level state from parent
   const level = currentLevel;
   const setLevel = setCurrentLevel;
-  const [mdxSource, setMdxSource] = useState<MDXRemoteSerializeResult>(initialMdxSource);
   const [isLoading, setIsLoading] = useState(false);
   const [gamification, setGamification] = useState<UserGamification | null>(initialGamification);
   const [hasClaimedReward, setHasClaimedReward] = useState(isLessonCompleted);
@@ -170,8 +177,16 @@ function LessonContent({
     
     setIsLoading(true);
     try {
+      // Add cache-busting timestamp to ensure fresh content
+      const timestamp = Date.now();
       const response = await fetch(
-        `/api/lessons/content?path=${encodeURIComponent(lessonId)}&level=${newLevel}`
+        `/api/lessons/content?path=${encodeURIComponent(lessonId)}&level=${newLevel}&t=${timestamp}`,
+        {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        }
       );
       
       if (!response.ok) {
@@ -179,6 +194,9 @@ function LessonContent({
       }
       
       const data = await response.json();
+      
+      console.log('[Client] Received data for level:', newLevel);
+      console.log('[Client] Source first 100 chars:', data.source?.substring(0, 100));
       
       // Serialize the MDX on the client side
       const { serialize } = await import('next-mdx-remote/serialize');
@@ -190,8 +208,12 @@ function LessonContent({
         },
       });
       
-      setMdxSource(serialized);
-      setLevel(newLevel); // This updates parent state, triggering ProgressProvider recreation
+      console.log('[Client] Serialized MDX, setting new source');
+      // IMPORTANT: Persist the new MDX source above the ProgressProvider.
+      // ProgressProvider is keyed by level, so changing level will remount children.
+      onMdxSourceChange(serialized);
+      bumpMdxKey(); // Increment key to force remount of MDX renderer
+      // Defer setLevel until after we stop the loading state to avoid setState-on-unmounted.
       // Note: resetProgress() is no longer needed as ProgressProvider is recreated with a new key
       
       // Check if this level was already completed
@@ -206,12 +228,15 @@ function LessonContent({
         '',
         `/roadmaps/${roadmapSlug}/learn/${milestoneId}/${lessonId.split('/')[1]}?level=${newLevel}`
       );
+
+      // Now switch the level (this remounts ProgressProvider and its children)
+      setLevel(newLevel);
     } catch (error) {
       console.error('Failed to load new content:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [level, lessonId, roadmapSlug, milestoneId, isLoading, gamification, setLevel]);
+  }, [level, lessonId, roadmapSlug, milestoneId, isLoading, gamification, setLevel, onMdxSourceChange, bumpMdxKey]);
 
   // Handle lesson completion
   const handleClaimRewards = useCallback(async () => {
@@ -359,7 +384,7 @@ function LessonContent({
           </motion.div>
         ) : (
           <motion.article
-            key={level}
+            key={`${level}-${mdxKey}`}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
@@ -492,7 +517,8 @@ function LessonContentWithZen(props: LessonContentInternalProps) {
       lessonTitle={props.lessonTitle}
       milestoneTitle={props.milestoneTitle}
       roadmapSlug={props.roadmapSlug}
-      mdxContent={props.initialMdxSource}
+      // Use the *current* MDX source (not the initial server one) so zen mode stays in sync.
+      mdxContent={props.mdxSource}
     >
       <LessonContent {...props} />
     </ZenModeContentWrapper>
@@ -503,6 +529,14 @@ function LessonContentWithZen(props: LessonContentInternalProps) {
 export function LessonPageClient(props: LessonPageClientProps) {
   // Lift level state up to ensure ProgressProvider is recreated when level changes
   const [currentLevel, setCurrentLevel] = useState<ExperienceLevel>(props.initialLevel);
+
+  // Lift MDX state up so it survives ProgressProvider remounts on level changes.
+  const [mdxSource, setMdxSource] = useState<MDXRemoteSerializeResult>(props.initialMdxSource);
+  const [mdxKey, setMdxKey] = useState(0);
+
+  const bumpMdxKey = useCallback(() => {
+    setMdxKey(prev => prev + 1);
+  }, []);
   
   const handleSectionComplete = useCallback((sectionId: string) => {
     // Could send to analytics, save to DB, etc.
@@ -544,7 +578,15 @@ export function LessonPageClient(props: LessonPageClientProps) {
           isCompleted: isLevelCompleted
         }}
       >
-        <LessonContentWithZen {...props} currentLevel={currentLevel} onLevelChange={setCurrentLevel} />
+        <LessonContentWithZen
+          {...props}
+          currentLevel={currentLevel}
+          onLevelChange={setCurrentLevel}
+          mdxSource={mdxSource}
+          onMdxSourceChange={setMdxSource}
+          mdxKey={mdxKey}
+          bumpMdxKey={bumpMdxKey}
+        />
       </ProgressProvider>
     </ZenModeProvider>
   );
