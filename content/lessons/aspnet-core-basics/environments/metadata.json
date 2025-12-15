@@ -5,9 +5,9 @@
   "milestone": "aspnet-core-basics",
   "order": 5,
   "sections": [
-    "environment-basics",
-    "environment-config",
-    "environment-code"
+    "env-basics",
+    "env-intermediate",
+    "env-advanced"
   ],
   "levels": {
     "beginner": {

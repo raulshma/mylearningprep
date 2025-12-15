@@ -6,7 +6,6 @@
   "order": 2,
   "sections": [
     "intro-app-service",
-    "deployment-methods",
     "slots-and-scaling",
     "configuration"
   ],

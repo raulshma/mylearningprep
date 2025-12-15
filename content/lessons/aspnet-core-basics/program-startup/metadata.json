@@ -5,9 +5,9 @@
   "milestone": "aspnet-core-basics",
   "order": 3,
   "sections": [
-    "entry-point",
-    "services",
-    "middleware"
+    "program-basics",
+    "program-intermediate",
+    "program-advanced"
   ],
   "levels": {
     "beginner": {

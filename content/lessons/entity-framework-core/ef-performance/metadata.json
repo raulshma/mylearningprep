@@ -6,7 +6,6 @@
   "order": 5,
   "sections": [
     "intro-performance",
-    "n-plus-one",
     "tracking-optimization",
     "advanced-tuning"
   ],

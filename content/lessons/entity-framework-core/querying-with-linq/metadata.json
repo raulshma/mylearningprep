@@ -6,7 +6,6 @@
   "order": 3,
   "sections": [
     "intro-linq",
-    "filtering-sorting",
     "projections",
     "eager-loading"
   ],

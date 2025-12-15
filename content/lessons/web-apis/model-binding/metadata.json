@@ -6,9 +6,8 @@
   "order": 3,
   "sections": [
     "model-binding-intro",
-    "binding-sources",
-    "data-annotations",
-    "validation-handling"
+    "model-binding-intermediate",
+    "model-binding-advanced"
   ],
   "levels": {
     "beginner": {

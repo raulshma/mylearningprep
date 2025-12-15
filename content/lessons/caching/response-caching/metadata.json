@@ -5,10 +5,9 @@
   "milestone": "caching",
   "order": 2,
   "sections": [
-    "response-caching-intro",
-    "response-cache-middleware",
-    "cache-control-headers",
-    "cache-profiles"
+    "response-caching-basics",
+    "response-caching-intermediate",
+    "response-caching-expert"
   ],
   "levels": {
     "beginner": {

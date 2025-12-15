@@ -5,10 +5,9 @@
   "milestone": "caching",
   "order": 3,
   "sections": [
-    "redis-caching-intro",
-    "distributed-cache-setup",
-    "redis-operations",
-    "cache-aside-pattern"
+    "redis-caching-basics",
+    "redis-caching-intermediate",
+    "redis-advanced"
   ],
   "levels": {
     "beginner": {

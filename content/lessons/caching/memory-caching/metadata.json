@@ -5,10 +5,9 @@
   "milestone": "caching",
   "order": 1,
   "sections": [
-    "memory-caching-intro",
-    "caching-basics",
-    "cache-operations",
-    "cache-expiration"
+    "memory-caching-basics",
+    "memory-caching-advanced",
+    "memory-caching-expert"
   ],
   "levels": {
     "beginner": {

@@ -6,9 +6,8 @@
   "order": 4,
   "sections": [
     "response-formatting-intro",
-    "content-negotiation",
-    "action-results",
-    "custom-formatters"
+    "response-formatting-intermediate",
+    "response-formatting-advanced"
   ],
   "levels": {
     "beginner": {

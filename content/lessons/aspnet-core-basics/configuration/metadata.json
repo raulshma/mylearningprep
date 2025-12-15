@@ -5,9 +5,9 @@
   "milestone": "aspnet-core-basics",
   "order": 4,
   "sections": [
-    "config-sources",
-    "accessing-config",
-    "options-pattern"
+    "config-basics",
+    "config-intermediate",
+    "config-advanced"
   ],
   "levels": {
     "beginner": {

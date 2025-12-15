@@ -6,9 +6,8 @@
   "order": 1,
   "sections": [
     "controllers-actions-intro",
-    "controller-architecture",
-    "action-methods",
-    "dependency-injection"
+    "controllers-actions-intermediate",
+    "controllers-actions-advanced"
   ],
   "levels": {
     "beginner": {

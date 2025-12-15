@@ -6,7 +6,6 @@
   "order": 1,
   "sections": [
     "intro-docker",
-    "dockerfile-basics",
     "multi-stage-builds",
     "optimization"
   ],

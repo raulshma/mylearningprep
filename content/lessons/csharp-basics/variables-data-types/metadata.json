@@ -5,10 +5,7 @@
   "milestone": "csharp-basics",
   "order": 1,
   "sections": [
-    "intro-variables",
-    "value-types",
-    "reference-types",
-    "type-conversion"
+    "intro-variables"
   ],
   "levels": {
     "beginner": {

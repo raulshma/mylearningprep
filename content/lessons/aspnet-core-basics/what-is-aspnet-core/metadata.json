@@ -6,8 +6,8 @@
   "order": 1,
   "sections": [
     "intro-aspnet-core",
-    "cross-platform",
-    "framework-features"
+    "aspnet-core-overview",
+    "aspnet-core-internals"
   ],
   "levels": {
     "beginner": {

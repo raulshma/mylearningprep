@@ -7,7 +7,6 @@
   "sections": [
     "intro-aspire",
     "app-host",
-    "service-defaults",
     "deployment"
   ],
   "levels": {

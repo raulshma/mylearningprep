@@ -6,9 +6,8 @@
   "order": 5,
   "sections": [
     "minimal-apis-intro",
-    "route-handlers",
-    "endpoint-filters",
-    "openapi-integration"
+    "minimal-apis-intermediate",
+    "minimal-apis-advanced"
   ],
   "levels": {
     "beginner": {

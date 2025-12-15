@@ -5,9 +5,9 @@
   "milestone": "aspnet-core-basics",
   "order": 2,
   "sections": [
-    "files-folders",
-    "key-files",
-    "project-file"
+    "project-basics",
+    "project-structure",
+    "project-advanced"
   ],
   "levels": {
     "beginner": {

@@ -6,7 +6,6 @@
   "order": 2,
   "sections": [
     "intro-migrations",
-    "add-migration",
     "update-database",
     "migration-history"
   ],
