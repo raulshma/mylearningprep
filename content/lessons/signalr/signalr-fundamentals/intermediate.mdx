@@ -1,0 +1,326 @@
+# SignalR Fundamentals: Real-Time Communication Deep Dive
+
+SignalR is an open-source library that simplifies adding **real-time web functionality** to ASP.NET Core applications. It enables server-side code to push content to connected clients instantly, without clients constantly polling for updates.
+
+## Understanding Real-Time Communication
+
+Traditional web applications use the **request-response** model: clients request data, servers respond. This creates a fundamental problem for real-time scenarios.
+
+### The Polling Problem
+
+```csharp
+// ❌ Traditional approach - inefficient polling
+setInterval(async () => {
+    const response = await fetch('/api/messages/new');
+    const messages = await response.json();
+    // Update UI with new messages
+}, 3000); // Check every 3 seconds
+```
+
+**Problems with polling:**
+- Wastes bandwidth (most requests return no new data)
+- Increases server load
+- Introduces latency (up to 3 seconds delay)
+- Poor user experience
+
+### The SignalR Solution
+
+```csharp
+// ✅ SignalR - efficient push-based communication
+public class NotificationHub : Hub
+{
+    public async Task SendNotification(string message)
+    {
+        // Server pushes to clients instantly
+        await Clients.All.SendAsync("ReceiveNotification", message);
+    }
+}
+```
+
+<Comparison
+  left={{
+    title: "HTTP Polling",
+    items: [
+      "Client initiates all communication",
+      "Constant overhead even with no updates",
+      "Latency = polling interval",
+      "Inefficient resource usage"
+    ]
+  }}
+  right={{
+    title: "SignalR",
+    items: [
+      "Bi-directional communication",
+      "Server pushes when data changes",
+      "Near-instant updates",
+      "Efficient resource usage"
+    ]
+  }}
+/>
+
+<ProgressCheckpoint section="what-is-signalr" xpReward={15} />
+
+## SignalR Transport Protocols
+
+SignalR supports multiple transport mechanisms and automatically negotiates the best available option.
+
+### 1. WebSockets (Preferred)
+
+WebSockets provide **full-duplex** communication over a single TCP connection.
+
+```csharp
+// WebSockets flow:
+// 1. HTTP handshake upgrade
+// 2. Persistent TCP connection
+// 3. Bi-directional frame-based messaging
+```
+
+**Characteristics:**
+- Low latency (~1-2ms)
+- Minimal overhead (2-6 bytes per frame)
+- Full-duplex (simultaneous send/receive)
+- Requires modern browsers (IE 10+, Chrome, Firefox, Safari)
+
+### 2. Server-Sent Events (SSE)
+
+SSE enables servers to push data to clients over HTTP.
+
+```javascript
+// SSE is one-directional (server → client)
+// Client can send via standard HTTP requests
+```
+
+**Characteristics:**
+- Unidirectional (server to client only)
+- Built on HTTP (no special protocols)
+- Automatic reconnection
+- Limited to 6 concurrent connections per domain
+
+### 3. Long Polling (Fallback)
+
+Long polling keeps HTTP connections open until the server has data to send.
+
+```csharp
+// Long Polling flow:
+// 1. Client makes HTTP request
+// 2. Server holds connection open
+// 3. Server sends response when data available
+// 4. Client immediately makes new request
+```
+
+**Characteristics:**
+- Universal browser support
+- Higher latency and overhead
+- Connection re-establishment overhead
+- Works through most firewalls/proxies
+
+<KeyConcept title="Transport Negotiation">
+SignalR performs **transport negotiation** during connection establishment:
+
+1. Client requests supported transports from server
+2. Server responds with available options
+3. Client selects best transport (WebSockets → SSE → Long Polling)
+4. Connection established using selected transport
+
+You can also **force a specific transport** if needed:
+```javascript
+const connection = new signalR.HubConnectionBuilder()
+    .withUrl("/hub", { 
+        transport: signalR.HttpTransportType.WebSockets 
+    })
+    .build();
+```
+</KeyConcept>
+
+<ProgressCheckpoint section="transports-protocols" xpReward={15} />
+
+## Setting Up SignalR in ASP.NET Core
+
+Let's build a complete SignalR application from scratch.
+
+### Project Setup
+
+```bash
+dotnet new web -n RealtimeApp
+cd RealtimeApp
+# SignalR is included in ASP.NET Core framework
+```
+
+### 1. Create a Hub
+
+```csharp
+using Microsoft.AspNetCore.SignalR;
+
+namespace RealtimeApp.Hubs;
+
+public class ChatHub : Hub
+{
+    // Hub methods can be called by connected clients
+    public async Task SendMessage(string user, string message)
+    {
+        // Broadcast to all connected clients
+        await Clients.All.SendAsync("ReceiveMessage", user, message);
+    }
+    
+    // Connection lifecycle methods
+    public override async Task OnConnectedAsync()
+    {
+        await Clients.All.SendAsync("UserConnected", Context.ConnectionId);
+        await base.OnConnectedAsync();
+    }
+    
+    public override async Task OnDisconnectedAsync(Exception? exception)
+    {
+        await Clients.All.SendAsync("UserDisconnected", Context.ConnectionId);
+        await base.OnDisconnectedAsync(exception);
+    }
+}
+```
+
+### 2. Configure Services and Middleware
+
+```csharp
+// Program.cs
+var builder = WebApplication.CreateBuilder(args);
+
+// Add SignalR with configuration
+builder.Services.AddSignalR(options =>
+{
+    // Global hub options
+    options.EnableDetailedErrors = builder.Environment.IsDevelopment();
+    options.KeepAliveInterval = TimeSpan.FromSeconds(15);
+    options.ClientTimeoutInterval = TimeSpan.FromSeconds(30);
+});
+
+var app = builder.Build();
+
+// Map hub endpoint
+app.MapHub<ChatHub>("/hubs/chat");
+
+app.Run();
+```
+
+### 3. JavaScript Client Setup
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SignalR Chat</title>
+</head>
+<body>
+    <div id="messages"></div>
+    <input id="messageInput" type="text" />
+    <button id="sendButton">Send</button>
+
+    <script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@latest/dist/browser/signalr.min.js"></script>
+    <script>
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/hubs/chat")
+            .withAutomaticReconnect() // Auto-reconnect on disconnect
+            .configureLogging(signalR.LogLevel.Information)
+            .build();
+
+        // Register client-side method
+        connection.on("ReceiveMessage", (user, message) => {
+            const div = document.createElement("div");
+            div.textContent = `${user}: ${message}`;
+            document.getElementById("messages").appendChild(div);
+        });
+
+        // Start connection
+        connection.start()
+            .then(() => console.log("Connected!"))
+            .catch(err => console.error(err));
+
+        // Send message
+        document.getElementById("sendButton").addEventListener("click", () => {
+            const message = document.getElementById("messageInput").value;
+            connection.invoke("SendMessage", "User", message)
+                .catch(err => console.error(err));
+        });
+    </script>
+</body>
+</html>
+```
+
+### 4. .NET Client (Optional)
+
+```csharp
+using Microsoft.AspNetCore.SignalR.Client;
+
+var connection = new HubConnectionBuilder()
+    .WithUrl("https://localhost:5001/hubs/chat")
+    .WithAutomaticReconnect()
+    .Build();
+
+connection.On<string, string>("ReceiveMessage", (user, message) =>
+{
+    Console.WriteLine($"{user}: {message}");
+});
+
+await connection.StartAsync();
+await connection.InvokeAsync("SendMessage", "DotNetClient", "Hello from C#!");
+```
+
+## Advanced Configuration
+
+### Message Size Limits
+
+```csharp
+builder.Services.AddSignalR(options =>
+{
+    options.MaximumReceiveMessageSize = 128 * 1024; // 128 KB
+});
+```
+
+### Custom JSON Serialization
+
+```csharp
+builder.Services.AddSignalR()
+    .AddJsonProtocol(options =>
+    {
+        options.PayloadSerializerOptions.PropertyNamingPolicy = null;
+    });
+```
+
+### MessagePack Protocol (Binary)
+
+```bash
+dotnet add package Microsoft.AspNetCore.SignalR.Protocols.MessagePack
+```
+
+```csharp
+builder.Services.AddSignalR()
+    .AddMessagePackProtocol();
+```
+
+```javascript
+const connection = new signalR.HubConnectionBuilder()
+    .withUrl("/hub")
+    .withHubProtocol(new signalR.protocols.msgpack.MessagePackHubProtocol())
+    .build();
+```
+
+<ProgressCheckpoint section="setup-configuration" xpReward={20} />
+
+## Best Practices
+
+✅ **Use strongly-typed hubs** for type safety  
+✅ **Enable automatic reconnection** for resilience  
+✅ **Configure appropriate timeouts** based on your use case  
+✅ **Use MessagePack for performance-critical scenarios**  
+✅ **Implement proper error handling** on both client and server  
+✅ **Monitor connection state** and handle disconnections gracefully  
+
+## Performance Considerations
+
+| Aspect | Recommendation |
+|:---|:---|
+| **Transport** | Prefer WebSockets when available |
+| **Protocol** | Use MessagePack for high-throughput scenarios |
+| **Message Size** | Keep messages small; large payloads should use separate API |
+| **Connections** | Use connection pooling for .NET clients |
+| **Scaling** | Implement backplane (Redis, Azure Service Bus) for multiple servers |
+
+> **Next Steps**: Now that you understand SignalR fundamentals, let's explore how Hubs communicate with specific clients and groups!

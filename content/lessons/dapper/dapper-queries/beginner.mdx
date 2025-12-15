@@ -1,0 +1,333 @@
+# Queries & Commands with Dapper
+
+Now that you know the basics of Dapper, it's time to explore all the powerful ways you can query and modify data! Think of this as learning different tools in your toolbox—each one is perfect for specific jobs. 🔧
+
+<InfoBox type="tip" title="What You'll Master">
+You'll learn when to use Query vs QuerySingle, how to INSERT/UPDATE/DELETE data, handle bulk operations, and even call stored procedures!
+</InfoBox>
+
+<ProgressCheckpoint section="query-methods" xpReward={6} />
+
+## Understanding Query Methods
+
+Dapper offers different query methods, each designed for specific scenarios. Let's explore them with real-world analogies!
+
+### `Query<T>()` - Getting Multiple Rows
+
+Think of this like asking "Show me **all** the products in the electronics category." You expect multiple results.
+
+```csharp
+// Returns IEnumerable<Product> - could be 0, 1, or many products
+var products = connection.Query<Product>(
+    "SELECT * FROM Products WHERE CategoryId = @categoryId",
+    new { categoryId = 1 }
+);
+
+foreach (var product in products)
+{
+    Console.WriteLine($"{product.Name}: ${product.Price}");
+}
+```
+
+**When to use**: When you expect **zero or more** results.
+
+### `QuerySingle<T>()` - Expecting Exactly One
+
+This is like asking "Show me **THE** customer with ID 5." You expect exactly one result—no more, no less.
+
+```csharp
+// Returns exactly ONE Customer, throws error if 0 or 2+ found
+var customer = connection.QuerySingle<Customer>(
+    "SELECT * FROM Customers WHERE Id = @id",
+    new { id = 5 }
+);
+
+Console.WriteLine($"Found: {customer.Name}");
+```
+
+**When to use**: When you **must** get exactly one result. Throws an exception if zero or multiple rows are found.
+
+### `QuerySingleOrDefault<T>()` - One or Nothing
+
+Like asking "Show me the admin user, if one exists." You might get one result, or nothing (null).
+
+```csharp
+// Returns ONE Customer or null if not found
+var admin = connection.QuerySingleOrDefault<Customer>(
+    "SELECT * FROM Customers WHERE Username = @username",
+    new { username = "admin" }
+);
+
+if (admin != null)
+{
+    Console.WriteLine($"Admin found: {admin.Name}");
+}
+else
+{
+    Console.WriteLine("No admin user found");
+}
+```
+
+**When to use**: When you expect zero or one result.
+
+### `QueryFirst<T>()` - Just Give Me the First One
+
+Imagine asking "Show me the newest product." You don't care if there are multiple, you just want the first one.
+
+```csharp
+// Returns the FIRST product, throws error if none found
+var newestProduct = connection.QueryFirst<Product>(
+    "SELECT TOP 1 * FROM Products ORDER BY CreatedDate DESC"
+);
+
+Console.WriteLine($"Newest: {newestProduct.Name}");
+```
+
+**When to use**: When you know there's at least one result and you only want the first.
+
+### `QueryFirstOrDefault<T>()` - First One or Nothing
+
+```csharp
+// Returns the first product or null if none found
+var latestProduct = connection.QueryFirstOrDefault<Product>(
+    "SELECT TOP 1 * FROM Products ORDER BY CreatedDate DESC"
+);
+```
+
+**When to use**: When you want the first result but might get zero.
+
+<DapperQueryVisualizer />
+
+<KeyConcept title="Quick Decision Guide">
+- **Many results expected?** → Use `Query<T>()`
+- **Must have exactly one?** → Use `QuerySingle<T>()`  
+- **Zero or one result?** → Use `QuerySingleOrDefault<T>()`
+- **Just want the first?** → Use `QueryFirst<T>()`
+- **First or nothing?** → Use `QueryFirstOrDefault<T>()`
+</KeyConcept>
+
+<ProgressCheckpoint section="query-single" xpReward={6} />
+
+## Scalar Queries: Getting Single Values
+
+Sometimes you don't need a whole object—just one value, like a count or sum. Use `ExecuteScalar<T>()`:
+
+```csharp
+// How many products do we have?
+var productCount = connection.ExecuteScalar<int>(
+    "SELECT COUNT(*) FROM Products"
+);
+
+Console.WriteLine($"Total products: {productCount}");
+
+// What's the total value of inventory?
+var totalValue = connection.ExecuteScalar<decimal>(
+    "SELECT SUM(Price * Stock) FROM Products"
+);
+
+Console.WriteLine($"Inventory value: ${totalValue}");
+
+// Get a specific value
+var productName = connection.ExecuteScalar<string>(
+    "SELECT Name FROM Products WHERE Id = @id",
+    new { id = 1 }
+);
+```
+
+Think of `ExecuteScalar` as asking a yes/no or fill-in-the-blank question, not requesting a full form.
+
+<ProgressCheckpoint section="execute-commands" xpReward={6} />
+
+## Execute Commands: Changing Data
+
+Now let's learn how to **modify** data! The `Execute()` method is your tool for INSERT, UPDATE, and DELETE operations.
+
+### INSERT - Adding New Data
+
+```csharp
+var sql = "INSERT INTO Products (Name, Price, Stock) VALUES (@name, @price, @stock)";
+
+var rowsAffected = connection.Execute(sql, new
+{
+    name = "Gaming Mouse",
+    price = 49.99m,
+    stock = 100
+});
+
+Console.WriteLine($"{rowsAffected} row inserted!"); // Output: 1 row inserted!
+```
+
+### UPDATE - Modifying Existing Data
+
+```csharp
+var sql = "UPDATE Products SET Price = @price WHERE Id = @id";
+
+var rowsAffected = connection.Execute(sql, new
+{
+    id = 1,
+    price = 899.99m
+});
+
+Console.WriteLine($"{rowsAffected} row updated!");
+```
+
+### DELETE - Removing Data
+
+```csharp
+var sql = "DELETE FROM Products WHERE Stock = 0";
+
+var rowsAffected = connection.Execute(sql);
+
+Console.WriteLine($"{rowsAffected} rows deleted!");
+```
+
+<DapperCommandVisualizer />
+
+<InfoBox type="info" title="Return Value">
+`Execute()` returns the number of rows affected by your command. This is super useful for checking if your operation succeeded!
+</InfoBox>
+
+<ProgressCheckpoint section="bulk-operations" xpReward={6} />
+
+## Bulk Operations: Do the Same Thing Many Times
+
+What if you need to insert 100 products? Don't write 100 separate INSERT statements! Dapper can execute the same command for multiple objects:
+
+```csharp
+var sql = "INSERT INTO Products (Name, Price, Stock) VALUES (@Name, @Price, @Stock)";
+
+// Create a list of products to insert
+var newProducts = new List<Product>
+{
+    new Product { Name = "Mouse Pad", Price = 15.99m, Stock = 200 },
+    new Product { Name = "USB Cable", Price = 9.99m, Stock = 500 },
+    new Product { Name = "Webcam", Price = 79.99m, Stock = 50 }
+};
+
+// Execute once for each product!
+var rowsAffected = connection.Execute(sql, newProducts);
+
+Console.WriteLine($"{rowsAffected} products inserted!"); // Output: 3 products inserted!
+```
+
+**This is incredibly efficient!** Dapper sends all the commands in one batch to the database.
+
+<InfoBox type="success" title="Bulk Operations Are Fast! ⚡">
+Instead of 3 separate round-trips to the database, Dapper batches them together, making it much faster!
+</InfoBox>
+
+<ProgressCheckpoint section="stored-procedures" xpReward={6} />
+
+## Calling Stored Procedures
+
+Stored procedures are like pre-written recipes stored in your database. Here's how to call them with Dapper:
+
+```csharp
+// Assume you have a stored procedure called "GetProductsByCategory"
+var products = connection.Query<Product>(
+    "GetProductsByCategory",
+    new { categoryId = 1 },
+    commandType: CommandType.StoredProcedure
+);
+```
+
+Notice we added `commandType: CommandType.StoredProcedure` to tell Dapper this is a stored procedure, not raw SQL.
+
+### With Output Parameters
+
+```csharp
+var parameters = new DynamicParameters();
+parameters.Add("@categoryId", 1);
+parameters.Add("@totalCount", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+var products = connection.Query<Product>(
+    "GetProductsWithCount",
+    parameters,
+    commandType: CommandType.StoredProcedure
+).ToList();
+
+// Get the output parameter value
+var totalCount = parameters.Get<int>("@totalCount");
+Console.WriteLine($"Total products in category: {totalCount}");
+```
+
+<ProgressCheckpoint section="async-methods" xpReward={5} />
+
+## Async Methods: Keep Your App Responsive
+
+All Dapper methods have async versions! This is important for web applications where you don't want to block the thread while waiting for the database.
+
+```csharp
+// Async query - add "Async" and use "await"
+var products = await connection.QueryAsync<Product>(
+    "SELECT * FROM Products WHERE CategoryId = @categoryId",
+    new { categoryId = 1 }
+);
+
+// Async single
+var customer = await connection.QuerySingleAsync<Customer>(
+    "SELECT * FROM Customers WHERE Id = @id",
+    new { id = 1 }
+);
+
+// Async execute
+var rowsAffected = await connection.ExecuteAsync(
+    "INSERT INTO Products (Name, Price) VALUES (@name, @price)",
+    new { name = "New Product", price = 99.99m }
+);
+
+// Async scalar
+var count = await connection.ExecuteScalarAsync<int>(
+    "SELECT COUNT(*) FROM Products"
+);
+```
+
+<KeyConcept title="When to Use Async">
+Use async methods in:
+- Web applications (ASP.NET Core)
+- UI applications (to keep the interface responsive)
+- Any scenario where you're doing I/O operations
+
+For simple console apps or scripts, regular (sync) methods are fine!
+</KeyConcept>
+
+<InfoBox type="success" title="You're Becoming a Dapper Pro! 🌟">
+You now know how to:
+- Choose the right query method for your needs
+- Execute INSERT, UPDATE, and DELETE commands
+- Perform bulk operations efficiently
+- Call stored procedures
+- Use async methods for responsive applications
+
+Next up: Multi-Mapping! Learn how to join tables and map complex relationships.
+</InfoBox>
+
+## Quick Reference
+
+```csharp
+// Queries
+var many = connection.Query<T>(sql, param);
+var one = connection.QuerySingle<T>(sql, param);
+var oneOrNull = connection.QuerySingleOrDefault<T>(sql, param);
+var first = connection.QueryFirst<T>(sql, param);
+var firstOrNull = connection.QueryFirstOrDefault<T>(sql, param);
+var value = connection.ExecuteScalar<T>(sql, param);
+
+// Commands
+var affected = connection.Execute(sql, param);
+
+// Async versions (add Async and await)
+var many = await connection.QueryAsync<T>(sql, param);
+var affected = await connection.ExecuteAsync(sql, param);
+
+// Bulk
+var items = new List<Item> { item1, item2, item3 };
+var affected = connection.Execute(sql, items);
+
+// Stored Procedure
+var result = connection.Query<T>(
+    "ProcedureName",
+    param,
+    commandType: CommandType.StoredProcedure
+);
+```

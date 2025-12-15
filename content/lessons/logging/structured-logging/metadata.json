@@ -1,0 +1,28 @@
+{
+  "id": "structured-logging",
+  "title": "Structured Logging",
+  "description": "Master structured logging concepts, benefits, and implementation patterns for better observability.",
+  "milestone": "logging",
+  "order": 3,
+  "sections": [
+    "structured-vs-unstructured",
+    "querying-analyzing",
+    "observability-patterns"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 20,
+      "xpReward": 60
+    }
+  },
+  "prerequisites": ["logging/builtin-logging", "logging/serilog"],
+  "tags": ["dotnet", "structured-logging", "observability", "analytics"]
+}

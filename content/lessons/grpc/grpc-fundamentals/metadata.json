@@ -1,0 +1,28 @@
+{
+  "id": "grpc-fundamentals",
+  "title": "gRPC Fundamentals",
+  "description": "Discover gRPC - the high-performance RPC framework that enables efficient service-to-service communication in modern distributed systems.",
+  "milestone": "grpc",
+  "order": 1,
+  "sections": [
+    "what-is-grpc",
+    "grpc-vs-rest",
+    "grpc-architecture"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 12,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 18,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 25,
+      "xpReward": 60
+    }
+  },
+  "prerequisites": ["web-apis", "rest-design"],
+  "tags": ["grpc", "rpc", "microservices", "distributed-systems", "protobuf"]
+}

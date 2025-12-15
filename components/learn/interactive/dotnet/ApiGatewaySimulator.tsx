@@ -409,7 +409,7 @@ export function ApiGatewaySimulator({
             animate={{ opacity: 1 }}
             className="mt-4 bg-gray-900 rounded-lg p-4 font-mono text-xs overflow-x-auto"
           >
-            <div className="text-green-400 mb-2">// ocelot.json - Route Configuration</div>
+            <div className="text-green-400 mb-2">{"//"} ocelot.json - Route Configuration</div>
             <pre className="text-gray-300">
 {`{
   "Routes": [

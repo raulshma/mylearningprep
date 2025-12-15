@@ -1,0 +1,340 @@
+# Blazor Components: Building Blocks of Your UI 🧩
+
+Imagine you're building with LEGO bricks. Each brick is a **component** - a reusable piece that you can snap together to build amazing things!
+
+```razor
+<!-- A Button Component (LEGO brick) -->
+<MyButton Text="Click Me!" Color="Blue" />
+
+<!-- Use it everywhere! -->
+<MyButton Text="Save" Color="Green" />
+<MyButton Text="Delete" Color="Red" />
+```
+
+## What is a Blazor Component?
+
+A component is a **self-contained chunk of UI** written in C# and HTML. Think of it like a custom HTML tag that you create!
+
+### Your First Component
+
+```razor
+<!-- Counter.razor -->
+@page "/counter"
+
+<h1>Counter</h1>
+<p>Count: @currentCount</p>
+<button @onclick="Increment">Click me!</button>
+
+@code {
+    private int currentCount = 0;
+
+    void Increment()
+    {
+        currentCount++;
+    }
+}
+```
+
+**What's happening here?**
+- `@page "/counter"` = This component has its own URL
+- `@currentCount` = Display the variable in HTML
+- `@onclick` = When clicked, run C# code!
+- `@code { }` = Your C# logic lives here
+
+<ComponentVisualizer mode="simple" />
+
+## The Three Parts of a Component
+
+### 1️⃣ The HTML Template (What you see)
+
+```razor
+<div class="alert alert-info">
+    <h3>Hello, @name!</h3>
+    <p>Welcome to Blazor!</p>
+</div>
+```
+
+### 2️⃣ The C# Code (The brain)
+
+```razor
+@code {
+    private string name = "World";
+}
+```
+
+### 3️⃣ The Magic @ Symbol (Connecting them)
+
+```razor
+<!-- @ lets you use C# in HTML! -->
+<p>Current time: @DateTime.Now</p>
+<p>Random number: @Random.Shared.Next(1, 100)</p>
+```
+
+## Component Parameters: Passing Data In
+
+Think of parameters like **function arguments** but for components!
+
+### Creating a Greeting Component
+
+```razor
+<!-- Greeting.razor -->
+<div class="greeting">
+    <h2>Hello, @Name!</h2>
+    <p>@Message</p>
+</div>
+
+@code {
+    [Parameter]
+    public string Name { get; set; } = "Friend";
+    
+    [Parameter]
+    public string Message { get; set; } = "Welcome!";
+}
+```
+
+### Using Your Component
+
+```razor
+<!-- Parent.razor -->
+<Greeting Name="Alice" Message="Have a great day!" />
+<Greeting Name="Bob" Message="Thanks for visiting!" />
+<Greeting Name="Charlie" />  <!-- Uses default message -->
+```
+
+**Result:**
+```
+Hello, Alice!
+Have a great day!
+
+Hello, Bob!
+Thanks for visiting!
+
+Hello, Charlie!
+Welcome!
+```
+
+<ProgressCheckpoint section="component-basics" xpReward={30} />
+
+## Data Binding: The Two-Way Street 🔄
+
+**Binding** connects your HTML to your C# variables automatically!
+
+### One-Way Binding (Read-Only)
+
+```razor
+<p>Your name is: @userName</p>
+
+@code {
+    private string userName = "Alice";
+}
+```
+
+### Two-Way Binding (Read & Write)
+
+```razor
+<input @bind="userName" />
+<p>Hello, @userName!</p>
+
+@code {
+    private string userName = "Alice";
+}
+```
+
+**Try it!** When you type in the input, the paragraph updates automatically! ✨
+
+<InteractiveDemoPanel
+  title="Two-Way Binding Demo"
+  component="TwoWayBindingDemo"
+/>
+
+## Binding to Different Events
+
+By default, binding updates when you **leave the input** (blur). But you can change this!
+
+```razor
+<!-- Updates on every keystroke! -->
+<input @bind="searchText" @bind:event="oninput" />
+<p>Searching for: @searchText</p>
+
+@code {
+    private string searchText = "";
+}
+```
+
+## Binding Different Data Types
+
+Blazor automatically converts between HTML and C#:
+
+```razor
+<!-- String -->
+<input @bind="name" type="text" />
+
+<!-- Number -->
+<input @bind="age" type="number" />
+
+<!-- Date -->
+<input @bind="birthday" type="date" />
+
+<!-- Checkbox -->
+<input @bind="isStudent" type="checkbox" />
+
+@code {
+    private string name = "";
+    private int age = 0;
+    private DateTime birthday = DateTime.Today;
+    private bool isStudent = false;
+}
+```
+
+<ProgressCheckpoint section="data-binding-fundamentals" xpReward={30} />
+
+## Real-World Example: A Simple Form
+
+Let's build a contact form that uses everything we've learned!
+
+```razor
+<!-- ContactForm.razor -->
+<div class="form-container">
+    <h2>Contact Us</h2>
+    
+    <label>Name:</label>
+    <input @bind="contactName" />
+    
+    <label>Email:</label>
+    <input @bind="email" type="email" />
+    
+    <label>Message:</label>
+    <textarea @bind="message" rows="4"></textarea>
+    
+    <button @onclick="SubmitForm">Submit</button>
+    
+    @if (submitted)
+    {
+        <div class="success">
+            ✅ Thanks, @contactName! We'll contact you at @email
+        </div>
+    }
+</div>
+
+@code {
+    private string contactName = "";
+    private string email = "";
+    private string message = "";
+    private bool submitted = false;
+    
+    void SubmitForm()
+    {
+        submitted = true;
+    }
+}
+```
+
+**What's Happening:**
+1. Each input is bound to a variable
+2. When you type, variables update
+3. Click submit → `submitted` becomes `true`
+4. Conditional rendering shows success message!
+
+## Component Reusability
+
+The beauty of components is **reusing** them! Here's a reusable button:
+
+```razor
+<!-- FancyButton.razor -->
+<button class="fancy-btn @ColorClass" @onclick="HandleClick">
+    @Text
+</button>
+
+@code {
+    [Parameter]
+    public string Text { get; set; } = "Click";
+    
+    [Parameter]
+    public string ColorClass { get; set; } = "blue";
+    
+    [Parameter]
+    public EventCallback OnClick { get; set; }
+    
+    async Task HandleClick()
+    {
+        await OnClick.InvokeAsync();
+    }
+}
+```
+
+**Use it anywhere:**
+
+```razor
+<FancyButton Text="Save" ColorClass="green" OnClick="SaveData" />
+<FancyButton Text="Delete" ColorClass="red" OnClick="DeleteData" />
+<FancyButton Text="Cancel" ColorClass="gray" OnClick="Cancel" />
+```
+
+## Component Composition
+
+You can nest components like Russian dolls! 🪆
+
+```razor
+<!-- Page.razor -->
+<Layout>
+    <Header Title="My App" />
+    
+    <Sidebar>
+        <MenuItem Text="Home" Icon="🏠" />
+        <MenuItem Text="Profile" Icon="👤" />
+    </Sidebar>
+    
+    <MainContent>
+        <Card Title="Welcome">
+            <p>This is a nested component!</p>
+        </Card>
+    </MainContent>
+</Layout>
+```
+
+<ProgressCheckpoint section="component-parameters" xpReward={30} />
+
+## Key Takeaways
+
+| Concept | What It Does | Example |
+|:--------|:-------------|:--------|
+| **Component** | Reusable UI piece | `<MyButton />` |
+| **Parameter** | Pass data to component | `<Greeting Name="Alice" />` |
+| **Binding** | Connect HTML ↔ C# | `<input @bind="name" />` |
+| **@onclick** | Handle button clicks | `@onclick="DoSomething"` |
+| **@if** | Conditional rendering | `@if (show) { <p>Hi</p> }` |
+
+## Try It Yourself! 🎨
+
+Create a simple counter with a custom increment amount:
+
+```razor
+@page "/custom-counter"
+
+<h1>Custom Counter</h1>
+
+<label>Increment by:</label>
+<input @bind="increment" type="number" />
+
+<p>Count: @count</p>
+
+<button @onclick="IncrementCount">Add @increment</button>
+
+@code {
+    private int count = 0;
+    private int increment = 1;
+    
+    void IncrementCount()
+    {
+        count += increment;
+    }
+}
+```
+
+Components are the heart of Blazor! Master them, and you can build anything. 🚀
+
+<InteractiveCodeEditor
+  initialCode="@page \"/counter\"..."
+  language="razor"
+  runMode="blazor"
+/>

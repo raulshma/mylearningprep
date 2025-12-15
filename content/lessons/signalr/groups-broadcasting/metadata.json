@@ -1,0 +1,28 @@
+{
+  "id": "groups-broadcasting",
+  "title": "Groups & Broadcasting",
+  "description": "Master SignalR groups for organizing clients and implementing efficient broadcasting patterns.",
+  "milestone": "signalr",
+  "order": 3,
+  "sections": [
+    "understanding-groups",
+    "group-management",
+    "broadcasting-patterns"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 20,
+      "xpReward": 50
+    },
+    "advanced": {
+      "estimatedMinutes": 25,
+      "xpReward": 75
+    }
+  },
+  "prerequisites": ["signalr/hubs-clients"],
+  "tags": ["signalr", "groups", "broadcasting", "real-time", "aspnet-core"]
+}

@@ -1,0 +1,29 @@
+{
+  "id": "blazor-js-interop",
+  "title": "JavaScript Interop",
+  "description": "Learn how to seamlessly integrate JavaScript libraries and functionality with your Blazor C# code through JS interop.",
+  "milestone": "blazor",
+  "order": 3,
+  "sections": [
+    "js-interop-basics",
+    "calling-js-from-csharp",
+    "calling-csharp-from-js",
+    "best-practices"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 16,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 22,
+      "xpReward": 60
+    }
+  },
+  "prerequisites": ["blazor/blazor-components"],
+  "tags": ["blazor", "javascript", "interop", "js", "integration"]
+}

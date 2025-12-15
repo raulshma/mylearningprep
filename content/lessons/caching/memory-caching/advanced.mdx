@@ -1,0 +1,440 @@
+# Advanced In-Memory Caching Strategies
+
+In-memory caching in ASP.NET Core offers powerful features for optimizing application performance. Let's explore advanced patterns, cache sizing, concurrency handling, and production-grade implementations.
+
+## Cache Size Management
+
+ASP.NET Core doesn't automatically limit cache size based on memory pressure. You must implement size-based eviction manually.
+
+### Implementing Size Limits
+
+```csharp
+builder.Services.AddMemoryCache(options =>
+{
+    options.SizeLimit = 1024; // 1024 units
+    options.CompactionPercentage = 0.25; // Remove 25% when limit reached
+    options.ExpirationScanFrequency = TimeSpan.FromMinutes(5);
+});
+```
+
+### Tracking Entry Sizes
+
+```csharp
+public class CachedProductService
+{
+    private readonly IMemoryCache _cache;
+    
+    public async Task<Product> GetProductAsync(int id)
+    {
+        return await _cache.GetOrCreateAsync($"product-{id}", async entry =>
+        {
+            entry.Size = 1; // Each product counts as 1 unit
+            entry.SlidingExpiration = TimeSpan.FromMinutes(10);
+            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1);
+            
+            return await FetchProductFromDatabaseAsync(id);
+        });
+    }
+    
+    public async Task<List<Product>> GetProductCatalogAsync()
+    {
+        return await _cache.GetOrCreateAsync("product-catalog", async entry =>
+        {
+            entry.Size = 100; // Catalog is much larger - 100 units
+            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24);
+            
+            return await FetchAllProductsAsync();
+        });
+    }
+}
+```
+
+<InfoBox type="warning">
+**Critical**: When using `SizeLimit`, ALL cache entries must specify a size. Missing size specifications will cause runtime errors.
+</InfoBox>
+
+## Cache Factories and Scoped Caching
+
+Create isolated cache instances for different application components:
+
+```csharp
+public interface ICacheFactory
+{
+    IMemoryCache CreateCache(string name);
+    IMemoryCache GetCache(string name);
+}
+
+public class MemoryCacheFactory : ICacheFactory
+{
+    private readonly ConcurrentDictionary<string, IMemoryCache> _caches = new();
+    
+    public IMemoryCache CreateCache(string name)
+    {
+        return _caches.GetOrAdd(name, _ =>
+        {
+            var options = new MemoryCacheOptions
+            {
+                SizeLimit = 512,
+                CompactionPercentage = 0.20,
+                ExpirationScanFrequency = TimeSpan.FromMinutes(2)
+            };
+            
+            return new MemoryCache(options);
+        });
+    }
+    
+    public IMemoryCache GetCache(string name)
+    {
+        return _caches.TryGetValue(name, out var cache) 
+            ? cache 
+            : CreateCache(name);
+    }
+}
+
+// Registration
+builder.Services.AddSingleton<ICacheFactory, MemoryCacheFactory>();
+```
+
+**Benefits**:
+- Isolated cache limits per feature
+- Independent eviction policies
+- Better debugging and monitoring
+- Prevents one feature from monopolizing cache
+
+## Thread-Safe Cache Patterns
+
+### Lock-Based Cache Access
+
+Prevent cache stampede (multiple threads fetching the same data):
+
+```csharp
+public class ThreadSafeCacheService
+{
+    private readonly IMemoryCache _cache;
+    private readonly SemaphoreSlim _lock = new(1, 1);
+    
+    public async Task<ExpensiveData> GetDataAsync(string key)
+    {
+        // Fast path: data in cache
+        if (_cache.TryGetValue(key, out ExpensiveData cachedData))
+        {
+            return cachedData;
+        }
+        
+        // Slow path: acquire lock before fetching
+        await _lock.WaitAsync();
+        try
+        {
+            // Double-check after acquiring lock
+            if (_cache.TryGetValue(key, out cachedData))
+            {
+                return cachedData;
+            }
+            
+            // Fetch expensive data
+            var data = await FetchExpensiveDataAsync(key);
+            
+            var options = new MemoryCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30),
+                Size = CalculateSize(data)
+            };
+            
+            _cache.Set(key, data, options);
+            return data;
+        }
+        finally
+        {
+            _lock.Release();
+        }
+    }
+}
+```
+
+### Lazy&lt;T&gt; Pattern for Atomic Cache Loading
+
+```csharp
+public class LazyCacheService<T>
+{
+    private readonly IMemoryCache _cache;
+    
+    public async Task<T> GetOrAddAsync(
+        string key, 
+        Func<Task<T>> factory,
+        MemoryCacheEntryOptions options = null)
+    {
+        if (!_cache.TryGetValue(key, out Lazy<Task<T>> lazyValue))
+        {
+            lazyValue = new Lazy<Task<T>>(factory);
+            _cache.Set(key, lazyValue, options ?? GetDefaultOptions());
+        }
+        
+        return await lazyValue.Value;
+    }
+    
+    private MemoryCacheEntryOptions GetDefaultOptions()
+    {
+        return new MemoryCacheEntryOptions
+        {
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10),
+            Size = 1
+        };
+    }
+}
+```
+
+## Cache Warm-Up Strategies
+
+Preload cache on application startup:
+
+```csharp
+public class CacheWarmupService : IHostedService
+{
+    private readonly IMemoryCache _cache;
+    private readonly IProductRepository _productRepo;
+    private readonly ILogger<CacheWarmupService> _logger;
+    
+    public CacheWarmupService(
+        IMemoryCache cache,
+        IProductRepository productRepo,
+        ILogger<CacheWarmupService> logger)
+    {
+        _cache = cache;
+        _productRepo = productRepo;
+        _logger = logger;
+    }
+    
+    public async Task StartAsync(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Starting cache warm-up");
+        
+        try
+        {
+            // Load critical reference data
+            await WarmupProductCategoriesAsync(cancellationToken);
+            await WarmupActiveProductsAsync(cancellationToken);
+            await WarmupConfigurationAsync(cancellationToken);
+            
+            _logger.LogInformation("Cache warm-up completed successfully");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Cache warm-up failed");
+        }
+    }
+    
+    private async Task WarmupProductCategoriesAsync(CancellationToken ct)
+    {
+        var categories = await _productRepo.GetCategoriesAsync(ct);
+        
+        var options = new MemoryCacheEntryOptions
+        {
+            Priority = CacheItemPriority.NeverRemove,
+            Size = categories.Count
+        };
+        
+        _cache.Set("product-categories", categories, options);
+    }
+    
+    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+}
+
+// Registration
+builder.Services.AddHostedService<CacheWarmupService>();
+```
+
+## Advanced Monitoring and Metrics
+
+Track cache performance with custom metrics:
+
+```csharp
+public class MonitoredMemoryCache : IMemoryCache
+{
+    private readonly IMemoryCache _innerCache;
+    private readonly IMetricsService _metrics;
+    private long _hits;
+    private long _misses;
+    
+    public MonitoredMemoryCache(IMemoryCache innerCache, IMetricsService metrics)
+    {
+        _innerCache = innerCache;
+        _metrics = metrics;
+    }
+    
+    public bool TryGetValue(object key, out object value)
+    {
+        var found = _innerCache.TryGetValue(key, out value);
+        
+        if (found)
+        {
+            Interlocked.Increment(ref _hits);
+            _metrics.RecordCacheHit(key.ToString());
+        }
+        else
+        {
+            Interlocked.Increment(ref _misses);
+            _metrics.RecordCacheMiss(key.ToString());
+        }
+        
+        return found;
+    }
+    
+    public double GetHitRatio()
+    {
+        var totalRequests = _hits + _misses;
+        return totalRequests == 0 ? 0 : (double)_hits / totalRequests;
+    }
+    
+    public ICacheEntry CreateEntry(object key) => _innerCache.CreateEntry(key);
+    public void Remove(object key) => _innerCache.Remove(key);
+    public void Dispose() => _innerCache.Dispose();
+}
+```
+
+## Cache Invalidation Patterns
+
+### Time-Based Invalidation with Change Tokens
+
+```csharp
+public class TokenBasedCacheService
+{
+    private readonly IMemoryCache _cache;
+    private CancellationTokenSource _resetCacheToken = new();
+    
+    public void InvalidateAllCache()
+    {
+        var oldToken = _resetCacheToken;
+        _resetCacheToken = new CancellationTokenSource();
+        oldToken.Cancel();
+        oldToken.Dispose();
+    }
+    
+    public T GetOrAdd<T>(string key, Func<T> factory)
+    {
+        return _cache.GetOrCreate(key, entry =>
+        {
+            entry.AddExpirationToken(
+                new CancellationChangeToken(_resetCacheToken.Token)
+            );
+            return factory();
+        });
+    }
+}
+```
+
+### Entity-Based Invalidation
+
+```csharp
+public class SmartCacheService
+{
+    private readonly IMemoryCache _cache;
+    private readonly ConcurrentDictionary<string, HashSet<string>> _dependencies = new();
+    
+    public void Set<T>(string key, T value, params string[] entityTypes)
+    {
+        var options = new MemoryCacheEntryOptions()
+            .RegisterPostEvictionCallback((k, v, reason, state) =>
+            {
+                // Clean up dependencies
+                foreach (var entityType in entityTypes)
+                {
+                    if (_dependencies.TryGetValue(entityType, out var keys))
+                    {
+                        keys.Remove(k.ToString());
+                    }
+                }
+            });
+        
+        _cache.Set(key, value, options);
+        
+        // Track dependencies
+        foreach (var entityType in entityTypes)
+        {
+            _dependencies.AddOrUpdate(
+                entityType,
+                _ => new HashSet<string> { key },
+                (_, keys) => { keys.Add(key); return keys; }
+            );
+        }
+    }
+    
+    public void InvalidateByEntity(string entityType)
+    {
+        if (_dependencies.TryRemove(entityType, out var keys))
+        {
+            foreach (var key in keys)
+            {
+                _cache.Remove(key);
+            }
+        }
+    }
+}
+```
+
+## Performance Considerations
+
+### Memory Pressure and GC
+
+```csharp
+public class MemoryAwareCacheOptions
+{
+    public static MemoryCacheOptions CreateOptimized()
+    {
+        var options = new MemoryCacheOptions
+        {
+            // Conservative size limit
+            SizeLimit = 2048,
+            
+            // Aggressive compaction (30%)
+            CompactionPercentage = 0.30,
+            
+            // Frequent scans for expired entries
+            ExpirationScanFrequency = TimeSpan.FromMinutes(1)
+        };
+        
+        return options;
+    }
+}
+```
+
+### Benchmark: Cache vs. Database
+
+```csharp
+[MemoryDiagnoser]
+public class CacheBenchmark
+{
+    private IMemoryCache _cache;
+    private ProductRepository _repository;
+    
+    [Benchmark(Baseline = true)]
+    public async Task<Product> DirectDatabaseAccess()
+    {
+        return await _repository.GetProductAsync(123);
+    }
+    
+    [Benchmark]
+    public async Task<Product> CachedAccess()
+    {
+        return await _cache.GetOrCreateAsync("product-123", async entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5);
+            return await _repository.GetProductAsync(123);
+        });
+    }
+}
+```
+
+<KeyConcept title="Production Best Practices">
+1. **Always set size limits** to prevent memory bloat
+2. **Implement monitoring** for hit/miss ratios
+3. **Use appropriate expiration** strategies
+4. **Handle cache failures** gracefully
+5. **Avoid caching sensitive data**
+6. **Consider distributed caching** for multi-server scenarios
+</KeyConcept>
+
+<InfoBox type="info">
+**Performance Tip**: In-memory cache is typically **10-100x faster** than database access, but consumes valuable RAM. Balance cache size with available memory.
+</InfoBox>
+
+<ProgressCheckpoint section="memory-caching-expert" xpReward={50} />

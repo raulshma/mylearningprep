@@ -201,7 +201,7 @@ export function PostgresqlExplorer({
           <div className="bg-blue-900/20 border border-blue-700 rounded-lg p-4">
             <h4 className="font-medium text-blue-300 mb-2">🐘 PostgreSQL - The Swiss Army Knife of Databases</h4>
             <p className="text-sm text-gray-400">
-              PostgreSQL (often called "Postgres") is like a Swiss Army knife - it has tools for everything! 
+              PostgreSQL (often called &quot;Postgres&quot;) is like a Swiss Army knife - it has tools for everything! 
               Unlike other databases, it can store JSON like MongoDB, handle geographic data like a GIS system, 
               and still be a powerful relational database.
             </p>
@@ -236,7 +236,7 @@ export function PostgresqlExplorer({
         {activeTab === 'datatypes' && (
           <div className="space-y-4">
             <p className="text-sm text-gray-400">
-              PostgreSQL offers unique data types you won't find in other databases:
+              PostgreSQL offers unique data types you won&apos;t find in other databases:
             </p>
             {postgresDataTypes.map(category => (
               <div key={category.name} className="space-y-2">

@@ -1,0 +1,407 @@
+# Response Caching Middleware in ASP.NET Core
+
+Response caching middleware provides server-side HTTP caching that follows the HTTP 1.1 caching specification. Let's explore advanced configuration, cache control headers, vary headers, and production-grade response caching strategies.
+
+## Response Caching Middleware Setup
+
+### Service Registration and Configuration
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddResponseCaching(options =>
+{
+    options.MaximumBodySize = 64 * 1024 * 1024; // 64 MB max cached response
+    options.SizeLimit = 100 * 1024 * 1024; // 100 MB total cache size
+    options.UseCaseSensitivePaths = true;
+});
+
+builder.Services.AddControllers(options =>
+{
+    options.CacheProfiles.Add("Default30",
+        new CacheProfile
+        {
+            Duration = 30
+        });
+    options.CacheProfiles.Add("Default300",
+        new CacheProfile
+        {
+            Duration = 300
+        });
+    options.CacheProfiles.Add("Never",
+        new CacheProfile
+        {
+            Location = ResponseCacheLocation.None,
+            NoStore = true
+        });
+});
+
+var app = builder.Build();
+
+// Place AFTER UseRouting, BEFORE endpoints
+app.UseResponseCaching();
+
+// Optional: Add headers for debugging
+app.Use(async (context, next) =>
+{
+    context.Response.GetTypedHeaders().CacheControl =
+        new Microsoft.Net.Http.Headers.CacheControlHeaderValue()
+        {
+            Public = true,
+            MaxAge = TimeSpan.FromSeconds(30)
+        };
+    
+    await next();
+});
+
+app.MapControllers();
+app.Run();
+```
+
+## ResponseCacheAttribute Properties
+
+### Duration and Location
+
+```csharp
+[ApiController]
+[Route("api/[controller]")]
+public class ProductController : ControllerBase
+{
+    // Cache on server and client for 300 seconds
+    [HttpGet]
+    [ResponseCache(Duration = 300, Location = ResponseCacheLocation.Any)]
+    public async Task<IActionResult> GetProducts()
+    {
+        var products = await _repository.GetAllProductsAsync();
+        return Ok(products);
+    }
+    
+    // Cache only on client (browser)
+    [HttpGet("{id}")]
+    [ResponseCache(Duration = 60, Location = ResponseCacheLocation.Client)]
+    public async Task<IActionResult> GetProduct(int id)
+    {
+        var product = await _repository.GetProductByIdAsync(id);
+        return Ok(product);
+    }
+    
+    // No caching at all
+    [HttpGet("real-time")]
+    [ResponseCache(Location = ResponseCacheLocation.None, NoStore = true)]
+    public IActionResult GetRealTimeData()
+    {
+        return Ok(new { timestamp = DateTime.UtcNow });
+    }
+}
+```
+
+**Location Options**:
+- `ResponseCacheLocation.Any` - Client and server can cache
+- `ResponseCacheLocation.Client` - Only client (browser) caches
+- `ResponseCacheLocation.None` - No caching allowed
+
+### Using Cache Profiles
+
+```csharp
+[HttpGet("featured")]
+[ResponseCache(CacheProfileName = "Default300")]
+public async Task<IActionResult> GetFeaturedProducts()
+{
+    var products = await _repository.GetFeaturedProductsAsync();
+    return Ok(products);
+}
+
+[HttpGet("sensitive")]
+[ResponseCache(CacheProfileName = "Never")]
+public IActionResult GetSensitiveData()
+{
+    return Ok(sensitiveData);
+}
+```
+
+## VaryByHeader and VaryByQueryKeys
+
+### Varying by Request Headers
+
+Cache different responses based on request headers:
+
+```csharp
+[HttpGet]
+[ResponseCache(Duration = 300, VaryByHeader = "Accept-Language")]
+public IActionResult GetLocalizedProducts()
+{
+    var language = Request.Headers["Accept-Language"].ToString();
+    var products = _repository.GetProductsByLanguage(language);
+    return Ok(products);
+}
+```
+
+This creates separate cache entries for:
+- `Accept-Language: en-US`
+- `Accept-Language: fr-FR`
+- `Accept-Language: es-ES`
+
+### Multiple Vary Headers
+
+```csharp
+[ResponseCache(
+    Duration = 300, 
+    VaryByHeader = "Accept-Language,User-Agent")]
+public IActionResult GetContent()
+{
+    // Different cache for each combination of language + user agent
+    return Ok(content);
+}
+```
+
+### VaryByQueryKeys
+
+Cache different responses based on query parameters:
+
+```csharp
+[HttpGet]
+[ResponseCache(Duration = 300, VaryByQueryKeys = new[] { "category", "page" })]
+public IActionResult GetProducts(string category, int page)
+{
+    var products = _repository.GetProducts(category, page);
+    return Ok(products);
+}
+```
+
+This creates separate caches for:
+- `GET /products?category=electronics&page=1`
+- `GET /products?category=books&page=1`
+- `GET /products?category=electronics&page=2`
+
+<InfoBox type="tip">
+**Performance Tip**: Use `VaryByQueryKeys = new[] { "*" }` to vary by ALL query parameters, but this can lead to many cache entries.
+</InfoBox>
+
+## Cache-Control Headers
+
+Understanding generated HTTP headers:
+
+```csharp
+[ResponseCache(Duration = 300, Location = ResponseCacheLocation.Any)]
+// Generates: Cache-Control: public, max-age=300
+
+[ResponseCache(Duration = 300, Location = ResponseCacheLocation.Client)]
+// Generates: Cache-Control: private, max-age=300
+
+[ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+// Generates: Cache-Control: no-store, no-cache
+// Also adds: Pragma: no-cache
+```
+
+### Manual Cache-Control Configuration
+
+```csharp
+public IActionResult GetWithCustomCacheControl()
+{
+    Response.Headers["Cache-Control"] = "public, max-age=300, must-revalidate";
+    
+    var data = _repository.GetData();
+    return Ok(data);
+}
+```
+
+## Conditional Requests and ETags
+
+### Implementing ETag Support
+
+```csharp
+public class ETagMiddleware
+{
+    private readonly RequestDelegate _next;
+    
+    public async Task InvokeAsync(HttpContext context)
+    {
+        var originalBodyStream = context.Response.Body;
+        
+        using var responseBody = new MemoryStream();
+        context.Response.Body = responseBody;
+        
+        await _next(context);
+        
+        if (context.Response.StatusCode == 200)
+        {
+            var responseBytes = responseBody.ToArray();
+            var hash = ComputeHash(responseBytes);
+            var etag = $"\"{hash}\"";
+            
+            context.Response.Headers["ETag"] = etag;
+            
+            var requestETag = context.Request.Headers["If-None-Match"];
+            if (requestETag == etag)
+            {
+                context.Response.StatusCode = 304; // Not Modified
+                context.Response.ContentLength = 0;
+                return;
+            }
+            
+            await responseBody.CopyToAsync(originalBodyStream);
+        }
+        
+        context.Response.Body = originalBodyStream;
+    }
+    
+    private string ComputeHash(byte[] data)
+    {
+        using var sha256 = SHA256.Create();
+        var hashBytes = sha256.ComputeHash(data);
+        return Convert.ToBase64String(hashBytes);
+    }
+}
+```
+
+Usage:
+```csharp
+app.UseMiddleware<ETagMiddleware>();
+app.UseResponseCaching();
+```
+
+## Conditions for Response Caching
+
+Response caching middleware caches responses when:
+
+✅ **Request must be**:
+- HTTP GET or HEAD method
+- Successful 200 OK status code
+- No Authorization header present
+- No Cache-Control: no-cache header
+
+✅ **Response must be**:
+- Successful 200 OK status code
+- No Cache-Control: private, no-cache, no-store
+- No Set-Cookie header
+- Content-Length header present OR Transfer-Encoding: chunked
+
+<InfoBox type="warning">
+**Security Warning**: Never cache responses with `Authorization` headers or user-specific data. This can leak sensitive information between users.
+</InfoBox>
+
+## Cache Invalidation Strategies
+
+### Time-Based Invalidation
+
+```csharp
+[HttpGet]
+[ResponseCache(Duration = 300)]
+public IActionResult GetProducts()
+{
+    // Auto-expires after 5 minutes
+    return Ok(products);
+}
+```
+
+### Manual Cache Invalidation
+
+Create a custom service to purge cache:
+
+```csharp
+public class ResponseCacheService
+{
+    private readonly IMemoryCache _cache;
+    
+    public void InvalidateCache(string cacheKey)
+    {
+        _cache.Remove(cacheKey);
+    }
+    
+    public void InvalidatePattern(string pattern)
+    {
+        // Implementation depends on cache store
+    }
+}
+
+[HttpPost("update")]
+public IActionResult UpdateProduct(Product product)
+{
+    _repository.Update(product);
+    
+    // Invalidate related caches
+    _cacheService.InvalidateCache($"/api/products/{product.Id}");
+    _cacheService.InvalidatePattern("/api/products*");
+    
+    return Ok();
+}
+```
+
+## Response Compression with Caching
+
+Combine compression with caching for maximum performance:
+
+```csharp
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.Providers.Add<BrotliCompressionProvider>();
+    options.Providers.Add<GzipCompressionProvider>();
+});
+
+var app = builder.Build();
+
+app.UseResponseCompression();
+app.UseResponseCaching();
+```
+
+<KeyConcept title="Middleware Order Matters">
+Correct order:
+1. UseResponseCompression()
+2. UseResponseCaching()
+3. UseRouting()
+4. UseAuthentication()
+5. UseAuthorization()
+6. MapControllers()
+
+Caching should happen AFTER compression but BEFORE authentication.
+</KeyConcept>
+
+## Debugging Response Cache
+
+### Adding Custom Headers for Debugging
+
+```csharp
+public class CacheDebugMiddleware
+{
+    private readonly RequestDelegate _next;
+    
+    public async Task InvokeAsync(HttpContext context)
+    {
+        var sw = Stopwatch.StartNew();
+        
+        await _next(context);
+        
+        sw.Stop();
+        
+        context.Response.Headers["X-Response-Time"] = $"{sw.ElapsedMilliseconds}ms";
+        context.Response.Headers["X-Cache-Status"] = 
+            context.Response.Headers.ContainsKey("Age") ? "HIT" : "MISS";
+    }
+}
+
+app.UseMiddleware<CacheDebugMiddleware>();
+```
+
+### Logging Cache Behavior
+
+```csharp
+builder.Services.AddResponseCaching(options =>
+{
+    options.MaximumBodySize = 64 * 1024 * 1024;
+    options.SizeLimit = 100 * 1024 * 1024;
+});
+
+builder.Logging.AddFilter("Microsoft.AspNetCore.ResponseCaching", LogLevel.Debug);
+```
+
+## Performance Best Practices
+
+1. **Set appropriate duration**: Don't cache too long for dynamic data
+2. **Use VaryByQueryKeys wisely**: Too many variations = too many cache entries
+3. **Monitor cache size**: Set `SizeLimit` to prevent memory bloat
+4. **Combine with compression**: Compress before caching
+5. **Avoid caching large responses**: Set `MaximumBodySize` limit
+6. **Use cache profiles**: Centralize cache configuration
+
+<ProgressCheckpoint section="response-caching-intermediate" xpReward={30} />

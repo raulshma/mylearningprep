@@ -1,0 +1,569 @@
+# Mocking with Moq
+
+Welcome to the world of mocking! Imagine testing a car's dashboard without having the entire engine - that's what mocking lets you do in code. You can test one piece in isolation by creating **fake versions** of its dependencies.
+
+Think of it like rehearsing a play: actors can practice with stand-ins before the real performance. Mocking is using "stand-ins" for your code's dependencies!
+
+<InfoBox type="tip" title="Why Learn Moq?">
+Moq is the most popular mocking library for .NET! It's elegant, powerful, and makes testing complex scenarios simple. Almost every .NET project uses it!
+</InfoBox>
+
+<ProgressCheckpoint section="introduction" xpReward={10} />
+
+## Why Mocking?
+
+Let's understand the problem mocking solves with a real example:
+
+### The Problem: Testing with Real Dependencies
+
+```csharp
+// A service that sends emails
+public class OrderService
+{
+    private readonly IEmailSender _emailSender;
+    private readonly IOrderRepository _repository;
+    
+    public OrderService(IEmailSender emailSender, IOrderRepository repository)
+    {
+        _emailSender = emailSender;
+        _repository = repository;
+    }
+    
+    public void PlaceOrder(Order order)
+    {
+        _repository.Save(order);
+        _emailSender.SendEmail(order.CustomerEmail, "Order Confirmed!");
+    }
+}
+```
+
+How do we test `PlaceOrder()` without:
+- ❌ Sending real emails to customers?
+- ❌ Saving to a real database?
+- ❌ Depending on external services?
+
+### The Solution: Mocking!
+
+<AnimatedDiagram type="mocking-concept">
+```concept
+{
+  "title": "Mocking in Action",
+  "realScenario": {
+    "label": "Production",
+    "components": [
+      "OrderService",
+      "→ Real EmailSender (sends actual emails!)",
+      "→ Real Database (saves real data!)"
+    ]
+  },
+  "testScenario": {
+    "label": "Testing",
+    "components": [
+      "OrderService",
+      "→ Mock EmailSender (pretends to send)",
+      "→ Mock Repository (pretends to save)"
+    ]
+  },
+  "benefit": "Test OrderService in complete isolation!"
+}
+```
+</AnimatedDiagram>
+
+<KeyConcept title="Mock = Controllable Fake">
+A mock is a **controllable substitute** for a real dependency. You tell it what to return, and you can verify it was called correctly - all without touching real databases, APIs, or services!
+</KeyConcept>
+
+<ProgressCheckpoint section="why-mocking" xpReward={12} />
+
+## Moq Basics
+
+Let's create our first mock! First, install Moq:
+
+```bash
+dotnet add package Moq
+```
+
+### Creating Your First Mock
+
+```csharp
+using Moq;
+using Xunit;
+
+public class OrderServiceTests
+{
+    [Fact]
+    public void PlaceOrder_SavesOrderToRepository()
+    {
+        // Arrange - Create mocks
+        var mockEmailSender = new Mock<IEmailSender>();
+        var mockRepository = new Mock<IOrderRepository>();
+        
+        var orderService = new OrderService(
+            mockEmailSender.Object,  // Give the mock to our service
+            mockRepository.Object
+        );
+        
+        var order = new Order { Id = 1, CustomerEmail = "test@example.com" };
+        
+        // Act
+        orderService.PlaceOrder(order);
+        
+        // Assert - Verify the repository's Save was called
+        mockRepository.Verify(r => r.Save(order), Times.Once);
+    }
+}
+```
+
+Let's break this down:
+
+1. **`new Mock<IEmailSender>()`** - Creates a mock object
+2. **`.Object`** - Gets the actual mock instance to pass around
+3. **`.Verify()`** - Checks that a method was called
+
+<InteractiveDemo>
+```demo
+{
+  "type": "mock-creation",
+  "interface": "IEmailSender",
+  "methods": ["SendEmail"],
+  "interactive": true,
+  "showSteps": [
+    "Create Mock<IEmailSender>",
+    "Setup behavior",
+    "Use mock.Object in tests",
+    "Verify calls were made"
+  ]
+}
+```
+</InteractiveDemo>
+
+<ProgressCheckpoint section="moq-basics" xpReward={15} />
+
+## Setup: Making Mocks Return Values
+
+The `Setup()` method tells your mock what to return when a method is called:
+
+### Basic Setup
+
+```csharp
+[Fact]
+public void GetUserEmail_UserExists_ReturnsEmail()
+{
+    // Arrange
+    var mockRepository = new Mock<IUserRepository>();
+    
+    // Tell the mock what to return
+    mockRepository
+        .Setup(r => r.GetUserById(1))
+        .Returns(new User 
+        { 
+            Id = 1, 
+            Email = "john@example.com" 
+        });
+    
+    var service = new UserService(mockRepository.Object);
+    
+    // Act
+    string email = service.GetUserEmail(1);
+    
+    // Assert
+    Assert.Equal("john@example.com", email);
+}
+```
+
+Think of `.Setup()` as giving your mock a script: "When someone calls `GetUserById(1)`, you say this..."
+
+### Setup with Any Value
+
+Sometimes you don't care about the exact parameter:
+
+```csharp
+// Returns user for ANY id
+mockRepository
+    .Setup(r => r.GetUserById(It.IsAny<int>()))
+    .Returns(new User { Id = 1, Email = "test@example.com" });
+
+// Now ALL of these work:
+repository.GetUserById(1);    // ✅ Returns user
+repository.GetUserById(999);  // ✅ Returns user
+repository.GetUserById(-1);   // ✅ Returns user
+```
+
+### Setup Different Returns
+
+```csharp
+// Return different values for different inputs
+mockRepository
+    .Setup(r => r.GetUserById(1))
+    .Returns(new User { Id = 1, Email = "john@example.com" });
+
+mockRepository
+    .Setup(r => r.GetUserById(2))
+    .Returns(new User { Id = 2, Email = "jane@example.com" });
+
+// Return null for invalid IDs
+mockRepository
+    .Setup(r => r.GetUserById(999))
+    .Returns((User)null);
+```
+
+<Comparison>
+```comparison
+{
+  "title": "Setup Patterns",
+  "patterns": [
+    {
+      "name": "Specific Value",
+      "code": ".Setup(r => r.Get(1))",
+      "when": "Test specific scenario",
+      "example": "Testing user ID 1"
+    },
+    {
+      "name": "Any Value",
+      "code": ".Setup(r => r.Get(It.IsAny<int>()))",
+      "when": "Don't care about input",
+      "example": "Any user returns same data"
+    },
+    {
+      "name": "Condition",
+      "code": ".Setup(r => r.Get(It.Is<int>(id => id > 0)))",
+      "when": "Match on condition",
+      "example": "Any positive ID"
+    }
+  ]
+}
+```
+</Comparison>
+
+<ProgressCheckpoint section="setup-returns" xpReward={15} />
+
+## Verify: Checking Method Calls
+
+After running your test, you can **verify** that methods were called correctly:
+
+### Basic Verification
+
+```csharp
+[Fact]
+public void PlaceOrder_SendsConfirmationEmail()
+{
+    // Arrange
+    var mockEmailSender = new Mock<IEmailSender>();
+    var mockRepository = new Mock<IOrderRepository>();
+    var service = new OrderService(mockEmailSender.Object, mockRepository.Object);
+    
+    var order = new Order { CustomerEmail = "customer@example.com" };
+    
+    // Act
+    service.PlaceOrder(order);
+    
+    // Assert - Verify email was sent
+    mockEmailSender.Verify(
+        e => e.SendEmail("customer@example.com", It.IsAny<string>()),
+        Times.Once
+    );
+}
+```
+
+### Verification Options
+
+```csharp
+// Verify called exactly once
+mock.Verify(m => m.DoSomething(), Times.Once);
+
+// Verify called at least once
+mock.Verify(m => m.DoSomething(), Times.AtLeastOnce);
+
+// Verify called exactly 3 times
+mock.Verify(m => m.DoSomething(), Times.Exactly(3));
+
+// Verify NEVER called
+mock.Verify(m => m.DoSomething(), Times.Never);
+
+// Verify called between 1 and 5 times
+mock.Verify(m => m.DoSomething(), Times.Between(1, 5, Range.Inclusive));
+```
+
+<InfoBox type="success" title="Verify vs Setup">
+- **Setup** = "When X happens, do Y" (defines behavior)
+- **Verify** = "Check that X actually happened" (checks behavior)
+</InfoBox>
+
+<ProgressCheckpoint section="verifying-calls" xpReward={15} />
+
+## Argument Matching
+
+Sometimes you need to be specific about WHAT was passed to a method:
+
+### Exact Match
+
+```csharp
+// Must be called with EXACTLY this email
+mock.Verify(e => e.SendEmail("test@example.com", "Hello"));
+```
+
+### Any Value
+
+```csharp
+// Any email address is fine
+mock.Verify(e => e.SendEmail(
+    It.IsAny<string>(),  // Any email
+    It.IsAny<string>()   // Any subject
+));
+```
+
+### Conditional Match
+
+```csharp
+// Email must end with @example.com
+mock.Verify(e => e.SendEmail(
+    It.Is<string>(email => email.EndsWith("@example.com")),
+    It.IsAny<string>()
+));
+
+// Order total must be greater than 100
+mock.Verify(r => r.Save(
+    It.Is<Order>(order => order.Total > 100)
+));
+```
+
+### Real-World Example
+
+```csharp
+[Fact]
+public void ProcessLargeOrder_SendsPriorityEmail()
+{
+    // Arrange
+    var mockEmailSender = new Mock<IEmailSender>();
+    var service = new OrderService(mockEmailSender.Object);
+    
+    var largeOrder = new Order { Total = 5000m };
+    
+    // Act
+    service.ProcessOrder(largeOrder);
+    
+    // Assert - Verify priority email sent for large orders
+    mockEmailSender.Verify(e => e.SendEmail(
+        It.IsAny<string>(),
+        It.Is<string>(subject => subject.Contains("PRIORITY"))
+    ), Times.Once);
+}
+```
+
+<InteractiveDemo>
+```demo
+{
+  "type": "argument-matching",
+  "scenarios": [
+    {
+      "description": "Match exact value",
+      "code": "It.Is<int>(x => x == 5)",
+      "matches": [5],
+      "doesNotMatch": [4, 6]
+    },
+    {
+      "description": "Match range",
+      "code": "It.Is<int>(x => x >= 1 && x <= 10)",
+      "matches": [1, 5, 10],
+      "doesNotMatch": [0, 11]
+    },
+    {
+      "description": "Match pattern",
+      "code": "It.Is<string>(s => s.StartsWith('A'))",
+      "matches": ["Apple", "Apricot"],
+      "doesNotMatch": ["Banana"]
+    }
+  ],
+  "interactive": true
+}
+```
+</InteractiveDemo>
+
+<ProgressCheckpoint section="argument-matching" xpReward={12} />
+
+## Mocking Properties and Events
+
+Moq can also mock properties and events!
+
+### Mocking Properties
+
+```csharp
+// Setup property to return value
+var mockConfig = new Mock<IConfiguration>();
+mockConfig.Setup(c => c.MaxRetries).Returns(3);
+
+Assert.Equal(3, mockConfig.Object.MaxRetries);
+
+// Setup property with SetupProperty for auto-property behavior
+mockConfig.SetupProperty(c => c.MaxRetries, 5);
+mockConfig.Object.MaxRetries = 10;  // Can be changed
+Assert.Equal(10, mockConfig.Object.MaxRetries);
+```
+
+### Verifying Property Access
+
+```csharp
+// Verify a property was read
+mockConfig.VerifyGet(c => c.MaxRetries, Times.Once);
+
+// Verify a property was set to specific value
+mockConfig.VerifySet(c => c.MaxRetries = 5, Times.Once);
+```
+
+<ProgressCheckpoint section="properties-events" xpReward={10} />
+
+## Advanced Mocking Patterns
+
+### Returning Different Values on Multiple Calls
+
+```csharp
+var mockRepository = new Mock<IUserRepository>();
+
+// First call returns user, second returns null
+mockRepository
+    .SetupSequence(r => r.GetNextUser())
+    .Returns(new User { Id = 1 })
+    .Returns(new User { Id = 2 })
+    .Returns((User)null);
+
+var user1 = mockRepository.Object.GetNextUser();  // User ID 1
+var user2 = mockRepository.Object.GetNextUser();  // User ID 2
+var user3 = mockRepository.Object.GetNextUser();  // null
+```
+
+### Throwing Exceptions
+
+```csharp
+// Setup mock to throw exception
+mockRepository
+    .Setup(r => r.GetUserById(-1))
+    .Throws<ArgumentException>();
+
+// Test that service handles the exception
+var service = new UserService(mockRepository.Object);
+Assert.Throws<ArgumentException>(() => service.GetUser(-1));
+```
+
+### Callbacks
+
+```csharp
+// Do something when a method is called
+var capturedOrders = new List<Order>();
+
+mockRepository
+    .Setup(r => r.Save(It.IsAny<Order>()))
+    .Callback<Order>(order => capturedOrders.Add(order));
+
+// Now we can inspect what was saved
+service.PlaceOrder(new Order { Id = 1 });
+Assert.Single(capturedOrders);
+Assert.Equal(1, capturedOrders[0].Id);
+```
+
+<ProgressCheckpoint section="advanced-mocking" xpReward={10} />
+
+## Best Practices
+
+<InfoBox type="tip" title="Mocking Best Practices">
+1. **Mock interfaces, not classes** - Makes testing easier
+2. **Don't over-mock** - Only mock external dependencies
+3. **Verify behavior, not implementation** - Test what matters
+4. **Use `It.IsAny<>` wisely** - Be specific when it matters
+5. **Keep mocks simple** - Complex mocks = complex tests
+</InfoBox>
+
+### What to Mock
+
+✅ **DO Mock:**
+- External services (APIs, databases)
+- Email senders
+- File system operations
+- Time/date providers
+- Complex dependencies
+
+❌ **DON'T Mock:**
+- Simple value objects
+- Your own domain models
+- Language features
+- Everything (over-mocking makes brittle tests)
+
+### Example: Good vs Over-Mocked
+
+```csharp
+// ❌ Over-mocked - Testing too much
+[Fact]
+public void BadTest()
+{
+    var mockUser = new Mock<IUser>();
+    var mockOrder = new Mock<IOrder>();
+    var mockItem = new Mock<IItem>();
+    // ... mocking everything!
+}
+
+// ✅ Good - Only mock external dependencies
+[Fact]
+public void GoodTest()
+{
+    var mockRepository = new Mock<IOrderRepository>();
+    var realOrder = new Order();  // Use real objects when possible
+    var service = new OrderService(mockRepository.Object);
+}
+```
+
+<ProgressCheckpoint section="best-practices" xpReward={11} />
+
+## Quick Quiz
+
+<Quiz id="moq-beginner-quiz">
+  <Question text="What is the main purpose of mocking?">
+    <Answer>Make tests run faster</Answer>
+    <Answer correct>Test code in isolation by replacing dependencies with controllable fakes</Answer>
+    <Answer>Generate test data automatically</Answer>
+    <Answer>Avoid writing assertions</Answer>
+  </Question>
+  
+  <Question text="What does mock.Object give you?">
+    <Answer>The Mock class itself</Answer>
+    <Answer correct>The actual mock instance to pass to your code</Answer>
+    <Answer>A string representation of the mock</Answer>
+    <Answer>The mock's configuration</Answer>
+  </Question>
+  
+  <Question text="What's the difference between Setup and Verify?">
+    <Answer>They do the same thing</Answer>
+    <Answer correct>Setup defines behavior, Verify checks if methods were called</Answer>
+    <Answer>Setup is for properties, Verify is for methods</Answer>
+    <Answer>Setup is faster than Verify</Answer>
+  </Question>
+  
+  <Question text="When should you use It.IsAny<T>()?">
+    <Answer>Always, it makes tests simpler</Answer>
+    <Answer correct>When you don't care about the specific argument value</Answer>
+    <Answer>Only for strings</Answer>
+    <Answer>Never, it's bad practice</Answer>
+  </Question>
+</Quiz>
+
+<ProgressCheckpoint section="summary" xpReward={14} />
+
+## Key Takeaways
+
+<KeyConcept title="Mocking = Controlled Isolation">
+Moq lets you create fake versions of dependencies so you can test code in complete isolation without touching databases, APIs, or other external services.
+</KeyConcept>
+
+<KeyConcept title="Setup Defines, Verify Checks">
+Use `.Setup()` to define what mocked methods should return. Use `.Verify()` to check that methods were called as expected.
+</KeyConcept>
+
+<KeyConcept title="Argument Matching is Powerful">
+Use `It.IsAny<T>()`, `It.Is<T>()`, and exact values to control which calls you're testing. Be as specific as needed!
+</KeyConcept>
+
+<KeyConcept title="Mock Wisely">
+Only mock external dependencies and infrastructure. Use real objects for simple value types and domain models.
+</KeyConcept>
+
+---
+
+**Excellent work!** 🎉 You now understand the fundamentals of mocking with Moq. In the intermediate level, we'll explore advanced scenarios like mocking async methods, LINQ queries, and complex setups. Ready for more? 🚀

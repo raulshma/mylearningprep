@@ -1,0 +1,83 @@
+# gRPC Fundamentals
+
+Imagine you're ordering food at a restaurant. With a traditional REST API, it's like writing your order on paper, handing it to the waiter, waiting for them to write back the response, and bringing it to you. With **gRPC**, it's like talking directly to the kitchen through a special intercom system that's super fast and efficient!
+
+## What is gRPC?
+
+**gRPC** (gRPC Remote Procedure Call) is a modern, high-performance framework that lets different services talk to each other quickly and efficiently. Think of it as a turbocharged phone line between your apps!
+
+### The Restaurant Analogy
+
+| Traditional REST (Writing Notes) | gRPC (Intercom System) |
+|:---------------------------------|:-----------------------|
+| Write order on paper (JSON text) | Speak through intercom (binary) |
+| Waiter walks back and forth | Direct communication channel |
+| Each order is separate | Can send multiple orders at once |
+| Easy to read the notes | Super fast but specialized |
+
+<GrpcVsRestComparison />
+
+## Why is gRPC Special?
+
+gRPC has three superpowers that make it amazing:
+
+### 1. **Binary Format (Protobuf)**
+Instead of sending readable text like JSON, gRPC sends data in a compact binary format called **Protocol Buffers (Protobuf)**. It's like compressing a big file into a tiny zip - much faster to send!
+
+**Example:**
+```text
+REST (JSON): { "name": "Alice", "age": 25 }  → 31 bytes
+gRPC (Protobuf): ≈ 8 bytes  → 74% smaller! 🚀
+```
+
+### 2. **HTTP/2 Protocol**
+gRPC uses **HTTP/2**, which is like having multiple express lanes on a highway instead of just one slow lane. You can send many requests at the same time without waiting!
+
+### 3. **Strong Typing**
+With gRPC, you define exactly what data looks like upfront (like a contract). This means fewer errors and bugs because everyone knows what to expect.
+
+<ProgressCheckpoint section="what-is-grpc" xpReward={25} />
+
+## When to Use gRPC vs REST?
+
+**Use gRPC when:**
+- ✅ Services need to talk to each other super fast (microservices)
+- ✅ You're building mobile apps that need to save battery and data
+- ✅ Real-time communication is important (like chat apps or live updates)
+- ✅ Performance matters a lot
+
+**Use REST when:**
+- ✅ You need web browsers to access your API directly
+- ✅ You want simple, human-readable data (JSON)
+- ✅ You're building a public API for third-party developers
+- ✅ Simplicity and ease of debugging are priorities
+
+<InfoBox type="tip">
+**Pro Tip:** Many companies use **both**! REST for public APIs (browsers, third-party developers) and gRPC for internal service-to-service communication.
+</InfoBox>
+
+<ProgressCheckpoint section="grpc-vs-rest" xpReward={25} />
+
+## Real-World Examples
+
+Here are some companies that use gRPC:
+
+| Company | How They Use gRPC |
+|:--------|:------------------|
+| 🎬 **Netflix** | Microservices communication for streaming |
+| 🔍 **Google** | Created gRPC! Uses it everywhere internally |
+| 💬 **Slack** | Real-time messaging between services |
+| 🏦 **Square** | Payment processing between systems |
+
+## Key Takeaways
+
+> **gRPC is like a super-fast, efficient messaging system for apps to talk to each other.**
+>
+> It uses:
+> - **Binary format** (Protobuf) for small, fast data
+> - **HTTP/2** for multiple simultaneous connections
+> - **Strong contracts** (.proto files) to prevent errors
+
+In the next lessons, you'll learn how to actually write gRPC services and use them in your applications!
+
+<ProgressCheckpoint section="grpc-architecture" xpReward={25} />

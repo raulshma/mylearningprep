@@ -1,0 +1,169 @@
+# Built-in Logging: Your Application's Black Box 📝
+
+Imagine you're driving a car, and something goes wrong. How do you know what happened? The car has a **black box** that records everything - speed, engine temperature, braking events. 
+
+That's exactly what **logging** does for your .NET application!
+
+## What is Logging?
+
+Logging is like keeping a diary for your application. It records:
+- ✅ What happened (user logged in)
+- ⚠️ What went wrong (database connection failed)
+- 📊 Performance metrics (request took 250ms)
+- 🔍 Debugging clues (variable values at runtime)
+
+<KeyConcept title="Why Logging Matters">
+Without logs, debugging production issues is like finding a needle in a haystack while blindfolded. Logs give you visibility into what your application is doing when you're not watching!
+</KeyConcept>
+
+<ProgressCheckpoint section="logging-fundamentals" xpReward={10} />
+
+## ASP.NET Core's Built-in Logger
+
+ASP.NET Core comes with a powerful logging system built right in - **ILogger**. Think of it as a universal diary that can write to multiple places at once:
+
+- 📺 **Console** - See logs while developing
+- 📄 **Files** - Save logs permanently
+- 🔔 **Event Viewer** - Windows system logs
+- ☁️ **Cloud Services** - Azure Application Insights
+
+### Real-Life Analogy
+
+Imagine a security guard who:
+1. Watches your building (your app)
+2. Writes down everything in multiple notebooks (different log providers)
+3. Categorizes events by importance (log levels)
+
+That's ILogger!
+
+<DotnetCodePreview
+  title="Using ILogger in a Controller"
+  code={`public class OrdersController : ControllerBase
+{
+    private readonly ILogger<OrdersController> _logger;
+
+    // Logger is injected automatically!
+    public OrdersController(ILogger<OrdersController> logger)
+    {
+        _logger = logger;
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> CreateOrder(OrderRequest order)
+    {
+        // Log that someone is creating an order
+        _logger.LogInformation("Creating order for customer {CustomerId}", order.CustomerId);
+
+        try
+        {
+            var result = await _orderService.CreateAsync(order);
+            
+            // Log success
+            _logger.LogInformation("Order {OrderId} created successfully", result.Id);
+            
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            // Log errors with full details
+            _logger.LogError(ex, "Failed to create order for customer {CustomerId}", order.CustomerId);
+            
+            return StatusCode(500, "Order creation failed");
+        }
+    }
+}`}
+  language="csharp"
+  highlights={[6, 15, 22, 28]}
+/>
+
+<ProgressCheckpoint section="log-levels" xpReward={8} />
+
+## Log Levels: The Importance Scale
+
+Not all events are equally important. ASP.NET Core uses **log levels** to categorize messages:
+
+| Level | Icon | When to Use | Example |
+|-------|------|-------------|---------|
+| **Trace** | 🔬 | Super detailed debugging | "Entering method ProcessOrder with parameter orderId=123" |
+| **Debug** | 🐛 | Development debugging | "Cache hit for key 'user_456'" |
+| **Information** | ℹ️ | Normal events | "User logged in successfully" |
+| **Warning** | ⚠️ | Something unusual | "Retry attempt 2 of 3 for API call" |
+| **Error** | ❌ | Something failed | "Database connection timeout" |
+| **Critical** | 🔥 | System is broken | "Out of memory, application shutting down" |
+
+### When to Use Each Level
+
+<Comparison
+  left={{
+    title: "Development",
+    items: [
+      "Trace & Debug: See everything",
+      "Information: Key events",
+      "Warning+: Potential issues"
+    ]
+  }}
+  right={{
+    title: "Production",
+    items: [
+      "Information: Normal operations",
+      "Warning: Needs attention",
+      "Error & Critical: Immediate action"
+    ]
+  }}
+/>
+
+<InfoBox type="tip">
+**Pro Tip**: In production, you typically only log **Information** and above. Too many logs can slow down your app and cost money for storage!
+</InfoBox>
+
+<ProgressCheckpoint section="providers-filtering" xpReward={7} />
+
+## Quick Setup Example
+
+Here's how logging is configured in modern ASP.NET Core:
+
+```csharp
+// Program.cs
+var builder = WebApplication.CreateBuilder(args);
+
+// Logging is configured automatically!
+// But you can customize it:
+builder.Logging.ClearProviders(); // Remove all default providers
+builder.Logging.AddConsole();     // Add console logging
+builder.Logging.AddDebug();       // Add debug output logging
+
+// Set minimum log level
+builder.Logging.SetMinimumLevel(LogLevel.Information);
+
+var app = builder.Build();
+app.Run();
+```
+
+### Configuration File (appsettings.json)
+
+```json
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  }
+}
+```
+
+This says:
+- 📝 **Default**: Log Information and above for everything
+- 🔇 **Microsoft.AspNetCore**: Only Warning and above (less noise from framework)
+
+## Key Takeaways
+
+✅ Logging is your application's flight recorder
+✅ ILogger is injected via dependency injection
+✅ Use appropriate log levels for different situations
+✅ Configure log providers based on your needs
+✅ Different settings for development vs production
+
+<InfoBox type="success">
+You've learned the fundamentals of .NET logging! You can now track what your application is doing and diagnose issues effectively.
+</InfoBox>

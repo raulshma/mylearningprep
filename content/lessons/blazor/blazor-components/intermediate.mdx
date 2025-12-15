@@ -1,0 +1,437 @@
+# Component Architecture & Data Binding Patterns
+
+Build robust, maintainable component hierarchies with proper parameter handling, event callbacks, and two-way binding.
+
+## Component Parameters Deep Dive
+
+### Parameter Attributes
+
+```csharp
+public class ProductCard : ComponentBase
+{
+    // Required parameter (throws if not provided)
+    [Parameter, EditorRequired]
+    public Product Product { get; set; } = default!;
+    
+    // Optional with default
+    [Parameter]
+    public bool ShowDetails { get; set; } = false;
+    
+    // Callback for events
+    [Parameter]
+    public EventCallback<int> OnAddToCart { get; set; }
+    
+    // Capture unmatched attributes
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object>? AdditionalAttributes { get; set; }
+}
+```
+
+**Usage:**
+
+```razor
+<ProductCard 
+    Product="@product"
+    ShowDetails="true"
+    OnAddToCart="@HandleAddToCart"
+    class="highlight"
+    data-product-id="@product.Id" />
+```
+
+### Parameter Change Detection
+
+```csharp
+private Product? _previousProduct;
+
+protected override void OnParametersSet()
+{
+    // Detect if Product parameter changed
+    if (_previousProduct?.Id != Product?.Id)
+    {
+        // Product changed, reload data
+        _previousProduct = Product;
+        _ = LoadProductDetailsAsync();
+    }
+}
+```
+
+## Two-Way Binding Patterns
+
+### Creating Bindable Components
+
+```razor
+<!-- CustomInput.razor -->
+<input 
+    type="text"
+    value="@Value"
+    @oninput="HandleInput"
+    class="@CssClass" />
+
+@code {
+    [Parameter]
+    public string? Value { get; set; }
+    
+    [Parameter]
+    public EventCallback<string?> ValueChanged { get; set; }
+    
+    [Parameter]
+    public string CssClass { get; set; } = "form-control";
+    
+    private async Task HandleInput(ChangeEventArgs e)
+    {
+        Value = e.Value?.ToString();
+        await ValueChanged.InvokeAsync(Value);
+    }
+}
+```
+
+**Usage:**
+
+```razor
+<CustomInput @bind-Value="username" />
+
+<!-- Equivalent to: -->
+<CustomInput 
+    Value="@username"
+    ValueChanged="@(v => username = v)" />
+```
+
+### Multi-Level Binding
+
+```razor
+<!-- Parent: UserProfile.razor -->
+<UserForm @bind-User="currentUser" />
+
+<!-- Child: UserForm.razor -->
+<div class="form-group">
+    <label>Name:</label>
+    <input @bind="User.Name" @bind:event="oninput" />
+</div>
+
+<div class="form-group">
+    <label>Email:</label>
+    <input @bind="User.Email" @bind:event="oninput" />
+</div>
+
+@code {
+    [Parameter]
+    public UserModel User { get; set; } = new();
+    
+    [Parameter]
+    public EventCallback<UserModel> UserChanged { get; set; }
+    
+    // Trigger parent update when any field changes
+    private async Task NotifyChange()
+    {
+        await UserChanged.InvokeAsync(User);
+    }
+}
+```
+
+<ComponentDataFlowVisualizer mode="two-way-binding" />
+
+## Event Handling Patterns
+
+### EventCallback vs Action
+
+```csharp
+// ❌ Avoid Action - doesn't notify parent to re-render
+[Parameter]
+public Action? OnClick { get; set; }
+
+// ✅ Use EventCallback - triggers parent re-render
+[Parameter]
+public EventCallback OnClick { get; set; }
+
+// ✅ With data
+[Parameter]
+public EventCallback<string> OnSearch { get; set; }
+```
+
+### Async Event Handlers
+
+```razor
+<button @onclick="HandleClickAsync">
+    @(isLoading ? "Loading..." : "Submit")
+</button>
+
+@code {
+    private bool isLoading = false;
+    
+    async Task HandleClickAsync()
+    {
+        isLoading = true;
+        try
+        {
+            await Task.Delay(2000); // Simulate API call
+            // Process...
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}
+```
+
+### Event Arguments
+
+```csharp
+// Mouse events
+private void HandleMouseMove(MouseEventArgs e)
+{
+    var x = e.ClientX;
+    var y = e.ClientY;
+    var button = e.Button; // 0=left, 1=middle, 2=right
+}
+
+// Keyboard events
+private void HandleKeyPress(KeyboardEventArgs e)
+{
+    if (e.Key == "Enter")
+    {
+        SubmitForm();
+    }
+}
+
+// Focus events
+private void HandleFocus(FocusEventArgs e)
+{
+    // Element gained focus
+}
+```
+
+## Component Lifecycle Strategies
+
+### Data Loading Pattern
+
+```csharp
+private bool isLoading = true;
+private Product? product;
+private string? errorMessage;
+
+protected override async Task OnInitializedAsync()
+{
+    try
+    {
+        product = await ProductService.GetAsync(ProductId);
+    }
+    catch (Exception ex)
+    {
+        errorMessage = ex.Message;
+    }
+    finally
+    {
+        isLoading = false;
+    }
+}
+```
+
+**Rendering:**
+
+```razor
+@if (isLoading)
+{
+    <LoadingSpinner />
+}
+else if (errorMessage != null)
+{
+    <ErrorAlert Message="@errorMessage" />
+}
+else if (product != null)
+{
+    <ProductDisplay Product="@product" />
+}
+```
+
+### Cleanup Pattern
+
+```csharp
+@implements IAsyncDisposable
+
+private Timer? _timer;
+private HttpClient? _httpClient;
+
+protected override void OnInitialized()
+{
+    _timer = new Timer(1000);
+    _timer.Elapsed += OnTimerElapsed;
+    _timer.Start();
+}
+
+public async ValueTask DisposeAsync()
+{
+    if (_timer != null)
+    {
+        _timer.Dispose();
+    }
+    
+    if (_httpClient != null)
+    {
+        _httpClient.Dispose();
+    }
+}
+```
+
+<ProgressCheckpoint section="component-parameters" xpReward={45} />
+
+## State Management
+
+### Component-Level State
+
+```csharp
+public class FormState
+{
+    public bool IsDirty { get; private set; }
+    public Dictionary<string, object> Values { get; } = new();
+    
+    public void SetValue(string key, object value)
+    {
+        Values[key] = value;
+        IsDirty = true;
+    }
+    
+    public void Reset()
+    {
+        Values.Clear();
+        IsDirty = false;
+    }
+}
+```
+
+### Shared State with Cascading Parameters
+
+```razor
+<!-- Layout.razor -->
+<CascadingValue Value="theme">
+    <CascadingValue Value="currentUser">
+        @Body
+    </CascadingValue>
+</CascadingValue>
+
+@code {
+    private ThemeSettings theme = new();
+    private UserInfo currentUser = new();
+}
+```
+
+```razor
+<!-- Any nested component -->
+@code {
+    [CascadingParameter]
+    public ThemeSettings Theme { get; set; } = default!;
+    
+    [CascadingParameter]
+    public UserInfo CurrentUser { get; set; } = default!;
+}
+```
+
+## Form Handling
+
+### Basic Form with Validation
+
+```razor
+@using System.ComponentModel.DataAnnotations
+
+<EditForm Model="@model" OnValidSubmit="@HandleSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    
+    <div class="form-group">
+        <label>Name:</label>
+        <InputText @bind-Value="model.Name" class="form-control" />
+        <ValidationMessage For="@(() => model.Name)" />
+    </div>
+    
+    <div class="form-group">
+        <label>Email:</label>
+        <InputText @bind-Value="model.Email" class="form-control" />
+        <ValidationMessage For="@(() => model.Email)" />
+    </div>
+    
+    <button type="submit" class="btn btn-primary">Submit</button>
+</EditForm>
+
+@code {
+    private ContactModel model = new();
+    
+    private async Task HandleSubmit()
+    {
+        await ContactService.SaveAsync(model);
+    }
+}
+
+public class ContactModel
+{
+    [Required(ErrorMessage = "Name is required")]
+    [StringLength(50, MinimumLength = 2)]
+    public string Name { get; set; } = "";
+    
+    [Required]
+    [EmailAddress(ErrorMessage = "Invalid email format")]
+    public string Email { get; set; } = "";
+}
+```
+
+## Component Composition Patterns
+
+### Template Components
+
+```razor
+<!-- Card.razor -->
+<div class="card">
+    @if (HeaderTemplate != null)
+    {
+        <div class="card-header">
+            @HeaderTemplate
+        </div>
+    }
+    
+    <div class="card-body">
+        @BodyTemplate
+    </div>
+    
+    @if (FooterTemplate != null)
+    {
+        <div class="card-footer">
+            @FooterTemplate
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public RenderFragment? HeaderTemplate { get; set; }
+    [Parameter] public RenderFragment? BodyTemplate { get; set; }
+    [Parameter] public RenderFragment? FooterTemplate { get; set; }
+}
+```
+
+**Usage:**
+
+```razor
+<Card>
+    <HeaderTemplate>
+        <h3>Product Details</h3>
+    </HeaderTemplate>
+    <BodyTemplate>
+        <p>Price: $99.99</p>
+    </BodyTemplate>
+    <FooterTemplate>
+        <button>Add to Cart</button>
+    </FooterTemplate>
+</Card>
+```
+
+<ProgressCheckpoint section="data-binding-fundamentals" xpReward={45} />
+
+## Best Practices
+
+| Pattern | Good ✅ | Bad ❌ |
+|:--------|:--------|:-------|
+| **Parameters** | `[Parameter] public string Title { get; set; }` | `public string Title { get; set; }` (missing attribute) |
+| **Events** | `EventCallback<T>` | `Action<T>` |
+| **Binding** | `@bind-Value="model.Name"` | Manual value/change handling |
+| **Lifecycle** | `OnInitializedAsync()` for data | Constructor for data |
+| **Disposal** | `IAsyncDisposable` | Memory leaks |
+
+Components are the foundation of Blazor apps - master these patterns for production-ready code! 🎯

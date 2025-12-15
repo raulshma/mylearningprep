@@ -1,0 +1,385 @@
+# Multi-Mapping with Dapper
+
+Imagine you're organizing a party, and you have a guest list (customers) and a seating arrangement (orders). Each guest is assigned to a table. In database terms, that's a **relationship** between two tables! Dapper's multi-mapping feature helps you fetch related data in one query. 🎯
+
+<InfoBox type="tip" title="What You'll Learn">
+You'll discover how to join tables in SQL and map the results to multiple related C# objects automatically—no manual assembly required!
+</InfoBox>
+
+<ProgressCheckpoint section="introduction-multi-mapping" xpReward={7} />
+
+## The Problem: Related Data
+
+Let's say you have two tables:
+
+**Orders Table:**
+| OrderId | CustomerId | OrderDate  | Total  |
+|---------|------------|------------|--------|
+| 1001    | 42         | 2024-12-15 | 129.97 |
+| 1002    | 55         | 2024-12-16 | 49.99  |
+
+**Customers Table:**
+| CustomerId | Name          | Email            |
+|------------|---------------|------------------|
+| 42         | Alice Johnson | alice@email.com  |
+| 55         | Bob Smith     | bob@email.com    |
+
+You want to fetch an order **with** its customer information. Without multi-mapping, you'd need to:
+1. Query the order
+2. Query the customer separately
+3. Manually assign the customer to the order
+
+That's tedious! Multi-mapping does all of this in **one step**. ✨
+
+<ProgressCheckpoint section="two-type-mapping" xpReward={7} />
+
+## Your First Multi-Mapping
+
+Let's create two simple C# classes:
+
+```csharp
+public class Order
+{
+    public int OrderId { get; set; }
+    public int CustomerId { get; set; }
+    public DateTime OrderDate { get; set; }
+    public decimal Total { get; set; }
+    
+    // This will hold the related customer!
+    public Customer Customer { get; set; }
+}
+
+public class Customer
+{
+    public int CustomerId { get; set; }
+    public string Name { get; set; }
+    public string Email { get; set; }
+}
+```
+
+Now, let's write the query with a JOIN:
+
+```csharp
+var sql = @"
+    SELECT o.*, c.*
+    FROM Orders o
+    INNER JOIN Customers c ON c.CustomerId = o.CustomerId
+    WHERE o.OrderId = @orderId";
+
+var order = connection.Query<Order, Customer, Order>(
+    sql,
+    (order, customer) => 
+    {
+        order.Customer = customer;  // Connect them!
+        return order;               // Return the complete order
+    },
+    new { orderId = 1001 },
+    splitOn: "CustomerId"
+).FirstOrDefault();
+
+// Now you can use both!
+Console.WriteLine($"Order #{order.OrderId} for {order.Customer.Name}");
+```
+
+<DapperMultiMappingVisualizer />
+
+Let's break down what just happened:
+
+### The Magic Formula
+
+```csharp
+Query<Type1, Type2, ReturnType>(
+    sql,
+    (obj1, obj2) => { /* combine them */ return result; },
+    parameters,
+    splitOn: "ColumnName"
+)
+```
+
+1. **`<Order, Customer, Order>`**: First two are the types to map FROM the SQL, last one is what you're returning
+2. **Mapping function**: `(order, customer) => { ... }` - This is where YOU decide how to combine them
+3. **`splitOn`**: Tells Dapper where one object ends and the next begins
+
+<KeyConcept title="What is 'splitOn'?">
+Imagine the SQL result as a row of values:
+
+```
+OrderId | CustomerId | OrderDate | Total | CustomerId | Name | Email
+1001    | 42         | 2024-...  | 129.97| 42         | Alice| alice@...
+```
+
+Dapper needs to know: "Where does the Order data end and Customer data begin?"
+
+The `splitOn: "CustomerId"` says: "When you see a column named CustomerId, that's where the Customer object starts."
+
+By default, Dapper uses "Id" as the split point, but you can specify any column!
+</KeyConcept>
+
+<ProgressCheckpoint section="spliton-parameter" xpReward={7} />
+
+## Understanding splitOn
+
+The `splitOn` parameter is crucial! Here are the rules:
+
+### Default Behavior (splitOn: "Id")
+
+If you don't specify `splitOn`, Dapper looks for a column named **"Id"**:
+
+```csharp
+// This SQL has columns: OrderId, ..., Id, Name, Email
+// Dapper will split at "Id"
+var sql = @"
+    SELECT o.OrderId, o.Total, c.Id, c.Name, c.Email
+    FROM Orders o
+    INNER JOIN Customers c ON c.Id = o.CustomerId";
+
+// No splitOn needed!
+var orders = connection.Query<Order, Customer, Order>(
+    sql,
+    (order, customer) => 
+    {
+        order.Customer = customer;
+        return order;
+    }
+);
+```
+
+### Custom splitOn
+
+If your column is named differently, tell Dapper:
+
+```csharp
+// Split at "CustomerId"
+splitOn: "CustomerId"
+
+// Split at "UserId"  
+splitOn: "UserId"
+
+// Split at multiple points (for 3+ types)
+splitOn: "CustomerId,AddressId"
+```
+
+<InfoBox type="warning" title="Common Mistake!">
+If you forget `splitOn` or use the wrong column name, Dapper will put ALL the columns into the first object, and the second object will be empty or cause an error!
+
+**Always double-check your splitOn column exists in your SQL SELECT!**
+</InfoBox>
+
+<ProgressCheckpoint section="three-plus-types" xpReward={7} />
+
+## Mapping Three or More Types
+
+What if an order also has a shipping address? You can map up to **7 types**!
+
+```csharp
+public class Order
+{
+    public int OrderId { get; set; }
+    public Customer Customer { get; set; }
+    public Address ShippingAddress { get; set; }
+}
+
+public class Address
+{
+    public int AddressId { get; set; }
+    public string Street { get; set; }
+    public string City { get; set; }
+    public string ZipCode { get; set; }
+}
+
+// Query with TWO joins
+var sql = @"
+    SELECT o.*, c.*, a.*
+    FROM Orders o
+    INNER JOIN Customers c ON c.CustomerId = o.CustomerId
+    INNER JOIN Addresses a ON a.AddressId = o.ShippingAddressId";
+
+var orders = connection.Query<Order, Customer, Address, Order>(
+    sql,
+    (order, customer, address) => 
+    {
+        order.Customer = customer;
+        order.ShippingAddress = address;
+        return order;
+    },
+    splitOn: "CustomerId,AddressId"  // Two split points!
+);
+```
+
+Notice:
+- **Three types**: `<Order, Customer, Address, Order>`
+- **Two split points**: `"CustomerId,AddressId"`
+- **Three parameters** in the function: `(order, customer, address)`
+
+<ProgressCheckpoint section="real-world-examples" xpReward={7} />
+
+## Real-World Examples
+
+### Example 1: Blog Posts with Authors
+
+```csharp
+public class Post
+{
+    public int PostId { get; set; }
+    public string Title { get; set; }
+    public string Content { get; set; }
+    public Author Author { get; set; }
+}
+
+public class Author
+{
+    public int AuthorId { get; set; }
+    public string Name { get; set; }
+}
+
+var sql = @"
+    SELECT p.*, a.*
+    FROM Posts p
+    INNER JOIN Authors a ON a.AuthorId = p.AuthorId
+    WHERE p.PostId = @postId";
+
+var post = connection.QuerySingle<Post, Author, Post>(
+    sql,
+    (post, author) => 
+    {
+        post.Author = author;
+        return post;
+    },
+    new { postId = 1 },
+    splitOn: "AuthorId"
+);
+
+Console.WriteLine($"'{post.Title}' by {post.Author.Name}");
+```
+
+### Example 2: Products with Categories
+
+```csharp
+public class Product
+{
+    public int ProductId { get; set; }
+    public string Name { get; set; }
+    public decimal Price { get; set; }
+    public Category Category { get; set; }
+}
+
+public class Category
+{
+    public int CategoryId { get; set; }
+    public string Name { get; set; }
+}
+
+var sql = @"
+    SELECT p.*, c.*
+    FROM Products p
+    INNER JOIN Categories c ON c.CategoryId = p.CategoryId";
+
+var products = connection.Query<Product, Category, Product>(
+    sql,
+    (product, category) => 
+    {
+        product.Category = category;
+        return product;
+    },
+    splitOn: "CategoryId"
+).ToList();
+
+foreach (var product in products)
+{
+    Console.WriteLine($"{product.Name} in {product.Category.Name}");
+}
+```
+
+<ProgressCheckpoint section="performance-tips" xpReward={5} />
+
+## Performance Tips
+
+### Tip 1: Only Select What You Need
+
+```csharp
+// ❌ Slow: Selecting everything
+SELECT o.*, c.* FROM Orders o JOIN Customers c ...
+
+// ✅ Faster: Select only needed columns
+SELECT o.OrderId, o.Total, c.CustomerId, c.Name FROM Orders o JOIN Customers c ...
+```
+
+### Tip 2: Use Indexes on Join Columns
+
+Make sure the columns you're joining on (like `CustomerId`) have indexes in your database!
+
+### Tip 3: Avoid N+1 Queries
+
+**Bad approach** (N+1 problem):
+```csharp
+// Query 1: Get all orders
+var orders = connection.Query<Order>("SELECT * FROM Orders");
+
+// Query 2, 3, 4, ... : Get customer for each order
+foreach (var order in orders)
+{
+    order.Customer = connection.QuerySingle<Customer>(
+        "SELECT * FROM Customers WHERE CustomerId = @id",
+        new { id = order.CustomerId }
+    );
+}
+// This is SLOW! You're making N+1 database calls!
+```
+
+**Good approach** (One query with multi-mapping):
+```csharp
+// Just ONE query!
+var orders = connection.Query<Order, Customer, Order>(
+    @"SELECT o.*, c.* 
+      FROM Orders o 
+      INNER JOIN Customers c ON c.CustomerId = o.CustomerId",
+    (order, customer) => 
+    {
+        order.Customer = customer;
+        return order;
+    },
+    splitOn: "CustomerId"
+).ToList();
+// Much faster! ⚡
+```
+
+<InfoBox type="success" title="You're a Multi-Mapping Master! 🏆">
+You now understand:
+- How to use multi-mapping to join tables
+- The purpose and usage of the `splitOn` parameter
+- Mapping two, three, or more types
+- Real-world examples and performance best practices
+
+Multi-mapping is one of Dapper's most powerful features. Use it to efficiently load related data in one query!
+</InfoBox>
+
+## Quick Reference
+
+```csharp
+// Two types
+var result = connection.Query<Type1, Type2, ReturnType>(
+    sql,
+    (obj1, obj2) => 
+    {
+        obj1.RelatedObj = obj2;
+        return obj1;
+    },
+    parameters,
+    splitOn: "ColumnName"
+);
+
+// Three types
+var result = connection.Query<Type1, Type2, Type3, ReturnType>(
+    sql,
+    (obj1, obj2, obj3) => 
+    {
+        obj1.Related1 = obj2;
+        obj1.Related2 = obj3;
+        return obj1;
+    },
+    parameters,
+    splitOn: "Column1,Column2"
+);
+```
+
+**Remember**: The last type in the generic parameters is what you're **returning**, and the splitOn column must exist in your SELECT statement!

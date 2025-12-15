@@ -1,0 +1,28 @@
+{
+  "id": "serilog",
+  "title": "Serilog",
+  "description": "Learn Serilog - the powerful structured logging library with rich sinks and formatting options.",
+  "milestone": "logging",
+  "order": 2,
+  "sections": [
+    "serilog-introduction",
+    "structured-logging-concepts",
+    "sinks-enrichers"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 12,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 18,
+      "xpReward": 45
+    },
+    "advanced": {
+      "estimatedMinutes": 22,
+      "xpReward": 65
+    }
+  },
+  "prerequisites": ["logging/builtin-logging"],
+  "tags": ["dotnet", "serilog", "structured-logging", "observability"]
+}

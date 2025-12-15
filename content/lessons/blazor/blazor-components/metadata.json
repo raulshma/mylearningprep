@@ -1,0 +1,29 @@
+{
+  "id": "blazor-components",
+  "title": "Components & Data Binding",
+  "description": "Master Blazor components, including creation, composition, parameters, event handling, and powerful two-way data binding techniques.",
+  "milestone": "blazor",
+  "order": 2,
+  "sections": [
+    "component-basics",
+    "component-parameters",
+    "data-binding-fundamentals",
+    "component-lifecycle"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 12,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 18,
+      "xpReward": 45
+    },
+    "advanced": {
+      "estimatedMinutes": 25,
+      "xpReward": 65
+    }
+  },
+  "prerequisites": ["blazor/blazor-hosting"],
+  "tags": ["blazor", "components", "data-binding", "parameters", "events"]
+}

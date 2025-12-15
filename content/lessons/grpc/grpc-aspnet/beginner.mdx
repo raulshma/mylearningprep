@@ -1,0 +1,287 @@
+# gRPC in ASP.NET Core
+
+You've learned what gRPC is and how Protocol Buffers work. Now it's time to build your first gRPC service using ASP.NET Core! It's like learning to cook - we've covered the ingredients, now let's make a delicious dish.
+
+## Creating Your First gRPC Service
+
+Building a gRPC service in ASP.NET Core is surprisingly easy! Let's create a simple **Greeter Service** that says hello to users.
+
+### Step 1: Define Your Service (The Blueprint)
+
+First, create a `.proto` file that describes your service:
+
+```protobuf
+// greeter.proto
+syntax = "proto3";
+
+option csharp_namespace = "MyApp.Grpc";
+
+package greet;
+
+// The greeting service definition
+service Greeter {
+  // Sends a greeting
+  rpc SayHello (HelloRequest) returns (HelloReply);
+}
+
+// The request message
+message HelloRequest {
+  string name = 1;
+}
+
+// The response message
+message HelloReply {
+  string message = 1;
+}
+```
+
+This says: "I have a service called `Greeter` with one method `SayHello` that takes a name and returns a message."
+
+### Step 2: Implement the Service (The Code)
+
+Now write the actual C# code that does the work:
+
+```csharp
+using Grpc.Core;
+using MyApp.Grpc;
+
+public class GreeterService : Greeter.GreeterBase
+{
+    public override Task<HelloReply> SayHello(
+        HelloRequest request, 
+        ServerCallContext context)
+    {
+        return Task.FromResult(new HelloReply
+        {
+            Message = $"Hello {request.Name}! 👋"
+        });
+    }
+}
+```
+
+<InfoBox type="success">
+**Magic Alert!** ASP.NET Core automatically generated the `Greeter.GreeterBase` class from your `.proto` file. You just inherit from it and override the methods!
+</InfoBox>
+
+### Step 3: Register the Service (Tell ASP.NET Core About It)
+
+In your `Program.cs`:
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+// Add gRPC services
+builder.Services.AddGrpc();
+
+var app = builder.Build();
+
+// Map your gRPC service
+app.MapGrpcService<GreeterService>();
+
+app.Run();
+```
+
+That's it! You have a working gRPC service! 🎉
+
+<GrpcServiceBuilder />
+
+<ProgressCheckpoint section="creating-grpc-services" xpReward={35} />
+
+## Calling Your gRPC Service (The Client)
+
+Now let's create a client to call your service:
+
+```csharp
+// Create a channel to connect to the server
+using var channel = GrpcChannel.ForAddress("https://localhost:5001");
+
+// Create a client
+var client = new Greeter.GreeterClient(channel);
+
+// Call the service
+var reply = await client.SayHelloAsync(new HelloRequest { Name = "Alice" });
+
+Console.WriteLine(reply.Message);  // "Hello Alice! 👋"
+```
+
+### The Magic Flow
+
+1. **Client** creates a request: `HelloRequest { Name = "Alice" }`
+2. **Protobuf** turns it into tiny binary data
+3. **HTTP/2** sends it super fast to the server
+4. **Server** receives and unpacks it
+5. **Your code** processes it: `SayHello(request, context)`
+6. **Server** sends back: `HelloReply { Message = "Hello Alice!" }`
+7. **Client** receives the response
+
+All of this happens in **milliseconds**!
+
+<ProgressCheckpoint section="streaming-patterns" xpReward={35} />
+
+## Different Ways to Communicate (Streaming!)
+
+gRPC isn't just request-response. You can stream data!
+
+### Server Streaming (Like a News Feed)
+
+The server sends multiple messages:
+
+```protobuf
+service NewsService {
+  rpc GetNewsUpdates (NewsRequest) returns (stream NewsArticle);
+}
+```
+
+```csharp
+// Server sends news articles one by one
+public override async Task GetNewsUpdates(
+    NewsRequest request,
+    IServerStreamWriter<NewsArticle> responseStream,
+    ServerCallContext context)
+{
+    for (int i = 1; i <= 10; i++)
+    {
+        await responseStream.WriteAsync(new NewsArticle
+        {
+            Title = $"Breaking News #{i}",
+            Content = $"This is article number {i}"
+        });
+        
+        await Task.Delay(1000);  // Wait 1 second between articles
+    }
+}
+```
+
+```csharp
+// Client receives news articles as they come
+using var call = client.GetNewsUpdates(new NewsRequest());
+
+await foreach (var article in call.ResponseStream.ReadAllAsync())
+{
+    Console.WriteLine($"📰 {article.Title}");
+}
+```
+
+<StreamingPatternVisualizer />
+
+### Real-World Examples
+
+| Service Type | Example |
+|:-------------|:--------|
+| **Unary** (request-response) | Get user profile, Submit order |
+| **Server Streaming** | Live stock prices, Log monitoring |
+| **Client Streaming** | Upload large file in chunks |
+| **Bidirectional Streaming** | Chat application, Multiplayer game |
+
+<InfoBox type="tip">
+**When to Stream?** Use streaming when you have lots of data or real-time updates. For simple get/post operations, stick with unary (regular request-response).
+</InfoBox>
+
+<ProgressCheckpoint section="production-ready" xpReward={35} />
+
+## Project Structure
+
+Here's how your gRPC project might look:
+
+```
+MyGrpcApp/
+├── Protos/
+│   ├── greeter.proto
+│   └── news.proto
+├── Services/
+│   ├── GreeterService.cs
+│   └── NewsService.cs
+├── Program.cs
+└── MyGrpcApp.csproj
+```
+
+In your `.csproj` file:
+
+```xml
+<ItemGroup>
+  <Protobuf Include="Protos\greeter.proto" GrpcServices="Both" />
+  <PackageReference Include="Grpc.AspNetCore" Version="2.60.0" />
+</ItemGroup>
+```
+
+**What `GrpcServices="Both"` means:**
+- Generates **server** code (the service you implement)
+- Generates **client** code (to call the service)
+
+## Testing Your Service
+
+You can test gRPC services easily:
+
+```csharp
+[Fact]
+public async Task SayHello_ReturnsGreeting()
+{
+    // Arrange
+    var service = new GreeterService();
+    var request = new HelloRequest { Name = "Test" };
+    
+    // Act
+    var response = await service.SayHello(request, TestServerCallContext.Create());
+    
+    // Assert
+    Assert.Equal("Hello Test! 👋", response.Message);
+}
+```
+
+## Common Patterns
+
+### 1. **Dependency Injection**
+
+```csharp
+public class UserService : UserServiceGrpc.UserServiceGrpcBase
+{
+    private readonly IUserRepository _repository;
+    
+    public UserService(IUserRepository repository)
+    {
+        _repository = repository;  // Injected automatically!
+    }
+    
+    public override async Task<UserResponse> GetUser(
+        GetUserRequest request, 
+        ServerCallContext context)
+    {
+        var user = await _repository.GetByIdAsync(request.UserId);
+        return new UserResponse { Name = user.Name };
+    }
+}
+```
+
+### 2. **Error Handling**
+
+```csharp
+public override async Task<UserResponse> GetUser(
+    GetUserRequest request, 
+    ServerCallContext context)
+{
+    var user = await _repository.GetByIdAsync(request.UserId);
+    
+    if (user == null)
+    {
+        throw new RpcException(new Status(
+            StatusCode.NotFound, 
+            $"User {request.UserId} not found"
+        ));
+    }
+    
+    return new UserResponse { Name = user.Name };
+}
+```
+
+## Quick Recap
+
+> **Building gRPC services in ASP.NET Core:**
+>
+> 1. **Define** your service in a `.proto` file
+> 2. **Implement** the service by inheriting from the generated base class
+> 3. **Register** the service with `AddGrpc()` and `MapGrpcService<>()`
+> 4. **Call** it from a client using the generated client class
+>
+> **Bonus:** You get streaming, strong typing, and blazing-fast performance for free!
+
+Next, you'll learn advanced patterns like authentication, error handling, and production deployment!

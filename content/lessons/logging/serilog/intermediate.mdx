@@ -1,0 +1,185 @@
+# Serilog: Advanced Configuration and Enrichers
+
+Serilog's true power lies in its extensibility through enrichers, filters, and advanced sink configurations. This lesson explores production-ready patterns.
+
+## Enrichers: Adding Context
+
+Enrichers automatically add properties to every log event. Common enrichers include:
+
+```csharp
+using Serilog;
+using Serilog.Enrichers;
+
+Log.Logger = new LoggerConfiguration()
+    .Enrich.FromLogContext()              // Add properties from LogContext
+    .Enrich.WithMachineName()             // Add machine name
+    .Enrich.WithThreadId()                // Add thread ID
+    .Enrich.WithEnvironmentName()         // Add environment (Dev/Prod)
+    .Enrich.WithProperty("Application", "MyApi")
+    .WriteTo.Console()
+    .CreateLogger();
+```
+
+### Custom Enricher Example
+
+```csharp
+public class RequestIdEnricher : ILogEventEnricher
+{
+    public void Enrich(LogEvent logEvent, ILogEventPropertyFactory propertyFactory)
+    {
+        if (Activity.Current?.Id != null)
+        {
+            logEvent.AddPropertyIfAbsent(
+                propertyFactory.CreateProperty("RequestId", Activity.Current.Id));
+        }
+    }
+}
+
+// Usage
+.Enrich.With<RequestIdEnricher>()
+```
+
+<ProgressCheckpoint section="serilog-introduction" xpReward={15} />
+
+## LogContext for Dynamic Properties
+
+`LogContext` allows adding contextual properties within a scope:
+
+```csharp
+public class OrdersController : ControllerBase
+{
+    private readonly ILogger<OrdersController> _logger;
+
+    [HttpPost]
+    public async Task<IActionResult> CreateOrder(OrderRequest request)
+    {
+        using (LogContext.PushProperty("OrderId", request.OrderId))
+        using (LogContext.PushProperty("CustomerId", request.CustomerId))
+        {
+            _logger.LogInformation("Starting order creation");
+            
+            // All logs in this scope automatically include OrderId and CustomerId
+            await ValidateOrder(request);
+            await ProcessPayment(request);
+            await ShipOrder(request);
+            
+            _logger.LogInformation("Order created successfully");
+            return Ok();
+        }
+    }
+}
+```
+
+<ProgressCheckpoint section="structured-logging-concepts" xpReward={15} />
+
+## Advanced Sinks Configuration
+
+### Multiple Environments
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((context, services, configuration) =>
+{
+    configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .ReadFrom.Services(services)
+        .Enrich.FromLogContext();
+
+    if (context.HostingEnvironment.IsDevelopment())
+    {
+        configuration
+            .MinimumLevel.Debug()
+            .WriteTo.Console()
+            .WriteTo.Seq("http://localhost:5341");
+    }
+    else
+    {
+        configuration
+            .MinimumLevel.Information()
+            .WriteTo.File(
+                path: "/logs/app-.log",
+                rollingInterval: RollingInterval.Day,
+                retainedFileCountLimit: 30,
+                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
+            .WriteTo.ApplicationInsights(
+                services.GetRequiredService<TelemetryConfiguration>(),
+                TelemetryConverter.Traces);
+    }
+});
+```
+
+### Conditional Sinks
+
+```csharp
+.WriteTo.Logger(lc => lc
+    .Filter.ByIncludingOnly(e => e.Level >= LogEventLevel.Error)
+    .WriteTo.File("logs/errors-.log", rollingInterval: RollingInterval.Day))
+```
+
+<ProgressCheckpoint section="sinks-enrichers" xpReward={15} />
+
+## Destructuring Complex Objects
+
+Serilog can serialize complex objects intelligently:
+
+```csharp
+var order = new Order
+{
+    Id = 123,
+    Items = new[] { "Item1", "Item2" },
+    Customer = new Customer { Name = "John", Email = "john@example.com" }
+};
+
+// @ operator: destructure the object
+_logger.LogInformation("Order created: {@Order}", order);
+
+// Output includes full object structure:
+// { "Order": { "Id": 123, "Items": ["Item1", "Item2"], "Customer": { "Name": "John", "Email": "john@example.com" } } }
+
+// $ operator: convert to string (calls ToString())
+_logger.LogInformation("Order: {$Order}", order);
+```
+
+### Destructuring Policies
+
+```csharp
+.Destructure.ByTransforming<HttpContext>(ctx => new
+{
+    Method = ctx.Request.Method,
+    Path = ctx.Request.Path,
+    QueryString = ctx.Request.QueryString.ToString()
+})
+.Destructure.ToMaximumDepth(4)
+.Destructure.ToMaximumStringLength(1000)
+.Destructure.ToMaximumCollectionCount(10)
+```
+
+## Filtering Strategies
+
+```csharp
+using Serilog.Filters;
+
+Log.Logger = new LoggerConfiguration()
+    .Filter.ByExcluding(Matching.FromSource("Microsoft.AspNetCore"))
+    .Filter.ByExcluding(Matching.WithProperty<int>("StatusCode", p => p == 404))
+    .Filter.ByIncludingOnly(e => 
+        e.Level >= LogEventLevel.Warning || 
+        e.Properties.ContainsKey("ImportantOperation"))
+    .WriteTo.Console()
+    .CreateLogger();
+```
+
+## Best Practices
+
+| Practice | Implementation |
+|:---------|:---------------|
+| Use enrichers for common context | `Enrich.FromLogContext()` |
+| Destructure complex objects | `{@Object}` syntax |
+| Filter noisy logs | Exclude health checks, static files |
+| Use structured properties | Named parameters, not string interpolation |
+| Configure per environment | Different sinks for dev/prod |
+
+<InfoBox type="success">
+You've learned advanced Serilog patterns! You can now enrich logs with context, configure complex sink pipelines, and implement production-grade logging.
+</InfoBox>

@@ -1,0 +1,459 @@
+# Distributed Caching with Redis in ASP.NET Core
+
+Redis (Remote Dictionary Server) is a production-grade distributed cache that enables multiple application instances to share cached data. Let's explore how to implement Redis caching effectively in ASP.NET Core applications.
+
+## Setting Up Redis
+
+### Installation
+
+Install the StackExchange.Redis NuGet package:
+
+```bash
+dotnet add package Microsoft.Extensions.Caching.StackExchangeRedis
+```
+
+### Configuration
+
+Register Redis in `Program.cs`:
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = builder.Configuration.GetConnectionString("Redis");
+    options.InstanceName = "MyApp:"; // Prefix for all keys
+});
+```
+
+In `appsettings.json`:
+
+```json
+{
+  "ConnectionStrings": {
+    "Redis": "localhost:6379,abortConnect=false,connectTimeout=5000"
+  }
+}
+```
+
+<InfoBox type="info">
+**Azure Redis Cache**: For production, use Azure Cache for Redis. Get the connection string from Azure Portal and store it in Azure Key Vault or App Configuration.
+</InfoBox>
+
+## IDistributedCache Interface
+
+The `IDistributedCache` interface provides methods for distributed caching:
+
+```csharp
+public interface IDistributedCache
+{
+    byte[]? Get(string key);
+    Task<byte[]?> GetAsync(string key, CancellationToken token = default);
+    
+    void Set(string key, byte[] value, DistributedCacheEntryOptions options);
+    Task SetAsync(string key, byte[] value, DistributedCacheEntryOptions options, CancellationToken token = default);
+    
+    void Refresh(string key);
+    Task RefreshAsync(string key, CancellationToken token = default);
+    
+    void Remove(string key);
+    Task RemoveAsync(string key, CancellationToken token = default);
+}
+```
+
+### Working with Strings
+
+Use extension methods for string operations:
+
+```csharp
+public class UserProfileService
+{
+    private readonly IDistributedCache _cache;
+    
+    public UserProfileService(IDistributedCache cache)
+    {
+        _cache = cache;
+    }
+    
+    public async Task<string> GetUserNameAsync(int userId)
+    {
+        var cacheKey = $"user:name:{userId}";
+        
+        var cachedName = await _cache.GetStringAsync(cacheKey);
+        if (cachedName != null)
+        {
+            return cachedName;
+        }
+        
+        // Fetch from database
+        var userName = await FetchUserNameFromDatabaseAsync(userId);
+        
+        // Cache for 1 hour
+        var options = new DistributedCacheEntryOptions
+        {
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1)
+        };
+        
+        await _cache.SetStringAsync(cacheKey, userName, options);
+        
+        return userName;
+    }
+}
+```
+
+## Caching Complex Objects
+
+### JSON Serialization Pattern
+
+```csharp
+public class ProductCacheService
+{
+    private readonly IDistributedCache _cache;
+    private readonly IProductRepository _repository;
+    private readonly JsonSerializerOptions _jsonOptions;
+    
+    public ProductCacheService(
+        IDistributedCache cache,
+        IProductRepository repository)
+    {
+        _cache = cache;
+        _repository = repository;
+        _jsonOptions = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            WriteIndented = false
+        };
+    }
+    
+    public async Task<Product> GetProductAsync(int productId)
+    {
+        var cacheKey = $"product:{productId}";
+        
+        // Try to get from cache
+        var cachedData = await _cache.GetStringAsync(cacheKey);
+        
+        if (cachedData != null)
+        {
+            return JsonSerializer.Deserialize<Product>(cachedData, _jsonOptions);
+        }
+        
+        // Fetch from database
+        var product = await _repository.GetByIdAsync(productId);
+        
+        // Cache the product
+        var serializedProduct = JsonSerializer.Serialize(product, _jsonOptions);
+        
+        var cacheOptions = new DistributedCacheEntryOptions
+        {
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30),
+            SlidingExpiration = TimeSpan.FromMinutes(10)
+        };
+        
+        await _cache.SetStringAsync(cacheKey, serializedProduct, cacheOptions);
+        
+        return product;
+    }
+    
+    public async Task InvalidateProductAsync(int productId)
+    {
+        await _cache.RemoveAsync($"product:{productId}");
+    }
+}
+```
+
+### Generic Cache Helper
+
+Create a reusable caching utility:
+
+```csharp
+public class DistributedCacheHelper
+{
+    private readonly IDistributedCache _cache;
+    
+    public DistributedCacheHelper(IDistributedCache cache)
+    {
+        _cache = cache;
+    }
+    
+    public async Task<T> GetOrSetAsync<T>(
+        string key,
+        Func<Task<T>> factory,
+        DistributedCacheEntryOptions options = null)
+    {
+        var cachedData = await _cache.GetStringAsync(key);
+        
+        if (cachedData != null)
+        {
+            return JsonSerializer.Deserialize<T>(cachedData);
+        }
+        
+        var data = await factory();
+        var serializedData = JsonSerializer.Serialize(data);
+        
+        options ??= new DistributedCacheEntryOptions
+        {
+            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10)
+        };
+        
+        await _cache.SetStringAsync(key, serializedData, options);
+        
+        return data;
+    }
+}
+```
+
+Usage:
+
+```csharp
+var product = await _cacheHelper.GetOrSetAsync(
+    $"product:{productId}",
+    () => _repository.GetByIdAsync(productId),
+    new DistributedCacheEntryOptions
+    {
+        AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30)
+    }
+);
+```
+
+## Cache Expiration Strategies
+
+### Sliding Expiration
+
+Resets the expiration timer on each access:
+
+```csharp
+var options = new DistributedCacheEntryOptions
+{
+    SlidingExpiration = TimeSpan.FromMinutes(15)
+};
+
+await _cache.SetStringAsync("session:user:123", sessionData, options);
+```
+
+**Use case**: User sessions, frequently accessed data
+
+### Absolute Expiration
+
+Expires after a fixed duration:
+
+```csharp
+var options = new DistributedCacheEntryOptions
+{
+    AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24)
+};
+
+await _cache.SetStringAsync("daily-stats", statsData, options);
+```
+
+**Use case**: Time-sensitive data, daily aggregations
+
+### Combined Strategy
+
+```csharp
+var options = new DistributedCacheEntryOptions
+{
+    AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(2),
+    SlidingExpiration = TimeSpan.FromMinutes(20)
+};
+```
+
+This ensures:
+- Data is accessed → expires in 20 minutes from last access
+- Data is never cached longer than 2 hours
+
+## Refresh Pattern
+
+Extend cache lifetime without fetching data:
+
+```csharp
+public async Task KeepSessionAliveAsync(string sessionId)
+{
+    var cacheKey = $"session:{sessionId}";
+    
+    // Refresh extends the sliding expiration
+    await _cache.RefreshAsync(cacheKey);
+}
+```
+
+## Cache Key Naming Conventions
+
+Organize cache keys with a consistent naming strategy:
+
+```csharp
+public static class CacheKeys
+{
+    public const string Prefix = "MyApp:";
+    
+    public static string UserProfile(int userId) 
+        => $"{Prefix}user:profile:{userId}";
+    
+    public static string ProductDetails(int productId) 
+        => $"{Prefix}product:{productId}";
+    
+    public static string CategoryProducts(int categoryId) 
+        => $"{Prefix}category:{categoryId}:products";
+    
+    public static string UserCart(string userId) 
+        => $"{Prefix}cart:{userId}";
+}
+```
+
+Usage:
+
+```csharp
+var cacheKey = CacheKeys.UserProfile(userId);
+await _cache.SetStringAsync(cacheKey, userData, options);
+```
+
+<InfoBox type="tip">
+**Best Practice**: Use hierarchical naming (e.g., `app:entity:id:property`) for easy pattern-based invalidation.
+</InfoBox>
+
+## Session State with Redis
+
+Configure Redis for session storage:
+
+```csharp
+builder.Services.AddSession(options =>
+{
+    options.IdleTimeout = TimeSpan.FromMinutes(30);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
+
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = builder.Configuration.GetConnectionString("Redis");
+    options.InstanceName = "Sessions:";
+});
+
+var app = builder.Build();
+app.UseSession();
+```
+
+Store session data:
+
+```csharp
+public class CartController : ControllerBase
+{
+    [HttpPost("add")]
+    public async Task<IActionResult> AddToCart(Product product)
+    {
+        var cart = HttpContext.Session.GetObject<List<Product>>("Cart") 
+            ?? new List<Product>();
+        
+        cart.Add(product);
+        
+        HttpContext.Session.SetObject("Cart", cart);
+        
+        return Ok();
+    }
+}
+
+// Extension methods for object serialization
+public static class SessionExtensions
+{
+    public static void SetObject<T>(this ISession session, string key, T value)
+    {
+        session.SetString(key, JsonSerializer.Serialize(value));
+    }
+    
+    public static T GetObject<T>(this ISession session, string key)
+    {
+        var value = session.GetString(key);
+        return value == null ? default : JsonSerializer.Deserialize<T>(value);
+    }
+}
+```
+
+## Error Handling and Resilience
+
+Handle Redis connection failures gracefully:
+
+```csharp
+public class ResilientCacheService
+{
+    private readonly IDistributedCache _cache;
+    private readonly ILogger<ResilientCacheService> _logger;
+    
+    public async Task<T> GetOrDefaultAsync<T>(string key)
+    {
+        try
+        {
+            var data = await _cache.GetStringAsync(key);
+            return data != null 
+                ? JsonSerializer.Deserialize<T>(data) 
+                : default;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Redis cache read failed for key: {Key}", key);
+            return default;
+        }
+    }
+    
+    public async Task<bool> TrySetAsync<T>(string key, T value, DistributedCacheEntryOptions options)
+    {
+        try
+        {
+            var serialized = JsonSerializer.Serialize(value);
+            await _cache.SetStringAsync(key, serialized, options);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Redis cache write failed for key: {Key}", key);
+            return false;
+        }
+    }
+}
+```
+
+<KeyConcept title="Circuit Breaker Pattern">
+For production systems, implement a circuit breaker to prevent cascade failures when Redis is unavailable. Libraries like Polly can help implement this pattern.
+</KeyConcept>
+
+## Performance Considerations
+
+### Batch Operations
+
+Use batch operations for better performance:
+
+```csharp
+public async Task<Dictionary<int, Product>> GetProductsAsync(List<int> productIds)
+{
+    var results = new Dictionary<int, Product>();
+    var missingIds = new List<int>();
+    
+    // Batch read from cache
+    foreach (var id in productIds)
+    {
+        var cached = await _cache.GetStringAsync($"product:{id}");
+        if (cached != null)
+        {
+            results[id] = JsonSerializer.Deserialize<Product>(cached);
+        }
+        else
+        {
+            missingIds.Add(id);
+        }
+    }
+    
+    // Fetch missing items from database
+    if (missingIds.Any())
+    {
+        var products = await _repository.GetByIdsAsync(missingIds);
+        
+        foreach (var product in products)
+        {
+            results[product.Id] = product;
+            // Cache asynchronously (fire and forget)
+            _ = CacheProductAsync(product);
+        }
+    }
+    
+    return results;
+}
+```
+
+<ProgressCheckpoint section="redis-caching-intermediate" xpReward={30} />

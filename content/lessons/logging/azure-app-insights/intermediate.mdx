@@ -1,0 +1,209 @@
+# Azure Application Insights: Advanced Telemetry and Analysis
+
+Deep dive into custom telemetry, distributed tracing, and advanced querying with Application Insights.
+
+## Distributed Tracing and Correlation
+
+### Request Correlation
+
+Application Insights automatically correlates telemetry within a request:
+
+```csharp
+public class OrderController : ControllerBase
+{
+    private readonly TelemetryClient _telemetryClient;
+
+    [HttpPost]
+    public async Task<IActionResult> ProcessOrder(OrderRequest request)
+    {
+        // All telemetry in this request is automatically correlated
+        _telemetryClient.TrackEvent("OrderReceived", new Dictionary<string, string>
+        {
+            ["OrderId"] = request.OrderId,
+            ["CustomerId"] = request.CustomerId
+        });
+
+        try
+        {
+            await ValidateOrder(request);
+            await ProcessPayment(request);
+            await ShipOrder(request);
+
+            _telemetryClient.TrackEvent("OrderCompleted", new Dictionary<string, string>
+            {
+                ["OrderId"] = request.OrderId,
+                ["TotalAmount"] = request.TotalAmount.ToString()
+            });
+
+            return Ok();
+        }
+        catch (Exception ex)
+        {
+            _telemetryClient.TrackException(ex, new Dictionary<string, string>
+            {
+                ["OrderId"] = request.OrderId
+            });
+            throw;
+        }
+    }
+}
+```
+
+<ProgressCheckpoint section="app-insights-setup" xpReward={15} />
+
+## Custom Telemetry Processors
+
+### Filtering Telemetry
+
+```csharp
+public class CustomTelemetryProcessor : ITelemetryProcessor
+{
+    private readonly ITelemetryProcessor _next;
+
+    public CustomTelemetryProcessor(ITelemetryProcessor next)
+    {
+        _next = next;
+    }
+
+    public void Process(ITelemetry item)
+    {
+        // Filter out health check requests
+        if (item is RequestTelemetry request &&
+            request.Url.AbsolutePath.Contains("/health"))
+        {
+            return; // Don't send this telemetry
+        }
+
+        // Filter out successful dependency calls to specific services
+        if (item is DependencyTelemetry dependency &&
+            dependency.Success == true &&
+            dependency.Target.Contains("cache-service"))
+        {
+            return; // Don't send successful cache calls
+        }
+
+        _next.Process(item);
+    }
+}
+
+// Register in Program.cs
+builder.Services.AddApplicationInsightsTelemetryProcessor<CustomTelemetryProcessor>();
+```
+
+<ProgressCheckpoint section="telemetry-collection" xpReward={15} />
+
+## Advanced Querying with KQL
+
+### Kusto Query Language Examples
+
+```kql
+// Find slow requests (> 2 seconds) in the last hour
+requests
+| where timestamp > ago(1h)
+| where duration > 2000
+| order by duration desc
+| project timestamp, url, duration, resultCode
+
+// Dependency call success rate by target
+dependencies
+| where timestamp > ago(24h)
+| summarize 
+    SuccessCount = countif(success == true),
+    FailureCount = countif(success == false),
+    SuccessRate = 100.0 * countif(success == true) / count()
+    by bin(timestamp, 1h), target
+| order by timestamp asc
+
+// Top exceptions by type
+exceptions
+| where timestamp > ago(24h)
+| summarize count() by type, outerMessage
+| order by count_ desc
+| limit 10
+
+// Business metrics: Orders by hour
+customEvents
+| where timestamp > ago(24h)
+| where name == "OrderCompleted"
+| summarize Orders = count() by bin(timestamp, 1h)
+| render timechart
+```
+
+<ProgressCheckpoint section="monitoring-alerting" xpReward={20} />
+
+## Workbooks and Dashboards
+
+### Creating Custom Dashboards
+
+1. Navigate to Application Insights in Azure Portal
+2. Go to "Workbooks"
+3. Create a new workbook
+4. Add queries and visualizations
+
+### Sample Workbook Queries
+
+```kql
+// Application Health Overview
+let requestHealth = requests
+| where timestamp > ago(1h)
+| summarize 
+    RequestCount = count(),
+    FailedRequests = countif(resultCode >= 500),
+    SuccessRate = 100.0 * countif(resultCode < 500) / count()
+| project RequestCount, FailedRequests, SuccessRate;
+
+let dependencyHealth = dependencies
+| where timestamp > ago(1h)
+| summarize 
+    DependencyCount = count(),
+    FailedDependencies = countif(success == false),
+    SuccessRate = 100.0 * countif(success == true) / count()
+| project DependencyCount, FailedDependencies, SuccessRate;
+
+union requestHealth, dependencyHealth
+```
+
+## Alerting Strategies
+
+### Smart Detection Alerts
+
+Enable built-in smart detection:
+- **Failure Anomalies** - Automatically detects unusual spike in failures
+- **Performance Degradation** - Detects response time degradation
+- **Traffic Anomalies** - Detects unusual traffic patterns
+
+### Custom Metric Alerts
+
+```kql
+// Alert when error rate exceeds 5%
+requests
+| where timestamp > ago(5m)
+| summarize 
+    ErrorRate = 100.0 * countif(resultCode >= 500) / count()
+| where ErrorRate > 5
+```
+
+### Custom Log Alerts
+
+```kql
+// Alert on specific exception types
+exceptions
+| where timestamp > ago(5m)
+| where type == "System.NullReferenceException"
+| summarize count() by type
+| where count_ > 0
+```
+
+## Best Practices
+
+| Area | Recommendation |
+|:-----|:---------------|
+| **Sampling** | Use adaptive sampling to control costs |
+| **Custom Properties** | Add business context to telemetry |
+| **Correlation** | Maintain operation IDs across services |
+| **Alerting** | Create actionable alerts with clear remediation steps |
+| **Retention** | Configure appropriate data retention periods |
+
+<InfoBox type="success">
+You've learned advanced Application Insights techniques! You can now implement custom telemetry processors, write complex KQL queries, and create comprehensive monitoring dashboards.
+</InfoBox>

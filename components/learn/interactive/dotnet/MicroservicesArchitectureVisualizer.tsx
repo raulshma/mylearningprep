@@ -351,7 +351,7 @@ export function MicroservicesArchitectureVisualizer({
             transition={{ delay: 1 }}
             className="mt-4 bg-gray-900 rounded-lg p-4 font-mono text-xs overflow-x-auto"
           >
-            <div className="text-gray-500 mb-2">// Each microservice is a separate project</div>
+            <div className="text-gray-500 mb-2">{"//"} Each microservice is a separate project</div>
             <pre className="text-gray-300">
 {`src/
 ├── Services/

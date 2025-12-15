@@ -1,0 +1,531 @@
+# gRPC in ASP.NET Core - Building Production Services
+
+ASP.NET Core provides first-class support for gRPC with powerful features for building production-ready microservices. Let's explore the complete service lifecycle, streaming patterns, and essential production practices.
+
+## Project Setup
+
+### Creating a gRPC Project
+
+```bash
+# Create a new gRPC service template
+dotnet new grpc -n MyGrpcService
+
+# Or add to existing ASP.NET Core project
+dotnet add package Grpc.AspNetCore
+```
+
+### Project Configuration (.csproj)
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Auto-compile .proto files during build -->
+    <Protobuf Include="Protos\user.proto" GrpcServices="Server" />
+    <Protobuf Include="Protos\product.proto" GrpcServices="Both" />
+    
+    <!-- gRPC packages -->
+    <PackageReference Include="Grpc.AspNetCore" Version="2.60.0" />
+    <PackageReference Include="Grpc.AspNetCore.Server.Reflection" Version="2.60.0" />
+  </ItemGroup>
+</Project>
+```
+
+**GrpcServices options:**
+- `Server`: Generate server-side code only
+- `Client`: Generate client-side code only
+- `Both`: Generate both server and client code
+
+<ProgressCheckpoint section="creating-grpc-services" xpReward={50} />
+
+## Implementing Services
+
+### Service Definition
+
+```protobuf
+syntax = "proto3";
+
+option csharp_namespace = "MyGrpcService.Protos";
+
+package users;
+
+service UserService {
+  rpc GetUser (GetUserRequest) returns (UserResponse);
+  rpc CreateUser (CreateUserRequest) returns (UserResponse);
+  rpc ListUsers (ListUsersRequest) returns (stream UserResponse);
+  rpc UpdateUserStream (stream UpdateUserRequest) returns (UpdateSummary);
+}
+
+message GetUserRequest {
+  int32 user_id = 1;
+}
+
+message UserResponse {
+  int32 id = 1;
+  string name = 2;
+  string email = 3;
+  int64 created_at = 4;
+}
+
+message CreateUserRequest {
+  string name = 1;
+  string email = 2;
+}
+
+message ListUsersRequest {
+  int32 page_size = 1;
+  int32 page = 2;
+}
+
+message UpdateUserRequest {
+  int32 user_id = 1;
+  string field = 2;
+  string value = 3;
+}
+
+message UpdateSummary {
+  int32 updated_count = 1;
+  repeated string errors = 2;
+}
+```
+
+### Service Implementation with Dependency Injection
+
+```csharp
+using Grpc.Core;
+using Microsoft.Extensions.Logging;
+using MyGrpcService.Protos;
+
+public class UserService : Protos.UserService.UserServiceBase
+{
+    private readonly IUserRepository _repository;
+    private readonly ILogger<UserService> _logger;
+    
+    public UserService(
+        IUserRepository repository,
+        ILogger<UserService> logger)
+    {
+        _repository = repository;
+        _logger = logger;
+    }
+    
+    // Unary RPC
+    public override async Task<UserResponse> GetUser(
+        GetUserRequest request,
+        ServerCallContext context)
+    {
+        _logger.LogInformation("GetUser called for ID: {UserId}", request.UserId);
+        
+        var user = await _repository.GetByIdAsync(request.UserId);
+        
+        if (user == null)
+        {
+            throw new RpcException(new Status(
+                StatusCode.NotFound,
+                $"User {request.UserId} not found"
+            ));
+        }
+        
+        return new UserResponse
+        {
+            Id = user.Id,
+            Name = user.Name,
+            Email = user.Email,
+            CreatedAt = user.CreatedAt.ToUnixTimeSeconds()
+        };
+    }
+    
+    // Server streaming RPC
+    public override async Task ListUsers(
+        ListUsersRequest request,
+        IServerStreamWriter<UserResponse> responseStream,
+        ServerCallContext context)
+    {
+        var users = _repository.GetPagedUsersAsync(request.Page, request.PageSize);
+        
+        await foreach (var user in users.WithCancellation(context.CancellationToken))
+        {
+            await responseStream.WriteAsync(new UserResponse
+            {
+                Id = user.Id,
+                Name = user.Name,
+                Email = user.Email,
+                CreatedAt = user.CreatedAt.ToUnixTimeSeconds()
+            });
+        }
+    }
+    
+    // Client streaming RPC
+    public override async Task<UpdateSummary> UpdateUserStream(
+        IAsyncStreamReader<UpdateUserRequest> requestStream,
+        ServerCallContext context)
+    {
+        var summary = new UpdateSummary();
+        
+        await foreach (var update in requestStream.ReadAllAsync(context.CancellationToken))
+        {
+            try
+            {
+                await _repository.UpdateFieldAsync(
+                    update.UserId,
+                    update.Field,
+                    update.Value
+                );
+                summary.UpdatedCount++;
+            }
+            catch (Exception ex)
+            {
+                summary.Errors.Add($"User {update.UserId}: {ex.Message}");
+            }
+        }
+        
+        return summary;
+    }
+}
+```
+
+<GrpcServiceBuilder />
+
+<ProgressCheckpoint section="streaming-patterns" xpReward={50} />
+
+## Streaming Patterns in Depth
+
+### Server Streaming: Real-Time Updates
+
+```csharp
+public class StockService : StockServiceBase
+{
+    private readonly IStockPriceProvider _priceProvider;
+    
+    public override async Task WatchStockPrice(
+        StockRequest request,
+        IServerStreamWriter<StockPrice> responseStream,
+        ServerCallContext context)
+    {
+        _logger.LogInformation("Client started watching {Symbol}", request.Symbol);
+        
+        // Send updates until client cancels
+        while (!context.CancellationToken.IsCancellationRequested)
+        {
+            var price = await _priceProvider.GetPriceAsync(request.Symbol);
+            
+            await responseStream.WriteAsync(new StockPrice
+            {
+                Symbol = request.Symbol,
+                Price = price,
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+            });
+            
+            // Update every second
+            await Task.Delay(1000, context.CancellationToken);
+        }
+        
+        _logger.LogInformation("Client stopped watching {Symbol}", request.Symbol);
+    }
+}
+```
+
+### Client Streaming: Bulk Upload
+
+```csharp
+public class FileService : FileServiceBase
+{
+    public override async Task<UploadResponse> UploadFile(
+        IAsyncStreamReader<FileChunk> requestStream,
+        ServerCallContext context)
+    {
+        using var fileStream = File.Create("uploaded_file.dat");
+        long totalBytes = 0;
+        
+        await foreach (var chunk in requestStream.ReadAllAsync(context.CancellationToken))
+        {
+            await fileStream.WriteAsync(chunk.Data.ToByteArray());
+            totalBytes += chunk.Data.Length;
+            
+            _logger.LogDebug("Received chunk: {Bytes} bytes", chunk.Data.Length);
+        }
+        
+        return new UploadResponse
+        {
+            FileName = "uploaded_file.dat",
+            TotalBytes = totalBytes
+        };
+    }
+}
+```
+
+### Bidirectional Streaming: Chat Service
+
+```csharp
+public class ChatService : ChatServiceBase
+{
+    private readonly IChatRoom _chatRoom;
+    
+    public override async Task Chat(
+        IAsyncStreamReader<ChatMessage> requestStream,
+        IServerStreamWriter<ChatMessage> responseStream,
+        ServerCallContext context)
+    {
+        var userId = context.GetHttpContext().User.Identity?.Name ?? "Anonymous";
+        
+        // Background task to receive messages from client
+        var receiveTask = Task.Run(async () =>
+        {
+            await foreach (var message in requestStream.ReadAllAsync(context.CancellationToken))
+            {
+                // Broadcast to all clients in room
+                await _chatRoom.BroadcastAsync(new ChatMessage
+                {
+                    UserId = userId,
+                    Message = message.Message,
+                    Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                });
+            }
+        });
+        
+        // Subscribe to chat room messages
+        await foreach (var message in _chatRoom.SubscribeAsync(userId, context.CancellationToken))
+        {
+            await responseStream.WriteAsync(message);
+        }
+        
+        await receiveTask;
+    }
+}
+```
+
+<StreamingPatternVisualizer />
+
+## Error Handling & Status Codes
+
+### Standard gRPC Status Codes
+
+```csharp
+public override async Task<UserResponse> DeleteUser(
+    DeleteUserRequest request,
+    ServerCallContext context)
+{
+    // NotFound
+    if (!await _repository.ExistsAsync(request.UserId))
+    {
+        throw new RpcException(new Status(
+            StatusCode.NotFound,
+            $"User {request.UserId} does not exist"
+        ));
+    }
+    
+    // PermissionDenied
+    if (!context.GetHttpContext().User.IsInRole("Admin"))
+    {
+        throw new RpcException(new Status(
+            StatusCode.PermissionDenied,
+            "Only admins can delete users"
+        ));
+    }
+    
+    // FailedPrecondition
+    if (await _repository.HasActiveOrdersAsync(request.UserId))
+    {
+        throw new RpcException(new Status(
+            StatusCode.FailedPrecondition,
+            "Cannot delete user with active orders"
+        ));
+    }
+    
+    try
+    {
+        await _repository.DeleteAsync(request.UserId);
+        return new UserResponse();
+    }
+    catch (DbException ex)
+    {
+        // Internal
+        throw new RpcException(new Status(
+            StatusCode.Internal,
+            "Database error occurred",
+            ex
+        ));
+    }
+}
+```
+
+### Client-Side Error Handling
+
+```csharp
+try
+{
+    var response = await client.GetUserAsync(new GetUserRequest { UserId = 999 });
+}
+catch (RpcException ex) when (ex.StatusCode == StatusCode.NotFound)
+{
+    Console.WriteLine("User not found");
+}
+catch (RpcException ex) when (ex.StatusCode == StatusCode.Unavailable)
+{
+    Console.WriteLine("Service unavailable, retry later");
+}
+catch (RpcException ex)
+{
+    Console.WriteLine($"gRPC error: {ex.Status.Detail}");
+}
+```
+
+<ProgressCheckpoint section="production-ready" xpReward={50} />
+
+## Production Configuration
+
+### Program.cs Setup
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+// Configure gRPC services
+builder.Services.AddGrpc(options =>
+{
+    options.EnableDetailedErrors = builder.Environment.IsDevelopment();
+    options.MaxReceiveMessageSize = 4 * 1024 * 1024;  // 4 MB
+    options.MaxSendMessageSize = 4 * 1024 * 1024;
+    options.Interceptors.Add<LoggingInterceptor>();
+    options.Interceptors.Add<AuthInterceptor>();
+});
+
+// Enable reflection for debugging
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddGrpcReflection();
+}
+
+// Dependency injection
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+
+var app = builder.Build();
+
+// Configure middleware pipeline
+app.UseRouting();
+app.UseAuthentication();
+app.UseAuthorization();
+
+// Map gRPC services
+app.MapGrpcService<UserService>();
+app.MapGrpcService<ProductService>();
+
+// Enable reflection in development
+if (app.Environment.IsDevelopment())
+{
+    app.MapGrpcReflectionService();
+}
+
+app.Run();
+```
+
+### Interceptors for Cross-Cutting Concerns
+
+```csharp
+public class LoggingInterceptor : Interceptor
+{
+    private readonly ILogger<LoggingInterceptor> _logger;
+    
+    public LoggingInterceptor(ILogger<LoggingInterceptor> logger)
+    {
+        _logger = logger;
+    }
+    
+    public override async Task<TResponse> UnaryServerHandler<TRequest, TResponse>(
+        TRequest request,
+        ServerCallContext context,
+        UnaryServerMethod<TRequest, TResponse> continuation)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        
+        try
+        {
+            _logger.LogInformation("Calling {Method}", context.Method);
+            var response = await continuation(request, context);
+            _logger.LogInformation(
+                "Completed {Method} in {ElapsedMs}ms",
+                context.Method,
+                stopwatch.ElapsedMilliseconds
+            );
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Error in {Method} after {ElapsedMs}ms",
+                context.Method,
+                stopwatch.ElapsedMilliseconds
+            );
+            throw;
+        }
+    }
+}
+```
+
+### Health Checks
+
+```csharp
+builder.Services.AddGrpcHealthChecks()
+    .AddCheck("database", () => _db.CanConnectAsync())
+    .AddCheck("redis", () => _redis.PingAsync());
+
+app.MapGrpcHealthChecksService();
+```
+
+## Client Configuration
+
+### Creating a Typed Client
+
+```csharp
+// Startup configuration
+builder.Services.AddGrpcClient<UserService.UserServiceClient>(options =>
+{
+    options.Address = new Uri("https://api.example.com");
+})
+.ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+{
+    PooledConnectionIdleTimeout = Timeout.InfiniteTimeSpan,
+    KeepAlivePingDelay = TimeSpan.FromSeconds(60),
+    KeepAlivePingTimeout = TimeSpan.FromSeconds(30),
+    EnableMultipleHttp2Connections = true
+})
+.EnableCallContextPropagation();  // Propagate cancellation tokens
+
+// Usage via dependency injection
+public class UserController : ControllerBase
+{
+    private readonly UserService.UserServiceClient _grpcClient;
+    
+    public UserController(UserService.UserServiceClient grpcClient)
+    {
+        _grpcClient = grpcClient;
+    }
+    
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetUser(int id, CancellationToken cancellationToken)
+    {
+        var response = await _grpcClient.GetUserAsync(
+            new GetUserRequest { UserId = id },
+            cancellationToken: cancellationToken
+        );
+        
+        return Ok(response);
+    }
+}
+```
+
+<InfoBox type="tip">
+**Best Practice:** Always reuse `GrpcChannel` instances. Creating a new channel per request wastes resources and kills performance. Use dependency injection to manage channel lifetime.
+</InfoBox>
+
+## Key Takeaways
+
+- **Project Setup**: Use `Grpc.AspNetCore` package and `.proto` files
+- **Service Implementation**: Inherit from generated base classes
+- **Streaming**: Four patterns (unary, server, client, bidirectional)
+- **Error Handling**: Use `RpcException` with appropriate `StatusCode`
+- **Production**: Configure interceptors, health checks, and connection pooling
+- **Client**: Use typed clients with dependency injection

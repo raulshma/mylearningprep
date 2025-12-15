@@ -1,0 +1,28 @@
+{
+  "id": "signalr-fundamentals",
+  "title": "SignalR Fundamentals",
+  "description": "Master the fundamentals of SignalR for building real-time web applications with ASP.NET Core.",
+  "milestone": "signalr",
+  "order": 1,
+  "sections": [
+    "what-is-signalr",
+    "transports-protocols",
+    "setup-configuration"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 20,
+      "xpReward": 50
+    },
+    "advanced": {
+      "estimatedMinutes": 25,
+      "xpReward": 75
+    }
+  },
+  "prerequisites": ["aspnet-core-basics/what-is-aspnet-core"],
+  "tags": ["signalr", "real-time", "websockets", "aspnet-core", "dotnet"]
+}

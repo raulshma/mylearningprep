@@ -1,0 +1,255 @@
+# In-Memory Caching in ASP.NET Core
+
+ASP.NET Core provides the `IMemoryCache` interface for implementing in-memory caching with sophisticated cache management features. Let's explore how to leverage caching effectively in production applications.
+
+## Setting Up IMemoryCache
+
+First, register the memory cache service in your `Program.cs`:
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+// Register memory cache
+builder.Services.AddMemoryCache();
+
+var app = builder.Build();
+```
+
+Then inject `IMemoryCache` into your services via dependency injection:
+
+```csharp
+public class ProductRepository
+{
+    private readonly IMemoryCache _cache;
+    private readonly ApplicationDbContext _context;
+    
+    public ProductRepository(IMemoryCache cache, ApplicationDbContext context)
+    {
+        _cache = cache;
+        _context = context;
+    }
+}
+```
+
+## Cache Retrieval Patterns
+
+### Pattern 1: TryGetValue
+
+The safest approach for checking cache existence:
+
+```csharp
+public Product GetProduct(int id)
+{
+    if (!_cache.TryGetValue($"product-{id}", out Product product))
+    {
+        product = _context.Products.Find(id);
+        
+        var cacheOptions = new MemoryCacheEntryOptions()
+            .SetSlidingExpiration(TimeSpan.FromMinutes(5));
+            
+        _cache.Set($"product-{id}", product, cacheOptions);
+    }
+    
+    return product;
+}
+```
+
+### Pattern 2: GetOrCreate
+
+A more concise approach that combines checking and setting:
+
+```csharp
+public Product GetProduct(int id)
+{
+    return _cache.GetOrCreate($"product-{id}", entry =>
+    {
+        entry.SlidingExpiration = TimeSpan.FromMinutes(5);
+        return _context.Products.Find(id);
+    });
+}
+```
+
+### Pattern 3: GetOrCreateAsync
+
+The async version for asynchronous operations:
+
+```csharp
+public async Task<Product> GetProductAsync(int id)
+{
+    return await _cache.GetOrCreateAsync($"product-{id}", async entry =>
+    {
+        entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10);
+        entry.SlidingExpiration = TimeSpan.FromMinutes(3);
+        
+        return await _context.Products.FindAsync(id);
+    });
+}
+```
+
+<InfoBox type="info">
+**Best Practice**: Use `GetOrCreateAsync` for database queries and API calls to avoid blocking threads.
+</InfoBox>
+
+## Cache Expiration Strategies
+
+### Sliding Expiration
+
+The cache entry is evicted if it's not accessed within a specified time window. Each access resets the timer.
+
+```csharp
+var options = new MemoryCacheEntryOptions()
+    .SetSlidingExpiration(TimeSpan.FromMinutes(5));
+
+_cache.Set("session-data", sessionData, options);
+```
+
+**Use case**: User session data, frequently accessed items
+
+### Absolute Expiration
+
+The cache entry is evicted after a fixed duration, regardless of access.
+
+```csharp
+var options = new MemoryCacheEntryOptions()
+    .SetAbsoluteExpiration(TimeSpan.FromHours(1));
+
+_cache.Set("daily-report", report, options);
+```
+
+**Use case**: Time-sensitive data, scheduled refreshes
+
+### Combined Expiration
+
+Combine both for robust cache management:
+
+```csharp
+var options = new MemoryCacheEntryOptions()
+    .SetSlidingExpiration(TimeSpan.FromMinutes(5))
+    .SetAbsoluteExpiration(TimeSpan.FromHours(1));
+
+_cache.Set("product-list", products, options);
+```
+
+This ensures:
+- Item expires if not accessed for 5 minutes (sliding)
+- Item always expires after 1 hour maximum (absolute)
+
+## Cache Priority and Eviction
+
+Control which items are evicted first when memory is low:
+
+```csharp
+var options = new MemoryCacheEntryOptions()
+    .SetPriority(CacheItemPriority.High)
+    .SetSlidingExpiration(TimeSpan.FromMinutes(10));
+
+_cache.Set("critical-config", config, options);
+```
+
+**Priority Levels**:
+- `NeverRemove` - Only removed manually
+- `High` - Last to be evicted
+- `Normal` - Default priority
+- `Low` - First to be evicted
+
+## Post-Eviction Callbacks
+
+Get notified when items are removed from cache:
+
+```csharp
+var options = new MemoryCacheEntryOptions()
+    .RegisterPostEvictionCallback((key, value, reason, state) =>
+    {
+        _logger.LogInformation(
+            "Cache entry {Key} was evicted. Reason: {Reason}", 
+            key, 
+            reason
+        );
+    });
+
+_cache.Set("tracked-item", data, options);
+```
+
+**Eviction Reasons**:
+- `Expired` - Time-based expiration
+- `Capacity` - Cache size limit reached
+- `Removed` - Manually removed
+- `Replaced` - Overwritten with new value
+
+<KeyConcept title="Cache-Aside Pattern">
+The most common caching pattern:
+1. Check cache first
+2. If miss, fetch from source
+3. Store in cache for next time
+4. Return data
+
+This pattern ensures your application always works even if the cache fails.
+</KeyConcept>
+
+## Practical Example: Product Catalog
+
+Here's a complete implementation for caching product data:
+
+```csharp
+public class ProductService
+{
+    private readonly IMemoryCache _cache;
+    private readonly IProductRepository _repository;
+    private readonly ILogger<ProductService> _logger;
+    
+    public ProductService(
+        IMemoryCache cache,
+        IProductRepository repository,
+        ILogger<ProductService> logger)
+    {
+        _cache = cache;
+        _repository = repository;
+        _logger = logger;
+    }
+    
+    public async Task<IEnumerable<Product>> GetActiveProductsAsync()
+    {
+        const string cacheKey = "active-products";
+        
+        return await _cache.GetOrCreateAsync(cacheKey, async entry =>
+        {
+            _logger.LogInformation("Cache miss - fetching products from database");
+            
+            entry.SetOptions(new MemoryCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1),
+                SlidingExpiration = TimeSpan.FromMinutes(15),
+                Priority = CacheItemPriority.Normal
+            });
+            
+            return await _repository.GetActiveProductsAsync();
+        });
+    }
+    
+    public void InvalidateCache()
+    {
+        _cache.Remove("active-products");
+        _logger.LogInformation("Product cache invalidated");
+    }
+}
+```
+
+<InfoBox type="warning">
+**Important**: In-memory cache is **per-instance**. In a load-balanced environment with multiple servers, each server has its own cache. For shared caching, use distributed caching instead.
+</InfoBox>
+
+## When to Use In-Memory Caching
+
+✅ **Good Scenarios**:
+- Single server deployments
+- Data that's expensive to compute
+- Reference data (rarely changes)
+- Development/testing environments
+
+❌ **Avoid When**:
+- Running multiple server instances
+- Need cache consistency across servers
+- Caching large amounts of data
+- Sensitive or user-specific data
+
+<ProgressCheckpoint section="memory-caching-advanced" xpReward={30} />

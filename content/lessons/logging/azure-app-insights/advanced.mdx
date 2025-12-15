@@ -1,0 +1,237 @@
+# Azure Application Insights: Enterprise Patterns and Performance
+
+Advanced implementation patterns for large-scale applications, custom telemetry channels, and integration with enterprise monitoring systems.
+
+## Custom Telemetry Channels
+
+### Implementing Reliable Transmission
+
+```csharp
+public class BufferedTelemetryChannel : ITelemetryChannel
+{
+    private readonly ConcurrentQueue<ITelemetry> _queue = new();
+    private readonly Timer _flushTimer;
+    private readonly HttpClient _httpClient;
+    private readonly string _endpoint;
+
+    public BufferedTelemetryChannel(string endpoint)
+    {
+        _endpoint = endpoint;
+        _httpClient = new HttpClient();
+        _flushTimer = new Timer(SendBatch, null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
+    }
+
+    public void Send(ITelemetry item)
+    {
+        _queue.Enqueue(item);
+        
+        // Flush immediately if queue is full
+        if (_queue.Count >= 1000)
+        {
+            SendBatch(null);
+        }
+    }
+
+    private async void SendBatch(object? state)
+    {
+        var batch = new List<ITelemetry>();
+        while (batch.Count < 100 && _queue.TryDequeue(out var item))
+        {
+            batch.Add(item);
+        }
+
+        if (batch.Count > 0)
+        {
+            try
+            {
+                var json = JsonSerializer.Serialize(batch);
+                await _httpClient.PostAsync(_endpoint, new StringContent(json, Encoding.UTF8, "application/json"));
+            }
+            catch (Exception ex)
+            {
+                // Re-queue failed items
+                foreach (var item in batch)
+                {
+                    _queue.Enqueue(item);
+                }
+            }
+        }
+    }
+
+    public void Flush() => SendBatch(null);
+    public void Dispose() => _flushTimer?.Dispose();
+}
+```
+
+<ProgressCheckpoint section="app-insights-setup" xpReward={25} />
+
+## Sampling Strategies
+
+### Adaptive Sampling Implementation
+
+```csharp
+public class AdaptiveSampler
+{
+    private readonly double _targetEventsPerSecond;
+    private double _currentSamplingRate = 1.0;
+    private DateTime _lastAdjustment = DateTime.UtcNow;
+
+    public bool ShouldSample()
+    {
+        // Simple adaptive algorithm
+        var now = DateTime.UtcNow;
+        if ((now - _lastAdjustment).TotalSeconds > 10)
+        {
+            AdjustSamplingRate();
+            _lastAdjustment = now;
+        }
+
+        return Random.Shared.NextDouble() < _currentSamplingRate;
+    }
+
+    private void AdjustSamplingRate()
+    {
+        // In reality, this would check actual event rate
+        // and adjust sampling rate accordingly
+        var currentRate = GetCurrentEventRate();
+        if (currentRate > _targetEventsPerSecond * 2)
+        {
+            _currentSamplingRate = Math.Max(0.1, _currentSamplingRate * 0.8);
+        }
+        else if (currentRate < _targetEventsPerSecond * 0.5)
+        {
+            _currentSamplingRate = Math.Min(1.0, _currentSamplingRate * 1.2);
+        }
+    }
+}
+```
+
+<ProgressCheckpoint section="telemetry-collection" xpReward={25} />
+
+## Integration with Other Systems
+
+### Exporting to External Systems
+
+```csharp
+public class MultiTelemetryExporter
+{
+    private readonly List<ITelemetryExporter> _exporters;
+
+    public async Task ExportTelemetryAsync(IEnumerable<ITelemetry> telemetry)
+    {
+        var tasks = _exporters.Select(exporter => exporter.ExportAsync(telemetry));
+        await Task.WhenAll(tasks);
+    }
+}
+
+public interface ITelemetryExporter
+{
+    Task ExportAsync(IEnumerable<ITelemetry> telemetry);
+}
+
+public class SplunkExporter : ITelemetryExporter
+{
+    public async Task ExportAsync(IEnumerable<ITelemetry> telemetry)
+    {
+        // Export to Splunk HTTP Event Collector
+    }
+}
+
+public class ElasticsearchExporter : ITelemetryExporter
+{
+    public async Task ExportAsync(IEnumerable<ITelemetry> telemetry)
+    {
+        // Export to Elasticsearch
+    }
+}
+```
+
+<ProgressCheckpoint section="monitoring-alerting" xpReward={20} />
+
+## Performance Optimization
+
+### Minimizing Telemetry Overhead
+
+```csharp
+public class EfficientTelemetryCollector
+{
+    private readonly TelemetryClient _telemetryClient;
+    private readonly ConcurrentDictionary<string, Metric> _metrics = new();
+
+    public void TrackEfficientMetric(string name, double value)
+    {
+        // Use pre-created metrics to avoid allocation
+        var metric = _metrics.GetOrAdd(name, n => _telemetryClient.GetMetric(n));
+        metric.TrackValue(value);
+    }
+
+    public void TrackBatchedEvents(IEnumerable<EventTelemetry> events)
+    {
+        // Batch events to reduce HTTP calls
+        foreach (var evt in events)
+        {
+            _telemetryClient.TrackEvent(evt);
+        }
+        _telemetryClient.Flush();
+    }
+}
+```
+
+## Enterprise Monitoring Patterns
+
+### Multi-Tenant Telemetry Separation
+
+```csharp
+public class TenantAwareTelemetryInitializer : ITelemetryInitializer
+{
+    private readonly IHttpContextAccessor _httpContextAccessor;
+
+    public void Initialize(ITelemetry telemetry)
+    {
+        var tenantId = _httpContextAccessor.HttpContext?.User?.FindFirst("tenant")?.Value;
+        if (!string.IsNullOrEmpty(tenantId))
+        {
+            telemetry.Context.Properties["TenantId"] = tenantId;
+        }
+    }
+}
+```
+
+### Compliance and Data Sanitization
+
+```csharp
+public class PiiSanitizingTelemetryProcessor : ITelemetryProcessor
+{
+    private readonly ITelemetryProcessor _next;
+
+    public void Process(ITelemetry item)
+    {
+        // Remove PII from telemetry
+        if (item is RequestTelemetry request)
+        {
+            request.Url = SanitizeUrl(request.Url);
+        }
+
+        if (item is ExceptionTelemetry exception)
+        {
+            exception.Message = SanitizeMessage(exception.Message);
+        }
+
+        _next.Process(item);
+    }
+}
+```
+
+## Best Practices Summary
+
+| Practice | Implementation |
+|:---------|:---------------|
+| **Reliable transmission** | Implement custom channels with retry logic |
+| **Cost optimization** | Use adaptive sampling based on telemetry volume |
+| **Multi-system integration** | Export telemetry to multiple destinations |
+| **Performance** | Minimize allocations and batch operations |
+| **Enterprise readiness** | Support multi-tenancy and compliance requirements |
+
+<InfoBox type="success">
+You've mastered enterprise Application Insights patterns! You can now build reliable, scalable, and compliant telemetry systems for large applications.
+</InfoBox>

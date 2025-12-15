@@ -1,0 +1,29 @@
+{
+  "id": "response-caching",
+  "title": "Response Caching",
+  "description": "Learn how to implement HTTP response caching in ASP.NET Core to cache entire HTTP responses and dramatically improve API performance for public, non-user-specific data.",
+  "milestone": "caching",
+  "order": 2,
+  "sections": [
+    "response-caching-intro",
+    "response-cache-middleware",
+    "cache-control-headers",
+    "cache-profiles"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 20,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 35,
+      "xpReward": 45
+    },
+    "advanced": {
+      "estimatedMinutes": 50,
+      "xpReward": 65
+    }
+  },
+  "prerequisites": ["memory-caching"],
+  "tags": ["caching", "http", "response", "performance", "aspnet-core"]
+}

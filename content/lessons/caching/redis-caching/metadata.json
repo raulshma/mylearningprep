@@ -1,0 +1,29 @@
+{
+  "id": "redis-caching",
+  "title": "Distributed Caching with Redis",
+  "description": "Master distributed caching using Redis in ASP.NET Core applications. Learn how to share cached data across multiple server instances for scalable, high-performance applications.",
+  "milestone": "caching",
+  "order": 3,
+  "sections": [
+    "redis-caching-intro",
+    "distributed-cache-setup",
+    "redis-operations",
+    "cache-aside-pattern"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 30,
+      "xpReward": 35
+    },
+    "intermediate": {
+      "estimatedMinutes": 45,
+      "xpReward": 55
+    },
+    "advanced": {
+      "estimatedMinutes": 65,
+      "xpReward": 75
+    }
+  },
+  "prerequisites": ["memory-caching", "response-caching"],
+  "tags": ["caching", "redis", "distributed", "performance", "aspnet-core"]
+}

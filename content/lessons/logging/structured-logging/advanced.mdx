@@ -1,0 +1,176 @@
+# Structured Logging: Advanced Patterns and Observability
+
+Advanced techniques for leveraging structured logging in distributed systems and complex observability scenarios.
+
+## Distributed Tracing Integration
+
+### OpenTelemetry Correlation
+
+```csharp
+public class OrderService
+{
+    private readonly ILogger<OrderService> _logger;
+    private readonly ActivitySource _activitySource;
+
+    public async Task<OrderResult> ProcessOrder(OrderRequest request)
+    {
+        using var activity = _activitySource.StartActivity("ProcessOrder");
+        
+        _logger.LogInformation(
+            "Starting order processing {OrderId} for customer {CustomerId}",
+            request.OrderId,
+            request.CustomerId
+        );
+
+        try
+        {
+            var validationResult = await ValidateOrder(request);
+            activity?.SetTag("validation.result", validationResult.IsSuccess);
+            
+            var paymentResult = await ProcessPayment(request);
+            activity?.SetTag("payment.amount", paymentResult.Amount);
+            
+            return new OrderResult { Success = true };
+        }
+        catch (Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error);
+            _logger.LogError(
+                ex,
+                "Order processing failed for {OrderId}: {ErrorMessage}",
+                request.OrderId,
+                ex.Message
+            );
+            throw;
+        }
+    }
+}
+```
+
+<ProgressCheckpoint section="structured-vs-unstructured" xpReward={20} />
+
+## Custom Metrics from Logs
+
+### Aggregating Business Metrics
+
+```csharp
+// Log business events
+_logger.LogInformation(
+    "Feature used: {FeatureName} by user {UserId} in organization {OrgId}",
+    featureName,
+    userId,
+    orgId
+);
+
+// Later aggregate with tools like:
+// SELECT FeatureName, count(*) as UsageCount
+// FROM stream 
+// WHERE @MessageTemplate = 'Feature used: {FeatureName} by user {UserId} in organization {OrgId}'
+// GROUP BY FeatureName
+```
+
+<ProgressCheckpoint section="querying-analyzing" xpReward={20} />
+
+## Log Schema Design
+
+### Consistent Property Naming
+
+```csharp
+// Good: Consistent naming across services
+_logger.LogInformation(
+    "User {UserId} performed {Action} on resource {ResourceId}",
+    userId,
+    action,
+    resourceId
+);
+
+// Avoid: Inconsistent naming
+_logger.LogInformation(
+    "User {Id} did {Operation} to {Resource}",  // Different names!
+    userId,
+    action,
+    resourceId
+);
+```
+
+### Semantic Log Levels
+
+```csharp
+// Audit trail - always log
+_logger.LogInformation(
+    "Security event: {EventType} performed by {Actor} on {Target}",
+    eventType,
+    actor,
+    target
+);
+
+// Operational metrics - for dashboards
+_logger.LogInformation(
+    "Performance: {Operation} completed in {DurationMs}ms with {RecordCount} records processed",
+    operation,
+    durationMs,
+    recordCount
+);
+```
+
+<ProgressCheckpoint section="observability-patterns" xpReward={20} />
+
+## Advanced Analysis Patterns
+
+### Cohort Analysis
+
+```csharp
+// Track user behavior over time
+_logger.LogInformation(
+    "User milestone: {UserId} reached {Milestone} after {DaysSinceSignup} days",
+    userId,
+    milestone,
+    daysSinceSignup
+);
+```
+
+### A/B Testing Metrics
+
+```csharp
+_logger.LogInformation(
+    "Experiment result: {ExperimentName} variant {Variant} had {ConversionRate}% conversion",
+    experimentName,
+    variant,
+    conversionRate
+);
+```
+
+## Observability Stack Integration
+
+### ELK Stack
+
+```csharp
+// Serilog configuration for Elasticsearch
+.WriteTo.Elasticsearch(new ElasticsearchSinkOptions(new Uri("http://localhost:9200"))
+{
+    AutoRegisterTemplate = true,
+    IndexFormat = "app-logs-{0:yyyy.MM.dd}",
+    CustomFormatter = new ElasticsearchJsonFormatter()
+})
+```
+
+### Prometheus Integration
+
+```csharp
+// Export metrics from logs
+services.AddPrometheusCountersFromLogs();
+```
+
+## Best Practices Summary
+
+| Area | Best Practice |
+|:-----|:--------------|
+| **Consistency** | Use same property names across services |
+| **Business Value** | Log events that drive business decisions |
+| **Correlation** | Always include correlation IDs |
+| **Performance** | Avoid logging sensitive data |
+| **Analysis** | Design logs for downstream consumption |
+
+<InfoBox type="success">
+You've mastered advanced structured logging patterns! You can now implement enterprise-grade observability with distributed tracing, custom metrics, and sophisticated analysis.
+</InfoBox>

@@ -1,0 +1,34 @@
+{
+  "id": "unit-testing",
+  "title": "Unit Testing Best Practices",
+  "description": "Learn industry-proven best practices for writing effective, maintainable unit tests",
+  "milestone": "testing",
+  "order": 2,
+  "sections": [
+    "introduction",
+    "characteristics",
+    "naming-conventions",
+    "aaa-pattern",
+    "test-isolation",
+    "edge-cases",
+    "code-coverage",
+    "common-pitfalls",
+    "summary"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 30,
+      "xpReward": 70
+    },
+    "intermediate": {
+      "estimatedMinutes": 45,
+      "xpReward": 140
+    },
+    "advanced": {
+      "estimatedMinutes": 60,
+      "xpReward": 280
+    }
+  },
+  "prerequisites": ["xunit-testing"],
+  "tags": ["testing", "best-practices", "unit-testing", "tdd", "clean-code"]
+}

@@ -212,7 +212,7 @@ export function AspNetCoreIntroVisualizer({
             >
               <div className={cn(
                 "p-4 rounded-xl bg-gradient-to-br border",
-                `${selectedFeatureData.color.replace('from-', 'from-').replace(' to-', '/20 to-')}/10`,
+                `${selectedFeatureData.color.replace(' to-', '/20 to-')}/10`,
                 "border-gray-700"
               )}>
                 <h4 className="font-medium text-white mb-3 flex items-center gap-2">

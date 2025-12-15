@@ -1,0 +1,172 @@
+# Structured Logging: Querying and Analysis Techniques
+
+Taking full advantage of structured logging requires understanding how to query and analyze the data effectively.
+
+## Querying Structured Logs
+
+### Basic Queries
+
+With tools like Seq, you can write powerful queries:
+
+```sql
+-- Find all login failures
+@Level = 'Warning' and @MessageTemplate = 'Failed login attempt for user {Username} from IP {IpAddress}'
+
+-- Count orders by customer
+select count(*) from stream
+where @MessageTemplate = 'Processing order {OrderId} for customer {CustomerEmail}'
+group by CustomerEmail
+
+-- Average processing time by endpoint
+select Endpoint, avg(DurationMs) as AvgDuration
+from stream
+where @MessageTemplate = 'API endpoint {Endpoint} took {DurationMs}ms'
+group by Endpoint
+```
+
+<ProgressCheckpoint section="structured-vs-unstructured" xpReward={15} />
+
+## Analyzing Business Metrics
+
+### Revenue Tracking
+
+```csharp
+_logger.LogInformation(
+    "Sale completed: {ProductId} x{Quantity} for ${Amount} to customer {CustomerId}",
+    productId,
+    quantity,
+    amount,
+    customerId
+);
+
+// Query in Seq:
+// SELECT sum(Amount) AS TotalRevenue, count(*) AS SalesCount
+// FROM Stream
+// WHERE @MessageTemplate = 'Sale completed: {ProductId} x{Quantity} for ${Amount} to customer {CustomerId}'
+```
+
+### User Engagement Metrics
+
+```csharp
+_logger.LogInformation(
+    "User action: {Action} performed by {UserId} on {Page}",
+    action,
+    userId,
+    page
+);
+
+// Funnel analysis:
+// 1. Users who viewed product
+// 2. Users who added to cart
+// 3. Users who completed purchase
+```
+
+<ProgressCheckpoint section="querying-analyzing" xpReward={15} />
+
+## Correlation and Tracing
+
+### Request Correlation
+
+```csharp
+public class OrderProcessingService
+{
+    public async Task ProcessOrder(string orderId)
+    {
+        using (LogContext.PushProperty("CorrelationId", Guid.NewGuid()))
+        {
+            _logger.LogInformation("Starting order processing for {OrderId}", orderId);
+            
+            await ValidateOrder(orderId);
+            await ChargeCustomer(orderId);
+            await ShipOrder(orderId);
+            
+            _logger.LogInformation("Order {OrderId} processed successfully", orderId);
+        }
+    }
+    
+    private async Task ValidateOrder(string orderId)
+    {
+        _logger.LogInformation("Validating order {OrderId}", orderId);
+        // All logs here will include CorrelationId
+    }
+}
+```
+
+### Cross-System Correlation
+
+```csharp
+// When calling external services
+_logger.LogInformation(
+    "Calling external service {ServiceName} for order {OrderId} with correlation {ExternalId}",
+    serviceName,
+    orderId,
+    externalId
+);
+```
+
+<ProgressCheckpoint section="observability-patterns" xpReward={10} />
+
+## Dashboard Creation
+
+### Key Metrics to Track
+
+1. **Error Rates**: Errors per minute/hour
+2. **Performance**: Response times by endpoint
+3. **Business**: Revenue, orders, user signups
+4. **Infrastructure**: CPU, memory, disk usage
+
+### Sample Dashboard Queries
+
+```sql
+-- Error rate over time
+SELECT count(*) FROM stream 
+WHERE @Level >= 'Error' 
+GROUP BY time(1h)
+
+-- 95th percentile response time
+SELECT percentile(DurationMs, 95) as P95_Response_Time
+FROM stream
+WHERE @MessageTemplate = 'API endpoint {Endpoint} took {DurationMs}ms'
+GROUP BY time(1h), Endpoint
+
+-- Daily revenue
+SELECT sum(Amount) as DailyRevenue
+FROM stream
+WHERE @MessageTemplate = 'Purchase completed: {ProductId} x{Quantity} for ${Amount}'
+GROUP BY time(1d)
+```
+
+## Alerting Strategies
+
+### Anomaly Detection
+
+```csharp
+// Log unusual patterns
+_logger.LogWarning(
+    "Unusual activity detected: {EventType} occurred {Count} times in last minute (threshold: {Threshold})",
+    eventType,
+    count,
+    threshold
+);
+```
+
+### Threshold-Based Alerts
+
+1. **Error Rate Spike**: >100 errors/minute
+2. **Slow Responses**: 95th percentile >2s
+3. **Low Business Metrics**: Revenue < expected
+4. **Infrastructure Issues**: CPU >90%
+
+## Best Practices
+
+| Practice | Implementation |
+|:---------|:---------------|
+| Consistent naming | Use same property names across services |
+| Business context | Log business events, not just technical |
+| Correlation IDs | Track requests across services |
+| Metric aggregation | Pre-aggregate for dashboards |
+| Alert tuning | Avoid alert fatigue |
+
+<InfoBox type="success">
+You've learned advanced querying techniques for structured logs! You can now create dashboards, set up alerts, and derive business insights from your log data.
+</InfoBox>

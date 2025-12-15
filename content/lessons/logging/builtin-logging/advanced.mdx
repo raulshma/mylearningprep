@@ -1,0 +1,465 @@
+# Built-in Logging: Advanced Architecture and Custom Implementations
+
+Deep understanding of ASP.NET Core's logging infrastructure enables building custom providers, implementing high-performance logging strategies, and integrating with enterprise logging systems.
+
+## Logging Architecture Deep Dive
+
+ASP.NET Core's logging system follows the provider pattern with a clear separation of concerns:
+
+```
+┌─────────────────┐
+│   ILogger<T>    │ ← Application code uses this
+└────────┬────────┘
+         │
+┌────────▼────────┐
+│ LoggerFactory   │ ← Manages provider lifecycle
+└────────┬────────┘
+         │
+         ├──► ConsoleLoggerProvider
+         ├──► DebugLoggerProvider
+         ├──► EventLogLoggerProvider
+         └──► CustomLoggerProvider
+```
+
+### Internal Implementation Details
+
+```csharp
+// Simplified version of how ILogger works internally
+public class Logger<T> : ILogger<T>
+{
+    private readonly LoggerFactory _factory;
+    private readonly string _categoryName;
+    private ILogger[]? _loggers;
+
+    public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, 
+        Exception? exception, Func<TState, Exception?, string> formatter)
+    {
+        var loggers = _loggers ??= _factory.GetLoggers(_categoryName);
+
+        foreach (var logger in loggers)
+        {
+            if (logger.IsEnabled(logLevel))
+            {
+                logger.Log(logLevel, eventId, state, exception, formatter);
+            }
+        }
+    }
+}
+```
+
+<ProgressCheckpoint section="logging-fundamentals" xpReward={20} />
+
+## Building a Custom Logger Provider
+
+Creating a custom provider allows integration with proprietary logging systems or adding custom behaviors.
+
+### Custom Provider Implementation
+
+```csharp
+using Microsoft.Extensions.Logging;
+
+// Custom logger that writes to a database
+public class DatabaseLoggerProvider : ILoggerProvider
+{
+    private readonly DbContext _dbContext;
+    private readonly ConcurrentDictionary<string, DatabaseLogger> _loggers = new();
+
+    public DatabaseLoggerProvider(DbContext dbContext)
+    {
+        _dbContext = dbContext;
+    }
+
+    public ILogger CreateLogger(string categoryName)
+    {
+        return _loggers.GetOrAdd(categoryName, name => new DatabaseLogger(name, _dbContext));
+    }
+
+    public void Dispose()
+    {
+        _loggers.Clear();
+        _dbContext?.Dispose();
+    }
+}
+
+public class DatabaseLogger : ILogger
+{
+    private readonly string _categoryName;
+    private readonly DbContext _dbContext;
+
+    public DatabaseLogger(string categoryName, DbContext dbContext)
+    {
+        _categoryName = categoryName;
+        _dbContext = dbContext;
+    }
+
+    public IDisposable BeginScope<TState>(TState state) => default!;
+
+    public bool IsEnabled(LogLevel logLevel) => logLevel >= LogLevel.Information;
+
+    public void Log<TState>(
+        LogLevel logLevel,
+        EventId eventId,
+        TState state,
+        Exception? exception,
+        Func<TState, Exception?, string> formatter)
+    {
+        if (!IsEnabled(logLevel))
+            return;
+
+        var logEntry = new LogEntry
+        {
+            Timestamp = DateTime.UtcNow,
+            LogLevel = logLevel.ToString(),
+            Category = _categoryName,
+            Message = formatter(state, exception),
+            Exception = exception?.ToString(),
+            EventId = eventId.Id
+        };
+
+        // Async write in background to avoid blocking
+        _ = Task.Run(async () =>
+        {
+            await _dbContext.LogEntries.AddAsync(logEntry);
+            await _dbContext.SaveChangesAsync();
+        });
+    }
+}
+
+// Extension method for registration
+public static class DatabaseLoggerExtensions
+{
+    public static ILoggingBuilder AddDatabaseLogger(
+        this ILoggingBuilder builder,
+        DbContext dbContext)
+    {
+        builder.Services.AddSingleton<ILoggerProvider>(
+            new DatabaseLoggerProvider(dbContext));
+        return builder;
+    }
+}
+```
+
+### Usage
+
+```csharp
+builder.Logging.AddDatabaseLogger(new LoggingDbContext());
+```
+
+## High-Performance Logging with LoggerMessage
+
+`LoggerMessage` is a high-performance API that pre-compiles log messages:
+
+```csharp
+public partial class PaymentService
+{
+    private readonly ILogger<PaymentService> _logger;
+
+    // Traditional approach - allocates on every call
+    public void ProcessPaymentSlow(int orderId, decimal amount)
+    {
+        _logger.LogInformation("Processing payment {OrderId} for amount {Amount}", 
+            orderId, amount);
+    }
+
+    // High-performance approach using source generators (.NET 6+)
+    [LoggerMessage(
+        EventId = 1000,
+        Level = LogLevel.Information,
+        Message = "Processing payment {orderId} for amount {amount}")]
+    partial void LogPaymentProcessing(int orderId, decimal amount);
+
+    public void ProcessPaymentFast(int orderId, decimal amount)
+    {
+        LogPaymentProcessing(orderId, amount);
+    }
+}
+```
+
+### Performance Benefits
+
+```csharp
+// Benchmarks (approximate)
+// Traditional:       150 ns/op, 96 B allocated
+// LoggerMessage:      15 ns/op,  0 B allocated
+```
+
+The source generator creates highly optimized code at compile time:
+
+```csharp
+// Generated code (simplified)
+partial void LogPaymentProcessing(int orderId, decimal amount)
+{
+    if (_logger.IsEnabled(LogLevel.Information))
+    {
+        _logger.Log(
+            LogLevel.Information,
+            new EventId(1000),
+            new { orderId, amount },
+            null,
+            static (state, ex) => $"Processing payment {state.orderId} for amount {state.amount}"
+        );
+    }
+}
+```
+
+<ProgressCheckpoint section="log-levels" xpReward={20} />
+
+## Advanced Filtering Strategies
+
+### Custom Filter Implementation
+
+```csharp
+public class SensitiveDataFilter : ILoggerProvider
+{
+    private readonly ILoggerProvider _innerProvider;
+    private readonly Regex _creditCardPattern = new(@"\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b");
+
+    public SensitiveDataFilter(ILoggerProvider innerProvider)
+    {
+        _innerProvider = innerProvider;
+    }
+
+    public ILogger CreateLogger(string categoryName)
+    {
+        return new FilteringLogger(_innerProvider.CreateLogger(categoryName), _creditCardPattern);
+    }
+
+    private class FilteringLogger : ILogger
+    {
+        private readonly ILogger _inner;
+        private readonly Regex _pattern;
+
+        public FilteringLogger(ILogger inner, Regex pattern)
+        {
+            _inner = inner;
+            _pattern = pattern;
+        }
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, 
+            Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            var message = formatter(state, exception);
+            var sanitized = _pattern.Replace(message, "****-****-****-****");
+            
+            _inner.Log(logLevel, eventId, state, exception, (s, e) => sanitized);
+        }
+
+        public bool IsEnabled(LogLevel logLevel) => _inner.IsEnabled(logLevel);
+        public IDisposable BeginScope<TState>(TState state) => _inner.BeginScope(state);
+    }
+
+    public void Dispose() => _innerProvider.Dispose();
+}
+```
+
+## Contextual Logging with AsyncLocal
+
+Maintain request context across async operations:
+
+```csharp
+public class RequestContext
+{
+    private static readonly AsyncLocal<RequestContext> _current = new();
+
+    public static RequestContext? Current
+    {
+        get => _current.Value;
+        set => _current.Value = value;
+    }
+
+    public string RequestId { get; set; } = string.Empty;
+    public string UserId { get; set; } = string.Empty;
+    public string CorrelationId { get; set; } = string.Empty;
+}
+
+// Middleware
+public class RequestLoggingMiddleware
+{
+    private readonly RequestDelegate _next;
+
+    public RequestLoggingMiddleware(RequestDelegate next)
+    {
+        _next = next;
+    }
+
+    public async Task InvokeAsync(HttpContext context, ILogger<RequestLoggingMiddleware> logger)
+    {
+        RequestContext.Current = new RequestContext
+        {
+            RequestId = context.TraceIdentifier,
+            UserId = context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "anonymous",
+            CorrelationId = context.Request.Headers["X-Correlation-ID"].FirstOrDefault() 
+                ?? Guid.NewGuid().ToString()
+        };
+
+        using (logger.BeginScope(new Dictionary<string, object>
+        {
+            ["RequestId"] = RequestContext.Current.RequestId,
+            ["UserId"] = RequestContext.Current.UserId,
+            ["CorrelationId"] = RequestContext.Current.CorrelationId
+        }))
+        {
+            await _next(context);
+        }
+    }
+}
+```
+
+Now all logs automatically include request context without manual passing.
+
+<ProgressCheckpoint section="providers-filtering" xpReward={20} />
+
+## Batch Logging for Performance
+
+For high-throughput systems, batch logging reduces I/O:
+
+```csharp
+public class BatchingLoggerProvider : ILoggerProvider
+{
+    private readonly Channel<LogEntry> _channel;
+    private readonly Task _processingTask;
+    private readonly CancellationTokenSource _cts = new();
+
+    public BatchingLoggerProvider()
+    {
+        _channel = Channel.CreateUnbounded<LogEntry>(
+            new UnboundedChannelOptions { SingleReader = true });
+        _processingTask = ProcessLogsAsync(_cts.Token);
+    }
+
+    private async Task ProcessLogsAsync(CancellationToken cancellationToken)
+    {
+        var batch = new List<LogEntry>(100);
+
+        await foreach (var entry in _channel.Reader.ReadAllAsync(cancellationToken))
+        {
+            batch.Add(entry);
+
+            // Flush when batch is full or after timeout
+            if (batch.Count >= 100 || _channel.Reader.TryPeek(out _) == false)
+            {
+                await WriteBatchAsync(batch);
+                batch.Clear();
+            }
+        }
+    }
+
+    private async Task WriteBatchAsync(List<LogEntry> entries)
+    {
+        // Write all entries in one operation
+        await File.AppendAllLinesAsync("logs.txt", 
+            entries.Select(e => $"{e.Timestamp:O} [{e.Level}] {e.Message}"));
+    }
+
+    public ILogger CreateLogger(string categoryName)
+    {
+        return new BatchingLogger(categoryName, _channel.Writer);
+    }
+
+    public void Dispose()
+    {
+        _channel.Writer.Complete();
+        _cts.Cancel();
+        _processingTask.Wait();
+        _cts.Dispose();
+    }
+}
+```
+
+## Distributed Tracing Integration
+
+Integrate with OpenTelemetry for distributed tracing:
+
+```csharp
+builder.Logging.AddOpenTelemetry(options =>
+{
+    options.IncludeFormattedMessage = true;
+    options.IncludeScopes = true;
+    options.ParseStateValues = true;
+    
+    options.AddOtlpExporter(otlpOptions =>
+    {
+        otlpOptions.Endpoint = new Uri("http://localhost:4317");
+    });
+});
+
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracerBuilder =>
+    {
+        tracerBuilder
+            .AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddOtlpExporter();
+    });
+```
+
+## Advanced Configuration Patterns
+
+### Environment-Specific Configuration
+
+```json
+// appsettings.Development.json
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Debug",
+      "System": "Information",
+      "Microsoft": "Information"
+    }
+  }
+}
+
+// appsettings.Production.json
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Warning",
+      "MyApp": "Information"
+    },
+    "Console": {
+      "LogLevel": {
+        "Default": "None"
+      }
+    }
+  }
+}
+```
+
+### Dynamic Log Level Control
+
+```csharp
+public class LogLevelController : ControllerBase
+{
+    private readonly ILoggerFactory _loggerFactory;
+
+    [HttpPost("logging/level")]
+    public IActionResult SetLogLevel([FromBody] LogLevelRequest request)
+    {
+        if (_loggerFactory is LoggerFactory factory)
+        {
+            factory.AddFilter(request.Category, request.Level);
+            return Ok($"Set {request.Category} to {request.Level}");
+        }
+        return BadRequest();
+    }
+}
+```
+
+## Best Practices Summary
+
+| Practice | Rationale |
+|:---------|:----------|
+| Use LoggerMessage for hot paths | 10x performance improvement |
+| Implement batching for high volume | Reduces I/O overhead |
+| Sanitize sensitive data | Security compliance |
+| Use structured logging | Enables powerful querying |
+| Implement request correlation | Distributed tracing support |
+| Configure per environment | Different needs for dev/prod |
+
+<InfoBox type="warning">
+**Production Warning**: Custom logger providers should handle errors gracefully. A failing logger should never crash the application.
+</InfoBox>
+
+<InfoBox type="success">
+You've mastered advanced logging patterns in ASP.NET Core! You can now build custom providers, optimize performance, and implement enterprise-grade logging infrastructure.
+</InfoBox>

@@ -1,0 +1,426 @@
+# Advanced Component Patterns & Data Binding
+
+Master sophisticated component communication, lifecycle management, and advanced binding scenarios for production-grade Blazor applications.
+
+## Component Parameters & EventCallback
+
+### Parameter Validation
+
+```csharp
+[Parameter]
+[EditorRequired]  // .NET 6+ enforces this parameter
+public string Title { get; set; } = default!;
+
+[Parameter]
+public int MaxLength { get; set; } = 100;
+
+protected override void OnParametersSet()
+{
+    if (MaxLength < 0)
+        throw new ArgumentException(
+            "MaxLength must be positive", 
+            nameof(MaxLength));
+}
+```
+
+### EventCallback for Parent-Child Communication
+
+```razor
+<!-- Child: TodoItem.razor -->
+<div class="todo-item">
+    <input type="checkbox" 
+           checked="@IsCompleted" 
+           @onchange="ToggleComplete" />
+    <span>@Text</span>
+    <button @onclick="Delete">❌</button>
+</div>
+
+@code {
+    [Parameter] public string Text { get; set; } = "";
+    [Parameter] public bool IsCompleted { get; set; }
+    
+    [Parameter] public EventCallback<bool> OnToggle { get; set; }
+    [Parameter] public EventCallback OnDelete { get; set; }
+    
+    async Task ToggleComplete(ChangeEventArgs e)
+    {
+        IsCompleted = (bool)(e.Value ?? false);
+        await OnToggle.InvokeAsync(IsCompleted);
+    }
+    
+    async Task Delete()
+    {
+        await OnDelete.InvokeAsync();
+    }
+}
+```
+
+```razor
+<!-- Parent: TodoList.razor -->
+<div class="todo-list">
+    @foreach (var todo in todos)
+    {
+        <TodoItem 
+            Text="@todo.Text"
+            IsCompleted="@todo.IsCompleted"
+            OnToggle="@(completed => HandleToggle(todo, completed))"
+            OnDelete="@(() => HandleDelete(todo))" />
+    }
+</div>
+
+@code {
+    private List<TodoModel> todos = new();
+    
+    void HandleToggle(TodoModel todo, bool completed)
+    {
+        todo.IsCompleted = completed;
+        StateHasChanged();
+    }
+    
+    void HandleDelete(TodoModel todo)
+    {
+        todos.Remove(todo);
+    }
+}
+```
+
+## Advanced Data Binding
+
+### Custom Bind Accessor with get/set
+
+```razor
+<input @bind:get="Temperature" 
+       @bind:set="SetTemperature" 
+       @bind:event="oninput" />
+<p>°C: @Temperature | °F: @TemperatureF</p>
+
+@code {
+    private double Temperature { get; set; } = 20;
+    private double TemperatureF => (Temperature * 9 / 5) + 32;
+    
+    void SetTemperature(double value)
+    {
+        Temperature = Math.Round(value, 1);
+    }
+}
+```
+
+### Binding with Custom Format
+
+```razor
+<input @bind="Amount" 
+       @bind:format="C2"  <!-- Currency format -->
+       @bind:culture="CultureInfo.CurrentCulture" />
+
+@code {
+    [Parameter] public decimal Amount { get; set; }
+}
+```
+
+### Chained Binding
+
+```razor
+<!-- Multi-component binding chain -->
+<Slider @bind-Value="brightness" />
+<ColorPicker @bind-Color="color" Brightness="@brightness" />
+<Preview Color="@color" Brightness="@brightness" />
+
+@code {
+    private int brightness = 100;
+    private string color = "#FF0000";
+}
+```
+
+## Component Lifecycle
+
+Understanding and using lifecycle methods effectively:
+
+```csharp
+public class AdvancedComponent : ComponentBase
+{
+    // 1. Parameters set (runs every render)
+    public override async Task SetParametersAsync(
+        ParameterView parameters)
+    {
+        // Intercept parameters before setting
+        await base.SetParametersAsync(parameters);
+    }
+    
+    // 2. Initialization (runs once)
+    protected override void OnInitialized()
+    {
+        // Synchronous initialization
+    }
+    
+    protected override async Task OnInitializedAsync()
+    {
+        // Async initialization (preferred)
+        await LoadDataAsync();
+    }
+    
+    // 3. Parameters set (after each parent render)
+    protected override void OnParametersSet()
+    {
+        // React to parameter changes
+        ValidateParameters();
+    }
+    
+    protected override async Task OnParametersSetAsync()
+    {
+        await RefreshDataIfNeeded();
+    }
+    
+    // 4. After render (runs after DOM updated)
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // One-time setup after first render
+        }
+    }
+    
+    protected override async Task OnAfterRenderAsync(
+        bool firstRender)
+    {
+        if (firstRender)
+        {
+            // JS interop is safe here
+            await JS.InvokeVoidAsync("initializeChart");
+        }
+    }
+    
+    // Manual re-render trigger
+    private void ForceUpdate()
+    {
+        StateHasChanged();
+    }
+}
+```
+
+### Lifecycle Flow Diagram
+
+```
+Constructor
+    ↓
+SetParametersAsync
+    ↓
+OnInitialized/Async (first time only)
+    ↓
+OnParametersSet/Async
+    ↓
+[Render occurs]
+    ↓
+OnAfterRender/Async
+    ↓
+[Component updates]
+    ↓
+SetParametersAsync (parent re-renders)
+    ↓
+OnParametersSet/Async
+    ↓
+[Render occurs]
+    ↓
+OnAfterRender/Async
+    ↓
+[Cycle repeats...]
+    ↓
+Dispose (cleanup)
+```
+
+## Advanced Component Communication
+
+### Cascading Values
+
+```razor
+<!-- AppState.razor -->
+<CascadingValue Value="this">
+    @ChildContent
+</CascadingValue>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    
+    public string CurrentUser { get; set; } = "Alice";
+    public ThemeSettings Theme { get; set; } = new();
+    
+    public event Action? OnStateChanged;
+    
+    public void NotifyStateChanged()
+    {
+        OnStateChanged?.Invoke();
+    }
+}
+```
+
+```razor
+<!-- Any child component (deep in tree) -->
+@implements IDisposable
+
+<p>Current user: @AppState.CurrentUser</p>
+
+@code {
+    [CascadingParameter] 
+    public AppState AppState { get; set; } = default!;
+    
+    protected override void OnInitialized()
+    {
+        AppState.OnStateChanged += StateHasChanged;
+    }
+    
+    public void Dispose()
+    {
+        AppState.OnStateChanged -= StateHasChanged;
+    }
+}
+```
+
+### RenderFragment for Component Templates
+
+```razor
+<!-- DataGrid.razor -->
+<table>
+    <thead>
+        <tr>@HeaderTemplate</tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Items)
+        {
+            <tr>@RowTemplate(item)</tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    [Parameter] 
+    public RenderFragment? HeaderTemplate { get; set; }
+    
+    [Parameter] 
+    public RenderFragment<TItem>? RowTemplate { get; set; }
+    
+    [Parameter] 
+    public List<TItem> Items { get; set; } = new();
+}
+```
+
+**Usage:**
+
+```razor
+<DataGrid Items="@products">
+    <HeaderTemplate>
+        <th>Name</th>
+        <th>Price</th>
+        <th>Stock</th>
+    </HeaderTemplate>
+    <RowTemplate Context="product">
+        <td>@product.Name</td>
+        <td>@product.Price.ToString("C")</td>
+        <td>@product.Stock</td>
+    </RowTemplate>
+</DataGrid>
+```
+
+## State Management Patterns
+
+### Component State Container
+
+```csharp
+public class CartStateContainer
+{
+    private readonly List<CartItem> _items = new();
+    
+    public IReadOnlyList<CartItem> Items => _items.AsReadOnly();
+    public decimal Total => _items.Sum(i => i.Price * i.Quantity);
+    
+    public event Action? OnChange;
+    
+    public void AddItem(CartItem item)
+    {
+        var existing = _items
+            .FirstOrDefault(i => i.ProductId == item.ProductId);
+        
+        if (existing != null)
+            existing.Quantity += item.Quantity;
+        else
+            _items.Add(item);
+        
+        NotifyStateChanged();
+    }
+    
+    public void RemoveItem(int productId)
+    {
+        _items.RemoveAll(i => i.ProductId == productId);
+        NotifyStateChanged();
+    }
+    
+    private void NotifyStateChanged() => OnChange?.Invoke();
+}
+```
+
+```csharp
+// Register as scoped service
+builder.Services.AddScoped<CartStateContainer>();
+```
+
+```razor
+@inject CartStateContainer Cart
+@implements IDisposable
+
+<div class="cart-summary">
+    <span>Items: @Cart.Items.Count</span>
+    <span>Total: @Cart.Total.ToString("C")</span>
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        Cart.OnChange += StateHasChanged;
+    }
+    
+    public void Dispose()
+    {
+        Cart.OnChange -= StateHasChanged;
+    }
+}
+```
+
+## Performance Optimization
+
+### ShouldRender Override
+
+```csharp
+protected override bool ShouldRender()
+{
+    // Prevent unnecessary renders
+    return _hasChanges;
+}
+```
+
+### Virtualization for Large Lists
+
+```razor
+@using Microsoft.AspNetCore.Components.Web.Virtualization
+
+<Virtualize Items="@allProducts" Context="product">
+    <ProductCard Product="@product" />
+</Virtualize>
+
+@code {
+    private List<Product> allProducts = new();
+    // Only renders visible items!
+}
+```
+
+<ProgressCheckpoint section="component-lifecycle" xpReward={65} />
+
+## Summary
+
+Master these patterns to build robust, maintainable Blazor applications:
+
+- **EventCallback** for parent-child communication
+- **Lifecycle methods** for initialization and cleanup
+- **Cascading values** for deep tree communication
+- **RenderFragment** for flexible templates
+- **State containers** for shared state
+- **Performance optimization** with ShouldRender and Virtualize
+
+These patterns form the foundation of enterprise Blazor applications! 🚀

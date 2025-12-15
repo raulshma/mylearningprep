@@ -1,0 +1,35 @@
+{
+  "id": "mocking-moq",
+  "title": "Mocking with Moq",
+  "description": "Master Moq - the most popular mocking library for .NET unit testing",
+  "milestone": "testing",
+  "order": 4,
+  "sections": [
+    "introduction",
+    "why-mocking",
+    "moq-basics",
+    "setup-returns",
+    "verifying-calls",
+    "argument-matching",
+    "properties-events",
+    "advanced-mocking",
+    "best-practices",
+    "summary"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 30,
+      "xpReward": 75
+    },
+    "intermediate": {
+      "estimatedMinutes": 45,
+      "xpReward": 150
+    },
+    "advanced": {
+      "estimatedMinutes": 65,
+      "xpReward": 300
+    }
+  },
+  "prerequisites": ["unit-testing"],
+  "tags": ["testing", "mocking", "moq", "unit-testing", "dependency-injection"]
+}

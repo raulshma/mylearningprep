@@ -1,0 +1,28 @@
+{
+  "id": "builtin-logging",
+  "title": "Built-in Logging",
+  "description": "Master ASP.NET Core's built-in logging framework with providers, log levels, and filtering.",
+  "milestone": "logging",
+  "order": 1,
+  "sections": [
+    "logging-fundamentals",
+    "log-levels",
+    "providers-filtering"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 20,
+      "xpReward": 60
+    }
+  },
+  "prerequisites": ["aspnet-core-basics/program-startup"],
+  "tags": ["dotnet", "logging", "aspnet-core", "ilogger"]
+}

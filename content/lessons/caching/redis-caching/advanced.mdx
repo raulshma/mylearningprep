@@ -1,0 +1,577 @@
+# Advanced Redis Caching Patterns and Optimization
+
+Master advanced Redis caching techniques including connection multiplexing, Lua scripting, pub/sub messaging, cache invalidation strategies, and production-grade optimization patterns for high-performance distributed systems.
+
+## Redis Connection Management
+
+### ConnectionMultiplexer Configuration
+
+```csharp
+public class RedisConnectionFactory
+{
+    private static Lazy<ConnectionMultiplexer> _lazyConnection;
+    
+    static RedisConnectionFactory()
+    {
+        var configOptions = new ConfigurationOptions
+        {
+            EndPoints = { "redis-primary:6379", "redis-replica:6379" },
+            AbortOnConnectFail = false,
+            ConnectTimeout = 5000,
+            SyncTimeout = 5000,
+            AsyncTimeout = 5000,
+            ConnectRetry = 3,
+            KeepAlive = 60,
+            DefaultDatabase = 0,
+            Password = Environment.GetEnvironmentVariable("REDIS_PASSWORD"),
+            Ssl = true,
+            SslHost = "redis-cluster.redis.cache.windows.net"
+        };
+        
+        _lazyConnection = new Lazy<ConnectionMultiplexer>(() => 
+            ConnectionMultiplexer.Connect(configOptions));
+    }
+    
+    public static ConnectionMultiplexer Connection => _lazyConnection.Value;
+    
+    public static IDatabase GetDatabase(int db = -1) 
+        => Connection.GetDatabase(db);
+}
+```
+
+### Dependency Injection Registration
+
+```csharp
+public static class RedisServiceExtensions
+{
+    public static IServiceCollection AddRedisCache(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddSingleton<IConnectionMultiplexer>(sp =>
+        {
+            var configOptions = ConfigurationOptions.Parse(
+                configuration.GetConnectionString("Redis"));
+            
+            configOptions.AbortOnConnectFail = false;
+            
+            return ConnectionMultiplexer.Connect(configOptions);
+        });
+        
+        services.AddSingleton<IDistributedCache, RedisCache>();
+        services.AddSingleton<IRedisCacheService, RedisCacheService>();
+        
+        return services;
+    }
+}
+```
+
+## Direct Redis Operations with StackExchange.Redis
+
+### Type-Safe Redis Operations
+
+```csharp
+public class RedisCacheService : IRedisCacheService
+{
+    private readonly IConnectionMultiplexer _redis;
+    private readonly IDatabase _db;
+    private readonly ILogger<RedisCacheService> _logger;
+    
+    public RedisCacheService(
+        IConnectionMultiplexer redis,
+        ILogger<RedisCacheService> logger)
+    {
+        _redis = redis;
+        _db = redis.GetDatabase();
+        _logger = logger;
+    }
+    
+    // String operations
+    public async Task<bool> SetAsync<T>(
+        string key, 
+        T value, 
+        TimeSpan? expiry = null)
+    {
+        var serialized = JsonSerializer.Serialize(value);
+        return await _db.StringSetAsync(key, serialized, expiry);
+    }
+    
+    public async Task<T> GetAsync<T>(string key)
+    {
+        var value = await _db.StringGetAsync(key);
+        return value.HasValue 
+            ? JsonSerializer.Deserialize<T>(value) 
+            : default;
+    }
+    
+    // Hash operations
+    public async Task SetHashAsync<T>(string key, Dictionary<string, T> hashEntries)
+    {
+        var entries = hashEntries.Select(kvp => 
+            new HashEntry(kvp.Key, JsonSerializer.Serialize(kvp.Value))
+        ).ToArray();
+        
+        await _db.HashSetAsync(key, entries);
+    }
+    
+    public async Task<Dictionary<string, T>> GetHashAsync<T>(string key)
+    {
+        var entries = await _db.HashGetAllAsync(key);
+        
+        return entries.ToDictionary(
+            e => e.Name.ToString(),
+            e => JsonSerializer.Deserialize<T>(e.Value)
+        );
+    }
+    
+    // List operations
+    public async Task<long> PushListAsync<T>(string key, T value)
+    {
+        var serialized = JsonSerializer.Serialize(value);
+        return await _db.ListRightPushAsync(key, serialized);
+    }
+    
+    public async Task<List<T>> GetListAsync<T>(string key, long start = 0, long stop = -1)
+    {
+        var values = await _db.ListRangeAsync(key, start, stop);
+        return values.Select(v => JsonSerializer.Deserialize<T>(v)).ToList();
+    }
+    
+    // Set operations
+    public async Task<bool> AddToSetAsync<T>(string key, T value)
+    {
+        var serialized = JsonSerializer.Serialize(value);
+        return await _db.SetAddAsync(key, serialized);
+    }
+    
+    public async Task<List<T>> GetSetMembersAsync<T>(string key)
+    {
+        var members = await _db.SetMembersAsync(key);
+        return members.Select(m => JsonSerializer.Deserialize<T>(m)).ToList();
+    }
+}
+```
+
+## Advanced Caching Patterns
+
+### Cache-Aside with Distributed Lock
+
+Prevent cache stampede in high-concurrency scenarios:
+
+```csharp
+public class LockingCacheService
+{
+    private readonly IDatabase _db;
+    private readonly IProductRepository _repository;
+    
+    public async Task<Product> GetProductWithLockAsync(int productId)
+    {
+        var cacheKey = $"product:{productId}";
+        var lockKey = $"lock:product:{productId}";
+        
+        // Try to get from cache
+        var cached = await _db.StringGetAsync(cacheKey);
+        if (cached.HasValue)
+        {
+            return JsonSerializer.Deserialize<Product>(cached);
+        }
+        
+        // Acquire distributed lock
+        var lockExpiry = TimeSpan.FromSeconds(10);
+        var lockToken = Guid.NewGuid().ToString();
+        
+        if (await _db.LockTakeAsync(lockKey, lockToken, lockExpiry))
+        {
+            try
+            {
+                // Double-check cache after acquiring lock
+                cached = await _db.StringGetAsync(cacheKey);
+                if (cached.HasValue)
+                {
+                    return JsonSerializer.Deserialize<Product>(cached);
+                }
+                
+                // Fetch from database
+                var product = await _repository.GetByIdAsync(productId);
+                
+                // Cache the result
+                await _db.StringSetAsync(
+                    cacheKey,
+                    JsonSerializer.Serialize(product),
+                    TimeSpan.FromMinutes(30)
+                );
+                
+                return product;
+            }
+            finally
+            {
+                // Release lock
+                await _db.LockReleaseAsync(lockKey, lockToken);
+            }
+        }
+        else
+        {
+            // Lock not acquired, wait briefly and retry
+            await Task.Delay(100);
+            return await GetProductWithLockAsync(productId);
+        }
+    }
+}
+```
+
+### Write-Through Cache Pattern
+
+```csharp
+public class WriteThroughCacheService
+{
+    private readonly IDatabase _db;
+    private readonly IProductRepository _repository;
+    
+    public async Task<Product> UpdateProductAsync(Product product)
+    {
+        // Update database first
+        await _repository.UpdateAsync(product);
+        
+        // Update cache immediately
+        var cacheKey = $"product:{product.Id}";
+        await _db.StringSetAsync(
+            cacheKey,
+            JsonSerializer.Serialize(product),
+            TimeSpan.FromMinutes(30)
+        );
+        
+        // Invalidate related caches
+        await InvalidateRelatedCachesAsync(product);
+        
+        return product;
+    }
+    
+    private async Task InvalidateRelatedCachesAsync(Product product)
+    {
+        var keys = new[]
+        {
+            $"category:{product.CategoryId}:products",
+            "featured-products",
+            "recent-products"
+        };
+        
+        await _db.KeyDeleteAsync(keys.Select(k => (RedisKey)k).ToArray());
+    }
+}
+```
+
+### Write-Behind (Lazy Write) Pattern
+
+```csharp
+public class WriteBehindCacheService
+{
+    private readonly IDatabase _db;
+    private readonly IProductRepository _repository;
+    private readonly Channel<CacheWrite> _writeQueue;
+    
+    public WriteBehindCacheService(IDatabase db, IProductRepository repository)
+    {
+        _db = db;
+        _repository = repository;
+        _writeQueue = Channel.CreateUnbounded<CacheWrite>();
+        
+        // Start background worker
+        _ = ProcessWriteQueueAsync();
+    }
+    
+    public async Task UpdateProductAsync(Product product)
+    {
+        // Update cache immediately
+        var cacheKey = $"product:{product.Id}";
+        await _db.StringSetAsync(
+            cacheKey,
+            JsonSerializer.Serialize(product),
+            TimeSpan.FromMinutes(30)
+        );
+        
+        // Queue database write
+        await _writeQueue.Writer.WriteAsync(new CacheWrite
+        {
+            Product = product,
+            Timestamp = DateTime.UtcNow
+        });
+    }
+    
+    private async Task ProcessWriteQueueAsync()
+    {
+        await foreach (var write in _writeQueue.Reader.ReadAllAsync())
+        {
+            try
+            {
+                await _repository.UpdateAsync(write.Product);
+            }
+            catch (Exception ex)
+            {
+                // Log error and potentially requeue
+                _logger.LogError(ex, "Failed to persist product {Id}", write.Product.Id);
+            }
+        }
+    }
+}
+```
+
+## Lua Scripting for Atomic Operations
+
+### Atomic Get-and-Increment
+
+```csharp
+public class LuaScriptService
+{
+    private readonly IDatabase _db;
+    
+    private const string GetAndIncrementScript = @"
+        local current = redis.call('GET', KEYS[1])
+        if current then
+            redis.call('INCR', KEYS[1])
+            return current
+        else
+            redis.call('SET', KEYS[1], ARGV[1])
+            return ARGV[1]
+        end
+    ";
+    
+    public async Task<long> GetAndIncrementAsync(string key, long initialValue = 0)
+    {
+        var result = await _db.ScriptEvaluateAsync(
+            GetAndIncrementScript,
+            new RedisKey[] { key },
+            new RedisValue[] { initialValue }
+        );
+        
+        return (long)result;
+    }
+}
+```
+
+### Complex Atomic Operations
+
+```csharp
+private const string UpdateWithExpiryScript = @"
+    local value = redis.call('GET', KEYS[1])
+    if value then
+        redis.call('SET', KEYS[1], ARGV[1])
+        redis.call('EXPIRE', KEYS[1], ARGV[2])
+        return value
+    else
+        return nil
+    end
+";
+
+public async Task<T> UpdateWithExpiryAsync<T>(
+    string key, 
+    T newValue, 
+    int expirySeconds)
+{
+    var result = await _db.ScriptEvaluateAsync(
+        UpdateWithExpiryScript,
+        new RedisKey[] { key },
+        new RedisValue[] 
+        { 
+            JsonSerializer.Serialize(newValue), 
+            expirySeconds 
+        }
+    );
+    
+    return result.IsNull 
+        ? default 
+        : JsonSerializer.Deserialize<T>(result);
+}
+```
+
+## Pub/Sub for Cache Invalidation
+
+### Publisher Service
+
+```csharp
+public class CacheInvalidationPublisher
+{
+    private readonly IConnectionMultiplexer _redis;
+    
+    public async Task PublishInvalidationAsync(string cacheKey)
+    {
+        var subscriber = _redis.GetSubscriber();
+        await subscriber.PublishAsync(
+            "cache-invalidation",
+            cacheKey
+        );
+    }
+    
+    public async Task PublishPatternInvalidationAsync(string pattern)
+    {
+        var subscriber = _redis.GetSubscriber();
+        await subscriber.PublishAsync(
+            "cache-invalidation-pattern",
+            pattern
+        );
+    }
+}
+```
+
+### Subscriber Service
+
+```csharp
+public class CacheInvalidationSubscriber : BackgroundService
+{
+    private readonly IConnectionMultiplexer _redis;
+    private readonly IMemoryCache _localCache;
+    private readonly ILogger<CacheInvalidationSubscriber> _logger;
+    
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        var subscriber = _redis.GetSubscriber();
+        
+        await subscriber.SubscribeAsync("cache-invalidation", (channel, key) =>
+        {
+            _logger.LogInformation("Invalidating cache key: {Key}", key);
+            _localCache.Remove(key.ToString());
+        });
+        
+        await subscriber.SubscribeAsync("cache-invalidation-pattern", (channel, pattern) =>
+        {
+            _logger.LogInformation("Invalidating cache pattern: {Pattern}", pattern);
+            // Implement pattern-based invalidation
+            InvalidateByPattern(pattern.ToString());
+        });
+        
+        // Keep running until cancellation
+        await Task.Delay(Timeout.Infinite, stoppingToken);
+    }
+}
+```
+
+## Multi-Tier Caching Strategy
+
+Combine in-memory and Redis caching:
+
+```csharp
+public class MultiTierCacheService
+{
+    private readonly IMemoryCache _l1Cache;
+    private readonly IDatabase _l2Cache;
+    
+    public async Task<T> GetAsync<T>(string key)
+    {
+        // L1: Check in-memory cache
+        if (_l1Cache.TryGetValue(key, out T cachedValue))
+        {
+            return cachedValue;
+        }
+        
+        // L2: Check Redis
+        var redisValue = await _l2Cache.StringGetAsync(key);
+        if (redisValue.HasValue)
+        {
+            var value = JsonSerializer.Deserialize<T>(redisValue);
+            
+            // Populate L1 cache
+            _l1Cache.Set(key, value, TimeSpan.FromMinutes(5));
+            
+            return value;
+        }
+        
+        return default;
+    }
+    
+    public async Task SetAsync<T>(string key, T value, TimeSpan expiry)
+    {
+        // Set in both caches
+        _l1Cache.Set(key, value, TimeSpan.FromMinutes(5));
+        
+        await _l2Cache.StringSetAsync(
+            key,
+            JsonSerializer.Serialize(value),
+            expiry
+        );
+    }
+}
+```
+
+## Redis Performance Optimization
+
+### Pipeline Batching
+
+```csharp
+public async Task<Dictionary<string, Product>> GetProductsBatchAsync(List<int> productIds)
+{
+    var batch = _db.CreateBatch();
+    var tasks = new Dictionary<int, Task<RedisValue>>();
+    
+    foreach (var id in productIds)
+    {
+        tasks[id] = batch.StringGetAsync($"product:{id}");
+    }
+    
+    batch.Execute();
+    
+    await Task.WhenAll(tasks.Values);
+    
+    return tasks
+        .Where(kvp => kvp.Value.Result.HasValue)
+        .ToDictionary(
+            kvp => kvp.Key.ToString(),
+            kvp => JsonSerializer.Deserialize<Product>(kvp.Value.Result)
+        );
+}
+```
+
+### Fire-and-Forget Operations
+
+```csharp
+public void SetCacheAsync(string key, string value, CommandFlags flags = CommandFlags.FireAndForget)
+{
+    _db.StringSet(key, value, flags: flags);
+}
+```
+
+<KeyConcept title="Production Best Practices">
+1. **Connection Pooling**: Use singleton ConnectionMultiplexer
+2. **Retry Logic**: Implement exponential backoff
+3. **Monitoring**: Track hit ratio, latency, connection health
+4. **Failover**: Configure Redis Sentinel or Cluster for HA
+5. **Security**: Use SSL/TLS, authentication, network isolation
+6. **Data Eviction**: Set maxmemory-policy (e.g., allkeys-lru)
+</KeyConcept>
+
+## Monitoring and Diagnostics
+
+```csharp
+public class RedisHealthCheck : IHealthCheck
+{
+    private readonly IConnectionMultiplexer _redis;
+    
+    public async Task<HealthCheckResult> CheckHealthAsync(
+        HealthCheckContext context,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var db = _redis.GetDatabase();
+            await db.PingAsync();
+            
+            var endpoints = _redis.GetEndPoints();
+            var server = _redis.GetServer(endpoints.First());
+            var info = await server.InfoAsync("stats");
+            
+            var data = new Dictionary<string, object>
+            {
+                ["connected_clients"] = info.First(x => x.Key == "connected_clients").Value,
+                ["used_memory_human"] = info.First(x => x.Key == "used_memory_human").Value,
+                ["hit_rate"] = CalculateHitRate(info)
+            };
+            
+            return HealthCheckResult.Healthy("Redis is healthy", data);
+        }
+        catch (Exception ex)
+        {
+            return HealthCheckResult.Unhealthy("Redis is unhealthy", ex);
+        }
+    }
+}
+```
+
+<ProgressCheckpoint section="redis-advanced" xpReward={50} />

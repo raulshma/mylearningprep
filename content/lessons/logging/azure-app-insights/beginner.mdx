@@ -1,0 +1,173 @@
+# Azure Application Insights: Cloud-Native Monitoring 🌩️
+
+Azure Application Insights is Microsoft's observability solution that automatically collects telemetry from your applications and provides powerful analytics capabilities.
+
+## What is Application Insights?
+
+Application Insights is part of Azure Monitor that provides:
+- 📊 **Automatic telemetry collection** (requests, dependencies, exceptions)
+- 🚨 **Smart detection** (anomalies, performance issues)
+- 📈 **Powerful querying** (Kusto Query Language)
+- 🎯 **Integrated alerting** (email, SMS, webhooks)
+- 🌍 **Global scale** (handles massive telemetry volumes)
+
+<KeyConcept title="Why Application Insights?">
+Unlike traditional logging, Application Insights provides out-of-the-box monitoring for .NET applications with minimal configuration. It automatically tracks requests, dependencies, exceptions, and performance metrics.
+</KeyConcept>
+
+<ProgressCheckpoint section="app-insights-setup" xpReward={15} />
+
+## Setting Up Application Insights
+
+### Prerequisites
+
+1. Azure Subscription
+2. Application Insights resource
+3. Connection string from the Azure portal
+
+### Installation
+
+```bash
+dotnet add package Microsoft.ApplicationInsights.AspNetCore
+```
+
+### Basic Configuration
+
+```csharp
+// Program.cs
+var builder = WebApplication.CreateBuilder(args);
+
+// Add Application Insights
+builder.Services.AddApplicationInsightsTelemetry(options =>
+{
+    options.ConnectionString = builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"];
+});
+
+var app = builder.Build();
+app.Run();
+```
+
+### Configuration (appsettings.json)
+
+```json
+{
+  "ApplicationInsights": {
+    "ConnectionString": "InstrumentationKey=your-key;IngestionEndpoint=https://your-region.in.applicationinsights.azure.com/"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  }
+}
+```
+
+<ProgressCheckpoint section="telemetry-collection" xpReward={10} />
+
+## Automatic Telemetry Collection
+
+Application Insights automatically collects:
+
+### Requests
+- HTTP requests received
+- Response codes
+- Duration
+- URLs
+
+### Dependencies
+- SQL queries
+- HTTP calls to external services
+- Azure service calls
+
+### Exceptions
+- Unhandled exceptions
+- Handled exceptions (when logged)
+- Stack traces
+
+### Performance Counters
+- CPU usage
+- Memory usage
+- Network I/O
+
+<ProgressCheckpoint section="monitoring-alerting" xpReward={10} />
+
+## Custom Telemetry
+
+### Track Events
+
+```csharp
+public class ShoppingCartController : ControllerBase
+{
+    private readonly TelemetryClient _telemetryClient;
+
+    public async Task<IActionResult> AddToCart(AddToCartRequest request)
+    {
+        // Business event tracking
+        _telemetryClient.TrackEvent("ProductAddedToCart", new Dictionary<string, string>
+        {
+            ["ProductId"] = request.ProductId,
+            ["UserId"] = request.UserId,
+            ["Category"] = request.Category
+        });
+
+        return Ok();
+    }
+}
+```
+
+### Track Metrics
+
+```csharp
+// Track custom metrics
+_telemetryClient.GetMetric("OrdersProcessed").TrackValue(1);
+_telemetryClient.GetMetric("Revenue", "Currency").TrackValue(49.99, "USD");
+```
+
+### Track Traces
+
+```csharp
+// Log custom traces
+_telemetryClient.TrackTrace(
+    "Processing order batch",
+    SeverityLevel.Information,
+    new Dictionary<string, string>
+    {
+        ["BatchSize"] = batchSize.ToString(),
+        ["StartTime"] = DateTime.UtcNow.ToString("o")
+    }
+);
+```
+
+## Real-Time Monitoring
+
+### Live Metrics Stream
+
+View real-time telemetry in the Azure portal:
+- Request rates
+- Response times
+- Failure rates
+- Server performance
+
+### Smart Detection
+
+Automatic anomaly detection for:
+- **Failure anomalies** - sudden increases in exceptions
+- **Performance anomalies** - response time degradation
+- **Traffic anomalies** - unexpected traffic spikes/drops
+
+## Key Takeaways
+
+✅ Application Insights provides automatic telemetry collection
+✅ Minimal configuration for .NET applications
+✅ Rich querying with KQL (Kusto Query Language)
+✅ Integrated alerting and smart detection
+✅ Global scale and reliability
+
+<InfoBox type="tip">
+**Quick Start**: Add the NuGet package and connection string - you instantly get request, dependency, and exception tracking!
+</InfoBox>
+
+<InfoBox type="success">
+You've learned how to set up Azure Application Insights for comprehensive application monitoring. You can now track requests, dependencies, exceptions, and custom business metrics.
+</InfoBox>

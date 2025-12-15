@@ -133,3 +133,8 @@ export { ApiGatewaySimulator } from './ApiGatewaySimulator';
 export type { MicroservicesArchitectureVisualizerProps } from './MicroservicesArchitectureVisualizer';
 export type { ServiceCommunicationDemoProps } from './ServiceCommunicationDemo';
 export type { ApiGatewaySimulatorProps } from './ApiGatewaySimulator';
+
+export {DapperQueryVisualizer} from './DapperQueryVisualizer';
+export {DapperCommandVisualizer} from './DapperCommandVisualizer';
+export {DapperMultiMappingVisualizer} from './DapperMultiMappingVisualizer';
+export { CacheVisualization } from './CacheVisualization';

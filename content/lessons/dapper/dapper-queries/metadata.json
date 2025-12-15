@@ -1,0 +1,31 @@
+{
+  "id": "dapper-queries",
+  "title": "Queries & Commands",
+  "description": "Master Dapper's querying methods and command execution for INSERT, UPDATE, DELETE operations",
+  "milestone": "dapper",
+  "order": 2,
+  "sections": [
+    "query-methods",
+    "query-single",
+    "execute-commands",
+    "bulk-operations",
+    "stored-procedures",
+    "async-methods"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 18,
+      "xpReward": 35
+    },
+    "intermediate": {
+      "estimatedMinutes": 25,
+      "xpReward": 55
+    },
+    "advanced": {
+      "estimatedMinutes": 30,
+      "xpReward": 80
+    }
+  },
+  "prerequisites": ["dapper/dapper-basics"],
+  "tags": ["dapper", "queries", "commands", "async", "stored-procedures"]
+}

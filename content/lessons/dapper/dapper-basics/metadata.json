@@ -1,0 +1,31 @@
+{
+  "id": "dapper-basics",
+  "title": "Dapper Basics",
+  "description": "Learn the fundamentals of Dapper - the high-performance micro ORM for .NET",
+  "milestone": "dapper",
+  "order": 1,
+  "sections": [
+    "introduction",
+    "what-is-dapper",
+    "installation",
+    "first-query",
+    "parameterized-queries",
+    "best-practices"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 20,
+      "xpReward": 50
+    },
+    "advanced": {
+      "estimatedMinutes": 25,
+      "xpReward": 75
+    }
+  },
+  "prerequisites": ["databases/sql-fundamentals"],
+  "tags": ["dapper", "orm", "micro-orm", "dotnet", "database"]
+}

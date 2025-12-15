@@ -1,0 +1,29 @@
+{
+  "id": "blazor-hosting",
+  "title": "Blazor Server vs WebAssembly",
+  "description": "Understand the two primary Blazor hosting models - Server and WebAssembly - and when to use each for building modern web applications.",
+  "milestone": "blazor",
+  "order": 1,
+  "sections": [
+    "hosting-models-overview",
+    "blazor-server-architecture",
+    "blazor-webassembly-architecture",
+    "choosing-hosting-model"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 10,
+      "xpReward": 25
+    },
+    "intermediate": {
+      "estimatedMinutes": 15,
+      "xpReward": 40
+    },
+    "advanced": {
+      "estimatedMinutes": 20,
+      "xpReward": 60
+    }
+  },
+  "prerequisites": ["aspnet-core-basics/what-is-aspnet-core"],
+  "tags": ["blazor", "hosting", "server", "webassembly", "spa"]
+}

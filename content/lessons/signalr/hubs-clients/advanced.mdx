@@ -1,0 +1,494 @@
+# Hubs & Clients: Advanced Architecture & Optimization
+
+This advanced lesson explores SignalR Hub internals, custom implementations, and production-scale optimizations.
+
+## Hub Pipeline Architecture
+
+Understanding the hub invocation pipeline is crucial for implementing advanced features like logging, authorization, and performance monitoring.
+
+### Custom Hub Filters
+
+```csharp
+public class AuditHubFilter : IHubFilter
+{
+    private readonly IAuditLogger _auditLogger;
+    
+    public AuditHubFilter(IAuditLogger auditLogger)
+    {
+        _auditLogger = auditLogger;
+    }
+    
+    public async ValueTask<object?> InvokeMethodAsync(
+        HubInvocationContext invocationContext,
+        Func<HubInvocationContext, ValueTask<object?>> next)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        var userId = invocationContext.Context.UserIdentifier;
+        var methodName = invocationContext.HubMethodName;
+        
+        try
+        {
+            var result = await next(invocationContext);
+            
+            stopwatch.Stop();
+            await _auditLogger.LogSuccessAsync(
+                userId, 
+                methodName, 
+                stopwatch.Elapsed);
+            
+            return result;
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            await _auditLogger.LogFailureAsync(
+                userId, 
+                methodName, 
+                stopwatch.Elapsed, 
+                ex);
+            
+            throw;
+        }
+    }
+    
+    public async Task OnConnectedAsync(
+        HubLifetimeContext context,
+        Func<HubLifetimeContext, Task> next)
+    {
+        await _auditLogger.LogConnectionAsync(
+            context.Context.ConnectionId,
+            context.Context.UserIdentifier);
+        
+        await next(context);
+    }
+    
+    public async Task OnDisconnectedAsync(
+        HubLifetimeContext context,
+        Exception? exception,
+        Func<HubLifetimeContext, Exception?, Task> next)
+    {
+        await _auditLogger.LogDisconnectionAsync(
+            context.Context.ConnectionId,
+            exception);
+        
+        await next(context, exception);
+    }
+}
+
+// Register globally
+builder.Services.AddSignalR(options =>
+{
+    options.AddFilter<AuditHubFilter>();
+});
+
+// Or per-hub
+[HubFilter(typeof(AuditHubFilter))]
+public class SecureHub : Hub
+{
+    // Hub implementation
+}
+```
+
+### Hub Authorization
+
+```csharp
+[Authorize]
+public class SecureHub : Hub
+{
+    [Authorize(Roles = "Admin")]
+    public async Task AdminBroadcast(string message)
+    {
+        await Clients.All.SendAsync("AdminMessage", message);
+    }
+    
+    [Authorize(Policy = "PremiumUser")]
+    public async Task PremiumFeature(string data)
+    {
+        await Clients.Caller.SendAsync("PremiumResult", ProcessPremium(data));
+    }
+    
+    // Custom authorization logic
+    public async Task SendToUser(string targetUserId, string message)
+    {
+        // Check if sender has permission to message this user
+        if (!await CanMessageUserAsync(Context.UserIdentifier, targetUserId))
+        {
+            throw new HubException("You don't have permission to message this user.");
+        }
+        
+        await Clients.User(targetUserId).SendAsync("PrivateMessage", 
+            Context.UserIdentifier, 
+            message);
+    }
+    
+    private async Task<bool> CanMessageUserAsync(string senderId, string recipientId)
+    {
+        // Implement custom logic (e.g., check if blocked)
+        return await _userService.CanMessageAsync(senderId, recipientId);
+    }
+}
+```
+
+<ProgressCheckpoint section="understanding-hubs" xpReward={25} />
+
+## Advanced Client Communication
+
+### Strongly-Typed Hubs
+
+```csharp
+// Define client interface
+public interface IChatClient
+{
+    Task ReceiveMessage(string user, string message);
+    Task UserJoined(string userId, DateTime timestamp);
+    Task UserLeft(string userId, DateTime timestamp);
+    Task TypingIndicator(string userId, bool isTyping);
+    Task MessageReaction(string messageId, string emoji, string userId);
+}
+
+// Strongly-typed hub
+public class ChatHub : Hub<IChatClient>
+{
+    public async Task SendMessage(string message)
+    {
+        var user = Context.User.Identity.Name;
+        var timestamp = DateTime.UtcNow;
+        
+        // Compile-time checked method calls
+        await Clients.All.ReceiveMessage(user, message);
+    }
+    
+    public async Task SetTypingStatus(bool isTyping)
+    {
+        await Clients.Others.TypingIndicator(
+            Context.UserIdentifier, 
+            isTyping);
+    }
+    
+    public override async Task OnConnectedAsync()
+    {
+        await Clients.All.UserJoined(
+            Context.UserIdentifier, 
+            DateTime.UtcNow);
+        
+        await base.OnConnectedAsync();
+    }
+}
+
+// Client-side TypeScript
+interface IChatClient {
+    receiveMessage(user: string, message: string): void;
+    userJoined(userId: string, timestamp: Date): void;
+    userLeft(userId: string, timestamp: Date): void;
+    typingIndicator(userId: string, isTyping: boolean): void;
+    messageReaction(messageId: string, emoji: string, userId: string): void;
+}
+
+connection.on("ReceiveMessage", (user: string, message: string) => {
+    // TypeScript can validate parameters
+});
+```
+
+### Connection Multiplexing
+
+```csharp
+public class MultiplexedHub : Hub
+{
+    private readonly IConnectionMultiplexer _multiplexer;
+    
+    // Support multiple logical channels over single connection
+    public async Task SubscribeToChannel(string channelName)
+    {
+        var subscriptionId = await _multiplexer.SubscribeAsync(
+            Context.ConnectionId, 
+            channelName);
+        
+        await Clients.Caller.SendAsync("ChannelSubscribed", 
+            channelName, 
+            subscriptionId);
+    }
+    
+    public async Task SendToChannel(string channelName, string message)
+    {
+        var subscribers = await _multiplexer.GetSubscribersAsync(channelName);
+        
+        await Clients.Clients(subscribers)
+            .SendAsync("ChannelMessage", channelName, message);
+    }
+}
+```
+
+<ProgressCheckpoint section="client-communication" xpReward={25} />
+
+## Custom Hub Implementations
+
+### Hub with Dependency Injection
+
+```csharp
+public class ChatHub : Hub
+{
+    private readonly IChatRepository _chatRepository;
+    private readonly IMessageQueue _messageQueue;
+    private readonly IPresenceTracker _presenceTracker;
+    private readonly ILogger<ChatHub> _logger;
+    
+    // Dependencies injected automatically
+    public ChatHub(
+        IChatRepository chatRepository,
+        IMessageQueue messageQueue,
+        IPresenceTracker presenceTracker,
+        ILogger<ChatHub> logger)
+    {
+        _chatRepository = chatRepository;
+        _messageQueue = messageQueue;
+        _presenceTracker = presenceTracker;
+        _logger = logger;
+    }
+    
+    public async Task SendMessage(string roomId, string message)
+    {
+        // Persist message
+        var messageEntity = await _chatRepository.SaveMessageAsync(
+            roomId, 
+            Context.UserIdentifier, 
+            message);
+        
+        // Queue for processing (moderation, analytics, etc.)
+        await _messageQueue.EnqueueAsync(messageEntity);
+        
+        // Broadcast to room
+        await Clients.Group(roomId).SendAsync("ReceiveMessage", new
+        {
+            messageEntity.Id,
+            User = Context.UserIdentifier,
+            messageEntity.Content,
+            messageEntity.Timestamp
+        });
+    }
+}
+```
+
+### Hub Context from Outside Hub
+
+```csharp
+// Inject IHubContext to send messages from services
+public class NotificationService
+{
+    private readonly IHubContext<NotificationHub, INotificationClient> _hubContext;
+    
+    public NotificationService(
+        IHubContext<NotificationHub, INotificationClient> hubContext)
+    {
+        _hubContext = hubContext;
+    }
+    
+    public async Task SendUserNotificationAsync(
+        string userId, 
+        Notification notification)
+    {
+        // Send from anywhere in your application
+        await _hubContext.Clients.User(userId)
+            .ReceiveNotification(notification);
+    }
+    
+    public async Task BroadcastSystemMessageAsync(string message)
+    {
+        await _hubContext.Clients.All
+            .ReceiveSystemMessage(message, DateTime.UtcNow);
+    }
+}
+```
+
+## Performance Optimization
+
+### Message Compression
+
+```csharp
+builder.Services.AddSignalR()
+    .AddMessagePackProtocol(options =>
+    {
+        options.SerializerOptions = MessagePackSerializerOptions.Standard
+            .WithCompression(MessagePackCompression.Lz4BlockArray);
+    });
+
+// Benchmark: JSON vs MessagePack
+// Payload: 1000 messages
+// JSON:        ~450 KB
+// MessagePack: ~120 KB (73% reduction)
+```
+
+### Client Proxy Caching
+
+```csharp
+public class OptimizedHub : Hub
+{
+    // Cache client proxy for frequently accessed groups
+    private IClientProxy? _adminGroupProxy;
+    
+    private async Task<IClientProxy> GetAdminGroupProxy()
+    {
+        _adminGroupProxy ??= Clients.Group("Admins");
+        return _adminGroupProxy;
+    }
+    
+    public async Task NotifyAdmins(string message)
+    {
+        var proxy = await GetAdminGroupProxy();
+        await proxy.SendAsync("AdminNotification", message);
+    }
+}
+```
+
+### Batched Updates
+
+```csharp
+public class DashboardHub : Hub
+{
+    private readonly IBatchProcessor _batchProcessor;
+    
+    public async Task<IDisposable> SubscribeToBatchedUpdates(string[] metrics)
+    {
+        return _batchProcessor.Subscribe(Context.ConnectionId, async batch =>
+        {
+            // Send batched updates every 100ms or 50 items
+            await Clients.Caller.SendAsync("MetricsBatch", batch);
+        });
+    }
+}
+
+// Client receives batches instead of individual updates
+connection.on("MetricsBatch", (metrics: Metric[]) => {
+    metrics.forEach(m => updateMetric(m));
+});
+```
+
+## Advanced Connection Management
+
+### Connection State Persistence
+
+```csharp
+public class StatefulHub : Hub
+{
+    private readonly IDistributedCache _cache;
+    
+    public async Task SaveConnectionStateAsync(object state)
+    {
+        var key = $"connection:{Context.ConnectionId}";
+        var json = JsonSerializer.Serialize(state);
+        
+        await _cache.SetStringAsync(key, json, new DistributedCacheEntryOptions
+        {
+            SlidingExpiration = TimeSpan.FromHours(1)
+        });
+    }
+    
+    public async Task<T?> GetConnectionStateAsync<T>()
+    {
+        var key = $"connection:{Context.ConnectionId}";
+        var json = await _cache.GetStringAsync(key);
+        
+        return json == null ? default : JsonSerializer.Deserialize<T>(json);
+    }
+    
+    public override async Task OnDisconnectedAsync(Exception? exception)
+    {
+        // Clean up state
+        await _cache.RemoveAsync($"connection:{Context.ConnectionId}");
+        await base.OnDisconnectedAsync(exception);
+    }
+}
+```
+
+<ProgressCheckpoint section="connection-management" xpReward={25} />
+
+## Testing SignalR Hubs
+
+### Unit Testing
+
+```csharp
+public class ChatHubTests
+{
+    [Fact]
+    public async Task SendMessage_BroadcastsToAllClients()
+    {
+        // Arrange
+        var mockClients = new Mock<IHubCallerClients>();
+        var mockClientProxy = new Mock<IClientProxy>();
+        
+        mockClients.Setup(c => c.All).Returns(mockClientProxy.Object);
+        
+        var hub = new ChatHub
+        {
+            Clients = mockClients.Object
+        };
+        
+        // Act
+        await hub.SendMessage("user1", "Hello");
+        
+        // Assert
+        mockClientProxy.Verify(
+            p => p.SendCoreAsync(
+                "ReceiveMessage", 
+                It.Is<object[]>(o => 
+                    o[0].ToString() == "user1" && 
+                    o[1].ToString() == "Hello"),
+                default),
+            Times.Once);
+    }
+}
+```
+
+### Integration Testing
+
+```csharp
+public class SignalRIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
+{
+    private readonly WebApplicationFactory<Program> _factory;
+    
+    [Fact]
+    public async Task CanConnectToHub()
+    {
+        var hubConnection = new HubConnectionBuilder()
+            .WithUrl("http://localhost:5000/chatHub")
+            .Build();
+        
+        await hubConnection.StartAsync();
+        
+        Assert.Equal(HubConnectionState.Connected, hubConnection.State);
+        
+        await hubConnection.StopAsync();
+    }
+}
+```
+
+## Production Monitoring
+
+```csharp
+builder.Services.AddSignalR()
+    .AddHubOptions<ChatHub>(options =>
+    {
+        options.EnableDetailedErrors = false;
+        options.StatefulReconnectBufferSize = 1000;
+    });
+
+// Custom metrics
+public class MetricsHub : Hub
+{
+    private static readonly Counter ConnectionCount = Metrics
+        .CreateCounter("signalr_connections_total", "Total connections");
+    
+    public override async Task OnConnectedAsync()
+    {
+        ConnectionCount.Inc();
+        await base.OnConnectedAsync();
+    }
+    
+    public override async Task OnDisconnectedAsync(Exception? exception)
+    {
+        ConnectionCount.Dec();
+        await base.OnDisconnectedAsync(exception);
+    }
+}
+```
+
+> **Production Ready**: These advanced patterns enable building scalable, maintainable, and performant SignalR applications for enterprise use.

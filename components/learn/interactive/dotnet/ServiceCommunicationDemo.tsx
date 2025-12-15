@@ -432,7 +432,7 @@ export function ServiceCommunicationDemo({
             className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4"
           >
             <div className="bg-gray-900 rounded-lg p-3 font-mono text-xs">
-              <div className="text-blue-400 mb-2">// HTTP REST Call</div>
+              <div className="text-blue-400 mb-2">{"//"} HTTP REST Call</div>
               <pre className="text-gray-300 overflow-x-auto">
 {`var response = await _httpClient
   .PostAsJsonAsync(
@@ -443,7 +443,7 @@ export function ServiceCommunicationDemo({
               </pre>
             </div>
             <div className="bg-gray-900 rounded-lg p-3 font-mono text-xs">
-              <div className="text-green-400 mb-2">// Event Publishing</div>
+              <div className="text-green-400 mb-2">{"//"} Event Publishing</div>
               <pre className="text-gray-300 overflow-x-auto">
 {`await _eventBus.PublishAsync(
   new OrderCreatedEvent {

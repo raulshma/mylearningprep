@@ -1,0 +1,401 @@
+# Groups & Broadcasting: Advanced Group Management
+
+SignalR groups provide powerful mechanisms for organizing clients and implementing efficient broadcasting patterns for scalable real-time applications.
+
+## Understanding Groups Architecture
+
+Groups in SignalR are logical collections of connections managed entirely on the server. They provide an abstraction for multicast messaging without requiring client-side knowledge of group membership.
+
+### Group Storage
+
+```csharp
+// Groups are stored in-memory by default
+// For scale-out, use a backplane (Redis, Azure Service Bus)
+
+// Each group maps to a collection of connection IDs
+// Group: "ChatRoom1" -> [conn-123, conn-456, conn-789]
+```
+
+### Group Membership Lifecycle
+
+```csharp
+public class ChatRoomHub : Hub
+{
+    private readonly IChatRoomRepository _chatRoomRepository;
+    private readonly ILogger<ChatRoomHub> _logger;
+    
+    public async Task JoinChatRoom(string roomId)
+    {
+        // Validate room exists
+        var room = await _chatRoomRepository.GetRoomAsync(roomId);
+        if (room == null)
+        {
+            throw new HubException($"Room {roomId} does not exist");
+        }
+        
+        // Check capacity
+        var memberCount = await GetGroupMemberCountAsync(roomId);
+        if (memberCount >= room.MaxCapacity)
+        {
+            throw new HubException("Room is full");
+        }
+        
+        // Add to group
+        await Groups.AddToGroupAsync(Context.ConnectionId, roomId);
+        
+        _logger.LogInformation(
+            "User {UserId} joined room {RoomId}",
+            Context.UserIdentifier,
+            roomId);
+        
+        // Send current room state to new member
+        var messages = await _chatRoomRepository.GetRecentMessagesAsync(roomId, 50);
+        await Clients.Caller.SendAsync("RoomHistory", messages);
+        
+        // Notify existing members
+        await Clients.OthersInGroup(roomId).SendAsync("UserJoined", new
+        {
+            UserId = Context.UserIdentifier,
+            Timestamp = DateTime.UtcNow
+        });
+    }
+    
+    public async Task LeaveChatRoom(string roomId)
+    {
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, roomId);
+        
+        _logger.LogInformation(
+            "User {UserId} left room {RoomId}",
+            Context.UserIdentifier,
+            roomId);
+        
+        await Clients.Group(roomId).SendAsync("UserLeft", new
+        {
+            UserId = Context.UserIdentifier,
+            Timestamp = DateTime.UtcNow
+        });
+    }
+    
+    public override async Task OnDisconnectedAsync(Exception? exception)
+    {
+        // Get user's active rooms before cleanup
+        var userRooms = await GetUserRoomsAsync(Context.UserIdentifier);
+        
+        // Groups are automatically cleaned up
+        // But we can notify before cleanup
+        foreach (var roomId in userRooms)
+        {
+            await Clients.Group(roomId).SendAsync("UserDisconnected", new
+            {
+                UserId = Context.UserIdentifier,
+                Unexpected = exception != null
+            });
+        }
+        
+        await base.OnDisconnectedAsync(exception);
+    }
+    
+    private async Task<int> GetGroupMemberCountAsync(string groupName)
+    {
+        // Implementation depends on tracking mechanism
+        // Could use IConnectionTracker or query backplane
+        return await _connectionTracker.GetGroupMemberCountAsync(groupName);
+    }
+    
+    private async Task<List<string>> GetUserRoomsAsync(string userId)
+    {
+        // Track user's rooms in database or cache
+        return await _chatRoomRepository.GetUserRoomsAsync(userId);
+    }
+}
+```
+
+<ProgressCheckpoint section="understanding-groups" xpReward={15} />
+
+## Advanced Broadcasting Patterns
+
+### Selective Broadcasting
+
+```csharp
+public class NotificationHub : Hub
+{
+    // Send to specific group with exclusions
+    public async Task BroadcastToTeam(
+        string teamId, 
+        string message, 
+        List<string> excludeUsers)
+    {
+        var excludeConnections = await GetUserConnectionsAsync(excludeUsers);
+        
+        await Clients.GroupExcept(teamId, excludeConnections)
+            .SendAsync("TeamNotification", message);
+    }
+    
+    // Send to multiple groups atomically
+    public async Task BroadcastToMultipleTeams(
+        List<string> teamIds, 
+        string message)
+    {
+        await Clients.Groups(teamIds)
+            .SendAsync("MultiTeamNotification", message);
+    }
+    
+    // Send to group members except caller
+    public async Task ShareWithTeam(string teamId, object data)
+    {
+        await Clients.OthersInGroup(teamId)
+            .SendAsync("TeamDataShared", new
+            {
+                SharedBy = Context.UserIdentifier,
+                Data = data,
+                Timestamp = DateTime.UtcNow
+            });
+    }
+    
+    private async Task<List<string>> GetUserConnectionsAsync(List<string> userIds)
+    {
+        var connections = new List<string>();
+        foreach (var userId in userIds)
+        {
+            var userConns = await _connectionTracker.GetUserConnectionsAsync(userId);
+            connections.AddRange(userConns);
+        }
+        return connections;
+    }
+}
+```
+
+### Hierarchical Groups
+
+```csharp
+public class OrganizationHub : Hub
+{
+    // Join organization hierarchy
+    public async Task JoinOrganization(string orgId, string department, string team)
+    {
+        var connectionId = Context.ConnectionId;
+        
+        // Add to multiple hierarchical groups
+        await Groups.AddToGroupAsync(connectionId, $"org:{orgId}");
+        await Groups.AddToGroupAsync(connectionId, $"org:{orgId}:dept:{department}");
+        await Groups.AddToGroupAsync(connectionId, $"org:{orgId}:dept:{department}:team:{team}");
+        
+        await Clients.Caller.SendAsync("JoinedOrganization", new
+        {
+            OrgId = orgId,
+            Department = department,
+            Team = team
+        });
+    }
+    
+    // Broadcast to entire organization
+    public async Task BroadcastToOrg(string orgId, string message)
+    {
+        await Clients.Group($"org:{orgId}")
+            .SendAsync("OrgAnnouncement", message);
+    }
+    
+    // Broadcast to specific department
+    public async Task BroadcastToDepartment(
+        string orgId, 
+        string department, 
+        string message)
+    {
+        await Clients.Group($"org:{orgId}:dept:{department}")
+            .SendAsync("DeptAnnouncement", message);
+    }
+    
+    // Broadcast to specific team
+    public async Task BroadcastToTeam(
+        string orgId, 
+        string department, 
+        string team, 
+        string message)
+    {
+        await Clients.Group($"org:{orgId}:dept:{department}:team:{team}")
+            .SendAsync("TeamMessage", message);
+    }
+}
+```
+
+<ProgressCheckpoint section="group-management" xpReward={20} />
+
+## Group Management Patterns
+
+### Dynamic Group Assignment
+
+```csharp
+public class DynamicGroupHub : Hub
+{
+    public async Task SubscribeToTopics(List<string> topics)
+    {
+        var connectionId = Context.ConnectionId;
+        
+        // Unsubscribe from all current topics first
+        var currentTopics = await GetUserTopicsAsync(Context.UserIdentifier);
+        foreach (var topic in currentTopics)
+        {
+            await Groups.RemoveFromGroupAsync(connectionId, $"topic:{topic}");
+        }
+        
+        // Subscribe to new topics
+        foreach (var topic in topics)
+        {
+            await Groups.AddToGroupAsync(connectionId, $"topic:{topic}");
+        }
+        
+        // Persist user preferences
+        await SaveUserTopicsAsync(Context.UserIdentifier, topics);
+        
+        await Clients.Caller.SendAsync("TopicsUpdated", topics);
+    }
+    
+    public async Task PublishToTopic(string topic, object content)
+    {
+        await Clients.Group($"topic:{topic}")
+            .SendAsync("TopicUpdate", new
+            {
+                Topic = topic,
+                Content = content,
+                PublishedBy = Context.UserIdentifier,
+                Timestamp = DateTime.UtcNow
+            });
+    }
+}
+```
+
+### Role-Based Groups
+
+```csharp
+public class RoleBasedHub : Hub
+{
+    public override async Task OnConnectedAsync()
+    {
+        var roles = Context.User?.Claims
+            .Where(c => c.Type == ClaimTypes.Role)
+            .Select(c => c.Value)
+            .ToList() ?? new List<string>();
+        
+        // Add to role groups automatically
+        foreach (var role in roles)
+        {
+            await Groups.AddToGroupAsync(Context.ConnectionId, $"role:{role}");
+        }
+        
+        await base.OnConnectedAsync();
+    }
+    
+    [Authorize(Roles = "Admin")]
+    public async Task SendAdminBroadcast(string message)
+    {
+        await Clients.Group("role:Admin")
+            .SendAsync("AdminBroadcast", message);
+    }
+    
+    [Authorize(Roles = "Manager")]
+    public async Task SendManagerUpdate(string message)
+    {
+        await Clients.Groups(new[] { "role:Manager", "role:Admin" })
+            .SendAsync("ManagerUpdate", message);
+    }
+}
+```
+
+### Presence Tracking
+
+```csharp
+public class PresenceHub : Hub
+{
+    private readonly IPresenceTracker _presenceTracker;
+    
+    public async Task JoinRoom(string roomId)
+    {
+        await Groups.AddToGroupAsync(Context.ConnectionId, roomId);
+        await _presenceTracker.UserJoinedAsync(roomId, Context.UserIdentifier);
+        
+        // Get current online users in room
+        var onlineUsers = await _presenceTracker.GetOnlineUsersAsync(roomId);
+        
+        // Send to caller
+        await Clients.Caller.SendAsync("RoomUsers", onlineUsers);
+        
+        // Notify others
+        await Clients.OthersInGroup(roomId)
+            .SendAsync("UserJoined", Context.UserIdentifier);
+    }
+    
+    public async Task LeaveRoom(string roomId)
+    {
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, roomId);
+        await _presenceTracker.UserLeftAsync(roomId, Context.UserIdentifier);
+        
+        await Clients.Group(roomId)
+            .SendAsync("UserLeft", Context.UserIdentifier);
+    }
+    
+    public async Task UpdateStatus(string roomId, string status)
+    {
+        await _presenceTracker.UpdateStatusAsync(
+            roomId, 
+            Context.UserIdentifier, 
+            status);
+        
+        await Clients.Group(roomId)
+            .SendAsync("UserStatusChanged", Context.UserIdentifier, status);
+    }
+}
+```
+
+<ProgressCheckpoint section="broadcasting-patterns" xpReward={15} />
+
+## Performance Optimization
+
+### Group Caching
+
+```csharp
+public class OptimizedGroupHub : Hub
+{
+    private static readonly ConcurrentDictionary<string, IClientProxy> _groupProxyCache = new();
+    
+    private IClientProxy GetCachedGroupProxy(string groupName)
+    {
+        return _groupProxyCache.GetOrAdd(groupName, name => Clients.Group(name));
+    }
+    
+    public async Task BroadcastToRoom(string roomId, string message)
+    {
+        var groupProxy = GetCachedGroupProxy(roomId);
+        await groupProxy.SendAsync("RoomMessage", message);
+    }
+}
+```
+
+### Batch Group Operations
+
+```csharp
+public async Task JoinMultipleRooms(List<string> roomIds)
+{
+    var connectionId = Context.ConnectionId;
+    
+    // Batch group additions
+    var tasks = roomIds.Select(roomId => 
+        Groups.AddToGroupAsync(connectionId, roomId));
+    
+    await Task.WhenAll(tasks);
+    
+    await Clients.Caller.SendAsync("JoinedRooms", roomIds);
+}
+```
+
+## Best Practices
+
+✅ **Validate group membership** before joining  
+✅ **Track group membership** in persistent storage for reconnection  
+✅ **Use hierarchical group names** for organizational structures  
+✅ **Implement capacity limits** for groups when needed  
+✅ **Clean up custom tracking** on disconnect  
+✅ **Cache group proxies** for frequently accessed groups  
+✅ **Batch operations** when joining/leaving multiple groups  
+✅ **Use role-based groups** for authorization scenarios  
+
+> **Next**: With groups mastered, you're ready to build complex real-time applications with organized, efficient communication!

@@ -1,0 +1,157 @@
+# gRPC Fundamentals - Deep Dive
+
+**gRPC** (Google Remote Procedure Call) is a high-performance, open-source RPC framework that enables efficient communication between distributed services. It was developed by Google and is now maintained by the Cloud Native Computing Foundation (CNCF).
+
+## Architecture Overview
+
+gRPC is built on three key technologies:
+
+### 1. Protocol Buffers (Protobuf)
+A **language-agnostic serialization mechanism** that defines data structures in `.proto` files. The compiler generates type-safe code for your language.
+
+```protobuf
+syntax = "proto3";
+
+message User {
+  int32 id = 1;
+  string name = 2;
+  string email = 3;
+}
+```
+
+### 2. HTTP/2 Transport
+gRPC leverages **HTTP/2** features for performance:
+
+- **Multiplexing**: Multiple requests on a single TCP connection
+- **Header Compression**: Reduces overhead with HPACK compression
+- **Binary Framing**: More efficient than text-based HTTP/1.1
+- **Flow Control**: Prevents overwhelming slow clients/servers
+
+### 3. Service Contracts
+Services are defined using **interface definition language (IDL)** in `.proto` files:
+
+```protobuf
+service UserService {
+  rpc GetUser (GetUserRequest) returns (UserResponse);
+  rpc ListUsers (ListUsersRequest) returns (stream UserResponse);
+}
+```
+
+<GrpcArchitectureVisualizer />
+
+<ProgressCheckpoint section="what-is-grpc" xpReward={40} />
+
+## gRPC vs REST: Technical Comparison
+
+<GrpcVsRestComparison />
+
+### Performance Metrics
+
+| Metric | gRPC | REST (JSON) |
+|:-------|:-----|:------------|
+| **Serialization Speed** | ~20-100x faster | Baseline |
+| **Payload Size** | 30-50% smaller | Baseline |
+| **Latency** | Lower (HTTP/2) | Higher (HTTP/1.1) |
+| **Connection Reuse** | Always (HTTP/2) | Limited |
+
+### Code Generation
+
+gRPC auto-generates client and server code from `.proto` files:
+
+```bash
+# Generate C# code from .proto file
+protoc --csharp_out=. --grpc_out=. --plugin=protoc-gen-grpc=grpc_csharp_plugin user.proto
+```
+
+**Benefits:**
+- **Type safety**: Compile-time checks prevent errors
+- **Consistency**: Same definitions for all services
+- **Less boilerplate**: Auto-generated stubs and serialization
+
+<ProgressCheckpoint section="grpc-vs-rest" xpReward={40} />
+
+## Communication Patterns
+
+gRPC supports four communication patterns:
+
+### 1. Unary RPC (Request-Response)
+```protobuf
+rpc GetUser (GetUserRequest) returns (UserResponse);
+```
+**Use case:** Simple CRUD operations, authentication
+
+### 2. Server Streaming
+```protobuf
+rpc WatchStockPrice (StockRequest) returns (stream StockPrice);
+```
+**Use case:** Live updates, log streaming, file downloads
+
+### 3. Client Streaming
+```protobuf
+rpc UploadFile (stream FileChunk) returns (UploadResponse);
+```
+**Use case:** File uploads, sensor data collection, metrics
+
+### 4. Bidirectional Streaming
+```protobuf
+rpc Chat (stream ChatMessage) returns (stream ChatMessage);
+```
+**Use case:** Chat applications, multiplayer games, collaborative editing
+
+<InfoBox type="info">
+**HTTP/2 Multiplexing** allows all four patterns to work simultaneously on a single TCP connection, dramatically reducing latency and resource usage.
+</InfoBox>
+
+<ProgressCheckpoint section="grpc-architecture" xpReward={40} />
+
+## Language Support
+
+gRPC has official support for:
+
+| Language | Status | Notes |
+|:---------|:-------|:------|
+| C# / .NET | ✅ First-class | Excellent ASP.NET Core integration |
+| Java | ✅ First-class | High performance |
+| Go | ✅ First-class | Used extensively at Google |
+| Python | ✅ Stable | Good for data science |
+| Node.js | ✅ Stable | Great for microservices |
+| C++ | ✅ Reference | Highest performance |
+
+## Real-World Use Cases
+
+**1. Microservices Communication**
+```
+API Gateway → [gRPC] → User Service
+                     → Order Service
+                     → Payment Service
+```
+
+**2. Mobile-to-Backend**
+- Reduced data transfer (saves battery and bandwidth)
+- Efficient binary protocol
+- Built-in streaming for real-time features
+
+**3. IoT and Edge Computing**
+- Low latency requirements
+- Efficient for resource-constrained devices
+- Streaming telemetry data
+
+<InfoBox type="tip">
+**Best Practice:** Use gRPC for internal service-to-service communication and REST for public-facing APIs accessed by web browsers.
+</InfoBox>
+
+## Key Advantages
+
+✅ **Performance**: 7-10x faster than REST with JSON  
+✅ **Streaming**: Native bidirectional streaming support  
+✅ **Type Safety**: Strong contracts via Protobuf schemas  
+✅ **Code Generation**: Automatic client/server stubs  
+✅ **Deadlines/Timeouts**: Built-in request deadline support  
+✅ **Cancellation**: Request cancellation propagation  
+
+## Limitations
+
+❌ **Browser Support**: Limited (requires gRPC-Web proxy)  
+❌ **Debugging**: Binary format harder to inspect than JSON  
+❌ **Learning Curve**: More complex than REST  
+❌ **Tooling**: Fewer debugging tools compared to REST  

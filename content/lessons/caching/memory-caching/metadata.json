@@ -1,0 +1,29 @@
+{
+  "id": "memory-caching",
+  "title": "In-Memory Caching",
+  "description": "Learn how to use in-memory caching in ASP.NET Core to improve application performance by storing frequently accessed data in server memory.",
+  "milestone": "caching",
+  "order": 1,
+  "sections": [
+    "memory-caching-intro",
+    "caching-basics",
+    "cache-operations",
+    "cache-expiration"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 25,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 40,
+      "xpReward": 50
+    },
+    "advanced": {
+      "estimatedMinutes": 60,
+      "xpReward": 70
+    }
+  },
+  "prerequisites": [],
+  "tags": ["caching", "memory", "performance", "aspnet-core"]
+}

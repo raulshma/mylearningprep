@@ -1,0 +1,33 @@
+{
+  "id": "xunit-testing",
+  "title": "xUnit Testing Framework",
+  "description": "Master xUnit - the popular, modern testing framework for .NET applications",
+  "milestone": "testing",
+  "order": 1,
+  "sections": [
+    "introduction",
+    "why-xunit",
+    "first-test",
+    "facts-theories",
+    "assertions",
+    "test-organization",
+    "best-practices",
+    "summary"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 25,
+      "xpReward": 60
+    },
+    "intermediate": {
+      "estimatedMinutes": 40,
+      "xpReward": 120
+    },
+    "advanced": {
+      "estimatedMinutes": 55,
+      "xpReward": 240
+    }
+  },
+  "prerequisites": ["csharp-basics"],
+  "tags": ["testing", "xunit", "dotnet", "unit-testing", "tdd"]
+}

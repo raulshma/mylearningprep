@@ -1,0 +1,335 @@
+# Protocol Buffers - Schema Design
+
+Protocol Buffers is Google's **language-neutral, platform-neutral** mechanism for serializing structured data. It's the serialization format that powers gRPC and is used extensively in Google's infrastructure (processing over 1 trillion messages per day).
+
+## Proto3 Syntax
+
+Protobuf schemas are defined in `.proto` files using the **proto3** syntax:
+
+```protobuf
+syntax = "proto3";
+
+package ecommerce;
+
+option csharp_namespace = "Ecommerce.Grpc";
+
+message Product {
+  int32 id = 1;
+  string name = 2;
+  string description = 3;
+  double price = 4;
+  bool in_stock = 5;
+  repeated string tags = 6;
+}
+```
+
+### Key Elements
+
+- **`syntax`**: Specifies proto3 (recommended over proto2)
+- **`package`**: Namespace to prevent type name conflicts
+- **`option csharp_namespace`**: Customize generated C# namespace
+- **`message`**: Defines a structured data type
+- **Field numbers** (1, 2, 3...): Unique identifiers for each field
+
+<InfoBox type="info">
+**Field Numbers:** These are used in the binary encoding. Numbers 1-15 take 1 byte, 16-2047 take 2 bytes. Reserve 1-15 for frequently occurring fields.
+</InfoBox>
+
+<ProtobufSchemaBuilder />
+
+<ProgressCheckpoint section="proto-syntax" xpReward={45} />
+
+## Scalar Types
+
+Protobuf provides rich scalar types that map to native language types:
+
+| Proto Type | C# Type | Description | Default Value |
+|:-----------|:--------|:------------|:--------------|
+| `int32`, `int64` | `int`, `long` | Signed integers | `0` |
+| `uint32`, `uint64` | `uint`, `ulong` | Unsigned integers | `0` |
+| `sint32`, `sint64` | `int`, `long` | Signed (optimized for negatives) | `0` |
+| `fixed32`, `fixed64` | `uint`, `ulong` | Fixed 4/8 bytes | `0` |
+| `float`, `double` | `float`, `double` | Floating point | `0.0` |
+| `bool` | `bool` | Boolean | `false` |
+| `string` | `string` | UTF-8 or 7-bit ASCII | `""` |
+| `bytes` | `ByteString` | Arbitrary byte sequence | `empty` |
+
+### Choosing Integer Types
+
+```protobuf
+message MetricsData {
+  // Use int32 for small positive numbers (0 to ~100M)
+  int32 request_count = 1;
+  
+  // Use sint32 when values are frequently negative
+  sint32 temperature_celsius = 2;
+  
+  // Use fixed64 for large numbers that are always 8 bytes
+  fixed64 timestamp_nanos = 3;
+  
+  // Use uint64 for IDs and large positive numbers
+  uint64 user_id = 4;
+}
+```
+
+<ProgressCheckpoint section="data-types" xpReward={45} />
+
+## Complex Types
+
+### Enumerations
+
+```protobuf
+enum OrderStatus {
+  ORDER_STATUS_UNSPECIFIED = 0;  // First value must be zero
+  ORDER_STATUS_PENDING = 1;
+  ORDER_STATUS_PROCESSING = 2;
+  ORDER_STATUS_SHIPPED = 3;
+  ORDER_STATUS_DELIVERED = 4;
+  ORDER_STATUS_CANCELLED = 5;
+}
+
+message Order {
+  string order_id = 1;
+  OrderStatus status = 2;
+  double total_amount = 3;
+}
+```
+
+**Best Practices:**
+- First enum value must be `0` (default)
+- Prefix enum values with enum name (e.g., `ORDER_STATUS_`)
+- Use `_UNSPECIFIED` for the zero value
+
+### Repeated Fields (Lists/Arrays)
+
+```protobuf
+message User {
+  int32 id = 1;
+  string name = 2;
+  
+  // List of email addresses
+  repeated string emails = 3;
+  
+  // List of phone numbers
+  repeated string phone_numbers = 4;
+}
+```
+
+Generated C# code uses `RepeatedField<T>`:
+
+```csharp
+var user = new User {
+    Id = 1,
+    Name = "Alice",
+    Emails = { "alice@work.com", "alice@personal.com" },
+    PhoneNumbers = { "+1-555-1234", "+1-555-5678" }
+};
+
+// Access like a list
+foreach (var email in user.Emails) {
+    Console.WriteLine(email);
+}
+```
+
+### Nested Messages
+
+```protobuf
+message Address {
+  string street = 1;
+  string city = 2;
+  string state = 3;
+  string postal_code = 4;
+  string country = 5;
+}
+
+message Employee {
+  int32 id = 1;
+  string name = 2;
+  string email = 3;
+  
+  // Nested message
+  Address home_address = 4;
+  Address work_address = 5;
+}
+```
+
+### Maps (Key-Value Pairs)
+
+```protobuf
+message ProductCatalog {
+  // Map of product_id to product name
+  map<int32, string> products = 1;
+  
+  // Map of category to list of product IDs
+  map<string, ProductIdList> categories = 2;
+}
+
+message ProductIdList {
+  repeated int32 product_ids = 1;
+}
+```
+
+Usage in C#:
+
+```csharp
+var catalog = new ProductCatalog();
+catalog.Products[101] = "Laptop";
+catalog.Products[102] = "Mouse";
+catalog.Products[103] = "Keyboard";
+
+// Iterate
+foreach (var kvp in catalog.Products) {
+    Console.WriteLine($"Product {kvp.Key}: {kvp.Value}");
+}
+```
+
+<ProgressCheckpoint section="code-generation" xpReward={45} />
+
+## Code Generation
+
+### Compiling .proto Files
+
+```bash
+# Install protoc compiler
+dotnet tool install -g Grpc.Tools
+
+# Generate C# code
+protoc --csharp_out=./Generated \
+       --grpc_out=./Generated \
+       --plugin=protoc-gen-grpc=grpc_csharp_plugin \
+       protos/user.proto
+```
+
+### Integration with .NET Projects
+
+In your `.csproj`:
+
+```xml
+<ItemGroup>
+  <Protobuf Include="Protos\user.proto" GrpcServices="Both" />
+  <PackageReference Include="Grpc.Tools" Version="2.60.0" PrivateAssets="All" />
+  <PackageReference Include="Grpc.AspNetCore" Version="2.60.0" />
+</ItemGroup>
+```
+
+**Benefits:**
+- **Automatic compilation**: .proto files compile during build
+- **IntelliSense support**: Full IDE support for generated types
+- **Type safety**: Compile-time error checking
+
+## Schema Evolution
+
+Protobuf is designed for **backward and forward compatibility**:
+
+### Safe Changes
+
+✅ **Adding new fields** (with new field numbers)  
+✅ **Removing optional fields** (use `reserved`)  
+✅ **Changing field names** (field numbers stay the same)  
+✅ **Changing message/enum names** (if fully qualified)  
+
+```protobuf
+// Version 1
+message User {
+  int32 id = 1;
+  string name = 2;
+}
+
+// Version 2 (backward compatible)
+message User {
+  int32 id = 1;
+  string name = 2;
+  string email = 3;           // New field - OK!
+  repeated string roles = 4;  // New field - OK!
+  
+  reserved 5;  // Reserve for future use
+  reserved "old_field";  // Mark as deleted
+}
+```
+
+### Unsafe Changes
+
+❌ **Changing field numbers** (breaks binary compatibility)  
+❌ **Changing field types** (int → string, etc.)  
+❌ **Removing required fields** (proto2 only)  
+❌ **Reusing field numbers**  
+
+<InfoBox type="warning">
+**Critical Rule:** Never change or reuse field numbers. They are the identity of your fields in the binary format.
+</InfoBox>
+
+## Binary Encoding Example
+
+Understanding how Protobuf encodes data:
+
+```protobuf
+message Person {
+  int32 id = 1;      // Field number 1
+  string name = 2;   // Field number 2
+}
+```
+
+```csharp
+var person = new Person { Id = 150, Name = "Alice" };
+byte[] encoded = person.ToByteArray();
+```
+
+**Binary representation** (hex):
+```
+08 96 01        // Field 1: varint 150
+12 05 41 6C 69 63 65  // Field 2: string "Alice" (length 5)
+```
+
+**Decoding:**
+- `08` = field number 1, wire type varint
+- `96 01` = 150 in varint encoding
+- `12` = field number 2, wire type length-delimited
+- `05` = length 5
+- `41 6C 69 63 65` = "Alice" in UTF-8
+
+**Total:** 13 bytes (vs 31 bytes for JSON `{"id":150,"name":"Alice"}`)
+
+## Best Practices
+
+1. **Use descriptive names**: `user_id` not `uid`
+2. **Reserve field numbers**: For deleted fields to prevent reuse
+3. **One proto file per message** (or group related messages)
+4. **Document with comments**: Explain business logic
+5. **Version your schemas**: Use `version` field or proto packages
+6. **Optimize for common cases**: Use field numbers 1-15 for frequent fields
+
+```protobuf
+// Good: Well-documented, organized schema
+syntax = "proto3";
+
+package users.v1;
+
+// Represents a user account in the system.
+message UserAccount {
+  // Unique identifier for the user
+  int64 user_id = 1;
+  
+  // User's full name (required)
+  string full_name = 2;
+  
+  // Primary email address for authentication
+  string email = 3;
+  
+  // Account creation timestamp (Unix epoch seconds)
+  int64 created_at = 4;
+  
+  // Whether the account is currently active
+  bool is_active = 5;
+  
+  reserved 6, 7;  // Deleted fields: old_password_hash, legacy_flag
+}
+```
+
+## Performance Characteristics
+
+| Operation | Protobuf | JSON |
+|:----------|:---------|:-----|
+| **Serialization** | ~1-5 μs | ~50-200 μs |
+| **Deserialization** | ~2-10 μs | ~100-500 μs |
+| **Message size** | 100-500 bytes | 300-2000 bytes |
+| **Schema validation** | Compile-time | Runtime (optional) |

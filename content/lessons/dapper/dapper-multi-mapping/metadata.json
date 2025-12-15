@@ -1,0 +1,31 @@
+{
+  "id": "dapper-multi-mapping",
+  "title": "Multi-Mapping",
+  "description": "Learn how to map complex query results to multiple objects using Dapper's multi-mapping feature",
+  "milestone": "dapper",
+  "order": 3,
+  "sections": [
+    "introduction-multi-mapping",
+    "two-type-mapping",
+    "spliton-parameter",
+    "three-plus-types",
+    "real-world-examples",
+    "performance-tips"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 20,
+      "xpReward": 40
+    },
+    "intermediate": {
+      "estimatedMinutes": 28,
+      "xpReward": 60
+    },
+    "advanced": {
+      "estimatedMinutes": 35,
+      "xpReward": 85
+    }
+  },
+  "prerequisites": ["dapper/dapper-queries"],
+  "tags": ["dapper", "multi-mapping", "joins", "relationships", "complex-queries"]
+}

@@ -1,0 +1,28 @@
+{
+  "id": "protobuf",
+  "title": "Protocol Buffers",
+  "description": "Learn Protocol Buffers (protobuf) - Google's language-neutral, platform-neutral mechanism for serializing structured data efficiently.",
+  "milestone": "grpc",
+  "order": 2,
+  "sections": [
+    "proto-syntax",
+    "data-types",
+    "code-generation"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 20,
+      "xpReward": 45
+    },
+    "advanced": {
+      "estimatedMinutes": 28,
+      "xpReward": 65
+    }
+  },
+  "prerequisites": ["grpc-fundamentals"],
+  "tags": ["protobuf", "protocol-buffers", "serialization", "grpc", "schemas"]
+}

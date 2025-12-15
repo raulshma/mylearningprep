@@ -250,7 +250,7 @@ export function DatabaseDesignVisualizer({
             <p className="text-sm text-gray-400">
               Just like architects create blueprints before building a house, we design our database 
               before storing data. Good design prevents problems later - like trying to add a 
-              bathroom where there's no plumbing!
+              bathroom where there&apos;s no plumbing!
             </p>
           </div>
         )}
@@ -335,7 +335,7 @@ export function DatabaseDesignVisualizer({
               <div className="bg-blue-900/20 border border-blue-700 rounded-lg p-3">
                 <h5 className="text-sm font-medium text-blue-300 mb-1">💡 Junction Table</h5>
                 <p className="text-xs text-gray-400">
-                  The "Enrollments" table is called a <strong>junction table</strong> (or bridge/link table). 
+                  The &quot;Enrollments&quot; table is called a <strong>junction table</strong> (or bridge/link table). 
                   It breaks the many-to-many relationship into two one-to-many relationships.
                 </p>
               </div>

@@ -1,0 +1,414 @@
+# Dapper Basics - Intermediate
+
+Welcome back! You've mastered the fundamentals of Dapper. Now let's dive deeper into advanced querying techniques, dynamic mapping, and performance optimization strategies that will make you a more proficient .NET developer.
+
+<InfoBox type="tip" title="Level Up Your Skills">
+This lesson covers dynamic queries, custom type handlers, buffered vs unbuffered queries, and advanced parameter techniques—topics essential for building production-ready applications.
+</InfoBox>
+
+<ProgressCheckpoint section="introduction" xpReward={8} />
+
+## Dynamic Queries and Result Sets
+
+Sometimes you don't know the exact structure of your result set at compile time. Dapper supports dynamic typing for maximum flexibility:
+
+```csharp
+// Query without specifying a type
+var results = connection.Query(
+    "SELECT ProductId, Name, Price FROM Products WHERE CategoryId = @categoryId",
+    new { categoryId = 1 }
+);
+
+foreach (var row in results)
+{
+    // Access properties dynamically
+    Console.WriteLine($"Product: {row.Name}, Price: ${row.Price}");
+    
+    // Dynamic objects allow property access by name
+    int id = row.ProductId;
+    string name = row.Name;
+    decimal price = row.Price;
+}
+```
+
+<ProgressCheckpoint section="what-is-dapper" xpReward={8} />
+
+### When to Use Dynamic Queries
+
+**Good use cases:**
+- Reporting queries where the structure varies
+- Building flexible data export functionality
+- Prototyping before creating concrete types
+- Working with database views that change frequently
+
+**Avoid when:**
+- You know the exact structure (type safety is better)
+- Building APIs with strict contracts
+- Performance is critical (dynamic has slight overhead)
+
+```csharp
+// Dynamic with complex aggregations
+var stats = connection.QuerySingle(
+    @"SELECT 
+        COUNT(*) as TotalOrders,
+        SUM(Total) as Revenue,
+        AVG(Total) as AverageOrderValue
+      FROM Orders 
+      WHERE OrderDate >= @startDate",
+    new { startDate = DateTime.Today.AddDays(-30) }
+);
+
+Console.WriteLine($"Total: {stats.TotalOrders}, Revenue: ${stats.Revenue:N2}");
+```
+
+<KeyConcept title="Dynamic vs Strongly-Typed">
+**Strongly-Typed (Recommended)**:
+- Compile-time safety
+- IntelliSense support
+- Better performance
+- Clear documentation
+
+**Dynamic (Use Sparingly)**:
+- Runtime flexibility
+- No predefined models needed
+- Useful for ad-hoc queries
+- Slight performance overhead
+</KeyConcept>
+
+<ProgressCheckpoint section="installation" xpReward={8} />
+
+## Advanced Parameter Techniques
+
+### Anonymous Objects vs DynamicParameters
+
+You've used anonymous objects for parameters. Now let's explore `DynamicParameters` for more control:
+
+```csharp
+using Dapper;
+
+// Basic anonymous object (you've seen this)
+var customer = connection.QuerySingle<Customer>(
+    "SELECT * FROM Customers WHERE Id = @id",
+    new { id = 1 }
+);
+
+// DynamicParameters for advanced scenarios
+var parameters = new DynamicParameters();
+parameters.Add("@minPrice", 100.00m);
+parameters.Add("@maxPrice", 500.00m);
+parameters.Add("@categoryId", 1);
+
+// Can add parameters conditionally
+if (includeOutOfStock)
+{
+    parameters.Add("@minStock", 0);
+}
+else
+{
+    parameters.Add("@minStock", 1);
+}
+
+var products = connection.Query<Product>(
+    @"SELECT * FROM Products 
+      WHERE Price BETWEEN @minPrice AND @maxPrice 
+      AND CategoryId = @categoryId
+      AND Stock >= @minStock",
+    parameters
+);
+```
+
+### Output and Return Parameters
+
+DynamicParameters shines when working with stored procedures that have output or return values:
+
+```csharp
+var parameters = new DynamicParameters();
+parameters.Add("@customerId", 42);
+parameters.Add("@totalOrders", dbType: DbType.Int32, direction: ParameterDirection.Output);
+parameters.Add("@returnValue", dbType: DbType.Int32, direction: ParameterDirection.ReturnValue);
+
+var orders = connection.Query<Order>(
+    "GetCustomerOrdersWithStats",
+    parameters,
+    commandType: CommandType.StoredProcedure
+).ToList();
+
+// Retrieve output parameters after execution
+int totalOrders = parameters.Get<int>("@totalOrders");
+int returnValue = parameters.Get<int>("@returnValue");
+
+Console.WriteLine($"Retrieved {orders.Count} orders. Total in DB: {totalOrders}");
+```
+
+<ProgressCheckpoint section="first-query" xpReward={8} />
+
+## Custom Type Handlers
+
+Dapper automatically maps most .NET types, but sometimes you need custom mapping logic. Type handlers let you control how specific types are read from and written to the database:
+
+```csharp
+// Example: Custom handler for JSON columns
+public class JsonTypeHandler<T> : SqlMapper.TypeHandler<T>
+{
+    public override T Parse(object value)
+    {
+        // Deserialize JSON from database to .NET object
+        return JsonSerializer.Deserialize<T>(value.ToString());
+    }
+
+    public override void SetValue(IDbDataParameter parameter, T value)
+    {
+        // Serialize .NET object to JSON for database
+        parameter.Value = JsonSerializer.Serialize(value);
+        parameter.DbType = DbType.String;
+    }
+}
+
+// Register the handler (typically in app startup)
+SqlMapper.AddTypeHandler(new JsonTypeHandler<ProductMetadata>());
+
+// Now you can use it seamlessly
+public class Product
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public ProductMetadata Metadata { get; set; } // Stored as JSON in DB
+}
+
+var product = connection.QuerySingle<Product>(
+    "SELECT Id, Name, MetadataJson as Metadata FROM Products WHERE Id = @id",
+    new { id = 1 }
+);
+// Metadata automatically deserialized!
+```
+
+### Built-in Type Handler Example
+
+```csharp
+// Custom handler for DateTimeOffset with specific timezone handling
+public class UtcDateTimeOffsetHandler : SqlMapper.TypeHandler<DateTimeOffset>
+{
+    public override DateTimeOffset Parse(object value)
+    {
+        if (value is DateTime dt)
+        {
+            // Always treat database DateTime as UTC
+            return new DateTimeOffset(DateTime.SpecifyKind(dt, DateTimeKind.Utc));
+        }
+        return DateTimeOffset.Parse(value.ToString());
+    }
+
+    public override void SetValue(IDbDataParameter parameter, DateTimeOffset value)
+    {
+        // Always store as UTC DateTime
+        parameter.Value = value.UtcDateTime;
+    }
+}
+
+SqlMapper.AddTypeHandler(new UtcDateTimeOffsetHandler());
+```
+
+<ProgressCheckpoint section="parameterized-queries" xpReward={8} />
+
+## Buffered vs Unbuffered Queries
+
+By default, Dapper uses **buffered** queries. Understanding the difference is crucial for performance:
+
+### Buffered Queries (Default)
+
+```csharp
+// All results loaded into memory immediately
+var products = connection.Query<Product>(
+    "SELECT * FROM Products",
+    buffered: true // This is the default
+).ToList();
+
+// You can iterate multiple times
+foreach (var p in products) { /* ... */ }
+foreach (var p in products) { /* ... */ } // Works fine!
+```
+
+**Pros:**
+- Can iterate multiple times
+- Connection closed immediately
+- Easier to work with
+
+**Cons:**
+- Entire result set loaded into memory
+- Not suitable for very large datasets
+
+### Unbuffered Queries
+
+```csharp
+using (var connection = new SqlConnection(connectionString))
+{
+    connection.Open();
+    
+    // Results streamed as you iterate (buffered: false)
+    var products = connection.Query<Product>(
+        "SELECT * FROM Products WHERE CategoryId = @categoryId",
+        new { categoryId = 1 },
+        buffered: false
+    );
+
+    // MUST process while connection is open
+    foreach (var product in products)
+    {
+        // Process one at a time, memory-efficient
+        ProcessProduct(product);
+    }
+    
+    // Cannot iterate again!
+    // foreach (var p in products) { } // This would fail!
+}
+```
+
+**Pros:**
+- Memory-efficient for large datasets
+- Streams results incrementally
+- Ideal for processing millions of rows
+
+**Cons:**
+- Can only iterate once
+- Must keep connection open during iteration
+- More complex to manage
+
+<KeyConcept title="When to Use Unbuffered">
+Use **buffered** (default) for:
+- Small to medium result sets (< 10,000 rows)
+- When you need to iterate multiple times
+- Most common scenarios
+
+Use **unbuffered** for:
+- Very large result sets (100,000+ rows)
+- Data export/import operations
+- When memory is constrained
+- Stream processing scenarios
+</KeyConcept>
+
+<ProgressCheckpoint section="best-practices" xpReward={8} />
+
+## Performance Optimization Techniques
+
+### 1. Query Plan Caching
+
+Dapper automatically caches query plans, but you can help it optimize:
+
+```csharp
+// Good: Consistent parameter names aid caching
+const string sql = "SELECT * FROM Products WHERE CategoryId = @categoryId AND Price < @maxPrice";
+
+var products1 = connection.Query<Product>(sql, new { categoryId = 1, maxPrice = 100m });
+var products2 = connection.Query<Product>(sql, new { categoryId = 2, maxPrice = 200m });
+// Same SQL, so Dapper reuses the cached plan
+
+// Less optimal: String interpolation prevents caching
+var category = 1;
+var products = connection.Query<Product>(
+    $"SELECT * FROM Products WHERE CategoryId = {category}" // Don't do this!
+);
+```
+
+### 2. Column Mapping Optimization
+
+Tell Dapper to ignore properties that don't map to columns:
+
+```csharp
+public class Product
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+    public decimal Price { get; set; }
+    
+    // Computed property, not in database
+    [NotMapped] // Requires Dapper.Contrib
+    public decimal PriceWithTax => Price * 1.2m;
+}
+```
+
+### 3. Batch Operations Efficiently
+
+```csharp
+// Efficient: Single batch operation
+var sql = "INSERT INTO Products (Name, Price) VALUES (@Name, @Price)";
+var products = GetProductsToInsert(); // Returns List<Product>
+
+connection.Execute(sql, products); // Batched!
+
+// Inefficient: Loop with individual executes
+foreach (var product in products)
+{
+    connection.Execute(sql, product); // Don't do this!
+}
+```
+
+### 4. Use Async for I/O-Bound Operations
+
+```csharp
+public async Task<List<Product>> GetProductsAsync(int categoryId)
+{
+    using (var connection = new SqlConnection(_connectionString))
+    {
+        var products = await connection.QueryAsync<Product>(
+            "SELECT * FROM Products WHERE CategoryId = @categoryId",
+            new { categoryId }
+        );
+        
+        return products.ToList();
+    }
+}
+
+// In ASP.NET Core controllers
+[HttpGet("products/{categoryId}")]
+public async Task<IActionResult> GetProducts(int categoryId)
+{
+    var products = await GetProductsAsync(categoryId);
+    return Ok(products);
+}
+```
+
+<DapperQueryVisualizer />
+
+<InfoBox type="success" title="Intermediate Mastery Achieved! 🚀">
+You've learned:
+- Dynamic queries for flexible data access
+- Advanced parameter techniques with DynamicParameters
+- Custom type handlers for specialized mapping
+- Buffered vs unbuffered query strategies
+- Performance optimization best practices
+
+You're now equipped to handle complex data access scenarios efficiently. Ready for the advanced lesson to push your skills even further?
+</InfoBox>
+
+## Best Practices Summary
+
+```csharp
+// ✅ DO: Use strongly-typed queries when possible
+var products = connection.Query<Product>(sql, param);
+
+// ✅ DO: Use DynamicParameters for complex scenarios
+var parameters = new DynamicParameters();
+parameters.Add("@id", 1, DbType.Int32, ParameterDirection.Input);
+
+// ✅ DO: Use async for web applications
+var products = await connection.QueryAsync<Product>(sql, param);
+
+// ✅ DO: Use unbuffered for very large datasets
+var huge = connection.Query<Product>(sql, buffered: false);
+
+// ✅ DO: Batch operations when possible
+connection.Execute(sql, listOfObjects);
+
+// ❌ DON'T: Use string interpolation for SQL
+var sql = $"SELECT * FROM Products WHERE Id = {id}"; // SQL Injection risk!
+
+// ❌ DON'T: Fetch more data than you need
+var all = connection.Query<Product>("SELECT * FROM Products");
+var first = all.First(); // Should use QueryFirst!
+
+// ❌ DON'T: Forget to dispose connections
+var conn = new SqlConnection(connString);
+var data = conn.Query<Product>(sql); // Memory leak! Use 'using'
+```
+
+Continue to the advanced lesson to learn about multi-result queries, transaction management, and integration with complex domain models!

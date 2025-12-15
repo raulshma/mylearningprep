@@ -1,0 +1,591 @@
+# Advanced JavaScript Interop: Production Patterns
+
+Master enterprise-grade JS interop patterns, including streaming, memory management, and high-performance scenarios.
+
+## JS Module Isolation & Encapsulation
+
+### Abstract JS Wrapper Service
+
+Create a C# abstraction layer over JavaScript modules:
+
+```csharp
+// IChartService.cs
+public interface IChartService
+{
+    Task<ChartInstance> CreateChartAsync(
+        string elementId, 
+        ChartConfiguration config);
+    Task DestroyAllChartsAsync();
+}
+
+// ChartService.cs
+public class ChartService : IChartService, IAsyncDisposable
+{
+    private readonly IJSRuntime _jsRuntime;
+    private IJSObjectReference? _module;
+    private readonly List<IJSObjectReference> _chartInstances = new();
+    
+    public ChartService(IJSRuntime jsRuntime)
+    {
+        _jsRuntime = jsRuntime;
+    }
+    
+    private async Task<IJSObjectReference> GetModuleAsync()
+    {
+        _module ??= await _jsRuntime.InvokeAsync<IJSObjectReference>(
+            "import", "./js/chartWrapper.js");
+        return _module;
+    }
+    
+    public async Task<ChartInstance> CreateChartAsync(
+        string elementId, 
+        ChartConfiguration config)
+    {
+        var module = await GetModuleAsync();
+        var jsInstance = await module.InvokeAsync<IJSObjectReference>(
+            "createChart", elementId, config);
+        
+        _chartInstances.Add(jsInstance);
+        
+        return new ChartInstance(jsInstance);
+    }
+    
+    public async Task DestroyAllChartsAsync()
+    {
+        foreach (var chart in _chartInstances)
+        {
+            await chart.InvokeVoidAsync("destroy");
+            await chart.DisposeAsync();
+        }
+        _chartInstances.Clear();
+    }
+    
+    public async ValueTask DisposeAsync()
+    {
+        await DestroyAllChartsAsync();
+        if (_module != null)
+        {
+            await _module.DisposeAsync();
+        }
+    }
+}
+
+// Register in Program.cs
+builder.Services.AddScoped<IChartService, ChartService>();
+```
+
+**Usage in Components:**
+
+```csharp
+@inject IChartService ChartService
+@implements IAsyncDisposable
+
+private ChartInstance? _chart;
+
+protected override async Task OnAfterRenderAsync(bool firstRender)
+{
+    if (firstRender)
+    {
+        _chart = await ChartService.CreateChartAsync(
+            "myChart",
+            new ChartConfiguration { /* ... */ }
+        );
+    }
+}
+
+async ValueTask IAsyncDisposable.DisposeAsync()
+{
+    if (_chart != null)
+    {
+        await _chart.DestroyAsync();
+    }
+}
+```
+
+## Streaming Large Data
+
+### JavaScript Streams to C#
+
+```javascript
+// streamHelper.js
+export async function* generateDataStream(count) {
+    for (let i = 0; i < count; i++) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        yield { id: i, value: Math.random() * 100 };
+    }
+}
+
+export async function streamToBlazor(dotNetHelper, count) {
+    const stream = generateDataStream(count);
+    
+    for await (const data of stream) {
+        await dotNetHelper.invokeMethodAsync('OnDataReceived', data);
+    }
+    
+    await dotNetHelper.invokeMethodAsync('OnStreamComplete');
+}
+```
+
+```csharp
+@code {
+    private List<DataPoint> receivedData = new();
+    private DotNetObjectReference<StreamComponent>? objRef;
+    
+    protected override async Task OnInitializedAsync()
+    {
+        objRef = DotNetObjectReference.Create(this);
+        var module = await JS.InvokeAsync<IJSObjectReference>(
+            "import", "./streamHelper.js");
+        
+        await module.InvokeVoidAsync("streamToBlazor", objRef, 100);
+    }
+    
+    [JSInvokable]
+    public async Task OnDataReceived(DataPoint data)
+    {
+        receivedData.Add(data);
+        await InvokeAsync(StateHasChanged); // Update UI
+    }
+    
+    [JSInvokable]
+    public void OnStreamComplete()
+    {
+        Console.WriteLine($"Received {receivedData.Count} items");
+    }
+}
+```
+
+### C# Streams to JavaScript
+
+```csharp
+public class DataStreamService
+{
+    [JSInvokable]
+    public async IAsyncEnumerable<SensorReading> GetSensorStream(
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            yield return new SensorReading
+            {
+                Temperature = Random.Shared.Next(20, 30),
+                Humidity = Random.Shared.Next(40, 60),
+                Timestamp = DateTime.UtcNow
+            };
+            
+            await Task.Delay(1000, cancellationToken);
+        }
+    }
+}
+```
+
+```javascript
+// JavaScript consumer
+const streamRef = await DotNet.invokeMethodAsync(
+    'YourApp', 
+    'GetSensorStream'
+);
+
+// Process stream
+for await (const reading of streamRef) {
+    console.log(`Temp: ${reading.temperature}°C`);
+    updateDashboard(reading);
+}
+```
+
+## Memory Management & Leak Prevention
+
+### Automatic Cleanup Pattern
+
+```csharp
+public class JSInteropLifecycleManager : IAsyncDisposable
+{
+    private readonly IJSRuntime _js;
+    private readonly List<IJSObjectReference> _modules = new();
+    private readonly List<IJSObjectReference> _instances = new();
+    private readonly List<DotNetObjectReference<object>> _dotNetRefs = new();
+    
+    public JSInteropLifecycleManager(IJSRuntime js)
+    {
+        _js = js;
+    }
+    
+    public async Task<IJSObjectReference> ImportModuleAsync(string path)
+    {
+        var module = await _js.InvokeAsync<IJSObjectReference>(
+            "import", path);
+        _modules.Add(module);
+        return module;
+    }
+    
+    public void TrackInstance(IJSObjectReference instance)
+    {
+        _instances.Add(instance);
+    }
+    
+    public void TrackDotNetRef<T>(DotNetObjectReference<T> objRef) 
+        where T : class
+    {
+        _dotNetRefs.Add((DotNetObjectReference<object>)(object)objRef);
+    }
+    
+    public async ValueTask DisposeAsync()
+    {
+        // Dispose instances first
+        foreach (var instance in _instances)
+        {
+            try
+            {
+                await instance.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+                // Circuit disconnected, ignore
+            }
+        }
+        
+        // Then modules
+        foreach (var module in _modules)
+        {
+            try
+            {
+                await module.DisposeAsync();
+            }
+            catch (JSDisconnectedException) { }
+        }
+        
+        // Finally .NET refs
+        foreach (var dotNetRef in _dotNetRefs)
+        {
+            dotNetRef.Dispose();
+        }
+        
+        _instances.Clear();
+        _modules.Clear();
+        _dotNetRefs.Clear();
+    }
+}
+```
+
+**Usage:**
+
+```csharp
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+private JSInteropLifecycleManager? _lifecycleManager;
+
+protected override async Task OnInitializedAsync()
+{
+    _lifecycleManager = new JSInteropLifecycleManager(JS);
+    
+    var module = await _lifecycleManager.ImportModuleAsync("./myModule.js");
+    var instance = await module.InvokeAsync<IJSObjectReference>("create");
+    _lifecycleManager.TrackInstance(instance);
+    
+    var objRef = DotNetObjectReference.Create(this);
+    _lifecycleManager.TrackDotNetRef(objRef);
+}
+
+async ValueTask IAsyncDisposable.DisposeAsync()
+{
+    if (_lifecycleManager != null)
+    {
+        await _lifecycleManager.DisposeAsync();
+    }
+}
+```
+
+## High-Performance Patterns
+
+### Debouncing JS Calls
+
+```csharp
+public class DebouncedInvoker
+{
+    private readonly IJSRuntime _js;
+    private CancellationTokenSource? _cts;
+    
+    public DebouncedInvoker(IJSRuntime js)
+    {
+        _js = js;
+    }
+    
+    public async Task InvokeAsync(
+        string identifier, 
+        int delayMs, 
+        params object[] args)
+    {
+        // Cancel previous invocation
+        _cts?.Cancel();
+        _cts = new CancellationTokenSource();
+        
+        try
+        {
+            await Task.Delay(delayMs, _cts.Token);
+            await _js.InvokeVoidAsync(identifier, args);
+        }
+        catch (TaskCanceledException)
+        {
+            // Debounced, do nothing
+        }
+    }
+}
+```
+
+**Usage:**
+
+```csharp
+private DebouncedInvoker? _debouncer;
+private string searchTerm = "";
+
+protected override void OnInitialized()
+{
+    _debouncer = new DebouncedInvoker(JS);
+}
+
+async Task OnSearchChanged(string value)
+{
+    searchTerm = value;
+    
+    // Only calls JS after 300ms of no typing
+    await _debouncer!.InvokeAsync(
+        "performSearch", 
+        300, 
+        searchTerm
+    );
+}
+```
+
+### Batch Processing
+
+```csharp
+public class BatchedJSInvoker
+{
+    private readonly IJSRuntime _js;
+    private readonly List<BatchedCall> _queue = new();
+    private Timer? _flushTimer;
+    
+    public BatchedJSInvoker(IJSRuntime js)
+    {
+        _js = js;
+        _flushTimer = new Timer(_ => FlushAsync().GetAwaiter().GetResult(), 
+            null, 100, 100);
+    }
+    
+    public void QueueInvoke(string identifier, params object[] args)
+    {
+        _queue.Add(new BatchedCall(identifier, args));
+    }
+    
+    private async Task FlushAsync()
+    {
+        if (_queue.Count == 0) return;
+        
+        var calls = _queue.ToList();
+        _queue.Clear();
+        
+        await _js.InvokeVoidAsync("processBatchedCalls", calls);
+    }
+}
+```
+
+```javascript
+// JavaScript
+window.processBatchedCalls = function(calls) {
+    calls.forEach(call => {
+        window[call.identifier](...call.args);
+    });
+};
+```
+
+## Advanced Error Handling
+
+### Circuit Breaker Pattern
+
+```csharp
+public class CircuitBreakerJSInvoker
+{
+    private readonly IJSRuntime _js;
+    private int _failureCount = 0;
+    private DateTime _lastFailure = DateTime.MinValue;
+    private const int FailureThreshold = 3;
+    private const int CircuitOpenSeconds = 30;
+    
+    public async Task<T> InvokeAsync<T>(
+        string identifier, 
+        params object[] args)
+    {
+        // Check if circuit is open
+        if (_failureCount >= FailureThreshold &&
+            (DateTime.UtcNow - _lastFailure).TotalSeconds < CircuitOpenSeconds)
+        {
+            throw new InvalidOperationException(
+                "Circuit breaker is open. JS interop unavailable.");
+        }
+        
+        try
+        {
+            var result = await _js.InvokeAsync<T>(identifier, args);
+            
+            // Success! Reset counter
+            _failureCount = 0;
+            return result;
+        }
+        catch (JSException ex)
+        {
+            _failureCount++;
+            _lastFailure = DateTime.UtcNow;
+            
+            if (_failureCount >= FailureThreshold)
+            {
+                // Circuit opened
+                throw new InvalidOperationException(
+                    "Circuit breaker opened after repeated failures", ex);
+            }
+            
+            throw;
+        }
+    }
+}
+```
+
+## Security Considerations
+
+### Sanitizing User Input
+
+```csharp
+public class SafeJSInvoker
+{
+    private readonly IJSRuntime _js;
+    
+    public async Task SetInnerHTMLAsync(string elementId, string html)
+    {
+        // Sanitize HTML server-side
+        var sanitized = SanitizeHTML(html);
+        
+        await _js.InvokeVoidAsync(
+            "setInnerHTML", 
+            elementId, 
+            sanitized
+        );
+    }
+    
+    private string SanitizeHTML(string html)
+    {
+        // Use HtmlSanitizer library
+        var sanitizer = new HtmlSanitizer();
+        return sanitizer.Sanitize(html);
+    }
+}
+```
+
+### Validating JS Responses
+
+```csharp
+public async Task<UserData?> GetUserDataAsync()
+{
+    try
+    {
+        var data = await JS.InvokeAsync<UserData>("getUserData");
+        
+        // Validate response
+        if (string.IsNullOrEmpty(data.Email) ||
+            !data.Email.Contains("@"))
+        {
+            throw new ValidationException("Invalid user data from JS");
+        }
+        
+        return data;
+    }
+    catch (JSException ex)
+    {
+        _logger.LogError(ex, "Failed to get user data");
+        return null;
+    }
+}
+```
+
+## Testing JS Interop
+
+### Mock IJSRuntime
+
+```csharp
+public class MockJSRuntime : IJSRuntime
+{
+    private readonly Dictionary<string, object?> _returns = new();
+    
+    public void SetupInvoke<T>(string identifier, T returnValue)
+    {
+        _returns[identifier] = returnValue;
+    }
+    
+    public ValueTask<TValue> InvokeAsync<TValue>(
+        string identifier, 
+        object?[]? args)
+    {
+        if (_returns.TryGetValue(identifier, out var result))
+        {
+            return ValueTask.FromResult((TValue)result!);
+        }
+        
+        return ValueTask.FromResult(default(TValue)!);
+    }
+    
+    public ValueTask<TValue> InvokeAsync<TValue>(
+        string identifier, 
+        CancellationToken cancellationToken, 
+        object?[]? args)
+    {
+        return InvokeAsync<TValue>(identifier, args);
+    }
+}
+```
+
+**Usage in Tests:**
+
+```csharp
+[Fact]
+public async Task Component_CallsJavaScript()
+{
+    // Arrange
+    var mockJS = new MockJSRuntime();
+    mockJS.SetupInvoke("getCurrentTime", "12:00 PM");
+    
+    var ctx = new TestContext();
+    ctx.Services.AddSingleton<IJSRuntime>(mockJS);
+    
+    // Act
+    var component = ctx.RenderComponent<TimeDisplay>();
+    await component.InvokeAsync(async () => 
+        await component.Instance.LoadTimeAsync());
+    
+    // Assert
+    Assert.Equal("12:00 PM", component.Instance.CurrentTime);
+}
+```
+
+<ProgressCheckpoint section="best-practices" xpReward={60} />
+
+## Production Checklist
+
+| Aspect | Implementation |
+|:-------|:---------------|
+| **Memory Leaks** | Dispose all JS refs & .NET refs |
+| **Error Handling** | Try-catch JSException |
+| **Performance** | Batch calls, debounce |
+| **Security** | Sanitize inputs, validate outputs |
+| **Testing** | Mock IJSRuntime |
+| **Circuit Breaker** | Handle repeated failures |
+| **Cleanup** | IAsyncDisposable pattern |
+
+## Summary
+
+Advanced JS interop enables:
+- ✅ Seamless third-party library integration
+- ✅ High-performance data streaming
+- ✅ Proper memory management
+- ✅ Production-grade error handling
+- ✅ Testable code with mocking
+
+Master these patterns to build enterprise Blazor applications that leverage the best of both C# and JavaScript ecosystems! 🚀

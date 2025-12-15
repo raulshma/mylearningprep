@@ -1,0 +1,28 @@
+{
+  "id": "grpc-aspnet",
+  "title": "gRPC in ASP.NET Core",
+  "description": "Master building high-performance gRPC services with ASP.NET Core - from basic services to advanced streaming patterns and production deployment.",
+  "milestone": "grpc",
+  "order": 3,
+  "sections": [
+    "creating-grpc-services",
+    "streaming-patterns",
+    "production-ready"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 18,
+      "xpReward": 35
+    },
+    "intermediate": {
+      "estimatedMinutes": 25,
+      "xpReward": 50
+    },
+    "advanced": {
+      "estimatedMinutes": 30,
+      "xpReward": 70
+    }
+  },
+  "prerequisites": ["grpc-fundamentals", "protobuf", "aspnet-core-basics"],
+  "tags": ["grpc", "aspnet-core", "dotnet", "rpc", "streaming", "microservices"]
+}

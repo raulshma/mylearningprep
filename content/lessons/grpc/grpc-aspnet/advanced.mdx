@@ -1,0 +1,825 @@
+# gRPC in ASP.NET Core - Advanced Production Patterns
+
+Building enterprise-grade gRPC services requires deep understanding of performance optimization, security hardening, observability, and advanced communication patterns. This lesson covers production-critical implementations used at scale.
+
+## Advanced Streaming Patterns
+
+### Backpressure & Flow Control
+
+Implementing proper backpressure prevents memory exhaustion in streaming scenarios:
+
+```csharp
+public class MetricsService : MetricsServiceBase
+{
+    public override async Task StreamMetrics(
+        MetricsRequest request,
+        IServerStreamWriter<MetricData> responseStream,
+        ServerCallContext context)
+    {
+        // Bounded channel for flow control
+        var channel = Channel.CreateBounded<MetricData>(
+            new BoundedChannelOptions(capacity: 100)
+            {
+                FullMode = BoundedChannelFullMode.Wait  // Backpressure
+            }
+        );
+        
+        // Producer: Generate metrics
+        var producer = Task.Run(async () =>
+        {
+            try
+            {
+                while (!context.CancellationToken.IsCancellationRequested)
+                {
+                    var metric = await _metricsCollector.GetNextMetricAsync();
+                    
+                    // Blocks if channel is full (backpressure)
+                    await channel.Writer.WriteAsync(metric, context.CancellationToken);
+                }
+            }
+            finally
+            {
+                channel.Writer.Complete();
+            }
+        });
+        
+        // Consumer: Send to client
+        await foreach (var metric in channel.Reader.ReadAllAsync(context.CancellationToken))
+        {
+            // gRPC HTTP/2 flow control handles downstream backpressure
+            await responseStream.WriteAsync(metric);
+        }
+        
+        await producer;
+    }
+}
+```
+
+### Chunked File Transfer with Progress
+
+```csharp
+public class FileTransferService : FileTransferServiceBase
+{
+    private const int ChunkSize = 64 * 1024;  // 64 KB chunks
+    
+    public override async Task DownloadFile(
+        DownloadRequest request,
+        IServerStreamWriter<FileChunk> responseStream,
+        ServerCallContext context)
+    {
+        var filePath = Path.Combine(_fileStoragePath, request.FileName);
+        
+        if (!File.Exists(filePath))
+        {
+            throw new RpcException(new Status(StatusCode.NotFound, "File not found"));
+        }
+        
+        var fileInfo = new FileInfo(filePath);
+        var totalChunks = (int)Math.Ceiling((double)fileInfo.Length / ChunkSize);
+        
+        using var fileStream = File.OpenRead(filePath);
+        var buffer = new byte[ChunkSize];
+        int chunkNumber = 0;
+        int bytesRead;
+        
+        while ((bytesRead = await fileStream.ReadAsync(
+            buffer, 0, ChunkSize, context.CancellationToken)) > 0)
+        {
+            await responseStream.WriteAsync(new FileChunk
+            {
+                Data = ByteString.CopyFrom(buffer, 0, bytesRead),
+                ChunkNumber = ++chunkNumber,
+                TotalChunks = totalChunks,
+                FileName = request.FileName
+            });
+            
+            // Throttle if needed
+            if (request.ThrottleKbps > 0)
+            {
+                var delayMs = (bytesRead * 8) / request.ThrottleKbps;
+                await Task.Delay((int)delayMs, context.CancellationToken);
+            }
+        }
+    }
+    
+    public override async Task<UploadResponse> UploadFile(
+        IAsyncStreamReader<FileChunk> requestStream,
+        ServerCallContext context)
+    {
+        FileStream? fileStream = null;
+        string? fileName = null;
+        long totalBytes = 0;
+        int chunksReceived = 0;
+        
+        try
+        {
+            await foreach (var chunk in requestStream.ReadAllAsync(context.CancellationToken))
+            {
+                if (fileStream == null)
+                {
+                    fileName = chunk.FileName;
+                    var filePath = Path.Combine(_uploadPath, fileName);
+                    fileStream = File.Create(filePath);
+                }
+                
+                await fileStream.WriteAsync(chunk.Data.Memory, context.CancellationToken);
+                totalBytes += chunk.Data.Length;
+                chunksReceived++;
+                
+                _logger.LogDebug(
+                    "Received chunk {ChunkNumber}/{TotalChunks}",
+                    chunksReceived,
+                    chunk.TotalChunks
+                );
+            }
+            
+            return new UploadResponse
+            {
+                FileName = fileName ?? "unknown",
+                TotalBytes = totalBytes,
+                Success = true
+            };
+        }
+        finally
+        {
+            fileStream?.Dispose();
+        }
+    }
+}
+```
+
+<ProgressCheckpoint section="creating-grpc-services" xpReward={70} />
+
+## Authentication & Authorization
+
+### JWT Bearer Token Authentication
+
+```csharp
+// Program.cs
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.Authority = "https://auth.example.com";
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = "https://auth.example.com",
+            ValidAudience = "grpc-api"
+        };
+    });
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
+    options.AddPolicy("ReadAccess", policy => policy.RequireClaim("scope", "read"));
+});
+
+builder.Services.AddGrpc(options =>
+{
+    options.Interceptors.Add<AuthenticationInterceptor>();
+});
+
+var app = builder.Build();
+
+app.UseAuthentication();
+app.UseAuthorization();
+```
+
+### Service Implementation with Authorization
+
+```csharp
+using Microsoft.AspNetCore.Authorization;
+
+[Authorize]  // Require authentication for all methods
+public class SecureUserService : UserService.UserServiceBase
+{
+    public override async Task<UserResponse> GetUser(
+        GetUserRequest request,
+        ServerCallContext context)
+    {
+        // Access authenticated user
+        var userId = context.GetHttpContext().User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        
+        // Check permissions
+        if (!context.GetHttpContext().User.IsInRole("Admin") && 
+            request.UserId.ToString() != userId)
+        {
+            throw new RpcException(new Status(
+                StatusCode.PermissionDenied,
+                "You can only access your own user data"
+            ));
+        }
+        
+        var user = await _repository.GetByIdAsync(request.UserId);
+        return MapToResponse(user);
+    }
+    
+    [Authorize(Policy = "AdminOnly")]  // Method-level authorization
+    public override async Task<UserResponse> DeleteUser(
+        DeleteUserRequest request,
+        ServerCallContext context)
+    {
+        await _repository.DeleteAsync(request.UserId);
+        return new UserResponse { Success = true };
+    }
+}
+```
+
+### Client-Side Authentication
+
+```csharp
+public class AuthenticatedGrpcClient
+{
+    private readonly ITokenProvider _tokenProvider;
+    private readonly GrpcChannel _channel;
+    
+    public AuthenticatedGrpcClient(ITokenProvider tokenProvider)
+    {
+        _tokenProvider = tokenProvider;
+        
+        var credentials = CallCredentials.FromInterceptor(async (context, metadata) =>
+        {
+            var token = await _tokenProvider.GetAccessTokenAsync();
+            metadata.Add("Authorization", $"Bearer {token}");
+        });
+        
+        var channelCredentials = ChannelCredentials.Create(
+            new SslCredentials(),
+            credentials
+        );
+        
+        _channel = GrpcChannel.ForAddress("https://api.example.com", new GrpcChannelOptions
+        {
+            Credentials = channelCredentials
+        });
+    }
+    
+    public UserService.UserServiceClient CreateClient()
+    {
+        return new UserService.UserServiceClient(_channel);
+    }
+}
+```
+
+<ProgressCheckpoint section="streaming-patterns" xpReward={70} />
+
+## Performance Optimization
+
+### Connection Pooling & HTTP/2 Configuration
+
+```csharp
+public static class GrpcClientConfiguration
+{
+    public static IHttpClientBuilder AddOptimizedGrpcClient<TClient>(
+        this IServiceCollection services,
+        Uri address) where TClient : class
+    {
+        return services.AddGrpcClient<TClient>(options =>
+        {
+            options.Address = address;
+        })
+        .ConfigurePrimaryHttpMessageHandler(() =>
+        {
+            var handler = new SocketsHttpHandler
+            {
+                // Connection pooling
+                PooledConnectionIdleTimeout = Timeout.InfiniteTimeSpan,
+                PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+                
+                // Keep-alive to detect dead connections
+                KeepAlivePingDelay = TimeSpan.FromSeconds(60),
+                KeepAlivePingTimeout = TimeSpan.FromSeconds(30),
+                KeepAlivePingPolicy = HttpKeepAlivePingPolicy.Always,
+                
+                // Enable multiple HTTP/2 connections for high throughput
+                EnableMultipleHttp2Connections = true,
+                
+                // SSL/TLS configuration
+                SslOptions = new SslClientAuthenticationOptions
+                {
+                    EnabledSslProtocols = SslProtocols.Tls13 | SslProtocols.Tls12,
+                    CertificateRevocationCheckMode = X509RevocationMode.Online
+                }
+            };
+            
+            return handler;
+        })
+        .ConfigureChannel(options =>
+        {
+            options.MaxReceiveMessageSize = 16 * 1024 * 1024;  // 16 MB
+            options.MaxSendMessageSize = 16 * 1024 * 1024;
+            options.MaxRetryAttempts = 3;
+            options.MaxRetryBufferSize = 16 * 1024 * 1024;
+            options.MaxRetryBufferPerCallSize = 1024 * 1024;
+            
+            // Compression
+            options.CompressionProviders = new List<ICompressionProvider>
+            {
+                new GzipCompressionProvider(CompressionLevel.Fastest)
+            };
+        });
+    }
+}
+
+// Usage
+builder.Services.AddOptimizedGrpcClient<UserService.UserServiceClient>(
+    new Uri("https://user-service:5001")
+);
+```
+
+### Message Compression
+
+```csharp
+// Server-side compression
+builder.Services.AddGrpc(options =>
+{
+    options.ResponseCompressionAlgorithm = "gzip";
+    options.ResponseCompressionLevel = CompressionLevel.Optimal;
+});
+
+// Client-side selective compression
+var largeRequest = new CreateUserRequest { /* large payload */ };
+
+var response = await client.CreateUserAsync(
+    largeRequest,
+    new CallOptions(
+        compression: "gzip",  // Compress this call
+        writeOptions: new WriteOptions(WriteFlags.BufferHint)  // Hint to buffer
+    )
+);
+```
+
+### Deadline & Timeout Management
+
+```csharp
+// Server-side deadline enforcement
+public override async Task<UserResponse> GetUser(
+    GetUserRequest request,
+    ServerCallContext context)
+{
+    // Check remaining time
+    var deadline = context.Deadline;
+    var remaining = deadline - DateTime.UtcNow;
+    
+    if (remaining < TimeSpan.FromMilliseconds(100))
+    {
+        throw new RpcException(new Status(
+            StatusCode.DeadlineExceeded,
+            "Insufficient time to process request"
+        ));
+    }
+    
+    // Use cancellation token for downstream operations
+    var user = await _repository.GetByIdAsync(
+        request.UserId,
+        context.CancellationToken
+    );
+    
+    return MapToResponse(user);
+}
+
+// Client-side deadline setting
+var deadline = DateTime.UtcNow.AddSeconds(5);
+
+var response = await client.GetUserAsync(
+    new GetUserRequest { UserId = 1 },
+    deadline: deadline
+);
+```
+
+### Retry Policy with Polly
+
+```csharp
+builder.Services.AddGrpcClient<UserService.UserServiceClient>(/* config */)
+    .AddPolicyHandler(GetRetryPolicy())
+    .AddPolicyHandler(GetCircuitBreakerPolicy());
+
+static IAsyncPolicy<HttpResponseMessage> GetRetryPolicy()
+{
+    return HttpPolicyExtensions
+        .HandleTransientHttpError()
+        .Or<RpcException>(ex => ex.StatusCode == StatusCode.Unavailable)
+        .WaitAndRetryAsync(
+            retryCount: 3,
+            sleepDurationProvider: retryAttempt => 
+                TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)),
+            onRetry: (outcome, timespan, retryCount, context) =>
+            {
+                _logger.LogWarning(
+                    "Retry {RetryCount} after {Delay}s due to {Error}",
+                    retryCount,
+                    timespan.TotalSeconds,
+                    outcome.Exception?.Message
+                );
+            }
+        );
+}
+
+static IAsyncPolicy<HttpResponseMessage> GetCircuitBreakerPolicy()
+{
+    return HttpPolicyExtensions
+        .HandleTransientHttpError()
+        .CircuitBreakerAsync(
+            handledEventsAllowedBeforeBreaking: 5,
+            durationOfBreak: TimeSpan.FromSeconds(30),
+            onBreak: (outcome, duration) =>
+            {
+                _logger.LogError("Circuit breaker opened for {Duration}s", duration.TotalSeconds);
+            },
+            onReset: () =>
+            {
+                _logger.LogInformation("Circuit breaker reset");
+            }
+        );
+}
+```
+
+<ProgressCheckpoint section="production-ready" xpReward={70} />
+
+## Observability & Monitoring
+
+### Distributed Tracing with OpenTelemetry
+
+```csharp
+// Program.cs
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracing =>
+    {
+        tracing
+            .AddAspNetCoreInstrumentation()
+            .AddGrpcClientInstrumentation()
+            .AddSource("MyGrpcService")
+            .AddJaegerExporter(options =>
+            {
+                options.AgentHost = "jaeger";
+                options.AgentPort = 6831;
+            });
+    });
+
+// Custom tracing in service
+public class UserService : UserServiceBase
+{
+    private static readonly ActivitySource ActivitySource = new("MyGrpcService");
+    
+    public override async Task<UserResponse> GetUser(
+        GetUserRequest request,
+        ServerCallContext context)
+    {
+        using var activity = ActivitySource.StartActivity("GetUser");
+        activity?.SetTag("user.id", request.UserId);
+        
+        try
+        {
+            var user = await _repository.GetByIdAsync(request.UserId);
+            activity?.SetTag("user.found", user != null);
+            
+            return MapToResponse(user);
+        }
+        catch (Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            activity?.RecordException(ex);
+            throw;
+        }
+    }
+}
+```
+
+### Metrics Collection
+
+```csharp
+using System.Diagnostics.Metrics;
+
+public class UserService : UserServiceBase
+{
+    private static readonly Meter Meter = new("MyGrpcService");
+    private static readonly Counter<long> RequestCounter = 
+        Meter.CreateCounter<long>("grpc.requests", "requests");
+    private static readonly Histogram<double> RequestDuration = 
+        Meter.CreateHistogram<double>("grpc.request.duration", "ms");
+    
+    public override async Task<UserResponse> GetUser(
+        GetUserRequest request,
+        ServerCallContext context)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        
+        try
+        {
+            RequestCounter.Add(1, new KeyValuePair<string, object?>("method", "GetUser"));
+            
+            var user = await _repository.GetByIdAsync(request.UserId);
+            
+            RequestDuration.Record(
+                stopwatch.Elapsed.TotalMilliseconds,
+                new KeyValuePair<string, object?>("method", "GetUser"),
+                new KeyValuePair<string, object?>("status", "success")
+            );
+            
+            return MapToResponse(user);
+        }
+        catch (Exception)
+        {
+            RequestDuration.Record(
+                stopwatch.Elapsed.TotalMilliseconds,
+                new KeyValuePair<string, object?>("method", "GetUser"),
+                new KeyValuePair<string, object?>("status", "error")
+            );
+            throw;
+        }
+    }
+}
+```
+
+### Structured Logging
+
+```csharp
+public class UserService : UserServiceBase
+{
+    private readonly ILogger<UserService> _logger;
+    
+    public override async Task<UserResponse> GetUser(
+        GetUserRequest request,
+        ServerCallContext context)
+    {
+        using (_logger.BeginScope(new Dictionary<string, object>
+        {
+            ["UserId"] = request.UserId,
+            ["TraceId"] = Activity.Current?.TraceId.ToString() ?? "none",
+            ["ClientIp"] = context.GetHttpContext().Connection.RemoteIpAddress?.ToString()
+        }))
+        {
+            _logger.LogInformation("Processing GetUser request");
+            
+            try
+            {
+                var user = await _repository.GetByIdAsync(request.UserId);
+                
+                if (user == null)
+                {
+                    _logger.LogWarning("User not found");
+                    throw new RpcException(new Status(StatusCode.NotFound, "User not found"));
+                }
+                
+                _logger.LogInformation("Successfully retrieved user");
+                return MapToResponse(user);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving user");
+                throw;
+            }
+        }
+    }
+}
+```
+
+## Load Balancing & Service Discovery
+
+### Client-Side Load Balancing
+
+```csharp
+public class LoadBalancedGrpcClient
+{
+    private readonly GrpcChannel _channel;
+    
+    public LoadBalancedGrpcClient()
+    {
+        var serviceConfig = new ServiceConfig
+        {
+            LoadBalancingConfigs = { new RoundRobinConfig() }
+        };
+        
+        _channel = GrpcChannel.ForAddress("dns:///user-service:5001", new GrpcChannelOptions
+        {
+            ServiceConfig = serviceConfig,
+            Credentials = ChannelCredentials.SecureSsl
+        });
+    }
+}
+```
+
+### Consul Service Discovery Integration
+
+```csharp
+public class ConsulGrpcClientFactory
+{
+    private readonly IConsulClient _consul;
+    
+    public async Task<UserService.UserServiceClient> CreateClientAsync()
+    {
+        // Discover service instances from Consul
+        var services = await _consul.Health.Service("user-service", tag: "grpc", passingOnly: true);
+        
+        if (!services.Response.Any())
+        {
+            throw new InvalidOperationException("No healthy instances found");
+        }
+        
+        // Simple random selection (could use round-robin, least connections, etc.)
+        var instance = services.Response[Random.Shared.Next(services.Response.Length)];
+        var address = $"https://{instance.Service.Address}:{instance.Service.Port}";
+        
+        var channel = GrpcChannel.ForAddress(address);
+        return new UserService.UserServiceClient(channel);
+    }
+}
+```
+
+## Testing Strategies
+
+### Unit Testing with TestServer
+
+```csharp
+public class UserServiceTests
+{
+    [Fact]
+    public async Task GetUser_ReturnsUser_WhenUserExists()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddSingleton<IUserRepository>(new InMemoryUserRepository());
+        
+        var client = new TestServerGrpcClient<UserService.UserServiceClient>(services);
+        
+        // Act
+        var response = await client.GetUserAsync(new GetUserRequest { UserId = 1 });
+        
+        // Assert
+        Assert.NotNull(response);
+        Assert.Equal("Alice", response.Name);
+    }
+    
+    [Fact]
+    public async Task GetUser_ThrowsNotFound_WhenUserDoesNotExist()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddSingleton<IUserRepository>(new InMemoryUserRepository());
+        
+        var client = new TestServerGrpcClient<UserService.UserServiceClient>(services);
+        
+        // Act & Assert
+        var ex = await Assert.ThrowsAsync<RpcException>(
+            () => client.GetUserAsync(new GetUserRequest { UserId = 999 })
+        );
+        
+        Assert.Equal(StatusCode.NotFound, ex.StatusCode);
+    }
+}
+```
+
+### Integration Testing
+
+```csharp
+public class UserServiceIntegrationTests : IClassFixture<GrpcTestFixture<Program>>
+{
+    private readonly GrpcTestFixture<Program> _fixture;
+    
+    public UserServiceIntegrationTests(GrpcTestFixture<Program> fixture)
+    {
+        _fixture = fixture;
+    }
+    
+    [Fact]
+    public async Task FullUserLifecycle_CreatesUpdatesDeletes()
+    {
+        var client = _fixture.CreateClient<UserService.UserServiceClient>();
+        
+        // Create
+        var createResponse = await client.CreateUserAsync(new CreateUserRequest
+        {
+            Name = "Test User",
+            Email = "test@example.com"
+        });
+        
+        Assert.True(createResponse.Id > 0);
+        
+        // Get
+        var getResponse = await client.GetUserAsync(
+            new GetUserRequest { UserId = createResponse.Id }
+        );
+        
+        Assert.Equal("Test User", getResponse.Name);
+        
+        // Delete
+        await client.DeleteUserAsync(new DeleteUserRequest { UserId = createResponse.Id });
+    }
+}
+```
+
+## Production Deployment
+
+### Kubernetes Configuration
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+spec:
+  type: ClusterIP
+  selector:
+    app: user-service
+  ports:
+  - port: 5001
+    targetPort: 5001
+    protocol: TCP
+    name: grpc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: user-service
+  template:
+    metadata:
+      labels:
+        app: user-service
+    spec:
+      containers:
+      - name: user-service
+        image: myregistry/user-service:latest
+        ports:
+        - containerPort: 5001
+          protocol: TCP
+        env:
+        - name: ASPNETCORE_URLS
+          value: "http://+:5001"
+        - name: ASPNETCORE_Kestrel__Endpoints__Grpc__Protocols
+          value: "Http2"
+        livenessProbe:
+          grpc:
+            port: 5001
+            service: grpc.health.v1.Health
+        readinessProbe:
+          grpc:
+            port: 5001
+            service: grpc.health.v1.Health
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "500m"
+          limits:
+            memory: "512Mi"
+            cpu: "1000m"
+```
+
+### Docker Configuration
+
+```dockerfile
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+WORKDIR /app
+EXPOSE 5001
+
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+COPY ["UserService/UserService.csproj", "UserService/"]
+RUN dotnet restore "UserService/UserService.csproj"
+COPY . .
+WORKDIR "/src/UserService"
+RUN dotnet build "UserService.csproj" -c Release -o /app/build
+
+FROM build AS publish
+RUN dotnet publish "UserService.csproj" -c Release -o /app/publish
+
+FROM base AS final
+WORKDIR /app
+COPY --from=publish /app/publish .
+
+# Configure for gRPC
+ENV ASPNETCORE_URLS=http://+:5001 \
+    ASPNETCORE_Kestrel__Endpoints__Grpc__Protocols=Http2
+
+ENTRYPOINT ["dotnet", "UserService.dll"]
+```
+
+<InfoBox type="warning">
+**Production Checklist:**
+- ✅ Enable TLS/SSL for all gRPC communication
+- ✅ Implement proper authentication & authorization
+- ✅ Configure connection pooling & keep-alive
+- ✅ Set up distributed tracing & metrics
+- ✅ Implement circuit breakers & retry policies
+- ✅ Configure health checks
+- ✅ Enable compression for large payloads
+- ✅ Set appropriate deadlines & timeouts
+- ✅ Implement proper logging with correlation IDs
+- ✅ Load test and tune HTTP/2 settings
+</InfoBox>
+
+## Advanced Patterns Summary
+
+- **Streaming**: Use bounded channels for backpressure control
+- **Authentication**: Integrate with JWT/OAuth2 using interceptors
+- **Performance**: Connection pooling, compression, HTTP/2 tuning
+- **Observability**: OpenTelemetry tracing, metrics, structured logging
+- **Resilience**: Retry policies, circuit breakers, deadline propagation
+- **Deployment**: Kubernetes with health checks, load balancing

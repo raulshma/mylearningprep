@@ -180,6 +180,7 @@ import { IdentityArchitectureVisualizer } from '@/components/learn/interactive/d
 import { JwtTokenVisualizer } from '@/components/learn/interactive/dotnet/JwtTokenVisualizer';
 import { AuthFlowDiagram } from '@/components/learn/interactive/dotnet/AuthFlowDiagram';
 import { PolicyBuilder } from '@/components/learn/interactive/dotnet/PolicyBuilder';
+import { CacheVisualization } from '@/components/learn/interactive/dotnet/CacheVisualization';
 
 // Deployment Lesson Components
 import { DockerDotnetVisualizer } from '@/components/learn/interactive/dotnet/DockerDotnetVisualizer';
@@ -194,6 +195,11 @@ import { PostgresqlExplorer } from '@/components/learn/interactive/dotnet/Postgr
 import { DatabaseDesignVisualizer } from '@/components/learn/interactive/dotnet/DatabaseDesignVisualizer';
 import { DbContextVisualizer } from '@/components/learn/interactive/dotnet/DbContextVisualizer';
 
+// Dapper Lesson Components
+import { DapperQueryVisualizer } from '@/components/learn/interactive/dotnet/DapperQueryVisualizer';
+import { DapperCommandVisualizer } from '@/components/learn/interactive/dotnet/DapperCommandVisualizer';
+import { DapperMultiMappingVisualizer } from '@/components/learn/interactive/dotnet/DapperMultiMappingVisualizer';
+
 // CI/CD Lesson Components
 import { GitHubActionsVisualizer } from '@/components/learn/interactive/dotnet/GitHubActionsVisualizer';
 import { AzureDevOpsVisualizer } from '@/components/learn/interactive/dotnet/AzureDevOpsVisualizer';
@@ -203,6 +209,13 @@ import { CICDPipelineBuilder } from '@/components/learn/interactive/dotnet/CICDP
 import { MicroservicesArchitectureVisualizer } from '@/components/learn/interactive/dotnet/MicroservicesArchitectureVisualizer';
 import { ServiceCommunicationDemo } from '@/components/learn/interactive/dotnet/ServiceCommunicationDemo';
 import { ApiGatewaySimulator } from '@/components/learn/interactive/dotnet/ApiGatewaySimulator';
+
+// gRPC Lesson Components
+import { GrpcVsRestComparison } from '@/components/learn/interactive/grpc/GrpcVsRestComparison';
+import { GrpcArchitectureVisualizer } from '@/components/learn/interactive/grpc/GrpcArchitectureVisualizer';
+import { ProtobufSchemaBuilder } from '@/components/learn/interactive/grpc/ProtobufSchemaBuilder';
+import { GrpcServiceBuilder } from '@/components/learn/interactive/grpc/GrpcServiceBuilder';
+import { StreamingPatternVisualizer } from '@/components/learn/interactive/grpc/StreamingPatternVisualizer';
 
 /**
  * MDX Components Configuration
@@ -394,6 +407,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     JwtTokenVisualizer,
     AuthFlowDiagram,
     PolicyBuilder,
+    CacheVisualization,
 
     // Deployment Lesson Components
     DockerDotnetVisualizer,
@@ -408,6 +422,11 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     DatabaseDesignVisualizer,
     DbContextVisualizer,
 
+    // Dapper Lesson Components
+    DapperQueryVisualizer,
+    DapperCommandVisualizer,
+    DapperMultiMappingVisualizer,
+
     // CI/CD Lesson Components
     GitHubActionsVisualizer,
     AzureDevOpsVisualizer,
@@ -417,6 +436,13 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     MicroservicesArchitectureVisualizer,
     ServiceCommunicationDemo,
     ApiGatewaySimulator,
+
+    // gRPC Lesson Components
+    GrpcVsRestComparison,
+    GrpcArchitectureVisualizer,
+    ProtobufSchemaBuilder,
+    GrpcServiceBuilder,
+    StreamingPatternVisualizer,
 
     // Enhanced HTML elements with proper styling
     h1: ({ children, ...props }) => (

@@ -394,9 +394,9 @@ export const dotnetRoadmap: CreateRoadmap = {
       type: 'topic',
       position: { x: 200, y: 960 },
       learningObjectives: [
-        { title: 'In-Memory Caching', lessonId: 'memory-caching' },
-        { title: 'Distributed Caching (Redis)', lessonId: 'redis-caching' },
-        { title: 'Response Caching', lessonId: 'response-caching' },
+        { title: 'In-Memory Caching', lessonId: 'caching/memory-caching' },
+        { title: 'Distributed Caching (Redis)', lessonId: 'caching/redis-caching' },
+        { title: 'Response Caching', lessonId: 'caching/response-caching' },
       ],
       resources: [
         {
@@ -422,6 +422,7 @@ export const dotnetRoadmap: CreateRoadmap = {
         { title: 'Built-in Logging', lessonId: 'builtin-logging' },
         { title: 'Serilog', lessonId: 'serilog' },
         { title: 'Structured Logging', lessonId: 'structured-logging' },
+        { title: 'Azure Application Insights', lessonId: 'azure-app-insights' },
       ],
       resources: [
         {
@@ -430,11 +431,17 @@ export const dotnetRoadmap: CreateRoadmap = {
           type: 'documentation',
           description: 'Official logging documentation',
         },
+        {
+          title: 'Azure Application Insights',
+          url: 'https://learn.microsoft.com/en-us/azure/azure-monitor/app/app-insights-overview',
+          type: 'documentation',
+          description: 'Official Application Insights documentation',
+        },
       ],
-      estimatedMinutes: 90,
-      difficulty: 3,
+      estimatedMinutes: 120,
+      difficulty: 4,
       skillCluster: 'backend',
-      tags: ['logging', 'serilog', 'observability'],
+      tags: ['logging', 'serilog', 'observability', 'azure'],
     },
 
     // === ROW 9: TESTING ===
@@ -545,9 +552,9 @@ export const dotnetRoadmap: CreateRoadmap = {
       type: 'optional',
       position: { x: 200, y: 1320 },
       learningObjectives: [
-        { title: 'Blazor Server vs WebAssembly', lessonId: 'blazor-hosting' },
-        { title: 'Components & Data Binding', lessonId: 'blazor-components' },
-        { title: 'JavaScript Interop', lessonId: 'blazor-js-interop' },
+        { title: 'Blazor Server vs WebAssembly', lessonId: 'blazor/blazor-hosting' },
+        { title: 'Components & Data Binding', lessonId: 'blazor/blazor-components' },
+        { title: 'JavaScript Interop', lessonId: 'blazor/blazor-js-interop' },
       ],
       resources: [
         {

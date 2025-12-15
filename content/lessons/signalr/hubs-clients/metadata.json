@@ -1,0 +1,28 @@
+{
+  "id": "hubs-clients",
+  "title": "Hubs & Clients",
+  "description": "Learn how SignalR Hubs manage client connections and enable targeted communication patterns.",
+  "milestone": "signalr",
+  "order": 2,
+  "sections": [
+    "understanding-hubs",
+    "client-communication",
+    "connection-management"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 30
+    },
+    "intermediate": {
+      "estimatedMinutes": 20,
+      "xpReward": 50
+    },
+    "advanced": {
+      "estimatedMinutes": 25,
+      "xpReward": 75
+    }
+  },
+  "prerequisites": ["signalr/signalr-fundamentals"],
+  "tags": ["signalr", "hubs", "clients", "connections", "aspnet-core"]
+}

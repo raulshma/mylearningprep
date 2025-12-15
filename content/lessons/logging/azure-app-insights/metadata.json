@@ -1,0 +1,28 @@
+{
+  "id": "azure-app-insights",
+  "title": "Azure Application Insights",
+  "description": "Learn to integrate Azure Application Insights for cloud-native application monitoring and diagnostics.",
+  "milestone": "logging",
+  "order": 4,
+  "sections": [
+    "app-insights-setup",
+    "telemetry-collection",
+    "monitoring-alerting"
+  ],
+  "levels": {
+    "beginner": {
+      "estimatedMinutes": 15,
+      "xpReward": 35
+    },
+    "intermediate": {
+      "estimatedMinutes": 20,
+      "xpReward": 50
+    },
+    "advanced": {
+      "estimatedMinutes": 25,
+      "xpReward": 70
+    }
+  },
+  "prerequisites": ["logging/structured-logging"],
+  "tags": ["azure", "application-insights", "monitoring", "cloud"]
+}

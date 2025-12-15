@@ -1,0 +1,524 @@
+# Unit Testing Best Practices
+
+Welcome to the world of professional testing! Writing tests is one thing, but writing **good** tests? That's where the magic happens. Think of this as learning to cook not just any meal, but a *restaurant-quality* meal.
+
+Good tests are like good documentation - they tell a story about what your code does and give you confidence that it works correctly. Bad tests? They're worse than no tests at all because they give false confidence!
+
+<InfoBox type="tip" title="Why Best Practices Matter">
+Tests are code too! They need to be maintained, understood by others, and remain valuable over time. Following best practices ensures your tests help rather than hurt your project.
+</InfoBox>
+
+<ProgressCheckpoint section="introduction" xpReward={10} />
+
+## Characteristics of Good Unit Tests
+
+What makes a unit test "good"? Let's explore the FIRST principles:
+
+<AnimatedDiagram type="principles">
+```principles
+{
+  "title": "FIRST Principles",
+  "items": [
+    {
+      "letter": "F",
+      "word": "Fast",
+      "description": "Tests should run in milliseconds",
+      "analogy": "Like checking your phone - instant!",
+      "icon": "⚡"
+    },
+    {
+      "letter": "I",
+      "word": "Isolated",
+      "description": "Each test is independent",
+      "analogy": "Like separate rooms - what happens in one doesn't affect others",
+      "icon": "🔒"
+    },
+    {
+      "letter": "R",
+      "word": "Repeatable",
+      "description": "Same result every time",
+      "analogy": "Like 2+2 always equals 4",
+      "icon": "🔁"
+    },
+    {
+      "letter": "S",
+      "word": "Self-Checking",
+      "description": "Pass or fail automatically",
+      "analogy": "Like a traffic light - no guessing needed",
+      "icon": "✅"
+    },
+    {
+      "letter": "T",
+      "word": "Timely",
+      "description": "Written at the right time",
+      "analogy": "Like insurance - get it before you need it",
+      "icon": "⏰"
+    }
+  ]
+}
+```
+</AnimatedDiagram>
+
+<KeyConcept title="Fast = Frequently Run">
+If your tests take 10 minutes to run, developers won't run them. If they take 10 seconds, developers run them constantly. Fast tests = better code quality!
+</KeyConcept>
+
+<ProgressCheckpoint section="characteristics" xpReward={12} />
+
+## Naming Conventions
+
+Test names are **mini documentation**. A good name tells you:
+- What is being tested
+- Under what conditions
+- What the expected outcome is
+
+### The Pattern: `MethodName_Scenario_ExpectedResult`
+
+```csharp
+// ✅ EXCELLENT - Clear and descriptive
+[Fact]
+public void Add_TwoPositiveNumbers_ReturnsSum()
+{
+    var calculator = new Calculator();
+    Assert.Equal(5, calculator.Add(2, 3));
+}
+
+[Fact]
+public void Add_PositiveAndNegative_ReturnsCorrectResult()
+{
+    var calculator = new Calculator();
+    Assert.Equal(2, calculator.Add(5, -3));
+}
+
+[Fact]
+public void Divide_ByZero_ThrowsDivideByZeroException()
+{
+    var calculator = new Calculator();
+    Assert.Throws<DivideByZeroException>(() => 
+        calculator.Divide(10, 0));
+}
+```
+
+```csharp
+// ❌ BAD - Vague and unhelpful
+[Fact]
+public void TestAdd()  // What are we testing about Add?
+
+[Fact]
+public void Test1()  // What does this test?
+
+[Fact]
+public void AddWorks()  // How does it work? What's the scenario?
+```
+
+<InfoBox type="warning" title="Read Your Test Names Aloud">
+If you can't explain what a test does from its name alone, the name needs work! Try reading them out loud - do they make sense?
+</InfoBox>
+
+<InteractiveDemo>
+```demo
+{
+  "type": "naming-practice",
+  "scenarios": [
+    {
+      "method": "Withdraw",
+      "scenario": "Amount exceeds balance",
+      "expected": "Throws InsufficientFundsException",
+      "correctName": "Withdraw_AmountExceedsBalance_ThrowsInsufficientFundsException"
+    },
+    {
+      "method": "IsValidEmail",
+      "scenario": "Email without @ symbol",
+      "expected": "Returns false",
+      "correctName": "IsValidEmail_MissingAtSymbol_ReturnsFalse"
+    }
+  ],
+  "interactive": true
+}
+```
+</InteractiveDemo>
+
+<ProgressCheckpoint section="naming-conventions" xpReward={15} />
+
+## The AAA Pattern
+
+**Arrange-Act-Assert** is the golden standard for structuring tests. It makes tests readable and maintainable.
+
+### Anatomy of a Perfect Test
+
+```csharp
+[Fact]
+public void ProcessOrder_ValidOrder_ReturnsConfirmationNumber()
+{
+    // ============ ARRANGE ============
+    // Set up everything needed for the test
+    var order = new Order
+    {
+        CustomerId = 123,
+        Items = new List<OrderItem>
+        {
+            new OrderItem { ProductId = 1, Quantity = 2, Price = 10.00m }
+        }
+    };
+    var orderProcessor = new OrderProcessor();
+    
+    // ============ ACT ============
+    // Execute the behavior we're testing
+    string confirmationNumber = orderProcessor.ProcessOrder(order);
+    
+    // ============ ASSERT ============
+    // Verify the results
+    Assert.NotNull(confirmationNumber);
+    Assert.NotEmpty(confirmationNumber);
+    Assert.StartsWith("ORD-", confirmationNumber);
+}
+```
+
+### Why AAA Works
+
+Think of it like a scientific experiment:
+1. **Arrange** = Set up the experiment
+2. **Act** = Run the experiment
+3. **Assert** = Record and verify results
+
+<Comparison>
+```comparison
+{
+  "title": "AAA Pattern Benefits",
+  "left": {
+    "title": "Without AAA",
+    "code": "[Fact]\npublic void TestOrder()\n{\n  var p = new OrderProcessor();\n  Assert.True(p.Process(new Order()).Length > 0);\n}",
+    "issues": [
+      "Hard to understand what's being tested",
+      "Mixed concerns",
+      "Difficult to debug when it fails"
+    ]
+  },
+  "right": {
+    "title": "With AAA",
+    "code": "[Fact]\npublic void Process_ValidOrder_ReturnsConfirmation()\n{\n  // Arrange\n  var order = new Order();\n  var processor = new OrderProcessor();\n  \n  // Act\n  var result = processor.Process(order);\n  \n  // Assert\n  Assert.True(result.Length > 0);\n}",
+    "benefits": [
+      "Clear structure",
+      "Easy to understand",
+      "Simple to debug"
+    ]
+  }
+}
+```
+</Comparison>
+
+<ProgressCheckpoint section="aaa-pattern" xpReward={15} />
+
+## Test Isolation
+
+Isolated tests are independent tests. They don't depend on:
+- Other tests running first
+- Specific order of execution
+- Shared state
+- External resources (unless necessary)
+
+### ✅ Good Isolation
+
+```csharp
+public class ShoppingCartTests
+{
+    [Fact]
+    public void AddItem_NewItem_IncreasesCount()
+    {
+        // Each test creates its own cart
+        var cart = new ShoppingCart();
+        cart.AddItem("Apple", 1.99m);
+        
+        Assert.Equal(1, cart.ItemCount);
+    }
+    
+    [Fact]
+    public void RemoveItem_ExistingItem_DecreasesCount()
+    {
+        // This test doesn't depend on the previous test
+        var cart = new ShoppingCart();
+        cart.AddItem("Apple", 1.99m);
+        cart.RemoveItem("Apple");
+        
+        Assert.Equal(0, cart.ItemCount);
+    }
+}
+```
+
+### ❌ Bad Isolation
+
+```csharp
+public class BadShoppingCartTests
+{
+    private static ShoppingCart _cart = new ShoppingCart();  // ❌ Shared state!
+    
+    [Fact]
+    public void Test1_AddItem()
+    {
+        _cart.AddItem("Apple", 1.99m);
+        Assert.Equal(1, _cart.ItemCount);  // Works only if run first!
+    }
+    
+    [Fact]
+    public void Test2_AddAnotherItem()
+    {
+        _cart.AddItem("Banana", 0.99m);
+        Assert.Equal(2, _cart.ItemCount);  // Depends on Test1!
+    }
+}
+```
+
+<KeyConcept title="Test Order Should Not Matter">
+Your tests should pass whether they run in order A→B→C, in reverse C→B→A, or in parallel. xUnit even runs tests in parallel by default!
+</KeyConcept>
+
+<ProgressCheckpoint section="test-isolation" xpReward={12} />
+
+## Testing Edge Cases
+
+Testing the "happy path" is easy. Great tests also cover edge cases!
+
+<AnimatedDiagram type="edge-cases">
+```edge-cases
+{
+  "method": "Divide(int a, int b)",
+  "cases": [
+    {
+      "type": "Happy Path",
+      "example": "Divide(10, 2) = 5",
+      "icon": "😊"
+    },
+    {
+      "type": "Zero",
+      "example": "Divide(0, 5) = 0",
+      "icon": "0️⃣"
+    },
+    {
+      "type": "Negative",
+      "example": "Divide(-10, 2) = -5",
+      "icon": "➖"
+    },
+    {
+      "type": "Division by Zero",
+      "example": "Divide(10, 0) = Exception",
+      "icon": "⚠️"
+    },
+    {
+      "type": "Large Numbers",
+      "example": "Divide(int.MaxValue, 2)",
+      "icon": "📈"
+    }
+  ]
+}
+```
+</AnimatedDiagram>
+
+### Example: Testing Edge Cases
+
+```csharp
+public class EmailValidatorTests
+{
+    [Theory]
+    [InlineData("user@example.com", true)]  // Happy path
+    [InlineData("user.name+tag@example.co.uk", true)]  // Complex valid
+    [InlineData("", false)]  // Empty
+    [InlineData(null, false)]  // Null
+    [InlineData("notemail", false)]  // No @
+    [InlineData("@example.com", false)]  // No local part
+    [InlineData("user@", false)]  // No domain
+    [InlineData("user @example.com", false)]  // Space
+    public void IsValidEmail_VariousInputs_ReturnsExpectedResult(
+        string email, bool expected)
+    {
+        var validator = new EmailValidator();
+        bool result = validator.IsValidEmail(email);
+        Assert.Equal(expected, result);
+    }
+}
+```
+
+<InfoBox type="tip" title="Think Like a User (and a Hacker!)">
+- What would a normal user enter?
+- What would a malicious user try?
+- What would break the system?
+</InfoBox>
+
+<ProgressCheckpoint section="edge-cases" xpReward={12} />
+
+## Code Coverage
+
+**Code coverage** measures what percentage of your code is executed by tests. It's a useful metric, but can be misleading!
+
+### The Truth About Coverage
+
+<Comparison>
+```comparison
+{
+  "title": "Code Coverage Reality",
+  "left": {
+    "title": "High Coverage ≠ Good Tests",
+    "example": "[Fact]\npublic void TestEverything()\n{\n  new Calculator().Add(1, 1);\n  new Calculator().Subtract(1, 1);\n  new Calculator().Multiply(1, 1);\n  // No assertions!\n}",
+    "coverage": "100%",
+    "quality": "0%"
+  },
+  "right": {
+    "title": "Good Tests = Quality",
+    "example": "[Fact]\npublic void Add_ReturnsSum()\n{\n  var calc = new Calculator();\n  int result = calc.Add(2, 3);\n  Assert.Equal(5, result);\n}",
+    "coverage": "May be lower",
+    "quality": "High"
+  }
+}
+```
+</Comparison>
+
+### Recommended Coverage Goals
+
+```csharp
+// ✅ Good Coverage Targets
+// Business Logic: 80-90%
+// Critical Paths: 95-100%
+// Utility Code: 70-80%
+// UI Code: 40-60% (harder to unit test)
+```
+
+<KeyConcept title="Coverage is a Tool, Not a Goal">
+Aim for high coverage, but prioritize **meaningful tests** over hitting a number. One good test that catches bugs is worth more than ten tests that just improve metrics!
+</KeyConcept>
+
+<ProgressCheckpoint section="code-coverage" xpReward={10} />
+
+## Common Pitfalls
+
+Learn from others' mistakes! Here are the most common testing pitfalls:
+
+### 1. Testing Implementation Instead of Behavior
+
+```csharp
+// ❌ BAD - Testing internal implementation
+[Fact]
+public void SaveUser_CallsRepositoryInsert()
+{
+    var mockRepo = new Mock<IUserRepository>();
+    var service = new UserService(mockRepo.Object);
+    
+    service.SaveUser(new User());
+    
+    // Testing HOW it works internally
+    mockRepo.Verify(r => r.Insert(It.IsAny<User>()), Times.Once);
+}
+
+// ✅ GOOD - Testing external behavior
+[Fact]
+public void SaveUser_NewUser_ReturnsSuccessResult()
+{
+    var service = new UserService(new InMemoryRepository());
+    
+    var result = service.SaveUser(new User { Name = "John" });
+    
+    // Testing WHAT it does
+    Assert.True(result.IsSuccess);
+    Assert.NotNull(result.UserId);
+}
+```
+
+### 2. Too Many Assertions
+
+```csharp
+// ❌ BAD - Testing too many things
+[Fact]
+public void CreateOrder_TestEverything()
+{
+    var order = CreateOrder();
+    Assert.NotNull(order.Id);
+    Assert.Equal("Pending", order.Status);
+    Assert.NotEmpty(order.Items);
+    Assert.True(order.Total > 0);
+    Assert.NotNull(order.Customer);
+    Assert.Equal(DateTime.Today, order.Date.Date);
+    // ... and 10 more assertions
+}
+
+// ✅ GOOD - Focused tests
+[Fact]
+public void CreateOrder_NewOrder_HasPendingStatus()
+{
+    var order = CreateOrder();
+    Assert.Equal("Pending", order.Status);
+}
+
+[Fact]
+public void CreateOrder_NewOrder_HasGeneratedId()
+{
+    var order = CreateOrder();
+    Assert.NotNull(order.Id);
+}
+```
+
+### 3. Ignoring Test Failures
+
+```csharp
+// ❌ VERY BAD
+[Fact(Skip = "This test is flaky")]  // Never do this!
+public void FlashyTest()
+{
+    // If a test is unreliable, fix it or delete it!
+}
+```
+
+<ProgressCheckpoint section="common-pitfalls" xpReward={12} />
+
+## Quick Quiz
+
+<Quiz id="unit-testing-best-practices-quiz">
+  <Question text="What does the 'F' in FIRST principles stand for?">
+    <Answer>Functional</Answer>
+    <Answer correct>Fast</Answer>
+    <Answer>Focused</Answer>
+    <Answer>Flexible</Answer>
+  </Question>
+  
+  <Question text="In the AAA pattern, what does 'Arrange' mean?">
+    <Answer>Run the test</Answer>
+    <Answer correct>Set up test data and dependencies</Answer>
+    <Answer>Verify the results</Answer>
+    <Answer>Clean up resources</Answer>
+  </Question>
+  
+  <Question text="Why should tests be isolated?">
+    <Answer>To make them run faster</Answer>
+    <Answer correct>So they don't depend on each other or shared state</Answer>
+    <Answer>To reduce code duplication</Answer>
+    <Answer>To make them easier to write</Answer>
+  </Question>
+  
+  <Question text="What's wrong with 100% code coverage as a goal?">
+    <Answer>It's impossible to achieve</Answer>
+    <Answer>It takes too long</Answer>
+    <Answer correct>It doesn't guarantee test quality or meaningful tests</Answer>
+    <Answer>Nothing, it's always a good goal</Answer>
+  </Question>
+</Quiz>
+
+<ProgressCheckpoint section="summary" xpReward={14} />
+
+## Key Takeaways
+
+<KeyConcept title="FIRST Principles">
+Fast, Isolated, Repeatable, Self-Checking, and Timely - these characteristics define high-quality unit tests.
+</KeyConcept>
+
+<KeyConcept title="AAA Pattern is Universal">
+Arrange-Act-Assert provides a clear structure that makes tests readable and maintainable. Use it everywhere!
+</KeyConcept>
+
+<KeyConcept title="Name Tests Descriptively">
+Use `MethodName_Scenario_ExpectedResult` to create self-documenting tests that explain themselves.
+</KeyConcept>
+
+<KeyConcept title="Test Behavior, Not Implementation">
+Focus on what the code does (behavior) rather than how it does it (implementation details).
+</KeyConcept>
+
+---
+
+**Fantastic job!** 🎉 You now understand the best practices that separate good tests from great tests. In the intermediate level, we'll dive into test doubles, test organization strategies, and handling async code. Keep going! 🚀

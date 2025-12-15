@@ -1,0 +1,99 @@
+# Serilog: Enterprise Patterns and Performance Optimization
+
+Advanced Serilog implementations for high-scale production environments, custom sinks, and integration with observability platforms.
+
+## Custom Sink Implementation
+
+Building a custom sink for specific requirements:
+
+```csharp
+public class ElasticsearchBatchingSink : IBatchedLogEventSink
+{
+    private readonly ElasticClient _client;
+    private readonly string _indexFormat;
+
+    public async Task EmitBatchAsync(IEnumerable<LogEvent> batch)
+    {
+        var bulkRequest = new BulkRequest
+        {
+            Operations = batch.Select(logEvent => new BulkIndexOperation<object>(
+                new
+                {
+                    timestamp = logEvent.Timestamp,
+                    level = logEvent.Level.ToString(),
+                    message = logEvent.RenderMessage(),
+                    properties = logEvent.Properties.ToDictionary(
+                        kvp => kvp.Key,
+                        kvp => SimplifyProperty(kvp.Value))
+                })
+            {
+                Index = string.Format(_indexFormat, logEvent.Timestamp)
+            }).ToList<IBulkOperation>()
+        };
+
+        await _client.BulkAsync(bulkRequest);
+    }
+
+    public Task OnEmptyBatchAsync() => Task.CompletedTask;
+}
+```
+
+<ProgressCheckpoint section="serilog-introduction" xpReward={22} />
+
+## High-Performance Async Logging
+
+```csharp
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Async(a => a.File(
+        "logs/app-.log",
+        rollingInterval: RollingInterval.Day,
+        buffered: true,
+        flushToDiskInterval: TimeSpan.FromSeconds(1)))
+    .WriteTo.Async(a => a.Elasticsearch(new ElasticsearchSinkOptions(new Uri("http://localhost:9200"))
+    {
+        AutoRegisterTemplate = true,
+        IndexFormat = "logs-{0:yyyy.MM.dd}",
+        BufferBaseFilename = "./buffer",
+        BufferFileCountLimit = 31,
+        BufferFileSizeLimitBytes = 104857600
+    }))
+    .CreateLogger();
+```
+
+<ProgressCheckpoint section="structured-logging-concepts" xpReward={22} />
+
+## Distributed Tracing Integration
+
+```csharp
+public class ActivityEnricher : ILogEventEnricher
+{
+    public void Enrich(LogEvent logEvent, ILogEventPropertyFactory factory)
+    {
+        var activity = Activity.Current;
+        if (activity == null) return;
+
+        logEvent.AddPropertyIfAbsent(factory.CreateProperty("TraceId", activity.TraceId));
+        logEvent.AddPropertyIfAbsent(factory.CreateProperty("SpanId", activity.SpanId));
+        logEvent.AddPropertyIfAbsent(factory.CreateProperty("ParentSpanId", activity.ParentSpanId));
+
+        foreach (var tag in activity.Tags)
+        {
+            logEvent.AddPropertyIfAbsent(factory.CreateProperty(tag.Key, tag.Value));
+        }
+    }
+}
+```
+
+<ProgressCheckpoint section="sinks-enrichers" xpReward={21} />
+
+## Best Practices Summary
+
+- Use async sinks for I/O-bound operations
+- Implement buffering for high-volume logging
+- Integrate with distributed tracing
+- Custom sinks for specific requirements
+- Monitor logging performance impact
+
+<InfoBox type="success">
+You've mastered enterprise Serilog patterns! You can build scalable, high-performance logging infrastructure.
+</InfoBox>

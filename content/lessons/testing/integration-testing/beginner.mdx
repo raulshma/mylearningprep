@@ -1,0 +1,489 @@
+# Integration Testing
+
+Welcome to integration testing! If unit tests are like testing individual LEGO bricks, integration tests are like building something with those bricks and making sure it actually works together.
+
+Think of building a car: you can test each part individually (brakes, engine, steering wheel), but you also need to test that when you press the gas pedal, the car actually moves! That's what integration tests do for your code.
+
+<InfoBox type="tip" title="Why Integration Tests Matter">
+Unit tests verify that individual pieces work. Integration tests verify that those pieces work **together** - including databases, APIs, authentication, and all the real infrastructure your app uses!
+</InfoBox>
+
+<ProgressCheckpoint section="introduction" xpReward={10} />
+
+## Unit Tests vs Integration Tests
+
+Let's understand the difference with a real-world analogy:
+
+<AnimatedDiagram type="comparison">
+```comparison
+{
+  "title": "Testing Levels Comparison",
+  "scenarios": [
+    {
+      "aspect": "What They Test",
+      "unit": "Individual methods/classes in isolation",
+      "integration": "Multiple components working together",
+      "analogy": "Unit = Testing a single ingredient | Integration = Testing the whole recipe"
+    },
+    {
+      "aspect": "Speed",
+      "unit": "Very fast (milliseconds)",
+      "integration": "Slower (seconds)",
+      "analogy": "Unit = Checking individual pieces | Integration = Building and testing the assembly"
+    },
+    {
+      "aspect": "Dependencies",
+      "unit": "Uses mocks/fakes",
+      "integration": "Uses real database, APIs, etc.",
+      "analogy": "Unit = Test with props | Integration = Test with real equipment"
+    },
+    {
+      "aspect": "When to Use",
+      "unit": "Business logic, calculations",
+      "integration": "API endpoints, database operations",
+      "analogy": "Unit = Grammar check | Integration = Full document review"
+    }
+  ]
+}
+```
+</AnimatedDiagram>
+
+<KeyConcept title="The Testing Pyramid">
+You should have **many** unit tests (fast, cheap) and **fewer** integration tests (slower, more comprehensive). Think of it like a pyramid: wide base of unit tests, smaller top of integration tests.
+</KeyConcept>
+
+### Real Example
+
+```csharp
+// Unit Test - Tests just the calculation logic
+[Fact]
+public void CalculateDiscount_ValidPercentage_ReturnsCorrectAmount()
+{
+    var calculator = new PriceCalculator();
+    decimal result = calculator.CalculateDiscount(100m, 0.2m);
+    Assert.Equal(20m, result);
+}
+
+// Integration Test - Tests the whole API endpoint
+[Fact]
+public async Task GetProduct_ValidId_ReturnsProductFromDatabase()
+{
+    // Uses real database, real HTTP request, real API
+    var response = await _client.GetAsync("/api/products/1");
+    response.EnsureSuccessStatusCode();
+    
+    var product = await response.Content.ReadFromJsonAsync<Product>();
+    Assert.Equal("Test Product", product.Name);
+}
+```
+
+<ProgressCheckpoint section="unit-vs-integration" xpReward={12} />
+
+## WebApplicationFactory: Your Testing Superpower
+
+ASP.NET Core gives us `WebApplicationFactory<T>` - a magical tool that creates a **real** test server for your API. It's like having a miniature version of your entire application running in memory!
+
+### Why WebApplicationFactory is Amazing
+
+<InfoBox type="success" title="WebApplicationFactory Benefits">
+- ✅ Creates a real ASP.NET Core app in memory
+- ✅ Runs super fast (no actual network calls)
+- ✅ Uses your actual middleware, routing, and controllers
+- ✅ Can swap out services (like database) for testing
+- ✅ Handles all the setup and teardown automatically
+</InfoBox>
+
+### Your First Integration Test
+
+Let's create a simple integration test:
+
+```csharp
+// ProductApiTests.cs
+public class ProductApiTests : IClassFixture<WebApplicationFactory<Program>>
+{
+    private readonly WebApplicationFactory<Program> _factory;
+    private readonly HttpClient _client;
+
+    public ProductApiTests(WebApplicationFactory<Program> factory)
+    {
+        _factory = factory;
+        _client = factory.CreateClient();
+    }
+
+    [Fact]
+    public async Task GetProducts_ReturnsSuccessStatusCode()
+    {
+        // Act - Call the real API endpoint
+        var response = await _client.GetAsync("/api/products");
+        
+        // Assert - Verify we got a successful response
+        response.EnsureSuccessStatusCode();
+        Assert.Equal("application/json; charset=utf-8", 
+            response.Content.Headers.ContentType?.ToString());
+    }
+}
+```
+
+Let's break this down:
+
+1. **`IClassFixture<WebApplicationFactory<Program>>`** - Tells xUnit to create one test server for all tests in this class
+2. **`_factory.CreateClient()`** - Creates an HttpClient that talks to our test server
+3. **`GetAsync()`** - Makes a real HTTP GET request (but in memory!)
+4. **`EnsureSuccessStatusCode()`** - Asserts we got a 200-299 response
+
+<InteractiveDemo>
+```demo
+{
+  "type": "integration-test-simulator",
+  "endpoint": "/api/products",
+  "method": "GET",
+  "expectedStatus": 200,
+  "expectedContentType": "application/json",
+  "interactive": true,
+  "explanation": "Watch how the test server processes the request through the full pipeline"
+}
+```
+</InteractiveDemo>
+
+<ProgressCheckpoint section="webapplicationfactory" xpReward={15} />
+
+## Testing API Endpoints
+
+Let's test different types of API operations using real examples:
+
+### Testing GET Requests
+
+```csharp
+[Fact]
+public async Task GetProduct_ValidId_ReturnsProduct()
+{
+    // Arrange - Setup is done in constructor
+    
+    // Act
+    var response = await _client.GetAsync("/api/products/1");
+    
+    // Assert
+    response.EnsureSuccessStatusCode();
+    
+    var product = await response.Content.ReadFromJsonAsync<Product>();
+    Assert.NotNull(product);
+    Assert.Equal(1, product.Id);
+    Assert.NotEmpty(product.Name);
+}
+
+[Fact]
+public async Task GetProduct_InvalidId_ReturnsNotFound()
+{
+    // Act
+    var response = await _client.GetAsync("/api/products/99999");
+    
+    // Assert
+    Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+}
+```
+
+### Testing POST Requests
+
+```csharp
+[Fact]
+public async Task CreateProduct_ValidProduct_ReturnsCreatedProduct()
+{
+    // Arrange
+    var newProduct = new CreateProductDto
+    {
+        Name = "New Product",
+        Price = 29.99m,
+        Description = "A test product"
+    };
+
+    // Act
+    var response = await _client.PostAsJsonAsync("/api/products", newProduct);
+    
+    // Assert
+    response.EnsureSuccessStatusCode();
+    Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    
+    var createdProduct = await response.Content.ReadFromJsonAsync<Product>();
+    Assert.NotNull(createdProduct);
+    Assert.Equal(newProduct.Name, createdProduct.Name);
+    Assert.True(createdProduct.Id > 0);  // Should have an ID now
+}
+```
+
+### Testing PUT Requests
+
+```csharp
+[Fact]
+public async Task UpdateProduct_ValidProduct_ReturnsNoContent()
+{
+    // Arrange
+    var updateDto = new UpdateProductDto
+    {
+        Name = "Updated Product",
+        Price = 39.99m
+    };
+
+    // Act
+    var response = await _client.PutAsJsonAsync("/api/products/1", updateDto);
+    
+    // Assert
+    Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+}
+```
+
+### Testing DELETE Requests
+
+```csharp
+[Fact]
+public async Task DeleteProduct_ExistingProduct_ReturnsNoContent()
+{
+    // Act
+    var response = await _client.DeleteAsync("/api/products/1");
+    
+    // Assert
+    Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+}
+```
+
+<ProgressCheckpoint section="testing-apis" xpReward={15} />
+
+## Database Testing
+
+Integration tests often need a database. But we don't want to use our production database! Here are strategies:
+
+### Strategy 1: In-Memory Database
+
+```csharp
+public class CustomWebApplicationFactory : WebApplicationFactory<Program>
+{
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        builder.ConfigureServices(services =>
+        {
+            // Remove the real database
+            var descriptor = services.SingleOrDefault(
+                d => d.ServiceType == typeof(DbContextOptions<AppDbContext>));
+            if (descriptor != null)
+                services.Remove(descriptor);
+
+            // Add in-memory database for testing
+            services.AddDbContext<AppDbContext>(options =>
+            {
+                options.UseInMemoryDatabase("TestDb");
+            });
+
+            // Seed test data
+            var sp = services.BuildServiceProvider();
+            using var scope = sp.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            SeedTestData(db);
+        });
+    }
+
+    private static void SeedTestData(AppDbContext db)
+    {
+        db.Products.AddRange(
+            new Product { Id = 1, Name = "Test Product 1", Price = 10.00m },
+            new Product { Id = 2, Name = "Test Product 2", Price = 20.00m }
+        );
+        db.SaveChanges();
+    }
+}
+```
+
+Now use your custom factory:
+
+```csharp
+public class ProductApiTests : IClassFixture<CustomWebApplicationFactory>
+{
+    private readonly CustomWebApplicationFactory _factory;
+    private readonly HttpClient _client;
+
+    public ProductApiTests(CustomWebApplicationFactory factory)
+    {
+        _factory = factory;
+        _client = factory.CreateClient();
+    }
+
+    [Fact]
+    public async Task GetProducts_ReturnsSeededProducts()
+    {
+        var response = await _client.GetAsync("/api/products");
+        var products = await response.Content.ReadFromJsonAsync<List<Product>>();
+        
+        Assert.NotNull(products);
+        Assert.Equal(2, products.Count);  // We seeded 2 products
+    }
+}
+```
+
+<KeyConcept title="In-Memory Database Benefits">
+In-memory databases are perfect for testing because they're **fast**, **isolated**, and **automatically cleaned up** after each test run. They behave like real databases but exist only in memory!
+</KeyConcept>
+
+<ProgressCheckpoint section="database-testing" xpReward={15} />
+
+## Test Containers (Real Databases for Testing)
+
+Sometimes in-memory databases aren't enough. For complex scenarios, you can use **Testcontainers** to run a real database in Docker:
+
+```csharp
+[Fact]
+public async Task TestWithRealPostgres()
+{
+    // Testcontainers spins up a real PostgreSQL database in Docker
+    await using var container = new PostgreSqlBuilder()
+        .WithDatabase("testdb")
+        .WithUsername("test")
+        .WithPassword("test")
+        .Build();
+
+    await container.StartAsync();
+
+    // Now use it in your test
+    var connectionString = container.GetConnectionString();
+    // ... test with real database
+}
+```
+
+<InfoBox type="info" title="When to Use Real Databases">
+Use real databases with Testcontainers when testing:
+- Complex SQL queries
+- Stored procedures
+- Database-specific features (JSON columns, full-text search)
+- Migration scripts
+</InfoBox>
+
+<ProgressCheckpoint section="test-containers" xpReward={10} />
+
+## Testing with Authentication
+
+Many APIs require authentication. Here's how to test them:
+
+```csharp
+[Fact]
+public async Task GetSecureEndpoint_WithoutAuth_ReturnsUnauthorized()
+{
+    // Act - Try to access protected endpoint without auth
+    var response = await _client.GetAsync("/api/secure/data");
+    
+    // Assert
+    Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+}
+
+[Fact]
+public async Task GetSecureEndpoint_WithAuth_ReturnsData()
+{
+    // Arrange - Add authentication header
+    _client.DefaultRequestHeaders.Authorization = 
+        new AuthenticationHeaderValue("Bearer", "test-token");
+    
+    // Act
+    var response = await _client.GetAsync("/api/secure/data");
+    
+    // Assert
+    response.EnsureSuccessStatusCode();
+}
+```
+
+### Mock Authentication for Testing
+
+```csharp
+public class TestAuthWebApplicationFactory : WebApplicationFactory<Program>
+{
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        builder.ConfigureServices(services =>
+        {
+            // Replace real authentication with test authentication
+            services.AddAuthentication("Test")
+                .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(
+                    "Test", options => { });
+        });
+    }
+}
+```
+
+<ProgressCheckpoint section="authentication-testing" xpReward={12} />
+
+## Best Practices
+
+<InfoBox type="tip" title="Integration Testing Best Practices">
+1. **Use separate test database** - Never test against production!
+2. **Clean up between tests** - Each test should start fresh
+3. **Test the happy path first** - Then add error scenarios
+4. **Keep tests focused** - Test one flow at a time
+5. **Use realistic test data** - Make it look like production data
+</InfoBox>
+
+### Do's and Don'ts
+
+✅ **DO:**
+- Test critical user workflows end-to-end
+- Use realistic test data
+- Test authentication and authorization
+- Clean up test data after each test
+
+❌ **DON'T:**
+- Test every single permutation (that's what unit tests are for)
+- Make tests depend on each other
+- Use production databases
+- Leave tests in a "Skip" state
+
+<ProgressCheckpoint section="best-practices" xpReward={11} />
+
+## Quick Quiz
+
+<Quiz id="integration-testing-beginner-quiz">
+  <Question text="What's the main difference between unit and integration tests?">
+    <Answer>Integration tests are faster</Answer>
+    <Answer correct>Integration tests use real dependencies like databases and APIs</Answer>
+    <Answer>Unit tests are more important</Answer>
+    <Answer>Integration tests don't use assertions</Answer>
+  </Question>
+  
+  <Question text="What does WebApplicationFactory do?">
+    <Answer>Creates a mock of your application</Answer>
+    <Answer correct>Creates a real in-memory test server for your ASP.NET Core app</Answer>
+    <Answer>Generates test data automatically</Answer>
+    <Answer>Compiles your application</Answer>
+  </Question>
+  
+  <Question text="Why use an in-memory database for integration tests?">
+    <Answer>It's more realistic</Answer>
+    <Answer correct>It's fast, isolated, and automatically cleaned up</Answer>
+    <Answer>It's required by xUnit</Answer>
+    <Answer>Production databases are too slow</Answer>
+  </Question>
+  
+  <Question text="Should you have more unit tests or integration tests?">
+    <Answer>Equal amounts</Answer>
+    <Answer>More integration tests</Answer>
+    <Answer correct>More unit tests (testing pyramid)</Answer>
+    <Answer>It doesn't matter</Answer>
+  </Question>
+</Quiz>
+
+<ProgressCheckpoint section="summary" xpReward={15} />
+
+## Key Takeaways
+
+<KeyConcept title="Integration Tests = Real Collaboration">
+Integration tests verify that multiple components work together correctly, using real infrastructure like databases and HTTP requests.
+</KeyConcept>
+
+<KeyConcept title="WebApplicationFactory is Essential">
+WebApplicationFactory creates an in-memory test server that runs your entire ASP.NET Core application, making integration testing practical and fast.
+</KeyConcept>
+
+<KeyConcept title="Test Strategically">
+Use integration tests for critical workflows and API endpoints. Use unit tests for business logic. Follow the testing pyramid!
+</KeyConcept>
+
+<KeyConcept title="Isolate Your Tests">
+Use in-memory databases or test containers to ensure tests are fast, reliable, and don't interfere with each other or production data.
+</KeyConcept>
+
+---
+
+**Awesome work!** 🎉 You now understand integration testing in ASP.NET Core. In the intermediate level, we'll cover advanced scenarios like testing background services, SignalR hubs, and custom middleware. Ready to continue? 🚀

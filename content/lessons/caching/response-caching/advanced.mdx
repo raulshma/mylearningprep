@@ -1,0 +1,615 @@
+# Advanced Response Caching and HTTP Caching Strategies
+
+Master advanced HTTP caching concepts including cache revalidation, surrogate caching, CDN integration, cache hierarchies, and building production-grade caching architectures with ASP.NET Core.
+
+## RFC 9111 HTTP Caching Specification
+
+Understanding the HTTP caching standards is crucial for implementing effective caching strategies.
+
+### Cache-Control Directives Deep Dive
+
+```csharp
+public class AdvancedCacheController : ControllerBase
+{
+    // Immutable content - never changes
+    [HttpGet("logo.png")]
+    public IActionResult GetLogo()
+    {
+        Response.Headers["Cache-Control"] = "public, max-age=31536000, immutable";
+        return PhysicalFile("/static/logo.png", "image/png");
+    }
+    
+    // Revalidation required
+    [HttpGet("user-profile")]
+    public IActionResult GetUserProfile()
+    {
+        Response.Headers["Cache-Control"] = "private, max-age=300, must-revalidate";
+        Response.Headers["ETag"] = GenerateETag();
+        return Ok(profile);
+    }
+    
+    // Stale-while-revalidate
+    [HttpGet("news")]
+    public IActionResult GetNews()
+    {
+        Response.Headers["Cache-Control"] = 
+            "public, max-age=60, stale-while-revalidate=300";
+        return Ok(news);
+    }
+    
+    // Proxy caching
+    [HttpGet("public-api")]
+    public IActionResult GetPublicData()
+    {
+        Response.Headers["Cache-Control"] = "public, s-maxage=3600, max-age=300";
+        // Proxies cache for 1 hour, browsers for 5 minutes
+        return Ok(data);
+    }
+}
+```
+
+**Advanced Directives**:
+- `immutable` - Content never changes, skip revalidation
+- `must-revalidate` - Must check with origin server when stale
+- `stale-while-revalidate=N` - Serve stale content while fetching fresh
+- `stale-if-error=N` - Serve stale content if origin is down
+- `s-maxage=N` - Override max-age for shared caches (CDN/proxy)
+
+## Conditional Requests and Validation
+
+### ETag-Based Revalidation
+
+```csharp
+public class ConditionalResponseService
+{
+    public IActionResult GetWithETag<T>(T data, HttpContext context)
+    {
+        var serialized = JsonSerializer.Serialize(data);
+        var etag = GenerateETag(serialized);
+        var strongETag = $"\"{etag}\"";
+        
+        // Check If-None-Match header
+        if (context.Request.Headers.TryGetValue("If-None-Match", out var requestETag))
+        {
+            if (requestETag == strongETag)
+            {
+                return new StatusCodeResult(304); // Not Modified
+            }
+        }
+        
+        context.Response.Headers["ETag"] = strongETag;
+        context.Response.Headers["Cache-Control"] = "public, max-age=300, must-revalidate";
+        
+        return new JsonResult(data);
+    }
+    
+    private string GenerateETag(string content)
+    {
+        using var sha256 = SHA256.Create();
+        var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(content));
+        return Convert.ToBase64String(hashBytes).TrimEnd('=');
+    }
+}
+```
+
+### Last-Modified Based Revalidation
+
+```csharp
+public class LastModifiedCacheController : ControllerBase
+{
+    [HttpGet("article/{id}")]
+    public async Task<IActionResult> GetArticle(int id)
+    {
+        var article = await _repository.GetArticleAsync(id);
+        var lastModified = article.UpdatedAt;
+        
+        // Check If-Modified-Since header
+        if (Request.Headers.TryGetValue("If-Modified-Since", out var ifModifiedSince))
+        {
+            if (DateTime.TryParse(ifModifiedSince, out var requestDate))
+            {
+                if (lastModified <= requestDate)
+                {
+                    return StatusCode(304); // Not Modified
+                }
+            }
+        }
+        
+        Response.Headers["Last-Modified"] = lastModified.ToString("R");
+        Response.Headers["Cache-Control"] = "public, max-age=600";
+        
+        return Ok(article);
+    }
+}
+```
+
+## Vary Header Advanced Usage
+
+### Intelligent Content Negotiation
+
+```csharp
+public class VaryController : ControllerBase
+{
+    // Vary by multiple headers
+    [HttpGet("content")]
+    [ResponseCache(
+        Duration = 300, 
+        VaryByHeader = "Accept,Accept-Encoding,Accept-Language")]
+    public IActionResult GetContent()
+    {
+        var accept = Request.Headers["Accept"].ToString();
+        var language = Request.Headers["Accept-Language"].ToString();
+        
+        var content = _contentService.GetLocalizedContent(language);
+        
+        if (accept.Contains("application/json"))
+        {
+            return Json(content);
+        }
+        else if (accept.Contains("application/xml"))
+        {
+            return new XmlResult(content);
+        }
+        
+        return Ok(content);
+    }
+    
+    // Vary by custom header
+    [HttpGet("api-version")]
+    [ResponseCache(Duration = 300, VaryByHeader = "X-API-Version")]
+    public IActionResult GetVersionedData()
+    {
+        var apiVersion = Request.Headers["X-API-Version"].ToString();
+        var data = _service.GetDataForVersion(apiVersion);
+        return Ok(data);
+    }
+}
+```
+
+### Dynamic Vary Headers
+
+```csharp
+public class DynamicVaryMiddleware
+{
+    private readonly RequestDelegate _next;
+    
+    public async Task InvokeAsync(HttpContext context)
+    {
+        await _next(context);
+        
+        if (context.Response.StatusCode == 200)
+        {
+            var varyHeaders = new List<string> { "Accept" };
+            
+            // Add conditional vary headers
+            if (context.Request.Headers.ContainsKey("X-Device-Type"))
+            {
+                varyHeaders.Add("X-Device-Type");
+            }
+            
+            if (context.Request.Path.StartsWithSegments("/api/localized"))
+            {
+                varyHeaders.Add("Accept-Language");
+            }
+            
+            context.Response.Headers["Vary"] = string.Join(", ", varyHeaders);
+        }
+    }
+}
+```
+
+## CDN and Proxy Cache Integration
+
+### Surrogate-Control and Edge Caching
+
+```csharp
+public class CdnCacheController : ControllerBase
+{
+    [HttpGet("cdn-cached")]
+    public IActionResult GetCdnCachedContent()
+    {
+        // Cache on CDN for 1 hour, browser for 5 minutes
+        Response.Headers["Cache-Control"] = "public, max-age=300";
+        Response.Headers["Surrogate-Control"] = "max-age=3600";
+        
+        // Cloudflare-specific
+        Response.Headers["CDN-Cache-Control"] = "max-age=7200";
+        
+        return Ok(content);
+    }
+    
+    [HttpGet("cdn-purge-tag")]
+    public IActionResult GetTaggedContent()
+    {
+        // Cache tags for selective purging
+        Response.Headers["Cache-Tag"] = "product,category-electronics";
+        Response.Headers["Cache-Control"] = "public, max-age=3600";
+        
+        return Ok(content);
+    }
+}
+```
+
+### Cloudflare Page Rules Integration
+
+```csharp
+public class CloudflareCacheService
+{
+    private readonly HttpClient _httpClient;
+    private readonly string _zoneId;
+    private readonly string _apiToken;
+    
+    public async Task PurgeCacheByTagAsync(string tag)
+    {
+        var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            $"https://api.cloudflare.com/client/v4/zones/{_zoneId}/purge_cache"
+        );
+        
+        request.Headers.Add("Authorization", $"Bearer {_apiToken}");
+        request.Content = JsonContent.Create(new { tags = new[] { tag } });
+        
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+    }
+    
+    public async Task PurgeEntireCacheAsync()
+    {
+        var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            $"https://api.cloudflare.com/client/v4/zones/{_zoneId}/purge_cache"
+        );
+        
+        request.Headers.Add("Authorization", $"Bearer {_apiToken}");
+        request.Content = JsonContent.Create(new { purge_everything = true });
+        
+        await _httpClient.SendAsync(request);
+    }
+}
+```
+
+## Multi-Layer Cache Architecture
+
+### Implementing Cache Hierarchies
+
+```csharp
+public class HierarchicalCacheService<T>
+{
+    private readonly IMemoryCache _l1Cache;          // In-process (fastest)
+    private readonly IDistributedCache _l2Cache;     // Redis (fast)
+    private readonly ICdnCache _l3Cache;             // CDN (edge caching)
+    
+    public async Task<T> GetAsync(string key, Func<Task<T>> factory)
+    {
+        // L1: In-memory cache
+        if (_l1Cache.TryGetValue(key, out T l1Value))
+        {
+            return l1Value;
+        }
+        
+        // L2: Redis cache
+        var l2Data = await _l2Cache.GetStringAsync(key);
+        if (l2Data != null)
+        {
+            var l2Value = JsonSerializer.Deserialize<T>(l2Data);
+            
+            // Populate L1
+            _l1Cache.Set(key, l2Value, TimeSpan.FromMinutes(5));
+            
+            return l2Value;
+        }
+        
+        // L3: CDN/Origin
+        var value = await factory();
+        
+        // Populate all layers
+        await SetAllLayersAsync(key, value);
+        
+        return value;
+    }
+    
+    private async Task SetAllLayersAsync(string key, T value)
+    {
+        // L1: 5 minutes
+        _l1Cache.Set(key, value, TimeSpan.FromMinutes(5));
+        
+        // L2: 30 minutes
+        await _l2Cache.SetStringAsync(
+            key,
+            JsonSerializer.Serialize(value),
+            new DistributedCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30)
+            }
+        );
+        
+        // L3: CDN cache via headers (handled by response middleware)
+    }
+    
+    public async Task InvalidateAllLayersAsync(string key)
+    {
+        _l1Cache.Remove(key);
+        await _l2Cache.RemoveAsync(key);
+        await _l3Cache.PurgeAsync(key);
+    }
+}
+```
+
+## Cache Stampede Prevention
+
+### Distributed Lock Pattern
+
+```csharp
+public class StampedeProtectedCache
+{
+    private readonly IDistributedCache _cache;
+    private readonly IDistributedLockFactory _lockFactory;
+    
+    public async Task<T> GetOrSetAsync<T>(
+        string key,
+        Func<Task<T>> factory,
+        TimeSpan cacheDuration,
+        TimeSpan lockTimeout)
+    {
+        // Try to get from cache
+        var cached = await _cache.GetStringAsync(key);
+        if (cached != null)
+        {
+            return JsonSerializer.Deserialize<T>(cached);
+        }
+        
+        // Acquire distributed lock
+        await using var distributedLock = await _lockFactory.AcquireLockAsync(
+            $"lock:{key}",
+            lockTimeout
+        );
+        
+        if (distributedLock != null)
+        {
+            // Double-check cache after acquiring lock
+            cached = await _cache.GetStringAsync(key);
+            if (cached != null)
+            {
+                return JsonSerializer.Deserialize<T>(cached);
+            }
+            
+            // Generate and cache value
+            var value = await factory();
+            
+            await _cache.SetStringAsync(
+                key,
+                JsonSerializer.Serialize(value),
+                new DistributedCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = cacheDuration
+                }
+            );
+            
+            return value;
+        }
+        
+        // Lock not acquired, wait and retry
+        await Task.Delay(100);
+        return await GetOrSetAsync(key, factory, cacheDuration, lockTimeout);
+    }
+}
+```
+
+### Probabilistic Early Expiration (XFetch)
+
+```csharp
+public class ProbabilisticCacheService
+{
+    private readonly IDistributedCache _cache;
+    private readonly Random _random = new();
+    
+    public async Task<T> GetOrSetAsync<T>(
+        string key,
+        Func<Task<T>> factory,
+        TimeSpan duration,
+        double beta = 1.0)
+    {
+        var cacheKey = $"data:{key}";
+        var timestampKey = $"timestamp:{key}";
+        
+        var cached = await _cache.GetStringAsync(cacheKey);
+        var timestampStr = await _cache.GetStringAsync(timestampKey);
+        
+        if (cached != null && timestampStr != null)
+        {
+            var timestamp = long.Parse(timestampStr);
+            var age = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - timestamp;
+            var maxAge = (long)duration.TotalSeconds;
+            
+            // Probabilistically recompute before expiration
+            var randomValue = _random.NextDouble();
+            var threshold = beta * Math.Log(randomValue);
+            
+            if (age < maxAge && age < maxAge + threshold)
+            {
+                return JsonSerializer.Deserialize<T>(cached);
+            }
+        }
+        
+        // Recompute value
+        var value = await factory();
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        
+        await _cache.SetStringAsync(cacheKey, JsonSerializer.Serialize(value), 
+            new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = duration });
+        
+        await _cache.SetStringAsync(timestampKey, now.ToString(),
+            new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = duration });
+        
+        return value;
+    }
+}
+```
+
+## Advanced Invalidation Patterns
+
+### Event-Driven Invalidation
+
+```csharp
+public class CacheInvalidationService
+{
+    private readonly IDistributedCache _cache;
+    private readonly IEventBus _eventBus;
+    
+    public CacheInvalidationService(IDistributedCache cache, IEventBus eventBus)
+    {
+        _cache = cache;
+        _eventBus = eventBus;
+        
+        // Subscribe to domain events
+        _eventBus.Subscribe<ProductUpdatedEvent>(OnProductUpdated);
+        _eventBus.Subscribe<CategoryUpdatedEvent>(OnCategoryUpdated);
+    }
+    
+    private async Task OnProductUpdated(ProductUpdatedEvent evt)
+    {
+        var keysToInvalidate = new[]
+        {
+            $"product:{evt.ProductId}",
+            $"category:{evt.CategoryId}:products",
+            "featured-products",
+            "recent-products"
+        };
+        
+        foreach (var key in keysToInvalidate)
+        {
+            await _cache.RemoveAsync(key);
+        }
+        
+        // Publish invalidation to other instances
+        await _eventBus.PublishAsync(new CacheInvalidatedEvent { Keys = keysToInvalidate });
+    }
+    
+    private async Task OnCategoryUpdated(CategoryUpdatedEvent evt)
+    {
+        await InvalidatePattern($"category:{evt.CategoryId}:*");
+    }
+    
+    private async Task InvalidatePattern(string pattern)
+    {
+        // Implementation depends on cache backend
+        // Redis: SCAN with pattern matching
+        // In-memory: maintain key registry
+    }
+}
+```
+
+### Time-Based Cache Warming
+
+```csharp
+public class CacheWarmingService : BackgroundService
+{
+    private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger<CacheWarmingService> _logger;
+    
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                using var scope = _serviceProvider.CreateScope();
+                var cache = scope.ServiceProvider.GetRequiredService<IDistributedCache>();
+                var repository = scope.ServiceProvider.GetRequiredService<IProductRepository>();
+                
+                // Warm critical cache entries before they expire
+                await WarmFeaturedProductsAsync(cache, repository);
+                await WarmCategoriesAsync(cache, repository);
+                
+                // Wait until next warming cycle
+                await Task.Delay(TimeSpan.FromMinutes(25), stoppingToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Cache warming failed");
+            }
+        }
+    }
+    
+    private async Task WarmFeaturedProductsAsync(
+        IDistributedCache cache,
+        IProductRepository repository)
+    {
+        var products = await repository.GetFeaturedProductsAsync();
+        
+        await cache.SetStringAsync(
+            "featured-products",
+            JsonSerializer.Serialize(products),
+            new DistributedCacheEntryOptions
+            {
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(30)
+            }
+        );
+        
+        _logger.LogInformation("Warmed {Count} featured products", products.Count);
+    }
+}
+```
+
+## Monitoring and Observability
+
+### Cache Metrics Collection
+
+```csharp
+public class ObservableCacheService : IDistributedCache
+{
+    private readonly IDistributedCache _innerCache;
+    private readonly IMeterFactory _meterFactory;
+    private readonly Counter<long> _hitCounter;
+    private readonly Counter<long> _missCounter;
+    private readonly Histogram<double> _latencyHistogram;
+    
+    public ObservableCacheService(IDistributedCache innerCache, IMeterFactory meterFactory)
+    {
+        _innerCache = innerCache;
+        var meter = meterFactory.Create("ResponseCache");
+        
+        _hitCounter = meter.CreateCounter<long>("cache.hits");
+        _missCounter = meter.CreateCounter<long>("cache.misses");
+        _latencyHistogram = meter.CreateHistogram<double>("cache.latency", "ms");
+    }
+    
+    public async Task<byte[]> GetAsync(string key, CancellationToken token = default)
+    {
+        var sw = Stopwatch.StartNew();
+        var value = await _innerCache.GetAsync(key, token);
+        sw.Stop();
+        
+        if (value != null)
+        {
+            _hitCounter.Add(1, new KeyValuePair<string, object>("operation", "get"));
+        }
+        else
+        {
+            _missCounter.Add(1, new KeyValuePair<string, object>("operation", "get"));
+        }
+        
+        _latencyHistogram.Record(sw.Elapsed.TotalMilliseconds);
+        
+        return value;
+    }
+    
+    // Implement other IDistributedCache methods similarly...
+}
+```
+
+<KeyConcept title="Production Caching Architecture">
+**Best Practices**:
+1. **Layered Caching**: L1 (in-memory) → L2 (Redis) → L3 (CDN)
+2. **Stampede Prevention**: Use distributed locks or probabilistic early expiration
+3. **Smart Invalidation**: Event-driven invalidation with dependency tracking
+4. **Monitoring**: Track hit ratio, latency, cache size
+5. **Graceful Degradation**: Always have fallback when cache fails
+6. **Security**: Never cache sensitive data, validate cache keys
+</KeyConcept>
+
+<InfoBox type="info">
+**Performance Impact**: A well-designed caching strategy can reduce database load by 80-95% and improve response times from 200ms to 5ms for cached content.
+</InfoBox>
+
+<ProgressCheckpoint section="response-caching-expert" xpReward={50} />
