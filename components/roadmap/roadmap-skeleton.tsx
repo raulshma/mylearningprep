@@ -7,39 +7,45 @@ import { Skeleton } from "@/components/ui/skeleton";
  */
 export function RoadmapCardSkeleton() {
   return (
-    <article className="h-full p-6 rounded-2xl border border-border bg-card">
-      {/* Header with icon and badge */}
-      <div className="flex items-start justify-between mb-4">
-        <Skeleton className="w-12 h-12 rounded-xl" />
-        <Skeleton className="h-5 w-16 rounded-full" />
-      </div>
-
-      {/* Title */}
-      <Skeleton className="h-6 w-3/4 mb-2" />
-      
-      {/* Description */}
-      <div className="space-y-2 mb-4">
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-2/3" />
-      </div>
-
-      {/* Stats */}
-      <div className="flex items-center gap-4 mb-4">
-        <div className="flex items-center gap-1.5">
-          <Skeleton className="w-4 h-4 rounded" />
-          <Skeleton className="h-4 w-16" />
+    <article className="h-full flex flex-col rounded-3xl border border-border bg-card overflow-hidden">
+      <div className="p-6 flex-1 flex flex-col">
+        {/* Header with icon and badge */}
+        <div className="flex items-start justify-between mb-5">
+          <Skeleton className="w-12 h-12 rounded-2xl" />
+          <Skeleton className="h-5 w-16 rounded-full" />
         </div>
-        <div className="flex items-center gap-1.5">
-          <Skeleton className="w-4 h-4 rounded" />
-          <Skeleton className="h-4 w-10" />
+
+        {/* Title */}
+        <Skeleton className="h-7 w-3/4 mb-3" />
+        
+        {/* Description */}
+        <div className="space-y-2 mb-6 flex-1">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-2/3" />
+        </div>
+
+        {/* Stats */}
+        <div className="flex items-center gap-5 mb-6">
+          <div className="flex items-center gap-1.5">
+            <Skeleton className="w-4 h-4 rounded" />
+            <Skeleton className="h-4 w-14" />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Skeleton className="w-4 h-4 rounded" />
+            <Skeleton className="h-4 w-10" />
+          </div>
+        </div>
+
+        {/* Progress placeholder */}
+        <div className="mt-auto">
+            <Skeleton className="h-2 w-full rounded-full" />
         </div>
       </div>
 
-      {/* Progress placeholder */}
-      <Skeleton className="h-[30px] w-full mb-4" />
-
-      {/* Action button */}
-      <Skeleton className="h-10 w-full rounded-lg" />
+      {/* Action button area */}
+      <div className="p-4 bg-secondary/20 border-t border-border/50">
+        <Skeleton className="h-10 w-full rounded-lg" />
+      </div>
     </article>
   );
 }
@@ -49,14 +55,93 @@ export function RoadmapCardSkeleton() {
  */
 export function RoadmapsPageSkeleton() {
   return (
-    <div className="flex-1 flex flex-col">
-      {/* Content grid */}
-      <div className="flex-1">
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {[...Array(6)].map((_, i) => (
-            <RoadmapCardSkeleton key={i} />
-          ))}
+    <div className="flex-1 flex flex-col max-w-[1600px] mx-auto w-full">
+      {/* Hero Skeleton matching RoadmapHero */}
+      <div className="relative w-full mb-10 overflow-hidden rounded-3xl border border-border/40 bg-card">
+        <div className="relative p-8 md:p-10 flex flex-col md:flex-row gap-8 items-start md:items-center justify-between">
+            {/* Left side: Welcome text */}
+            <div className="max-w-xl space-y-4 w-full">
+                 <div className="flex items-center gap-3 mb-2">
+                    <Skeleton className="h-6 w-24 rounded-full" />
+                    <Skeleton className="h-6 w-24 rounded-full" />
+                 </div>
+                 <Skeleton className="h-10 w-3/4 md:w-[400px] rounded-lg" />
+                 <div className="space-y-2">
+                    <Skeleton className="h-5 w-full md:w-[500px]" />
+                    <Skeleton className="h-5 w-2/3 md:w-[350px]" />
+                 </div>
+                 
+                 <div className="pt-2 max-w-xs space-y-2">
+                    <div className="flex justify-between">
+                         <Skeleton className="h-3 w-24" />
+                         <Skeleton className="h-3 w-16" />
+                    </div>
+                    <Skeleton className="h-2 w-full rounded-full" />
+                 </div>
+            </div>
+
+            {/* Right side: Stats Grid */}
+             <div className="shrink-0 grid grid-cols-2 gap-4 w-full md:w-auto">
+                 <div className="p-4 rounded-2xl border border-border/50 bg-background/50 h-[84px] w-[140px] md:w-[160px]">
+                      <div className="flex items-center gap-3 mb-2">
+                           <Skeleton className="w-9 h-9 rounded-lg" />
+                           <Skeleton className="h-6 w-8" />
+                      </div>
+                      <Skeleton className="h-3 w-20" />
+                 </div>
+                 <div className="p-4 rounded-2xl border border-border/50 bg-background/50 h-[84px] w-[140px] md:w-[160px]">
+                      <div className="flex items-center gap-3 mb-2">
+                           <Skeleton className="w-9 h-9 rounded-lg" />
+                           <Skeleton className="h-6 w-12" />
+                      </div>
+                      <Skeleton className="h-3 w-20" />
+                 </div>
+                 <div className="col-span-2 p-4 rounded-2xl border border-border/50 bg-background/50 h-[76px]">
+                      <div className="flex items-center justify-between">
+                           <div className="flex items-center gap-3">
+                                <Skeleton className="w-9 h-9 rounded-lg" />
+                                <div>
+                                     <Skeleton className="h-4 w-16 mb-1" />
+                                     <Skeleton className="h-3 w-20" />
+                                </div>
+                           </div>
+                           <div className="text-right">
+                                <Skeleton className="h-5 w-8 mb-1 ml-auto" />
+                                <Skeleton className="h-3 w-16" />
+                           </div>
+                      </div>
+                 </div>
+             </div>
         </div>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 space-y-12 pb-12">
+        {/* Continue Learning Section (Simulated) */}
+        <section className="space-y-6">
+           <div className="flex items-center gap-3">
+               <Skeleton className="w-1.5 h-6 rounded-full" />
+               <Skeleton className="h-8 w-48 rounded-lg" />
+           </div>
+           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+               {[...Array(3)].map((_, i) => (
+                    <RoadmapCardSkeleton key={`continue-${i}`} />
+               ))}
+           </div>
+        </section>
+
+         {/* All Roadmaps Section */}
+        <section className="space-y-6">
+           <div className="flex items-center gap-3">
+               <Skeleton className="w-1.5 h-6 rounded-full" />
+               <Skeleton className="h-8 w-40 rounded-lg" />
+           </div>
+           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+               {[...Array(6)].map((_, i) => (
+                    <RoadmapCardSkeleton key={`all-${i}`} />
+               ))}
+           </div>
+        </section>
       </div>
     </div>
   );
