@@ -2,6 +2,7 @@
 
 import { useEffect, type ReactNode } from 'react';
 import { useSharedHeader } from '@/components/dashboard/shared-header-context';
+import { RoadmapCommandMenu } from './roadmap-command-menu';
 
 interface RoadmapsPageClientProps {
   children: ReactNode;
@@ -14,5 +15,10 @@ export function RoadmapsPageClient({ children }: RoadmapsPageClientProps) {
     hideHeader();
   }, [hideHeader]);
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <RoadmapCommandMenu />
+    </>
+  );
 }

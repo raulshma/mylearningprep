@@ -7,6 +7,7 @@ import {
   RoadmapViewer,
   RoadmapSidebar,
   RoadmapTopicDetail,
+  RoadmapCommandMenu,
 } from "@/components/roadmap";
 import {
   startNode,
@@ -45,21 +46,35 @@ export function RoadmapClient({
   const router = useRouter();
   const [roadmap] = useState(initialRoadmap);
   const [progress, setProgress] = useState(initialProgress);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(() => {
+  
+  // Get initial node from URL or localStorage
+  const getInitialNodeId = useCallback((): string | null => {
+    if (typeof window === 'undefined') return null;
+    
+    // Check URL for node param first (from command menu navigation)
+    const urlParams = new URLSearchParams(window.location.search);
+    const nodeParam = urlParams.get('node');
+    if (nodeParam && initialRoadmap.nodes.some(n => n.id === nodeParam)) {
+      // Clear the URL param
+      const url = new URL(window.location.href);
+      url.searchParams.delete('node');
+      window.history.replaceState({}, '', url.toString());
+      return nodeParam;
+    }
+    
     // Try to restore from localStorage if available
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem(`roadmap-last-active-node-${initialRoadmap.slug}`);
-         // Only use it if it exists in the current roadmap's nodes
-        if (saved && initialRoadmap.nodes.some(n => n.id === saved)) {
-          return saved;
-        }
-      } catch (e) {
-        // Ignore
+    try {
+      const saved = localStorage.getItem(`roadmap-last-active-node-${initialRoadmap.slug}`);
+      if (saved && initialRoadmap.nodes.some(n => n.id === saved)) {
+        return saved;
       }
+    } catch (e) {
+      // Ignore
     }
     return null;
-  });
+  }, [initialRoadmap.nodes, initialRoadmap.slug]);
+
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(getInitialNodeId);
   
   // Persist selected node changes
   useEffect(() => {
@@ -347,57 +362,65 @@ export function RoadmapClient({
 
 
   return (
-    <div className="flex flex-col md:flex-row gap-2 min-h-full">
-      {/* Left Sidebar */}
-      <div className="md:w-80 shrink-0">
-        <RoadmapSidebar
-          roadmap={roadmap}
-          progress={progress}
-          selectedNodeId={selectedNodeId}
-          onNodeSelect={handleNodeClick}
-          initialLessonAvailability={initialLessonAvailability}
-          parentRoadmap={parentRoadmap}
-          onClearSelection={handleCloseDetail}
-        />
-      </div>
-
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col lg:flex-row gap-2 min-w-0">
-        {/* Roadmap Viewer */}
-        <div
-          className={`flex-1 min-w-0 ${selectedNode ? "hidden md:block" : ""}`}
-        >
-          <RoadmapViewer
+    <>
+      <div className="flex flex-col md:flex-row gap-2 min-h-full">
+        {/* Left Sidebar */}
+        <div className="md:w-80 shrink-0">
+          <RoadmapSidebar
             roadmap={roadmap}
             progress={progress}
             selectedNodeId={selectedNodeId}
-            onNodeClick={handleNodeClick}
-            subRoadmapProgressMap={subRoadmapProgressMap}
+            onNodeSelect={handleNodeClick}
+            initialLessonAvailability={initialLessonAvailability}
+            parentRoadmap={parentRoadmap}
+            onClearSelection={handleCloseDetail}
           />
         </div>
 
-        {/* Detail Panel */}
-        <AnimatePresence mode="wait">
-          {selectedNode && (
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              className="w-full lg:w-96 shrink-0"
-            >
-              <RoadmapTopicDetail
-                node={selectedNode}
-                nodeProgress={selectedNodeProgress}
-                roadmapSlug={roadmap.slug}
-                onStartLearning={handleStartLearning}
-                onMarkComplete={handleMarkComplete}
-                onClose={handleCloseDetail}
-                gamification={gamification}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col lg:flex-row gap-2 min-w-0">
+          {/* Roadmap Viewer */}
+          <div
+            className={`flex-1 min-w-0 ${selectedNode ? "hidden md:block" : ""}`}
+          >
+            <RoadmapViewer
+              roadmap={roadmap}
+              progress={progress}
+              selectedNodeId={selectedNodeId}
+              onNodeClick={handleNodeClick}
+              subRoadmapProgressMap={subRoadmapProgressMap}
+            />
+          </div>
+
+          {/* Detail Panel */}
+          <AnimatePresence mode="wait">
+            {selectedNode && (
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                className="w-full lg:w-96 shrink-0"
+              >
+                <RoadmapTopicDetail
+                  node={selectedNode}
+                  nodeProgress={selectedNodeProgress}
+                  roadmapSlug={roadmap.slug}
+                  onStartLearning={handleStartLearning}
+                  onMarkComplete={handleMarkComplete}
+                  onClose={handleCloseDetail}
+                  gamification={gamification}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
-    </div>
+
+      {/* Command Menu */}
+      <RoadmapCommandMenu
+        currentRoadmapSlug={roadmap.slug}
+        onNodeSelect={handleNodeClick}
+      />
+    </>
   );
 }

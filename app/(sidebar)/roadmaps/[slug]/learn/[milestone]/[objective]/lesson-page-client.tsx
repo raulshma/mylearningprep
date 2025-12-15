@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect, type ReactNode } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowRight, BookOpen, Loader2, CheckCircle2, RefreshCw } from 'lucide-react';
@@ -33,6 +33,7 @@ import type { NextLessonSuggestion as NextLessonSuggestionType, AdjacentLessons,
 import { NextLessonSuggestion } from '@/components/learn/next-lesson-suggestion';
 import { SectionSidebar } from '@/components/learn/section-sidebar';
 import { ZenModeProvider, ZenModeOverlay, ZenModeToggle, useZenMode } from '@/components/learn/zen-mode';
+import { RoadmapCommandMenu } from '@/components/roadmap';
 
 interface LessonPageClientProps {
   lessonId: string;
@@ -251,8 +252,10 @@ function LessonContent({
   }, [level, lessonId, roadmapSlug, milestoneId, isLoading, gamification, setLevel, onMdxSourceChange, bumpMdxKey]);
 
   // Load content for persisted level on mount if it differs from server-rendered level
+  const hasLoadedPersistedContent = useRef(false);
   useEffect(() => {
-    if (!needsContentLoad) return;
+    if (!needsContentLoad || hasLoadedPersistedContent.current) return;
+    hasLoadedPersistedContent.current = true;
     
     async function loadPersistedLevelContent() {
       try {
@@ -337,7 +340,7 @@ function LessonContent({
       console.error('Failed to claim rewards:', error);
       toast.error('Something went wrong');
     }
-  }, [level, lessonId, milestoneId, completedSectionIds, progress, hasClaimedReward]);
+  }, [level, lessonId, completedSectionIds, progress, hasClaimedReward]);
 
   // Handle lesson reset
   const handleResetLesson = useCallback(async () => {
@@ -696,6 +699,9 @@ export function LessonPageClient(props: LessonPageClientProps) {
           onContentLoaded={handleContentLoaded}
         />
       </ProgressProvider>
+      
+      {/* Command Menu */}
+      <RoadmapCommandMenu currentRoadmapSlug={props.roadmapSlug} />
     </ZenModeProvider>
   );
 }
