@@ -469,3 +469,177 @@ export async function getNextLessonSuggestion(
   }
 }
 
+// ============================================================================
+// Next Lesson Navigation (Roadmap-aware)
+// ============================================================================
+
+import * as roadmapRepo from '@/lib/db/repositories/roadmap-repository';
+import type { RoadmapNode, RoadmapEdge, LearningObjective as RoadmapLearningObjective } from '@/lib/db/schemas/roadmap';
+
+/**
+ * Navigation info for the "Go to Next Lesson" button
+ */
+export interface NextLessonNavigation {
+  lessonPath: string;
+  title: string;
+  milestone: string;
+  milestoneTitle: string;
+  nodeType: 'milestone' | 'topic' | 'optional';
+}
+
+/** Edge priority for navigation (lower = higher priority) */
+const EDGE_PRIORITY: Record<string, number> = {
+  sequential: 1,
+  recommended: 2,
+  optional: 3,
+};
+
+/**
+ * Get the next lesson based on roadmap structure
+ * 
+ * Priority:
+ * 1. Next sibling objective in the same node
+ * 2. First objective of the target node via edges (sequential > recommended > optional)
+ * 3. null if no next lesson found
+ * 
+ * Performance: Uses cached roadmap data from repository
+ */
+export async function getNextLessonNavigation(
+  currentLessonPath: string,
+  milestoneId: string,
+  roadmapSlug: string
+): Promise<NextLessonNavigation | null> {
+  try {
+    // Fetch roadmap (cached by React cache())
+    const roadmap = await roadmapRepo.findRoadmapBySlug(roadmapSlug);
+    if (!roadmap) {
+      return null;
+    }
+
+    // Find the current node containing this lesson
+    const currentNode = roadmap.nodes.find(node => node.id === milestoneId);
+    if (!currentNode || !currentNode.learningObjectives) {
+      return null;
+    }
+
+    // Find current objective index within the node
+    const currentObjectiveIndex = findObjectiveIndexInNode(
+      currentNode.learningObjectives,
+      currentLessonPath
+    );
+
+    // Strategy 1: Check for next sibling objective in same node
+    const siblingResult = await findNextSiblingLesson(
+      currentNode,
+      currentObjectiveIndex,
+      milestoneId
+    );
+    if (siblingResult) {
+      return siblingResult;
+    }
+
+    // Strategy 2: Follow edges to find next node
+    const edgeResult = await findNextNodeLesson(
+      roadmap.nodes,
+      roadmap.edges,
+      milestoneId
+    );
+    if (edgeResult) {
+      return edgeResult;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Failed to get next lesson navigation:', error);
+    return null;
+  }
+}
+
+/** Find the index of an objective by its lessonId */
+function findObjectiveIndexInNode(
+  objectives: RoadmapLearningObjective[],
+  lessonPath: string
+): number {
+  const lessonSlug = lessonPath.split('/').pop() || '';
+  
+  return objectives.findIndex(obj => {
+    if (typeof obj === 'string') {
+      return objectiveToLessonSlug(obj) === lessonSlug;
+    }
+    return obj.lessonId === lessonSlug || 
+           obj.lessonId === lessonPath ||
+           objectiveToLessonSlug(obj.title) === lessonSlug;
+  });
+}
+
+/** Find the next sibling objective with a lesson in the same node */
+async function findNextSiblingLesson(
+  node: RoadmapNode,
+  currentIndex: number,
+  milestoneId: string
+): Promise<NextLessonNavigation | null> {
+  if (!node.learningObjectives || currentIndex < 0) {
+    return null;
+  }
+
+  // Check remaining objectives after current
+  for (let i = currentIndex + 1; i < node.learningObjectives.length; i++) {
+    const objective = node.learningObjectives[i];
+    const lessonPath = await findLessonPath(milestoneId, objective);
+    
+    if (lessonPath) {
+      const metadata = await getLessonMetadata(lessonPath);
+      if (metadata) {
+        return {
+          lessonPath,
+          title: metadata.title,
+          milestone: milestoneId,
+          milestoneTitle: node.title,
+          nodeType: node.type as 'milestone' | 'topic' | 'optional',
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+/** Find the first lesson in the next connected node via edges */
+async function findNextNodeLesson(
+  nodes: RoadmapNode[],
+  edges: RoadmapEdge[],
+  currentNodeId: string
+): Promise<NextLessonNavigation | null> {
+  // Get outgoing edges from current node, sorted by priority
+  const outgoingEdges = edges
+    .filter(edge => edge.source === currentNodeId)
+    .sort((a, b) => (EDGE_PRIORITY[a.type] || 99) - (EDGE_PRIORITY[b.type] || 99));
+
+  // Try each target node in priority order
+  for (const edge of outgoingEdges) {
+    const targetNode = nodes.find(n => n.id === edge.target);
+    if (!targetNode || !targetNode.learningObjectives?.length) {
+      continue;
+    }
+
+    // Find first objective with a lesson in target node
+    for (const objective of targetNode.learningObjectives) {
+      const lessonPath = await findLessonPath(targetNode.id, objective);
+      
+      if (lessonPath) {
+        const metadata = await getLessonMetadata(lessonPath);
+        if (metadata) {
+          return {
+            lessonPath,
+            title: metadata.title,
+            milestone: targetNode.id,
+            milestoneTitle: targetNode.title,
+            nodeType: targetNode.type as 'milestone' | 'topic' | 'optional',
+          };
+        }
+      }
+    }
+  }
+
+  return null;
+}

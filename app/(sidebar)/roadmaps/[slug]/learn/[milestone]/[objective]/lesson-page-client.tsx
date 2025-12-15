@@ -3,7 +3,7 @@
 import { useState, useCallback, useMemo, useEffect, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, BookOpen, Loader2, CheckCircle2, RefreshCw } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookOpen, Loader2, CheckCircle2, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { MDXRemote, type MDXRemoteSerializeResult } from 'next-mdx-remote';
 
@@ -28,7 +28,7 @@ import { Quiz, Question, Answer } from '@/components/learn/mdx-components/quiz';
 import { saveObjectiveProgress, clearObjectiveProgress } from '@/lib/hooks/use-objective-progress';
 
 import type { UserGamification } from '@/lib/db/schemas/user';
-import type { NextLessonSuggestion as NextLessonSuggestionType, AdjacentLessons } from '@/lib/actions/lessons';
+import type { NextLessonSuggestion as NextLessonSuggestionType, AdjacentLessons, NextLessonNavigation } from '@/lib/actions/lessons';
 import { NextLessonSuggestion } from '@/components/learn/next-lesson-suggestion';
 import { SectionSidebar } from '@/components/learn/section-sidebar';
 import { ZenModeProvider, ZenModeOverlay, ZenModeToggle, useZenMode } from '@/components/learn/zen-mode';
@@ -48,6 +48,7 @@ interface LessonPageClientProps {
   initialGamification?: UserGamification | null;
   nextLessonSuggestion?: NextLessonSuggestionType | null;
   adjacentLessons?: AdjacentLessons | null;
+  nextLessonNavigation?: NextLessonNavigation | null;
 }
 
 // Internal props that includes the lifted level state
@@ -76,6 +77,7 @@ function LessonContent({
   initialGamification = null,
   nextLessonSuggestion = null,
   adjacentLessons = null,
+  nextLessonNavigation = null,
   currentLevel,
   onLevelChange: setCurrentLevel,
   mdxSource,
@@ -453,13 +455,37 @@ function LessonContent({
 
             {/* Navigation */}
             <div className="mt-12 pt-8 border-t border-border">
-              <div className="flex justify-between">
+              <div className="flex justify-between items-center gap-4">
                 <Link href={`/roadmaps/${roadmapSlug}`}>
                   <Button variant="outline">
                     <ArrowLeft className="w-4 h-4 mr-2" />
                     Back to Roadmap
                   </Button>
                 </Link>
+
+                {nextLessonNavigation && (
+                  <Link 
+                    href={`/roadmaps/${roadmapSlug}/learn/${nextLessonNavigation.milestone}/${nextLessonNavigation.lessonPath.split('/').pop()}`}
+                    className="flex-shrink-0"
+                  >
+                    <Button className="gap-2">
+                      <span className="hidden sm:inline-flex items-center gap-2">
+                        <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                          nextLessonNavigation.nodeType === 'milestone' 
+                            ? 'bg-primary/20 text-primary' 
+                            : nextLessonNavigation.nodeType === 'topic'
+                            ? 'bg-yellow-500/20 text-yellow-600 dark:text-yellow-400'
+                            : 'bg-muted text-muted-foreground'
+                        }`}>
+                          {nextLessonNavigation.nodeType}
+                        </span>
+                        <span className="max-w-[200px] truncate">{nextLessonNavigation.title}</span>
+                      </span>
+                      <span className="sm:hidden">Next</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </Button>
+                  </Link>
+                )}
               </div>
             </div>
           </div>

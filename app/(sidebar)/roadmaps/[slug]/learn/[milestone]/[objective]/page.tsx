@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { auth } from '@clerk/nextjs/server';
-import { getLessonMetadata, getLessonContent, getNextLessonSuggestion, getAdjacentLessons, resolveLessonPath } from '@/lib/actions/lessons';
+import { getLessonMetadata, getLessonContent, getNextLessonSuggestion, getAdjacentLessons, resolveLessonPath, getNextLessonNavigation } from '@/lib/actions/lessons';
 import { LessonPageClient } from './lesson-page-client';
 import type { ExperienceLevel } from '@/lib/db/schemas/lesson-progress';
 import { getUserGamificationAction } from '@/lib/actions/gamification';
@@ -89,6 +89,13 @@ export default async function LearnObjectivePage({
     userGamification?.completedLessons || []
   );
 
+  // Get next lesson navigation based on roadmap structure (for navigation button)
+  const nextLessonNavigation = await getNextLessonNavigation(
+    lessonPath,
+    milestoneId,
+    roadmapSlug
+  );
+
   // Get adjacent lessons for zen mode navigation
   const adjacentLessons = await getAdjacentLessons(lessonPath);
 
@@ -109,6 +116,7 @@ export default async function LearnObjectivePage({
         initialGamification={userGamification}
         nextLessonSuggestion={nextLessonSuggestion}
         adjacentLessons={adjacentLessons}
+        nextLessonNavigation={nextLessonNavigation}
       />
     </div>
   );
