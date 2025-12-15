@@ -76,13 +76,14 @@ function PlanChangeDialog({
   };
 
   const getDescription = () => {
-    if (isCancel) {
-      return "Your subscription will remain active until the end of your current billing period. After that, you'll be moved to the Free plan.";
-    }
-    if (isUpgrade) {
-      return `You'll be charged the prorated difference immediately and gain access to all ${toPlan.name} features right away.`;
-    }
-    return `Your plan will change to ${toPlan.name} at the end of your current billing period. You'll keep your current features until then.`;
+    const baseDesc = isCancel
+      ? "Your subscription will remain active until the end of your current billing period. After that, you'll be moved to the Free plan."
+      : isUpgrade
+        ? `You'll be charged the prorated difference immediately and gain access to all ${toPlan.name} features right away.`
+        : `Your plan will change to ${toPlan.name} at the end of your current billing period. You'll keep your current features until then.`;
+    
+    const testNotice = "(This is a test environment - no real charges will be made)";
+    return `${baseDesc} ${testNotice}`;
   };
 
   const getPriceChange = () => {
@@ -145,6 +146,19 @@ function PlanChangeDialog({
           >
             {getDescription()}
           </motion.p>
+
+          {/* Test Payment Warning */}
+          <motion.div
+            initial={{ y: 10, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 mb-6 flex items-start gap-2"
+          >
+            <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+              Test Environment: No real payment will be processed.
+            </p>
+          </motion.div>
 
           {/* Price comparison */}
           {priceChange && (
@@ -303,6 +317,25 @@ export function UpgradePageContent({ profile }: UpgradePageContentProps) {
     });
   }, [setHeader]);
 
+  // Test environment warning component
+  const TestPaymentWarning = () => (
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="mb-8 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 flex items-start gap-3"
+    >
+      <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+      <div>
+        <p className="text-sm font-semibold text-amber-700 dark:text-amber-300 mb-1">
+          Test Payment Environment
+        </p>
+        <p className="text-xs text-amber-600 dark:text-amber-400">
+          This is a test environment. No real money will be deducted from your account. You can use test payment methods.
+        </p>
+      </div>
+    </motion.div>
+  );
+
   const openPlanChangeDialog = (
     tier: PricingTier,
     type: "upgrade" | "downgrade",
@@ -389,6 +422,7 @@ export function UpgradePageContent({ profile }: UpgradePageContentProps) {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
+      <TestPaymentWarning />
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
         {PRICING_TIERS.map((tier, index) => {
           const isCurrent = isCurrentPlan(tier);

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@clerk/nextjs';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Check, ChevronDown, Key, Loader2, Sparkles, Zap, Crown } from 'lucide-react';
+import { Check, ChevronDown, Key, Loader2, Sparkles, Zap, Crown, AlertCircle } from 'lucide-react';
 import { createCheckout } from '@/lib/actions/stripe';
 import { toast } from 'sonner';
 import { Header } from '@/components/landing/header';
@@ -267,6 +267,16 @@ export default function PublicPricingPage() {
     <div className="min-h-screen bg-background">
       <Header />
       <main>
+        {/* Test Payment Warning Banner */}
+        <section className="py-4 px-6 bg-amber-50/50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-900/50">
+          <div className="max-w-6xl mx-auto flex items-center justify-center gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+            <p className="text-sm font-medium text-amber-700 dark:text-amber-300 text-center">
+              This is a test environment. No real money will be deducted. Test card payments are accepted.
+            </p>
+          </div>
+        </section>
+
         {/* Hero Section - Apple style with large typography */}
         <section className="pt-20 pb-8 md:pt-32 md:pb-16 px-6">
           <div className="max-w-4xl mx-auto text-center">

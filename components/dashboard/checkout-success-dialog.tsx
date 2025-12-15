@@ -81,6 +81,18 @@ export function CheckoutSuccessDialog({ plan }: CheckoutSuccessDialogProps) {
   const [isUpgrade, setIsUpgrade] = useState(false);
   const [displayPlan, setDisplayPlan] = useState(plan);
 
+  // Test payment notification
+  const TestPaymentNotice = () => (
+    <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 mb-4">
+      <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-1">
+        ⚠️ Test Payment
+      </p>
+      <p className="text-xs text-amber-600 dark:text-amber-400">
+        This is a test environment. No real charges have been made.
+      </p>
+    </div>
+  );
+
   // Use effect for state updates and URL cleanup
   React.useEffect(() => {
     if (processedRef.current) return;
@@ -139,6 +151,7 @@ export function CheckoutSuccessDialog({ plan }: CheckoutSuccessDialogProps) {
         </DialogHeader>
 
         <div className="space-y-3 my-4">
+          <TestPaymentNotice />
           <p className="text-sm font-medium text-muted-foreground text-center">
             You now have access to:
           </p>

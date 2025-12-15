@@ -17,6 +17,7 @@ import {
   Briefcase,
   ArrowRight,
   Sparkles,
+  AlertCircle,
 } from "lucide-react";
 import { PlanMarkdown } from "./plan-content";
 
@@ -323,8 +324,16 @@ export default async function PublicPlanPage({ params }: PublicPlanPageProps) {
 
         {/* CTA Section for non-authenticated users */}
         {/* Requirements: 7.4 - Display content with CTA for non-authenticated users */}
-        <section className="py-16 px-6 bg-card">
+        <section className="py-16 px-6 bg-card border-t border-border">
           <div className="max-w-2xl mx-auto text-center">
+            {/* Test Payment Notice */}
+            <div className="mb-8 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 flex items-start gap-3 max-w-lg mx-auto">
+              <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                This is a test environment. No real charges will be made when you upgrade your plan.
+              </p>
+            </div>
+
             <div className="inline-flex items-center gap-2 border border-border px-4 py-2 mb-6">
               <Sparkles className="w-4 h-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">

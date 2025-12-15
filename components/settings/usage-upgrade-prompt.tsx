@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { Activity, Crown, Lock, Sparkles, Check } from 'lucide-react';
+import { Activity, Crown, Lock, Sparkles, Check, AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useSharedHeader } from '@/components/dashboard/shared-header-context';
@@ -22,6 +22,24 @@ export function UsageUpgradePrompt() {
 
   return (
     <div className="max-w-4xl mx-auto py-10">
+      {/* Test Payment Warning */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="mb-6 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 flex items-start gap-3"
+      >
+        <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+        <div>
+          <p className="text-sm font-semibold text-amber-700 dark:text-amber-300 mb-1">
+            Test Environment
+          </p>
+          <p className="text-xs text-amber-600 dark:text-amber-400">
+            This is a test environment. No real charges will be made to your account.
+          </p>
+        </div>
+      </motion.div>
+
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}

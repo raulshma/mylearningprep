@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { BarChart3, Crown, Lock } from 'lucide-react';
+import { BarChart3, Crown, Lock, AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useSharedHeader } from '@/components/dashboard/shared-header-context';
@@ -22,6 +22,19 @@ export function AnalyticsUpgradePrompt() {
 
   return (
     <div className="max-w-2xl mx-auto">
+      {/* Test Payment Warning */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="mb-4 p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 flex items-start gap-2"
+      >
+        <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+        <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+          Test environment: No real money will be charged.
+        </p>
+      </motion.div>
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
