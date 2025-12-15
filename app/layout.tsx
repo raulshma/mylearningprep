@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 
 import { ClerkProvider } from "@clerk/nextjs";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
 import { Geist_Mono } from "next/font/google";
@@ -74,6 +75,7 @@ export default function RootLayout({
             <Toaster />
           </ThemeProvider>
           <Analytics />
+          <SpeedInsights />
         </body>
       </html>
     </ClerkProvider>
