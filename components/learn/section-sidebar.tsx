@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, Circle, ChevronRight, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 
 interface SectionSidebarProps {
   sections: string[];
@@ -136,15 +136,18 @@ export function SectionSidebar({ sections, completedSections, currentSection, cl
             </Button>
           </SheetTrigger>
           <SheetContent side="right" className="w-80">
-            <div className="space-y-4 mt-6">
+            <SheetHeader className="px-6 pt-6 pb-2">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-foreground">
+                <SheetTitle className="text-sm font-semibold text-foreground">
                   Sections
-                </h3>
+                </SheetTitle>
                 <span className="text-xs text-muted-foreground">
                   {completedSections.length}/{sections.length}
                 </span>
               </div>
+            </SheetHeader>
+
+            <div className="px-6 pb-6 space-y-4">
               
               {/* Progress bar */}
               <div>

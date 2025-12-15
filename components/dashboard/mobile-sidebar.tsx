@@ -55,7 +55,7 @@ export function MobileSidebar({ isAdmin, usage, user }: MobileSidebarProps) {
       </SheetTrigger>
       <SheetContent
         side="left"
-        className="w-64 p-0 bg-white dark:bg-black/20 border-r border-border dark:border-white/10"
+        className="w-64 p-0 bg-background border-r border-border"
       >
         <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
         {/* Subtle tint overlay */}
