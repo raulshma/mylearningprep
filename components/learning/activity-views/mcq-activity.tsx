@@ -16,7 +16,24 @@ export function MCQActivityView({ content, onComplete }: MCQActivityViewProps) {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [showExplanation, setShowExplanation] = useState(false);
 
-  const isCorrect = selectedOption === content.correctAnswer;
+  // Helper to check if an option is the correct answer
+  // Handles both cases: correctAnswer as full text OR as letter (A, B, C, D)
+  const isOptionCorrect = (option: string, index: number): boolean => {
+    const correctAnswer = content.correctAnswer;
+    // Direct match (full text)
+    if (option === correctAnswer) return true;
+    // Letter match (A, B, C, D)
+    const letter = String.fromCharCode(65 + index);
+    if (correctAnswer.toUpperCase() === letter) return true;
+    // Letter with period match (A., B., C., D.)
+    if (correctAnswer.toUpperCase() === `${letter}.`) return true;
+    return false;
+  };
+
+  // Find the correct option index for comparison
+  const correctOptionIndex = content.options.findIndex((opt, idx) => isOptionCorrect(opt, idx));
+  const selectedIndex = selectedOption ? content.options.indexOf(selectedOption) : -1;
+  const isCorrect = selectedIndex !== -1 && selectedIndex === correctOptionIndex;
 
   const handleSubmit = () => {
     if (!selectedOption) return;
@@ -39,7 +56,7 @@ export function MCQActivityView({ content, onComplete }: MCQActivityViewProps) {
       <div className="space-y-3">
         {content.options.map((option, index) => {
           const isSelected = selectedOption === option;
-          const isCorrectOption = option === content.correctAnswer;
+          const isCorrectOption = isOptionCorrect(option, index);
           const showResult = isSubmitted;
 
           return (
