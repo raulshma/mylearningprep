@@ -2,7 +2,9 @@
 
 Let's explore the internals of service lifetimes, advanced patterns, and how to handle complex scenarios involving lifetime management.
 
-## Lifetime Internals: How the Container Tracks Instances
+---
+
+## Section 1: Lifetime Internals
 
 <ServiceLifetimeDemo mode="advanced" showComparison />
 
@@ -15,8 +17,7 @@ Singletons are stored in the **root container**:
 internal class ServiceProvider
 {
     private readonly Dictionary<Type, object> _singletons = new();
-    private readonly object _lock = new();
-
+    
     public object GetSingleton(Type type, Func<object> factory)
     {
         lock (_lock)
@@ -33,79 +34,35 @@ internal class ServiceProvider
 ```
 
 **Key Points:**
-
-- Thread-safe via locking (or `ConcurrentDictionary`)
-- Never disposed until `ServiceProvider.Dispose()` is called
+- Thread-safe via locking
+- Never disposed until app shutdown
 - Shared across all scopes and threads
 
 ### Scoped Storage
 
-Scoped services live in a **service scope**:
+Scoped services live in a **service scope** and are disposed when the scope ends.
 
-```csharp
-// ASP.NET Core creates a scope per request
-public class ServiceScope : IServiceScope
-{
-    private readonly Dictionary<Type, object> _scopedInstances = new();
+<ProgressCheckpoint section="lifetime-overview" xpReward={20} />
 
-    public object GetScoped(Type type, Func<object> factory)
-    {
-        if (!_scopedInstances.TryGetValue(type, out var instance))
-        {
-            instance = factory();
-            _scopedInstances[type] = instance;
-        }
-        return instance;
-    }
+---
 
-    public void Dispose()
-    {
-        foreach (var instance in _scopedInstances.Values)
-        {
-            (instance as IDisposable)?.Dispose();
-        }
-        _scopedInstances.Clear();
-    }
-}
-```
-
-**Key Points:**
-
-- Stored per-scope, not per-container
-- Disposed when scope ends
-- Not thread-safe (one thread per request typically)
-
-## Captive Dependencies: The Silent Killer
+## Section 2: Captive Dependencies
 
 A **captive dependency** occurs when a shorter-lived service is captured by a longer-lived service:
 
 ```csharp
 // ⚠️ Scoped captured in Singleton
-builder.Services.AddSingleton<SingletonService>();
-builder.Services.AddScoped<ScopedService>();  // Depends on DbContext
-
 public class SingletonService
 {
     private readonly ScopedService _scoped;
-
     public SingletonService(ScopedService scoped)
     {
-        // This ScopedService instance is now IMMORTAL
-        _scoped = scoped;
+        _scoped = scoped;  // This instance is now IMMORTAL
     }
 }
 ```
 
-**Consequences:**
-
-1. The scoped service is created from the **root scope**
-2. It lives forever (as long as the singleton)
-3. If it holds request-specific data → stale/wrong data
-4. If it's a DbContext → memory leak, stale entity cache
-
 ### Detection with ValidateScopes
-
-Enable scope validation in development:
 
 ```csharp
 builder.Host.UseDefaultServiceProvider(options =>
@@ -115,43 +72,32 @@ builder.Host.UseDefaultServiceProvider(options =>
 });
 ```
 
-This throws at startup: `System.InvalidOperationException: Cannot consume scoped service 'ScopedService' from singleton 'SingletonService'.`
-
 ### Solution: IServiceScopeFactory
-
-When a singleton needs scoped services, create a scope on-demand:
 
 ```csharp
 public class BackgroundWorker : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
-
-    public BackgroundWorker(IServiceScopeFactory scopeFactory)
-    {
-        _scopeFactory = scopeFactory;
-    }
-
+    
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
-        while (!ct.IsCancellationRequested)
+        using (var scope = _scopeFactory.CreateScope())
         {
-            // Create a new scope for each iteration
-            using (var scope = _scopeFactory.CreateScope())
-            {
-                var dbContext = scope.ServiceProvider
-                    .GetRequiredService<AppDbContext>();
-
-                // DbContext is properly scoped and disposed
-                await ProcessBatchAsync(dbContext, ct);
-            }
-
-            await Task.Delay(TimeSpan.FromMinutes(1), ct);
+            var dbContext = scope.ServiceProvider
+                .GetRequiredService<AppDbContext>();
+            await ProcessBatchAsync(dbContext, ct);
         }
     }
 }
 ```
 
-## Thread Safety Requirements by Lifetime
+<ProgressCheckpoint section="lifetime-comparison" xpReward={20} />
+
+---
+
+## Section 3: Advanced Patterns
+
+### Thread Safety Requirements
 
 | Lifetime  | Thread Safety Required? | Why?                                   |
 | :-------- | :---------------------- | :------------------------------------- |
@@ -159,151 +105,33 @@ public class BackgroundWorker : BackgroundService
 | Scoped    | ⚠️ Usually no           | Typically one thread per HTTP request  |
 | Transient | ⚠️ Usually no           | New instance per injection             |
 
-<InfoBox type="warning">
-  **Exception:** SignalR and Blazor Server have multiple threads per scope.
-  Always design for thread safety if unsure.
-</InfoBox>
-
-### Thread-Safe Singleton Example
-
-```csharp
-public class ThreadSafeCounter
-{
-    private int _count;
-
-    // Use Interlocked for atomic operations
-    public void Increment() => Interlocked.Increment(ref _count);
-    public int GetCount() => Volatile.Read(ref _count);
-}
-
-// Or use ConcurrentDictionary for collections
-public class CacheService
-{
-    private readonly ConcurrentDictionary<string, object> _cache = new();
-
-    public T GetOrAdd<T>(string key, Func<T> factory)
-    {
-        return (T)_cache.GetOrAdd(key, _ => factory()!);
-    }
-}
-```
-
-## Keyed Services (.NET 8+)
-
-.NET 8 introduces keyed services for multiple implementations per interface:
+### Keyed Services (.NET 8+)
 
 ```csharp
 // Registration
 builder.Services.AddKeyedSingleton<ICache, RedisCache>("redis");
 builder.Services.AddKeyedSingleton<ICache, MemoryCache>("memory");
-builder.Services.AddKeyedScoped<ICache, SqlCache>("sql");
 
 // Constructor injection with attribute
 public class CacheController
 {
-    private readonly ICache _primaryCache;
-    private readonly ICache _fallbackCache;
-
     public CacheController(
         [FromKeyedServices("redis")] ICache primaryCache,
         [FromKeyedServices("memory")] ICache fallbackCache)
     {
-        _primaryCache = primaryCache;
-        _fallbackCache = fallbackCache;
+        // Each key maintains its own instance tracking
     }
 }
 ```
 
-### Lifetime Per Key
+### Key Takeaways
 
-Each keyed registration has its own lifetime:
-
-```csharp
-builder.Services.AddKeyedSingleton<INotifier, SlackNotifier>("slack");     // Singleton
-builder.Services.AddKeyedScoped<INotifier, EmailNotifier>("email");        // Scoped
-builder.Services.AddKeyedTransient<INotifier, SmsNotifier>("sms");         // Transient
-
-// Each key maintains its own instance tracking
-```
-
-## Disposal and IAsyncDisposable
-
-Services implementing `IDisposable` or `IAsyncDisposable` are disposed by the container:
-
-```csharp
-public class DatabaseConnection : IAsyncDisposable
-{
-    public async ValueTask DisposeAsync()
-    {
-        await _connection.CloseAsync();
-        GC.SuppressFinalize(this);
-    }
-}
-```
-
-**Disposal Rules:**
-
-| Lifetime  | When Disposed?                                                 |
-| :-------- | :------------------------------------------------------------- |
-| Singleton | When `ServiceProvider.DisposeAsync()` is called (app shutdown) |
-| Scoped    | When scope ends (request completes)                            |
-| Transient | When scope ends (collected with the scope)                     |
-
-<InfoBox type="important">
-  **Transient Gotcha:** Transient services are NOT disposed immediately after
-  use. They're collected when the scope they were created in is disposed.
-</InfoBox>
-
-## Advanced Pattern: Hybrid Lifetimes
-
-Sometimes you need singleton behavior with scoped dependencies:
-
-```csharp
-public class HybridService
-{
-    private readonly IServiceScopeFactory _scopeFactory;
-    private readonly ILogger<HybridService> _logger;  // Singleton-safe
-
-    public HybridService(
-        IServiceScopeFactory scopeFactory,
-        ILogger<HybridService> logger)
-    {
-        _scopeFactory = scopeFactory;
-        _logger = logger;
-    }
-
-    public async Task ProcessAsync()
-    {
-        _logger.LogInformation("Starting process");
-
-        await using var scope = _scopeFactory.CreateAsyncScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
-        // Use dbContext within this scope
-        await dbContext.SaveChangesAsync();
-    }
-}
-
-// Register as singleton
-builder.Services.AddSingleton<HybridService>();
-```
-
-## Best Practices Summary
-
-| Practice            | Do ✅                          | Don't ❌               |
-| :------------------ | :----------------------------- | :--------------------- |
-| DbContext           | `AddScoped`                    | `AddSingleton`         |
-| Configuration       | `AddSingleton`                 | `AddTransient` (waste) |
-| Validation          | Enable `ValidateScopes` in dev | Skip validation        |
-| Background services | Use `IServiceScopeFactory`     | Inject scoped directly |
-| Thread safety       | Design singletons thread-safe  | Assume single-threaded |
-
-## Key Takeaways
-
+<InfoBox type="tip" title="Remember">
 - 🔒 **Captive dependencies** - Never inject shorter lifetime into longer
 - 🏭 **IServiceScopeFactory** - Create scopes in singletons/background services
 - 🧵 **Thread safety** - Required for singletons, usually not for scoped
 - 🔑 **Keyed services** - .NET 8+ feature for multiple implementations
 - 🗑️ **Disposal** - Container handles `IDisposable`/`IAsyncDisposable`
+</InfoBox>
 
-<ProgressCheckpoint section="lifetime-pitfalls" xpReward={60} />
+<ProgressCheckpoint section="lifetime-pitfalls" xpReward={20} />

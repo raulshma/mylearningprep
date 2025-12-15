@@ -1,50 +1,105 @@
 # Environments (Dev, Staging, Prod)
 
-Your app behaves differently depending on where it's running - just like how you act differently at home versus at work. ASP.NET Core has built-in support for this through **environments**!
+Your app behaves differently depending on where it's running. ASP.NET Core has built-in support for this through **environments**!
 
-## The Three Stages 🎭
+---
 
-Think of environments like stages in a theater production:
+## Section 1: Environment Basics
+
+### The Three Stages 🎭
 
 <EnvironmentSwitcher mode="beginner" />
 
-### 1. Development 🏠 (Home)
-- **Where**: Your computer
-- **Who sees it**: Just you
-- **Mode**: Learning and experimenting
-- **Errors**: Detailed messages to help you fix problems
+| Environment | Where | Who Sees It | Error Details |
+|:------------|:------|:------------|:--------------|
+| **Development** | Your computer | Just you | Full details |
+| **Staging** | Test server | Your team | Some details |
+| **Production** | Live server | Real users | Friendly messages |
 
-### 2. Staging 🎬 (Dress Rehearsal)
-- **Where**: A test server
-- **Who sees it**: Your team
-- **Mode**: Testing before the real thing
-- **Errors**: Less detail, but still informative
+### Why Different Environments?
 
-### 3. Production 🌟 (The Big Show)
-- **Where**: The live server
-- **Who sees it**: Real users
-- **Mode**: Best behavior only!
-- **Errors**: Friendly messages (no tech details!)
+- **Development**: Show all errors, use test data
+- **Production**: Hide errors, use real data, be secure
 
-## Why Do We Need Different Environments?
+<ProgressCheckpoint section="env-basics" xpReward={8} />
 
-| Scenario | Development | Production |
-|:---------|:------------|:-----------|
-| See error details? | ✅ Yes, helps debugging | ❌ No, security risk! |
-| Use real database? | ❌ No, use test data | ✅ Yes, real customer data |
-| Show debug tools? | ✅ Yes, very helpful | ❌ No, waste of resources |
-| Send real emails? | ❌ No, just pretend | ✅ Yes, to real customers |
+---
 
-## Real-World Analogy
+## Section 2: Using Environments
 
-> **Environments are like cooking stages:**
-> 
-> - **Development**: Experimenting with a recipe at home (taste as you go, make mistakes)
-> - **Staging**: Practice dinner for family (test with friendly critics)
-> - **Production**: Restaurant grand opening (everything must be perfect!)
+### Checking the Environment
 
-## The Key Takeaway
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
 
-Your app knows which environment it's in and can behave accordingly. This keeps you safe during development and keeps users safe in production!
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseDeveloperExceptionPage();
+}
 
-<ProgressCheckpoint section="env-basics" xpReward={20} />
+if (app.Environment.IsProduction())
+{
+    app.UseExceptionHandler("/Error");
+    app.UseHsts();
+}
+```
+
+### Setting the Environment
+
+**In launchSettings.json:**
+```json
+{
+  "profiles": {
+    "Development": {
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}
+```
+
+**Via command line:**
+```bash
+ASPNETCORE_ENVIRONMENT=Production dotnet run
+```
+
+<ProgressCheckpoint section="env-intermediate" xpReward={8} />
+
+---
+
+## Section 3: Environment-Specific Configuration
+
+### Config File Loading Order
+
+ASP.NET Core automatically loads:
+1. `appsettings.json` (always)
+2. `appsettings.{Environment}.json` (if exists)
+
+### Example
+
+**appsettings.json:**
+```json
+{ "ApiUrl": "https://api.example.com" }
+```
+
+**appsettings.Development.json:**
+```json
+{ "ApiUrl": "https://localhost:5001" }
+```
+
+In Development, `ApiUrl` = `https://localhost:5001`
+In Production, `ApiUrl` = `https://api.example.com`
+
+### Key Takeaways
+
+<InfoBox type="tip">
+**Remember:**
+- Use `IsDevelopment()`, `IsProduction()` to check environment
+- Set via `ASPNETCORE_ENVIRONMENT` variable
+- Config files are loaded based on environment
+</InfoBox>
+
+<ProgressCheckpoint section="env-advanced" xpReward={4} />

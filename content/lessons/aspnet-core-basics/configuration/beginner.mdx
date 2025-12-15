@@ -2,7 +2,11 @@
 
 Every app needs settings - like your database address, feature toggles, or API keys. ASP.NET Core makes it super easy to manage these with configuration files!
 
-## Your App's Settings Menu 📱
+---
+
+## Section 1: Configuration Basics
+
+### Your App's Settings Menu 📱
 
 Think of configuration like the **Settings app on your phone**:
 
@@ -10,11 +14,9 @@ Think of configuration like the **Settings app on your phone**:
 - Some settings are for everyone, others are personal
 - Important settings (like passwords) are kept extra safe
 
-In ASP.NET Core, the main settings file is called `appsettings.json`.
-
 <ConfigurationVisualizer mode="beginner" />
 
-## What's Inside appsettings.json?
+### What's Inside appsettings.json?
 
 ```json
 {
@@ -30,39 +32,96 @@ In ASP.NET Core, the main settings file is called `appsettings.json`.
 }
 ```
 
-This is just a file with **organized settings** that your app can read!
-
-## Why Not Just Hardcode Values?
-
-You might wonder: why not just write values directly in code?
+### Why Use Configuration?
 
 | Hardcoded ❌ | Configuration ✅ |
 |:-------------|:-----------------|
 | Hard to change | Easy to update |
 | Same everywhere | Different per environment |
-| Secrets visible in code | Secrets kept safe |
-| Need to rebuild to change | Just edit the file |
+| Secrets visible | Secrets kept safe |
 
-## A Simple Example
+<ProgressCheckpoint section="config-basics" xpReward={8} />
 
-Imagine you have a welcome message:
+---
 
-**Hardcoded (bad):**
+## Section 2: Reading Configuration
+
+### Getting Values in Code
+
 ```csharp
-string message = "Welcome to My App!";  // Can't change without code change
+// In Program.cs or a controller
+var title = builder.Configuration["AppSettings:Title"];
+var maxUsers = builder.Configuration.GetValue<int>("AppSettings:MaxUsers");
 ```
 
-**From Configuration (good):**
-```csharp
-string message = Configuration["AppSettings:Title"];  // Reads from appsettings.json
+### Nested Values
+
+For nested JSON like this:
+```json
+{
+  "Database": {
+    "Server": "localhost",
+    "Port": 5432
+  }
+}
 ```
 
-Now you can change the title just by editing the JSON file - no code changes needed!
+Use colons to access nested values:
+```csharp
+var server = Configuration["Database:Server"];  // "localhost"
+var port = Configuration["Database:Port"];      // "5432"
+```
 
-## Key Takeaway
+### Connection Strings
 
-> **Configuration = Your app's control panel**
-> 
-> Instead of baking values into your code, store them in configuration files. This makes your app flexible and easier to manage!
+A special section for database connections:
+```json
+{
+  "ConnectionStrings": {
+    "Default": "Server=localhost;Database=MyDb"
+  }
+}
+```
 
-<ProgressCheckpoint section="config-basics" xpReward={20} />
+```csharp
+var connString = builder.Configuration.GetConnectionString("Default");
+```
+
+<ProgressCheckpoint section="config-intermediate" xpReward={8} />
+
+---
+
+## Section 3: Configuration Best Practices
+
+### Don't Store Secrets in appsettings.json!
+
+For sensitive data like API keys:
+
+**Development**: Use User Secrets
+```bash
+dotnet user-secrets set "ApiKey" "my-secret-key"
+```
+
+**Production**: Use Environment Variables
+```bash
+export ApiKey="my-secret-key"
+```
+
+### Environment-Specific Settings
+
+Create separate files:
+- `appsettings.json` - Base settings
+- `appsettings.Development.json` - Dev overrides
+- `appsettings.Production.json` - Prod overrides
+
+### Key Takeaways
+
+<InfoBox type="tip">
+**Remember:**
+- Store settings in `appsettings.json`, not in code
+- Use `:` to access nested values
+- Never commit secrets to source control
+- Use environment-specific files for different settings
+</InfoBox>
+
+<ProgressCheckpoint section="config-advanced" xpReward={4} />

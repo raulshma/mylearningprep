@@ -2,7 +2,9 @@
 
 Remember our restaurant analogy? Let's use it to understand the three "lifetimes" a service can have! 🍽️
 
-## The Restaurant Staff Analogy
+---
+
+## Section 1: The Three Lifetimes
 
 Think about different types of workers in a restaurant:
 
@@ -14,17 +16,15 @@ Think about different types of workers in a restaurant:
 | **Scoped** 💙    | Personal Waiter 🧑‍💼 | ONE per table/group, serves that group only |
 | **Transient** 💚 | Napkins 🧻         | Fresh one EVERY time you ask                |
 
-## Singleton: One for Everyone
+### Singleton: One for Everyone
 
 <InfoBox type="tip">
   **Singleton** = Created ONCE, shared by the ENTIRE application forever.
 </InfoBox>
 
 Think of it like:
-
 - 👨‍🍳 The **head chef** - one person cooking for all customers
 - 📋 The **menu board** - one board everyone reads
-- 🔧 The **kitchen equipment** - shared by all staff
 
 ```csharp
 // This logger is shared by everyone in the app!
@@ -32,22 +32,25 @@ builder.Services.AddSingleton<ILogger, ConsoleLogger>();
 ```
 
 **Good for:**
-
 - ✅ Configuration settings (they don't change)
 - ✅ Logging (write to one place)
 - ✅ Expensive resources (database connection pools)
 
-## Scoped: One per Table (Request)
+<ProgressCheckpoint section="lifetime-overview" xpReward={8} />
+
+---
+
+## Section 2: Scoped and Transient
+
+### Scoped: One per Table (Request)
 
 <InfoBox type="tip">
   **Scoped** = Created ONCE per "request", shared within that request.
 </InfoBox>
 
 Think of it like:
-
 - 🧑‍💼 Your **personal waiter** - serves your table throughout your meal
 - 📝 Your **order slip** - used for your table's entire visit
-- 🍷 Your **table number** - assigned when you arrive, gone when you leave
 
 ```csharp
 // New DbContext for each HTTP request!
@@ -55,22 +58,18 @@ builder.Services.AddScoped<AppDbContext>();
 ```
 
 **Good for:**
-
 - ✅ Database contexts (one transaction per request)
 - ✅ Shopping carts (tracks one user's session)
-- ✅ Current user info (same user throughout request)
 
-## Transient: Fresh Every Time
+### Transient: Fresh Every Time
 
 <InfoBox type="tip">
   **Transient** = Created NEW every single time it's requested.
 </InfoBox>
 
 Think of it like:
-
 - 🧻 **Napkins** - fresh one every time you ask
 - 🥢 **Chopsticks** - new pair for each dish
-- 🧾 **Receipts** - printed new each time
 
 ```csharp
 // Brand new email service for every injection!
@@ -78,20 +77,16 @@ builder.Services.AddTransient<IEmailService, SmtpEmailService>();
 ```
 
 **Good for:**
-
 - ✅ Lightweight services (quick to create)
 - ✅ Stateless operations (no data between calls)
-- ✅ When you need isolation (separate instances)
 
-## Quick Memory Trick 🧠
+<ProgressCheckpoint section="lifetime-comparison" xpReward={9} />
 
-| Lifetime      | How Long It Lives           | Remember It As                              |
-| :------------ | :-------------------------- | :------------------------------------------ |
-| **Singleton** | App start → App stop        | "**S**ingleton = **S**tays forever"         |
-| **Scoped**    | Request start → Request end | "**Sc**oped = **Sc**reen refresh = new one" |
-| **Transient** | Created → Used → Gone       | "**T**ransient = **T**hrow away after use"  |
+---
 
-## Registration Cheat Sheet
+## Section 3: Quick Reference
+
+### Registration Cheat Sheet
 
 ```csharp
 // In Program.cs
@@ -106,11 +101,21 @@ builder.Services.AddScoped<IShoppingCart, ShoppingCart>();
 builder.Services.AddTransient<IEmailService, SmtpEmailService>();
 ```
 
-## Key Takeaways
+### Memory Trick 🧠
 
+| Lifetime      | How Long It Lives           | Remember It As                              |
+| :------------ | :-------------------------- | :------------------------------------------ |
+| **Singleton** | App start → App stop        | "**S**ingleton = **S**tays forever"         |
+| **Scoped**    | Request start → Request end | "**Sc**oped = **Sc**reen refresh = new one" |
+| **Transient** | Created → Used → Gone       | "**T**ransient = **T**hrow away after use"  |
+
+### Key Takeaways
+
+<InfoBox type="tip" title="Remember">
 - 💜 **Singleton** = Head Chef - one for the whole restaurant (app)
 - 💙 **Scoped** = Personal Waiter - one per table (request)
 - 💚 **Transient** = Napkins - fresh every time you ask
 - 🗃️ Use **Scoped for database** contexts (most common!)
+</InfoBox>
 
-<ProgressCheckpoint section="lifetime-overview" xpReward={25} />
+<ProgressCheckpoint section="lifetime-pitfalls" xpReward={8} />

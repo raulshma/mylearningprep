@@ -2,7 +2,58 @@
 
 Master advanced SQL techniques used by professional database developers and architects.
 
-## 🪟 Window Functions
+---
+
+## Section 1: Introduction to SQL
+
+### SQL in Enterprise Systems
+
+At scale, SQL powers:
+
+- **OLTP (Online Transaction Processing)** - High-volume transactional systems (e-commerce, banking)
+- **OLAP (Online Analytical Processing)** - Data warehouses and analytics
+- **Hybrid workloads** - Modern applications with both transactional and analytical needs
+
+### Database Architecture Considerations
+
+```sql
+-- Normalization: Reduce redundancy
+-- Third Normal Form (3NF) example
+CREATE TABLE Customers (
+    CustomerId INT PRIMARY KEY,
+    CustomerName VARCHAR(100),
+    Email VARCHAR(100)
+);
+
+CREATE TABLE Orders (
+    OrderId INT PRIMARY KEY,
+    CustomerId INT FOREIGN KEY REFERENCES Customers(CustomerId),
+    OrderDate DATETIME,
+    Total DECIMAL(10,2)
+);
+
+-- Denormalization: Optimize for reads
+CREATE TABLE OrderSummary (
+    OrderId INT PRIMARY KEY,
+    CustomerId INT,
+    CustomerName VARCHAR(100),  -- Denormalized
+    CustomerEmail VARCHAR(100),  -- Denormalized
+    OrderDate DATETIME,
+    Total DECIMAL(10,2)
+);
+```
+
+**Trade-offs:**
+- Normalized: Better for writes, data integrity, storage efficiency
+- Denormalized: Better for reads, query performance, reporting
+
+<ProgressCheckpoint section="intro-sql" xpReward={18} />
+
+---
+
+## Section 2: SELECT Queries
+
+### 🪟 Window Functions
 
 Window functions perform calculations across a set of rows related to the current row, without collapsing them like GROUP BY:
 
@@ -278,8 +329,302 @@ Understanding the logical order of SQL clause processing:
 
 > This explains why you can't use column aliases in WHERE (SELECT happens after WHERE)!
 
+<ProgressCheckpoint section="select-queries" xpReward={19} />
+
+---
+
+## Section 3: INSERT, UPDATE, DELETE
+
+### Transactional Data Modifications
+
+```sql
+-- BEGIN TRANSACTION for atomicity
+BEGIN TRANSACTION;
+
+    -- Transfer money between accounts
+    UPDATE Accounts
+    SET Balance = Balance - 100
+    WHERE AccountId = 1;
+
+    UPDATE Accounts
+    SET Balance = Balance + 100
+    WHERE AccountId = 2;
+
+    -- Only commit if both succeed
+COMMIT;
+
+-- Rollback on error
+BEGIN TRANSACTION;
+    DELETE FROM Orders WHERE OrderId = 123;
+    -- Oops, wrong order!
+ROLLBACK;
+```
+
+### MERGE (UPSERT) Operations
+
+```sql
+-- SQL Server MERGE syntax
+MERGE INTO Products AS target
+USING StagingProducts AS source
+ON target.ProductId = source.ProductId
+WHEN MATCHED THEN
+    UPDATE SET 
+        target.Price = source.Price,
+        target.Stock = source.Stock
+WHEN NOT MATCHED THEN
+    INSERT (ProductId, Name, Price, Stock)
+    VALUES (source.ProductId, source.Name, source.Price, source.Stock);
+
+-- PostgreSQL UPSERT with ON CONFLICT
+INSERT INTO Products (ProductId, Name, Price, Stock)
+VALUES (1, 'Widget', 19.99, 100)
+ON CONFLICT (ProductId) 
+DO UPDATE SET 
+    Price = EXCLUDED.Price,
+    Stock = EXCLUDED.Stock;
+```
+
+### OUTPUT/RETURNING Clauses
+
+```sql
+-- SQL Server: Get inserted IDs
+INSERT INTO Users (Name, Email)
+OUTPUT INSERTED.Id, INSERTED.Name
+VALUES ('Alice', 'alice@email.com');
+
+-- PostgreSQL: Return updated rows
+UPDATE Products
+SET Price = Price * 1.10
+WHERE Category = 'Electronics'
+RETURNING ProductId, Name, Price;
+
+-- Track what was deleted
+DELETE FROM Orders
+OUTPUT DELETED.OrderId, DELETED.Total, DELETED.OrderDate
+WHERE OrderDate < '2020-01-01';
+```
+
+### Bulk Operations Performance
+
+```sql
+-- BAD: Row-by-row inserts (slow)
+INSERT INTO Logs (Message) VALUES ('Log 1');
+INSERT INTO Logs (Message) VALUES ('Log 2');
+-- ... 10,000 more times
+
+-- GOOD: Batch insert (fast)
+INSERT INTO Logs (Message)
+VALUES 
+    ('Log 1'),
+    ('Log 2'),
+    -- ... all 10,000 rows
+    ('Log 10000');
+
+-- BEST: Bulk insert from file (fastest)
+BULK INSERT Logs
+FROM 'C:\data\logs.csv'
+WITH (FIELDTERMINATOR = ',', ROWTERMINATOR = '\n');
+```
+
+<ProgressCheckpoint section="insert-update-delete" xpReward={19} />
+
+---
+
+## Section 4: WHERE Clauses
+
+### 📝 Common Table Expressions (CTEs)
+
+CTEs make complex queries readable and reusable:
+
+<DotnetCodePreview
+  title="CTE Examples"
+  code={`-- Simple CTE
+WITH ActiveUsers AS (
+    SELECT Id, Name, Email
+    FROM Users
+    WHERE IsActive = 1
+)
+SELECT * FROM ActiveUsers WHERE Email LIKE '%@company.com';
+
+-- Multiple CTEs
+WITH 
+    OrderTotals AS (
+        SELECT UserId, SUM(Total) AS TotalSpent
+        FROM Orders
+        GROUP BY UserId
+    ),
+    TopSpenders AS (
+        SELECT UserId, TotalSpent
+        FROM OrderTotals
+        WHERE TotalSpent > 10000
+    )
+SELECT Users.Name, TopSpenders.TotalSpent
+FROM TopSpenders
+JOIN Users ON TopSpenders.UserId = Users.Id;`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5, 6],
+      highlight: "CTE definition",
+      explanation: "WITH creates a named temporary result set you can reference"
+    },
+    {
+      lineNumbers: [10, 11, 12, 13, 14, 15, 16, 17, 18, 19],
+      highlight: "Chained CTEs",
+      explanation: "Multiple CTEs build on each other - much cleaner than nested subqueries"
+    }
+  ]}
+/>
+
+### 🔄 Recursive CTEs
+
+Powerful for hierarchical data like org charts or category trees:
+
+<DotnetCodePreview
+  title="Recursive CTE for Org Chart"
+  code={`WITH RECURSIVE OrgChart AS (
+    -- Anchor: Start with the CEO (no manager)
+    SELECT Id, Name, ManagerId, 0 AS Level
+    FROM Employees
+    WHERE ManagerId IS NULL
+    
+    UNION ALL
+    
+    -- Recursive: Add each level of reports
+    SELECT e.Id, e.Name, e.ManagerId, oc.Level + 1
+    FROM Employees e
+    INNER JOIN OrgChart oc ON e.ManagerId = oc.Id
+)
+SELECT 
+    REPLICATE('  ', Level) + Name AS OrgHierarchy,
+    Level
+FROM OrgChart
+ORDER BY Level, Name;`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4, 5],
+      highlight: "Anchor member",
+      explanation: "The starting point - CEO with no manager, at Level 0"
+    },
+    {
+      lineNumbers: [9, 10, 11, 12],
+      highlight: "Recursive member",
+      explanation: "Joins back to itself, increasing Level each time"
+    },
+    {
+      lineNumbers: [15],
+      highlight: "Formatted output",
+      explanation: "Indentation shows the hierarchy visually"
+    }
+  ]}
+/>
+
+### ⚡ Query Optimization
+
+Understanding execution plans and writing efficient queries:
+
+#### Index Usage
+
+```sql
+-- BAD: Function on column prevents index use
+SELECT * FROM Users WHERE YEAR(CreatedAt) = 2024;
+
+-- GOOD: Rewrite to use the index
+SELECT * FROM Users 
+WHERE CreatedAt >= '2024-01-01' 
+  AND CreatedAt < '2025-01-01';
+
+-- BAD: Leading wildcard prevents index use
+SELECT * FROM Users WHERE Email LIKE '%@gmail.com';
+
+-- GOOD: Use full-text search for text patterns
+SELECT * FROM Users WHERE CONTAINS(Email, 'gmail.com');
+```
+
+#### Avoiding Common Performance Pitfalls
+
+<DotnetCodePreview
+  title="Performance Best Practices"
+  code={`-- BAD: SELECT * is wasteful
+SELECT * FROM Orders JOIN Users ON Orders.UserId = Users.Id;
+
+-- GOOD: Select only needed columns
+SELECT 
+    Orders.Id,
+    Orders.Total,
+    Users.Name
+FROM Orders 
+JOIN Users ON Orders.UserId = Users.Id;
+
+-- BAD: Correlated subquery runs per row
+SELECT Name, (
+    SELECT COUNT(*) FROM Orders 
+    WHERE Orders.UserId = Users.Id
+) AS OrderCount
+FROM Users;
+
+-- GOOD: Use JOIN and GROUP BY instead
+SELECT Users.Name, COUNT(Orders.Id) AS OrderCount
+FROM Users
+LEFT JOIN Orders ON Users.Id = Orders.UserId
+GROUP BY Users.Id, Users.Name;`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "Avoid SELECT *",
+      explanation: "Fetching unnecessary columns wastes memory and I/O"
+    },
+    {
+      lineNumbers: [12, 13, 14, 15, 16],
+      highlight: "Correlated subquery",
+      explanation: "Runs once per row - can be extremely slow on large tables"
+    },
+    {
+      lineNumbers: [19, 20, 21, 22],
+      highlight: "JOIN solution",
+      explanation: "Single pass through data - orders of magnitude faster"
+    }
+  ]}
+/>
+
+### 🎯 Query Execution Order
+
+Understanding the logical order of SQL clause processing:
+
+1. **FROM** - Tables are loaded
+2. **JOIN** - Tables are combined
+3. **WHERE** - Rows are filtered
+4. **GROUP BY** - Rows are grouped
+5. **HAVING** - Groups are filtered
+6. **SELECT** - Columns are selected
+7. **DISTINCT** - Duplicates removed
+8. **ORDER BY** - Results sorted
+9. **LIMIT/OFFSET** - Results paginated
+
+> This explains why you can't use column aliases in WHERE (SELECT happens after WHERE)!
+
+### Advanced WHERE Patterns
+
+```sql
+-- Dynamic search with CASE
+SELECT *
+FROM Products
+WHERE 
+    CASE 
+        WHEN @SearchType = 'Name' THEN Name
+        WHEN @SearchType = 'Category' THEN Category
+        ELSE Description
+    END LIKE '%' + @SearchTerm + '%';
+
+-- Conditional filtering
+SELECT *
+FROM Orders
+WHERE (@MinTotal IS NULL OR Total >= @MinTotal)
+  AND (@MaxTotal IS NULL OR Total <= @MaxTotal)
+  AND (@Status IS NULL OR Status = @Status);
+```
+
 ## Interactive Practice
 
 <SqlQueryVisualizer mode="advanced" />
 
-<ProgressCheckpoint section="where-clauses" xpReward={75} />
+<ProgressCheckpoint section="where-clauses" xpReward={19} />

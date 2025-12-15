@@ -2,7 +2,9 @@
 
 In C#, variables are strongly-typed containers that store data. Understanding the type system is fundamental to writing robust .NET applications. Let's explore the core data types and their practical applications.
 
-## Value Types vs Reference Types
+---
+
+## Section 1: Value Types vs Reference Types
 
 C# has two fundamental categories of types:
 
@@ -44,7 +46,11 @@ string message = greeting;  // Points to same string
   ]}
 />
 
-## Numeric Types in Detail
+<ProgressCheckpoint section="intro-variables" xpReward={10} />
+
+---
+
+## Section 2: Numeric Types in Detail
 
 Choose the right numeric type based on your needs:
 
@@ -84,13 +90,12 @@ decimal price = 19.99m;      // Financial - 'm' suffix`}
   ]}
 />
 
-## The var Keyword
+### The var Keyword
 
 C# supports type inference with `var`. The compiler determines the type at compile time:
 
-<DotnetCodePreview
-  title="Implicit Typing with var"
-  code={`// Explicit typing
+```csharp
+// Explicit typing
 int count = 10;
 string name = "John";
 
@@ -99,24 +104,14 @@ var count2 = 10;      // Inferred as int
 var name2 = "John";   // Inferred as string
 
 // var requires initialization
-// var unknown;  // Error! No type to infer`}
-  steps={[
-    {
-      lineNumbers: [2, 3],
-      highlight: "Explicit Typing",
-      explanation: "You explicitly state the type before the variable name.",
-      variables: { count: "10", name: "\"John\"" }
-    },
-    {
-      lineNumbers: [6, 7],
-      highlight: "Type Inference",
-      explanation: "var lets the compiler figure out the type from the value.",
-      variables: { count2: "10 (int)", name2: "\"John\" (string)" }
-    }
-  ]}
-/>
+// var unknown;  // Error! No type to infer
+```
 
-## Type Conversion
+<ProgressCheckpoint section="common-types" xpReward={10} />
+
+---
+
+## Section 3: Type Conversion
 
 Converting between types is common. C# supports implicit and explicit conversions:
 
@@ -158,7 +153,11 @@ int safeParse = int.TryParse(input, out int result)
   ]}
 />
 
-## Nullable Types
+<ProgressCheckpoint section="type-conversion" xpReward={10} />
+
+---
+
+## Section 4: Nullable Types
 
 Sometimes you need to represent "no value". Use nullable types:
 
@@ -200,12 +199,14 @@ int result = nullableCount ?? -1;  // -1 if null`}
   ]}
 />
 
-## Best Practices
+### Best Practices
 
+<InfoBox type="tip" title="Variable Best Practices">
 1. **Use meaningful names**: `customerAge` not `x`
 2. **Prefer var for complex types**: `var customers = new List<Customer>()`
 3. **Use decimal for money**: Avoid floating-point rounding errors
 4. **Initialize variables**: Prevent unexpected null references
 5. **Use const for constants**: `const double PI = 3.14159;`
+</InfoBox>
 
-<ProgressCheckpoint section="intro-variables" xpReward={40} />
+<ProgressCheckpoint section="advanced-types" xpReward={10} />

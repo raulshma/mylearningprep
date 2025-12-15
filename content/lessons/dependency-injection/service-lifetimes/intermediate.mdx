@@ -2,7 +2,9 @@
 
 Understanding service lifetimes is crucial for building reliable ASP.NET Core applications. Each lifetime determines **when instances are created** and **how long they live**.
 
-## The Three Lifetimes Compared
+---
+
+## Section 1: The Three Lifetimes Compared
 
 <ServiceLifetimeDemo mode="intermediate" showComparison />
 
@@ -15,18 +17,15 @@ builder.Services.AddSingleton<IConfigurationService, ConfigurationService>();
 ```
 
 **Characteristics:**
-
 - Created once, lives until app shuts down
 - Shared across all requests and all threads
-- Must be **thread-safe** (multiple threads access it simultaneously)
-- Best for stateless or thread-safe stateful services
+- Must be **thread-safe**
 
 **Ideal Use Cases:**
 | Service | Why Singleton? |
 |:--------|:---------------|
 | `ILogger<T>` | Thread-safe, write to shared output |
 | `IConfiguration` | Read-only, doesn't change at runtime |
-| `HttpClientFactory` | Manages connection pooling |
 | `IMemoryCache` | Application-wide caching |
 
 ### Scoped Lifetime
@@ -34,61 +33,29 @@ builder.Services.AddSingleton<IConfigurationService, ConfigurationService>();
 A new instance is created **once per scope** (typically once per HTTP request).
 
 ```csharp
-builder.Services.AddScoped<IUserContext, UserContext>();
 builder.Services.AddScoped<AppDbContext>();
 ```
 
 **Characteristics:**
-
 - Created at the start of a scope (request)
 - Shared within that scope
 - Disposed at the end of the scope
-- Safe to hold request-specific state
 
-**Ideal Use Cases:**
-| Service | Why Scoped? |
-|:--------|:------------|
-| `DbContext` | One database connection per request |
-| `IUserContext` | Current user for the request |
-| `IUnitOfWork` | One transaction per request |
-| Shopping Cart | One cart per request |
+<ProgressCheckpoint section="lifetime-overview" xpReward={13} />
 
-### Transient Lifetime
+---
 
-A **new instance** is created every time the service is requested.
-
-```csharp
-builder.Services.AddTransient<IEmailService, SmtpEmailService>();
-```
-
-**Characteristics:**
-
-- Brand new instance per injection
-- Short-lived, lightweight
-- No shared state between instances
-- Disposed by the container (if `IDisposable`)
-
-**Ideal Use Cases:**
-| Service | Why Transient? |
-|:--------|:---------------|
-| Validators | Stateless, quick operations |
-| Mappers | No state between mappings |
-| Formatters | Simple text/data transformations |
-| Command handlers | Process single command |
-
-## Instance Creation Behavior
+## Section 2: Instance Creation Behavior
 
 Let's trace what happens across multiple HTTP requests:
 
 ```csharp
-// Given this setup:
 builder.Services.AddSingleton<SingletonService>();
 builder.Services.AddScoped<ScopedService>();
 builder.Services.AddTransient<TransientService>();
 ```
 
 ### Request 1:
-
 | Service          | Instance Created?       | Which Instance?      |
 | :--------------- | :---------------------- | :------------------- |
 | SingletonService | ✅ Yes (first time)     | `#1`                 |
@@ -96,7 +63,6 @@ builder.Services.AddTransient<TransientService>();
 | TransientService | ✅ Yes (each injection) | `#1, #2, #3...`      |
 
 ### Request 2:
-
 | Service          | Instance Created? | Which Instance?          |
 | :--------------- | :---------------- | :----------------------- |
 | SingletonService | ❌ No (reuses)    | `#1` (same as before)    |
@@ -108,25 +74,11 @@ builder.Services.AddTransient<TransientService>();
   **shared within a request**, Transient instances are **always new**.
 </InfoBox>
 
-## Choosing the Right Lifetime
+<ProgressCheckpoint section="lifetime-comparison" xpReward={14} />
 
-Use this decision tree:
+---
 
-```
-Is the service thread-safe AND stateless or immutable?
-├── YES → Consider SINGLETON
-│   └── Does it hold expensive resources (connections, caches)?
-│       └── YES → Definitely SINGLETON
-└── NO
-    ├── Does it need per-request state (user, transaction)?
-    │   └── YES → Use SCOPED
-    └── NO
-        ├── Is it lightweight and stateless?
-        │   └── YES → Use TRANSIENT
-        └── NO → Reconsider your design
-```
-
-## Common Mistakes
+## Section 3: Common Mistakes and Best Practices
 
 ### ❌ Injecting Scoped into Singleton
 
@@ -135,30 +87,11 @@ Is the service thread-safe AND stateless or immutable?
 public class MySingleton
 {
     private readonly ScopedService _scoped;  // Lives forever now!
-
-    public MySingleton(ScopedService scoped)
-    {
-        _scoped = scoped;  // WRONG!
-    }
+    public MySingleton(ScopedService scoped) => _scoped = scoped;
 }
 ```
 
 This creates a **captive dependency** - the scoped service is trapped and never refreshed.
-
-### ❌ Stateful Singleton Without Thread Safety
-
-```csharp
-// BAD: Not thread-safe!
-public class CounterService
-{
-    private int _count = 0;
-
-    public void Increment() => _count++;  // Race condition!
-    public int GetCount() => _count;
-}
-```
-
-Multiple threads can corrupt the count simultaneously.
 
 ### ❌ DbContext as Singleton
 
@@ -169,18 +102,20 @@ builder.Services.AddSingleton<AppDbContext>();  // 💀
 
 DbContext is not thread-safe and tracks entities - it MUST be Scoped.
 
-## Best Practices
+### Best Practices
 
 1. **Default to Scoped** - Most services should be scoped
 2. **Singleton for configuration/logging** - Stateless, shared services
 3. **Transient for stateless utilities** - Quick operations
 4. **Never inject shorter lifetime into longer** - Scoped → Singleton = BAD
 
-## Key Takeaways
+### Key Takeaways
 
+<InfoBox type="tip" title="Remember">
 - 💜 **Singleton** - One instance forever, must be thread-safe
 - 💙 **Scoped** - One instance per request, the most common choice
 - 💚 **Transient** - New instance every injection, for lightweight services
 - ⚠️ **Never** inject Scoped into Singleton
+</InfoBox>
 
-<ProgressCheckpoint section="lifetime-comparison" xpReward={40} />
+<ProgressCheckpoint section="lifetime-pitfalls" xpReward={13} />

@@ -2,7 +2,9 @@
 
 The Open/Closed Principle states: **"Software entities should be open for extension but closed for modification."** Let's explore what this means in practice.
 
-## Two Types of "Open/Closed"
+---
+
+## Section 1: Understanding OCP
 
 Bertrand Meyer's original OCP (1988) focused on **inheritance**. Robert Martin's modern interpretation emphasizes **polymorphism and abstraction**.
 
@@ -15,7 +17,7 @@ Bertrand Meyer's original OCP (1988) focused on **inheritance**. Robert Martin's
 **Modern Best Practice:** Prefer **composition over inheritance**. Use interfaces and dependency injection to achieve OCP.
 </InfoBox>
 
-## The Problem: The Growing If-Else Chain
+### The Problem: The Growing If-Else Chain
 
 Consider a discount calculator that keeps growing:
 
@@ -38,15 +40,10 @@ Consider a discount calculator that keeps growing:
             return order.Total * 0.3m;  // 30%
         }
         // Every new customer type = modify this class!
-        else if (order.CustomerType == "Corporate")  // ❌ Added later
+        else if (order.CustomerType == "Corporate")
         {
             return order.Total * 0.25m;
         }
-        else if (order.CustomerType == "Student")    // ❌ Added later
-        {
-            return order.Total * 0.15m;
-        }
-        // Chain keeps growing...
         return 0;
     }
 }`}
@@ -58,13 +55,8 @@ Consider a discount calculator that keeps growing:
     },
     {
       lineNumbers: [17, 18, 19, 20],
-      highlight: "First Modification",
+      highlight: "Modification Required",
       explanation: "Added Corporate type - modified the class!"
-    },
-    {
-      lineNumbers: [21, 22, 23, 24],
-      highlight: "More Modifications",
-      explanation: "Added Student type - modified again! Where does it end?"
     }
   ]}
 />
@@ -74,9 +66,12 @@ Consider a discount calculator that keeps growing:
 - ❌ Must modify working code for every new type
 - ❌ Risk of breaking existing discount logic
 - ❌ Must retest ALL customer types
-- ❌ Single class keeps growing forever
 
-## The Solution: Strategy Pattern
+<ProgressCheckpoint section="ocp-introduction" xpReward={13} />
+
+---
+
+## Section 2: The Solution - Strategy Pattern
 
 <DotnetCodePreview
   title="Applying OCP: Strategy Pattern"
@@ -98,13 +93,6 @@ public class PremiumDiscount : IDiscountStrategy
 {
     public decimal CalculateDiscount(Order order) 
         => order.Total * 0.2m;  // 20%
-}
-
-// Extension 3: VIP customer (NEW CLASS)
-public class VipDiscount : IDiscountStrategy
-{
-    public decimal CalculateDiscount(Order order) 
-        => order.Total * 0.3m;  // 30%
 }
 
 // Calculator: CLOSED for modification
@@ -136,55 +124,39 @@ public class StudentDiscount : IDiscountStrategy
       explanation: "Interface defines the contract - never needs to change"
     },
     {
-      lineNumbers: [7, 8, 9, 10, 11, 12],
-      highlight: "Concrete Strategies",
-      explanation: "Each customer type is its own class"
-    },
-    {
-      lineNumbers: [28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40],
+      lineNumbers: [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33],
       highlight: "Closed Calculator",
       explanation: "Calculator NEVER changes - just receives different strategies"
     },
     {
-      lineNumbers: [43, 44, 45, 46, 47],
+      lineNumbers: [36, 37, 38, 39, 40],
       highlight: "New Extension",
       explanation: "Adding Student = new file, zero changes to existing code!"
     }
   ]}
 />
 
-## ASP.NET Core Integration
+### ASP.NET Core Integration
 
 In real .NET applications, use dependency injection:
 
 ```csharp
-// Startup.cs / Program.cs
+// Program.cs
 services.AddScoped<IDiscountStrategy, RegularDiscount>();
 
 // Or with factory pattern for runtime selection
 services.AddScoped<IDiscountStrategyFactory, DiscountStrategyFactory>();
 ```
 
-```csharp
-// Factory: Returns correct strategy based on context
-public class DiscountStrategyFactory
-{
-    private readonly IEnumerable<IDiscountStrategy> _strategies;
-    
-    public IDiscountStrategy GetStrategy(string customerType)
-    {
-        return _strategies.FirstOrDefault(s => 
-            s.GetType().Name.StartsWith(customerType)) 
-            ?? new RegularDiscount();
-    }
-}
-```
-
 <SolidPrincipleDemo principle="O" mode="intermediate" />
 
-## Common OCP Patterns
+<ProgressCheckpoint section="ocp-understanding" xpReward={14} />
 
-### 1. Template Method Pattern
+---
+
+## Section 3: Common OCP Patterns
+
+### Template Method Pattern
 
 Base class defines the algorithm skeleton; subclasses fill in the details:
 
@@ -210,7 +182,7 @@ public class PdfReportGenerator : ReportGenerator
 }
 ```
 
-### 2. Decorator Pattern
+### Decorator Pattern
 
 Add behavior without modifying original:
 
@@ -236,36 +208,14 @@ public class TimestampLogger : ILogger
 ILogger logger = new TimestampLogger(new BasicLogger());
 ```
 
-## Testing Benefits
+### Key Takeaways
 
-OCP makes testing dramatically easier:
-
-```csharp
-// Before OCP: Must test every if-else branch
-[Test]
-public void CalculateDiscount_AllTypes()
-{
-    // Test Regular, Premium, VIP, Corporate, Student, ...
-    // One big test, many scenarios
-}
-
-// After OCP: Test each strategy in isolation
-[Test]
-public void PremiumDiscount_Returns20Percent()
-{
-    var strategy = new PremiumDiscount();
-    var order = new Order { Total = 100m };
-    
-    Assert.AreEqual(20m, strategy.CalculateDiscount(order));
-}
-```
-
-## Key Takeaways
-
+<InfoBox type="tip" title="Remember">
 - 🔐 **Closed** = Don't modify existing, working code
 - 🔓 **Open** = Easy to add new implementations
 - 🎯 **Strategy Pattern** = Most common OCP technique
 - 🧩 **Interfaces** = The key to achieving OCP
 - 💉 **DI** = How to wire up strategies in .NET
+</InfoBox>
 
-<ProgressCheckpoint section="ocp-understanding" xpReward={40} />
+<ProgressCheckpoint section="ocp-application" xpReward={13} />

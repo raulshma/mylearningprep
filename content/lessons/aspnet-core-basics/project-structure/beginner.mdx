@@ -2,7 +2,11 @@
 
 When you create a new ASP.NET Core project, you get a ready-made folder structure. Think of it like moving into a new apartment that already has rooms set up - you just need to know which room is for what!
 
-## Your Project is Like a Well-Organized Kitchen 🍳
+---
+
+## Section 1: Project Basics
+
+### Your Project is Like a Well-Organized Kitchen 🍳
 
 Imagine your project as a professional kitchen:
 
@@ -13,23 +17,17 @@ Imagine your project as a professional kitchen:
 
 <ProjectStructureExplorer mode="beginner" />
 
-## The Most Important Files
+### The Most Important Files
 
 When you're just starting, focus on these files:
 
-### 1. Program.cs - The Boss 👔
+| File | What It Does | Analogy |
+|:-----|:-------------|:--------|
+| `Program.cs` | Starts your app | The head chef |
+| `appsettings.json` | Stores settings | The recipe book |
+| `.csproj` | Lists dependencies | The shopping list |
 
-This is where your app starts! It's like the head chef who decides the menu and assigns tasks to everyone.
-
-### 2. appsettings.json - The Settings Menu ⚙️
-
-This file stores configuration - like your database address, logging preferences, and other settings your app needs.
-
-### 3. .csproj File - The Shopping List 📝
-
-This tells .NET what packages (tools) your project needs, kind of like a shopping list for your project.
-
-## Don't Worry About Everything!
+### Don't Worry About Everything!
 
 When starting out, you don't need to understand every file. Focus on:
 
@@ -37,6 +35,128 @@ When starting out, you don't need to understand every file. Focus on:
 2. ✅ `appsettings.json` - Where you'll change settings
 3. ⏳ Other files - Learn these as you need them
 
-> **Tip**: The green-highlighted files in the explorer above are the most important ones to start with!
+<ProgressCheckpoint section="project-basics" xpReward={8} />
 
-<ProgressCheckpoint section="project-basics" xpReward={20} />
+---
+
+## Section 2: Project Structure Overview
+
+### What's in a New Project?
+
+When you create a project with `dotnet new webapi`, you get:
+
+```
+MyWebApi/
+├── Controllers/          ← Your API endpoints
+├── Properties/           ← Launch settings
+├── appsettings.json      ← Configuration
+├── Program.cs            ← App entry point
+└── MyWebApi.csproj       ← Project file
+```
+
+### Understanding Each Part
+
+**Program.cs** - Where your app starts:
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddControllers();
+
+var app = builder.Build();
+app.MapControllers();
+app.Run();
+```
+
+**appsettings.json** - Your settings:
+```json
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information"
+    }
+  }
+}
+```
+
+**Controllers/** - Where you handle requests:
+```csharp
+[ApiController]
+[Route("api/[controller]")]
+public class HelloController : ControllerBase
+{
+    [HttpGet]
+    public string Get() => "Hello World!";
+}
+```
+
+### Common Folders You'll Add
+
+As your project grows, you'll add these folders:
+
+| Folder | What Goes There |
+|:-------|:----------------|
+| `Models/` | Data classes |
+| `Services/` | Business logic |
+| `Data/` | Database stuff |
+
+<ProgressCheckpoint section="project-structure" xpReward={8} />
+
+---
+
+## Section 3: Project Files Explained
+
+### The .csproj File
+
+This XML file tells .NET about your project:
+
+```xml
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+  </PropertyGroup>
+</Project>
+```
+
+**Key parts:**
+- `Sdk="Microsoft.NET.Sdk.Web"` - This is a web project
+- `TargetFramework` - Which .NET version to use
+
+### Adding Packages
+
+When you need extra features, add packages:
+
+```bash
+dotnet add package Newtonsoft.Json
+```
+
+This adds to your .csproj:
+```xml
+<ItemGroup>
+  <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+</ItemGroup>
+```
+
+### launchSettings.json
+
+Controls how your app runs during development:
+
+```json
+{
+  "profiles": {
+    "http": {
+      "applicationUrl": "http://localhost:5000"
+    }
+  }
+}
+```
+
+### Key Takeaways
+
+<InfoBox type="tip">
+**Remember:**
+- `Program.cs` is where your app starts
+- `appsettings.json` stores configuration
+- `.csproj` lists your dependencies
+- Create folders like `Models/`, `Services/` as needed
+</InfoBox>
+
+<ProgressCheckpoint section="project-advanced" xpReward={4} />

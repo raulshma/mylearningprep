@@ -2,103 +2,67 @@
 
 For complex middleware that needs scoped dependencies or unit testing, the factory-based `IMiddleware` interface provides the cleanest solution.
 
-## Middleware Builder: Advanced Mode
-
-Explore all middleware patterns with dependency injection:
+## Section 1: Inline Middleware - Advanced Patterns
 
 <CustomMiddlewareBuilder mode="advanced" />
 
-## IMiddleware Interface (Factory-Based)
-
-The `IMiddleware` interface provides **per-request instantiation**:
+### Response Body Modification
 
 ```csharp
-public interface IMiddleware
+public class ResponseLoggingMiddleware : IMiddleware
 {
-    Task InvokeAsync(HttpContext context, RequestDelegate next);
-}
-```
+    private readonly ILogger<ResponseLoggingMiddleware> _logger;
 
-### Why Use IMiddleware?
-
-| **Convention-Based**                      | **IMiddleware (Factory)**               |
-| :---------------------------------------- | :-------------------------------------- |
-| Singleton (created once)                  | Per-request (new instance each time)    |
-| Scoped DI only via method injection       | Scoped DI in constructor works!         |
-| Slightly better performance               | Cleaner code for complex dependencies   |
-
-### Implementation Example
-
-```csharp
-// AuditMiddleware.cs
-public class AuditMiddleware : IMiddleware
-{
-    private readonly AuditDbContext _db;  // Scoped - works correctly!
-    private readonly ICurrentUserService _userService;
-    private readonly ILogger<AuditMiddleware> _logger;
-
-    public AuditMiddleware(
-        AuditDbContext db,
-        ICurrentUserService userService,
-        ILogger<AuditMiddleware> logger)
+    public ResponseLoggingMiddleware(ILogger<ResponseLoggingMiddleware> logger)
     {
-        _db = db;  // Fresh DbContext for each request
-        _userService = userService;
         _logger = logger;
     }
 
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
-        var user = _userService.GetCurrentUser();
-        var auditEntry = new AuditEntry
-        {
-            UserId = user?.Id,
-            Path = context.Request.Path,
-            Method = context.Request.Method,
-            Timestamp = DateTime.UtcNow,
-            IpAddress = context.Connection.RemoteIpAddress?.ToString()
-        };
+        var originalBody = context.Response.Body;
+        
+        using var newBody = new MemoryStream();
+        context.Response.Body = newBody;
 
-        try
-        {
-            await next(context);
-            
-            auditEntry.StatusCode = context.Response.StatusCode;
-            auditEntry.Success = context.Response.StatusCode < 400;
-        }
-        catch (Exception ex)
-        {
-            auditEntry.StatusCode = 500;
-            auditEntry.Success = false;
-            auditEntry.ErrorMessage = ex.Message;
-            throw;
-        }
-        finally
-        {
-            _db.AuditEntries.Add(auditEntry);
-            await _db.SaveChangesAsync();
-        }
+        await next(context);
+
+        newBody.Seek(0, SeekOrigin.Begin);
+        var responseText = await new StreamReader(newBody).ReadToEndAsync();
+        
+        _logger.LogInformation("Response: {Length} bytes", responseText.Length);
+
+        newBody.Seek(0, SeekOrigin.Begin);
+        await newBody.CopyToAsync(originalBody);
+        context.Response.Body = originalBody;
     }
 }
 ```
 
-### Registration
+### Request Body Reading
 
 ```csharp
-// Must register as a service
-builder.Services.AddScoped<AuditMiddleware>();
-
-// Add to pipeline
-app.UseMiddleware<AuditMiddleware>();
+public async Task InvokeAsync(HttpContext context, RequestDelegate next)
+{
+    context.Request.EnableBuffering();
+    
+    using var reader = new StreamReader(context.Request.Body, leaveOpen: true);
+    var body = await reader.ReadToEndAsync();
+    context.Request.Body.Position = 0;  // Reset for next middleware
+    
+    Console.WriteLine($"Request Body: {body}");
+    
+    await next(context);
+}
 ```
 
-<InfoBox type="important">
-  **Critical:** Factory-based middleware MUST be registered in DI! Without `AddScoped<>` or `AddTransient<>`, you'll get a runtime error.
-</InfoBox>
+<ProgressCheckpoint section="inline-middleware" xpReward={25} />
 
-## Unit Testing Middleware
+---
 
-Factory-based middleware is easily testable:
+## Section 2: Convention-Based - Testing and Configuration
+
+### Unit Testing Middleware
 
 ```csharp
 public class AuditMiddlewareTests
@@ -111,17 +75,10 @@ public class AuditMiddlewareTests
             .UseInMemoryDatabase("TestDb")
             .Options;
         var db = new AuditDbContext(dbOptions);
-        
-        var userService = Mock.Of<ICurrentUserService>(
-            s => s.GetCurrentUser() == new User { Id = "user123" });
-        
-        var logger = Mock.Of<ILogger<AuditMiddleware>>();
-        
-        var middleware = new AuditMiddleware(db, userService, logger);
+        var middleware = new AuditMiddleware(db);
         
         var context = new DefaultHttpContext();
         context.Request.Path = "/api/test";
-        context.Request.Method = "GET";
         
         // Act
         await middleware.InvokeAsync(context, _ => Task.CompletedTask);
@@ -129,15 +86,11 @@ public class AuditMiddlewareTests
         // Assert
         var entry = await db.AuditEntries.FirstAsync();
         Assert.Equal("/api/test", entry.Path);
-        Assert.Equal("user123", entry.UserId);
-        Assert.True(entry.Success);
     }
 }
 ```
 
-## Conditional Middleware Activation
-
-Use `IStartupFilter` for conditional registration:
+### Conditional Middleware Activation
 
 ```csharp
 public class ConditionalMiddlewareStartupFilter : IStartupFilter
@@ -157,102 +110,23 @@ public class ConditionalMiddlewareStartupFilter : IStartupFilter
             {
                 app.UseMiddleware<AuditMiddleware>();
             }
-            
-            if (_config.GetValue<bool>("Features:EnableRateLimit"))
-            {
-                app.UseMiddleware<RateLimitMiddleware>();
-            }
-            
             next(app);
         };
     }
 }
 
-// Registration
 builder.Services.AddTransient<IStartupFilter, ConditionalMiddlewareStartupFilter>();
 ```
 
-## Response Body Modification
+<ProgressCheckpoint section="convention-middleware" xpReward={25} />
 
-Capturing and modifying response bodies requires stream swapping:
+---
 
-```csharp
-public class ResponseCompressionLoggingMiddleware : IMiddleware
-{
-    private readonly ILogger<ResponseCompressionLoggingMiddleware> _logger;
+## Section 3: Factory-Based - Per-Endpoint and Performance
 
-    public ResponseCompressionLoggingMiddleware(ILogger<ResponseCompressionLoggingMiddleware> logger)
-    {
-        _logger = logger;
-    }
-
-    public async Task InvokeAsync(HttpContext context, RequestDelegate next)
-    {
-        // Capture the original response body stream
-        var originalBody = context.Response.Body;
-        
-        using var newBody = new MemoryStream();
-        context.Response.Body = newBody;
-
-        await next(context);
-
-        // Read what was written
-        newBody.Seek(0, SeekOrigin.Begin);
-        var responseText = await new StreamReader(newBody).ReadToEndAsync();
-        
-        _logger.LogInformation(
-            "Response ({StatusCode}): {Length} bytes",
-            context.Response.StatusCode,
-            responseText.Length);
-
-        // Copy to original stream
-        newBody.Seek(0, SeekOrigin.Begin);
-        await newBody.CopyToAsync(originalBody);
-        context.Response.Body = originalBody;
-    }
-}
-```
-
-<InfoBox type="warning">
-  **Performance Impact:** Capturing response bodies requires buffering the entire response in memory. Use sparingly and only in development/debugging scenarios!
-</InfoBox>
-
-## Request Body Reading
-
-Read request bodies without consuming them:
+### Per-Endpoint Middleware with Filters
 
 ```csharp
-public class RequestLoggingMiddleware : IMiddleware
-{
-    public async Task InvokeAsync(HttpContext context, RequestDelegate next)
-    {
-        // Enable request body buffering
-        context.Request.EnableBuffering();
-        
-        using var reader = new StreamReader(
-            context.Request.Body, 
-            Encoding.UTF8, 
-            detectEncodingFromByteOrderMarks: false,
-            leaveOpen: true);
-        
-        var body = await reader.ReadToEndAsync();
-        
-        // Reset position so next middleware can read
-        context.Request.Body.Position = 0;
-        
-        Console.WriteLine($"Request Body: {body}");
-        
-        await next(context);
-    }
-}
-```
-
-## Per-Endpoint Middleware
-
-Apply middleware to specific endpoints:
-
-```csharp
-// Create a filter that wraps middleware logic
 public class LoggingEndpointFilter : IEndpointFilter
 {
     public async ValueTask<object?> InvokeAsync(
@@ -260,58 +134,17 @@ public class LoggingEndpointFilter : IEndpointFilter
         EndpointFilterDelegate next)
     {
         Console.WriteLine($"Before: {context.HttpContext.Request.Path}");
-        
         var result = await next(context);
-        
         Console.WriteLine($"After: {context.HttpContext.Response.StatusCode}");
-        
         return result;
     }
 }
 
-// Apply to specific endpoints
 app.MapGet("/logged", () => "Hello")
    .AddEndpointFilter<LoggingEndpointFilter>();
-
-// Or create extension
-public static RouteHandlerBuilder WithLogging(this RouteHandlerBuilder builder)
-    => builder.AddEndpointFilter<LoggingEndpointFilter>();
-
-app.MapGet("/api/users", GetUsers).WithLogging();
 ```
 
-## Terminal Middleware with Routing
-
-Create terminal middleware that handles specific routes:
-
-```csharp
-// WebSocket middleware example
-public class WebSocketMiddleware
-{
-    private readonly RequestDelegate _next;
-
-    public WebSocketMiddleware(RequestDelegate next)
-    {
-        _next = next;
-    }
-
-    public async Task InvokeAsync(HttpContext context)
-    {
-        if (context.Request.Path == "/ws" && context.WebSockets.IsWebSocketRequest)
-        {
-            using var webSocket = await context.WebSockets.AcceptWebSocketAsync();
-            await HandleWebSocket(webSocket);
-            return;  // Terminal - don't call next
-        }
-        
-        await _next(context);  // Not a WebSocket request, continue
-    }
-    
-    private async Task HandleWebSocket(WebSocket webSocket) { /* ... */ }
-}
-```
-
-## Performance Best Practices
+### Performance Best Practices
 
 ```csharp
 public class OptimizedMiddleware : IMiddleware
@@ -320,27 +153,20 @@ public class OptimizedMiddleware : IMiddleware
     private static readonly Func<HttpContext, bool> _isApiRequest =
         ctx => ctx.Request.Path.StartsWithSegments("/api");
 
-    // ✅ Pre-allocate buffers for common operations
+    // ✅ Pre-allocate buffers
     private static readonly byte[] _notFoundBytes = 
         Encoding.UTF8.GetBytes("Not Found");
 
     public async Task InvokeAsync(HttpContext context, RequestDelegate next)
     {
-        // ✅ Avoid string allocations in hot paths
         if (_isApiRequest(context))
         {
-            // ✅ Use Span/Memory for string operations
-            ReadOnlySpan<char> path = context.Request.Path.Value;
-            
-            if (path.StartsWith("/api/v2"))
-            {
-                // Handle v2 API
-            }
+            // Handle API requests
         }
 
         await next(context);
 
-        // ✅ Write bytes directly instead of strings
+        // ✅ Write bytes directly
         if (context.Response.StatusCode == 404)
         {
             await context.Response.Body.WriteAsync(_notFoundBytes);
@@ -349,13 +175,13 @@ public class OptimizedMiddleware : IMiddleware
 }
 ```
 
-## Key Takeaways
+### Key Takeaways
 
-- 🏭 **IMiddleware** — Factory pattern for per-request instances
-- 💉 **Scoped DI** — Works in constructor with IMiddleware
-- 🧪 **Testable** — Easy to unit test with mocked dependencies
-- 📝 **Body access** — Enable buffering to read without consuming
-- 🎯 **Endpoint filters** — Apply logic to specific endpoints
-- ⚡ **Performance** — Cache expressions, pre-allocate buffers
+| Pattern | Use Case |
+| :------ | :------- |
+| **IMiddleware** | Per-request instances with scoped DI |
+| **Body capture** | Enable buffering, reset position |
+| **Endpoint filters** | Per-endpoint logic |
+| **Performance** | Cache expressions, pre-allocate buffers |
 
-<ProgressCheckpoint section="factory-middleware" xpReward={75} />
+<ProgressCheckpoint section="factory-middleware" xpReward={25} />

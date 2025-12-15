@@ -2,7 +2,9 @@
 
 Imagine you're at a grocery store. Would you rather make **one trip** to buy everything you need, or **ten separate trips** to buy one item at a time? The answer is obvious - one trip is much faster! That's exactly what EF Core performance is about - being smart about how we talk to the database.
 
-## Why Performance Matters
+## Section 1: Introduction to Performance
+
+### Why Performance Matters
 
 Every time your app talks to the database, it takes time:
 
@@ -18,11 +20,11 @@ The fewer trips to the database, and the less data we fetch, the faster our app!
 
 <PerformanceAnalyzer mode="beginner" />
 
-## The N+1 Problem (The Biggest Mistake!)
+### The N+1 Problem (The Biggest Mistake!)
 
 The **N+1 problem** is the most common performance mistake. It happens when you accidentally send too many requests to the database.
 
-### ❌ The Bad Way (N+1 Problem)
+#### ❌ The Bad Way (N+1 Problem)
 
 <DotnetCodePreview
   title="N+1 Problem Example"
@@ -32,24 +34,24 @@ var blogs = context.Blogs.ToList();  // 1 query
 // For each blog, load its posts
 foreach (var blog in blogs)
 {
-var posts = blog.Posts; // N queries!
-// This causes a NEW database query each time!
+    var posts = blog.Posts;  // N queries!
+    // This causes a NEW database query each time!
 }`}
-steps={[
-{
-lineNumbers: [2],
-highlight: "First query",
-explanation: "1 query to get all blogs"
-},
-{
-lineNumbers: [7],
-highlight: "Many more queries!",
-explanation: "If you have 100 blogs, this runs 100 MORE queries!"
-}
-]}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "First query",
+      explanation: "1 query to get all blogs"
+    },
+    {
+      lineNumbers: [7],
+      highlight: "Many more queries!",
+      explanation: "If you have 100 blogs, this runs 100 MORE queries!"
+    }
+  ]}
 />
 
-### ✅ The Good Way (Eager Loading)
+#### ✅ The Good Way (Eager Loading)
 
 <DotnetCodePreview
   title="Fixed with Include"
@@ -61,23 +63,23 @@ var blogs = context.Blogs
 // Now blog.Posts is already loaded!
 foreach (var blog in blogs)
 {
-var posts = blog.Posts; // No extra query!
+    var posts = blog.Posts;  // No extra query!
 }`}
-steps={[
-{
-lineNumbers: [2, 3, 4],
-highlight: "Include does the magic",
-explanation: "One query gets both blogs AND their posts together"
-},
-{
-lineNumbers: [9],
-highlight: "Already loaded!",
-explanation: "No extra database trip needed"
-}
-]}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4],
+      highlight: "Include does the magic",
+      explanation: "One query gets both blogs AND their posts together"
+    },
+    {
+      lineNumbers: [9],
+      highlight: "Already loaded!",
+      explanation: "No extra database trip needed"
+    }
+  ]}
 />
 
-## Only Get What You Need
+### Only Get What You Need
 
 Don't fetch entire objects when you only need a few fields:
 
@@ -90,37 +92,126 @@ var titles = blogs.Select(b => b.Title);
 
 // ✅ Good: Only load titles
 var titles = context.Blogs
-.Select(b => b.Title)
-.ToList();
+    .Select(b => b.Title)
+    .ToList();
 // Only fetches the Title column!`}
-steps={[
-{
-lineNumbers: [2, 3, 4],
-highlight: "Wasteful",
-explanation: "Loads all blog data just to get titles"
-},
-{
-lineNumbers: [7, 8, 9],
-highlight: "Efficient",
-explanation: "Only the Title column is fetched from database"
-}
-]}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4],
+      highlight: "Wasteful",
+      explanation: "Loads all blog data just to get titles"
+    },
+    {
+      lineNumbers: [7, 8, 9],
+      highlight: "Efficient",
+      explanation: "Only the Title column is fetched from database"
+    }
+  ]}
 />
 
-## Quick Tips
+<ProgressCheckpoint section="intro-performance" xpReward={10} />
 
-| Tip                    | Why It Helps                   |
-| :--------------------- | :----------------------------- |
-| Use `.Include()`       | Loads related data in one trip |
-| Use `.Select()`        | Only fetch columns you need    |
-| Use `.AsNoTracking()`  | Faster for read-only data      |
-| Avoid loops that query | Batch your database calls      |
+---
 
-## Quick Summary
+## Section 2: Tracking Optimization
 
-- **N+1 Problem** = Too many database trips (bad!)
-- **Include()** = Load related data together (good!)
-- **Select()** = Only fetch what you need (efficient!)
-- Fewer trips + Less data = Faster app! 🚀
+### What is Change Tracking?
 
-<ProgressCheckpoint section="intro-performance" xpReward={25} />
+When EF Core loads data, it **watches** (tracks) every object for changes. This is helpful when you want to update data, but it uses extra memory and CPU.
+
+> **Think of it like this:**
+>
+> Imagine a librarian who follows you around the library, writing down every book you touch. Helpful if you want to check out books, but exhausting if you're just browsing!
+
+### AsNoTracking - For Read-Only Data
+
+When you're just **reading** data (not updating it), tell EF Core to stop watching:
+
+<DotnetCodePreview
+  title="Using AsNoTracking"
+  code={`// ❌ Default: EF tracks everything (slower)
+var blogs = context.Blogs.ToList();
+// EF is watching all these blogs for changes
+
+// ✅ Better: No tracking for read-only (faster!)
+var blogs = context.Blogs
+    .AsNoTracking()
+    .ToList();
+// EF just gives you the data and forgets about it`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "Tracked by default",
+      explanation: "EF watches every property for changes"
+    },
+    {
+      lineNumbers: [6, 7, 8],
+      highlight: "AsNoTracking",
+      explanation: "EF loads data without watching it - much faster!"
+    }
+  ]}
+/>
+
+### When to Use AsNoTracking
+
+| Scenario | Use AsNoTracking? |
+| :------- | :---------------- |
+| Displaying a list of items | ✅ Yes |
+| Showing a report | ✅ Yes |
+| Editing a single item | ❌ No |
+| Updating multiple records | ❌ No |
+
+### Simple Rule
+
+- **Just looking?** → Use `AsNoTracking()`
+- **Going to change something?** → Don't use it
+
+<ProgressCheckpoint section="tracking-optimization" xpReward={8} />
+
+---
+
+## Section 3: Advanced Tuning Basics
+
+### Loading Strategies Overview
+
+EF Core gives you three ways to load related data:
+
+| Strategy | How It Works | Best For |
+| :------- | :----------- | :------- |
+| **Eager Loading** | Load everything at once with `Include()` | When you know you need related data |
+| **Lazy Loading** | Load automatically when accessed | Simple apps (but can cause N+1!) |
+| **Explicit Loading** | Load manually when you decide | When you might need related data |
+
+### Eager Loading Example
+
+<DotnetCodePreview
+  title="Eager Loading with Include"
+  code={`// Load blogs with their posts AND authors
+var blogs = context.Blogs
+    .Include(b => b.Posts)
+    .Include(b => b.Author)
+    .ToList();
+// One trip to database, all data loaded!`}
+/>
+
+### Quick Performance Checklist
+
+Before your app goes live, check these:
+
+- ✅ Are you using `Include()` to avoid N+1?
+- ✅ Are you using `AsNoTracking()` for read-only queries?
+- ✅ Are you using `Select()` to fetch only needed columns?
+- ✅ Are you avoiding queries inside loops?
+
+### Quick Summary
+
+| Tip | Why It Helps |
+| :-- | :----------- |
+| Use `.Include()` | Loads related data in one trip |
+| Use `.Select()` | Only fetch columns you need |
+| Use `.AsNoTracking()` | Faster for read-only data |
+| Avoid loops that query | Batch your database calls |
+
+Remember: **Fewer trips + Less data = Faster app!** 🚀
+
+<ProgressCheckpoint section="advanced-tuning" xpReward={7} />

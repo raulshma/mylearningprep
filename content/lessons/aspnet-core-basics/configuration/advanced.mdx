@@ -2,7 +2,92 @@
 
 Master the configuration system with custom providers, validation, hot reload, and production-ready patterns for managing secrets and complex configurations.
 
-## Options Pattern Deep Dive
+---
+
+## Section 1: Configuration Architecture
+
+### How Configuration Providers Work
+
+Configuration in ASP.NET Core is built on a provider model where each source implements `IConfigurationProvider`:
+
+<ConfigurationVisualizer mode="advanced" />
+
+```csharp
+// The configuration builder aggregates multiple providers
+var builder = new ConfigurationBuilder()
+    .SetBasePath(Directory.GetCurrentDirectory())
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .AddJsonFile($"appsettings.{env}.json", optional: true, reloadOnChange: true)
+    .AddEnvironmentVariables()
+    .AddCommandLine(args);
+
+IConfiguration configuration = builder.Build();
+```
+
+### Configuration Change Tokens
+
+React to configuration changes at runtime:
+
+```csharp
+// React to any configuration change
+var changeToken = builder.Configuration.GetReloadToken();
+
+changeToken.RegisterChangeCallback(state =>
+{
+    Console.WriteLine("Configuration has been reloaded!");
+}, null);
+
+// Enable auto-reload for JSON files
+builder.Configuration.AddJsonFile("appsettings.json", 
+    optional: false, 
+    reloadOnChange: true);  // Monitor for file changes
+```
+
+### Custom Configuration Provider
+
+```csharp
+public class DatabaseConfigurationSource : IConfigurationSource
+{
+    public string ConnectionString { get; set; }
+
+    public IConfigurationProvider Build(IConfigurationBuilder builder)
+    {
+        return new DatabaseConfigurationProvider(this);
+    }
+}
+
+public class DatabaseConfigurationProvider : ConfigurationProvider
+{
+    private readonly DatabaseConfigurationSource _source;
+
+    public DatabaseConfigurationProvider(DatabaseConfigurationSource source)
+    {
+        _source = source;
+    }
+
+    public override void Load()
+    {
+        using var connection = new SqlConnection(_source.ConnectionString);
+        connection.Open();
+        
+        var command = new SqlCommand("SELECT [Key], [Value] FROM AppConfig", connection);
+        using var reader = command.ExecuteReader();
+        
+        Data = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        
+        while (reader.Read())
+        {
+            Data[reader.GetString(0)] = reader.GetString(1);
+        }
+    }
+}
+```
+
+<ProgressCheckpoint section="config-basics" xpReward={20} />
+
+---
+
+## Section 2: Options Pattern Deep Dive
 
 ### IOptions vs IOptionsSnapshot vs IOptionsMonitor
 
@@ -40,8 +125,6 @@ public class BackgroundService
     }
 }
 ```
-
-<ConfigurationVisualizer mode="advanced" />
 
 ### Named Options
 
@@ -103,73 +186,16 @@ builder.Services.AddOptions<EmailSettings>()
     }, "Invalid email configuration");
 ```
 
-## Custom Configuration Providers
+<ProgressCheckpoint section="config-intermediate" xpReward={20} />
 
-### Creating a Custom Provider
+---
 
-```csharp
-public class DatabaseConfigurationSource : IConfigurationSource
-{
-    public string ConnectionString { get; set; }
-
-    public IConfigurationProvider Build(IConfigurationBuilder builder)
-    {
-        return new DatabaseConfigurationProvider(this);
-    }
-}
-
-public class DatabaseConfigurationProvider : ConfigurationProvider
-{
-    private readonly DatabaseConfigurationSource _source;
-
-    public DatabaseConfigurationProvider(DatabaseConfigurationSource source)
-    {
-        _source = source;
-    }
-
-    public override void Load()
-    {
-        using var connection = new SqlConnection(_source.ConnectionString);
-        connection.Open();
-        
-        var command = new SqlCommand("SELECT [Key], [Value] FROM AppConfig", connection);
-        using var reader = command.ExecuteReader();
-        
-        Data = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        
-        while (reader.Read())
-        {
-            Data[reader.GetString(0)] = reader.GetString(1);
-        }
-    }
-}
-
-// Extension method for easy use
-public static class DatabaseConfigurationExtensions
-{
-    public static IConfigurationBuilder AddDatabaseConfiguration(
-        this IConfigurationBuilder builder,
-        string connectionString)
-    {
-        return builder.Add(new DatabaseConfigurationSource 
-        { 
-            ConnectionString = connectionString 
-        });
-    }
-}
-
-// Usage
-builder.Configuration.AddDatabaseConfiguration(
-    builder.Configuration.GetConnectionString("ConfigDb"));
-```
-
-## Secret Management
+## Section 3: Production Secret Management
 
 ### Azure Key Vault Integration
 
 ```csharp
-// Install: Microsoft.Extensions.Configuration.AzureKeyVault
-// or: Azure.Extensions.AspNetCore.Configuration.Secrets (recommended)
+// Install: Azure.Extensions.AspNetCore.Configuration.Secrets
 
 builder.Configuration.AddAzureKeyVault(
     new Uri("https://mykeyvault.vault.azure.net/"),
@@ -195,24 +221,7 @@ builder.Configuration.AddAzureKeyVault(
     });
 ```
 
-## Configuration Change Tokens
-
-```csharp
-// React to any configuration change
-var changeToken = builder.Configuration.GetReloadToken();
-
-changeToken.RegisterChangeCallback(state =>
-{
-    Console.WriteLine("Configuration has been reloaded!");
-}, null);
-
-// Enable auto-reload for JSON files
-builder.Configuration.AddJsonFile("appsettings.json", 
-    optional: false, 
-    reloadOnChange: true);  // Monitor for file changes
-```
-
-## Post-Configuration
+### Post-Configuration
 
 ```csharp
 // Modify options after all other configuration
@@ -230,15 +239,9 @@ builder.Services.PostConfigure<EmailSettings>(settings =>
         settings.FromAddress = "noreply@default.com";
     }
 });
-
-// Post-configure with dependencies
-builder.Services.PostConfigure<EmailSettings>((options, configuration) =>
-{
-    // Access other services/configuration
-});
 ```
 
-## Binding Complex Types
+### Binding Complex Types
 
 ```csharp
 // Configuration
@@ -270,4 +273,15 @@ builder.Services.Configure<FeatureSettings>(
     builder.Configuration.GetSection("Features"));
 ```
 
-<ProgressCheckpoint section="config-advanced" xpReward={60} />
+### Key Takeaways
+
+<InfoBox type="tip">
+**Remember:**
+- Use `IOptionsMonitor<T>` for singleton services that need to react to config changes
+- Use `IOptionsSnapshot<T>` for scoped services that need fresh config per request
+- Validate options at startup with `ValidateOnStart()` to fail fast
+- Use Azure Key Vault or similar for production secrets
+- Named options allow multiple configurations of the same type
+</InfoBox>
+
+<ProgressCheckpoint section="config-advanced" xpReward={20} />

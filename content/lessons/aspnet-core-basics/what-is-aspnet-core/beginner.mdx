@@ -2,7 +2,11 @@
 
 Imagine you want to build a house. You could gather wood, nails, and tools and figure it out yourself... or you could use a **construction kit** that comes with pre-made walls, doors, and a blueprint! ASP.NET Core is like that construction kit, but for building websites and apps.
 
-## The Universal Web Building Kit 🧰
+---
+
+## Section 1: Introduction to ASP.NET Core
+
+### The Universal Web Building Kit 🧰
 
 ASP.NET Core is a **free, open-source framework** made by Microsoft that helps you create:
 
@@ -14,7 +18,7 @@ The best part? Unlike older tools that only worked on Windows, ASP.NET Core work
 
 <AspNetCoreIntroVisualizer mode="beginner" />
 
-## Why Should I Care?
+### Why Should I Care?
 
 Think about your favorite apps - Instagram, Netflix, or your bank's website. They all need a "backend" - the brain that handles your login, stores your data, and makes everything work. ASP.NET Core is one of the most popular ways to build that backend!
 
@@ -24,7 +28,7 @@ Think about your favorite apps - Instagram, Netflix, or your bank's website. The
 > 
 > It comes with high-quality appliances (built-in features), a clean layout (organized code structure), and recipes to follow (documentation). You don't need to build the stove yourself - you can focus on cooking delicious meals (your app's features)!
 
-## Key Takeaways
+### Key Features
 
 | Feature | What It Means |
 |:--------|:-------------|
@@ -33,4 +37,120 @@ Think about your favorite apps - Instagram, Netflix, or your bank's website. The
 | **Fast** | One of the fastest web frameworks |
 | **Open Source** | Anyone can see and improve the code |
 
-<ProgressCheckpoint section="intro-aspnet-core" xpReward={25} />
+<ProgressCheckpoint section="intro-aspnet-core" xpReward={10} />
+
+---
+
+## Section 2: ASP.NET Core Overview
+
+### What Can You Build?
+
+ASP.NET Core is like a Swiss Army knife for web development. You can create many different types of applications:
+
+| Application Type | What It Does | Example |
+|:-----------------|:-------------|:--------|
+| **Web APIs** | Backend services that apps talk to | Your phone app getting weather data |
+| **Websites** | Traditional web pages | An online store |
+| **Real-time Apps** | Live updates without refreshing | Chat applications |
+| **Background Services** | Tasks that run in the background | Sending scheduled emails |
+
+### The Old vs The New
+
+Think of ASP.NET Framework (the old version) like a car that only runs on one type of road. ASP.NET Core is like a new car that runs on ANY road!
+
+| Old (ASP.NET Framework) | New (ASP.NET Core) |
+|:------------------------|:-------------------|
+| Windows only | Works everywhere |
+| Heavy and slow to start | Light and fast |
+| Hard to update | Easy to update |
+| Closed source | Open source |
+
+### How Requests Work (Simple Version)
+
+When someone visits your website, here's what happens:
+
+```
+1. 🌐 User types your website URL
+2. 📨 Request travels to your server
+3. 🔄 ASP.NET Core receives the request
+4. 🧠 Your code processes it
+5. 📤 Response sent back to user
+6. 👀 User sees the webpage!
+```
+
+It's like ordering food at a restaurant:
+- You (the user) place an order (request)
+- The waiter (ASP.NET Core) takes it to the kitchen
+- The chef (your code) prepares the food
+- The waiter brings it back (response)
+
+<ProgressCheckpoint section="aspnet-core-overview" xpReward={10} />
+
+---
+
+## Section 3: ASP.NET Core Basics
+
+### The Building Blocks
+
+Every ASP.NET Core app has these basic parts:
+
+**1. Program.cs** - The starting point
+```csharp
+// This is where your app begins!
+var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
+
+app.MapGet("/", () => "Hello World!");
+
+app.Run();
+```
+
+**2. Controllers** - Handle requests
+```csharp
+// Controllers are like waiters - they take orders!
+public class HelloController : ControllerBase
+{
+    [HttpGet("/hello")]
+    public string SayHello()
+    {
+        return "Hello from ASP.NET Core!";
+    }
+}
+```
+
+**3. Services** - Do the actual work
+```csharp
+// Services are like chefs - they do the cooking!
+public class GreetingService
+{
+    public string GetGreeting(string name)
+    {
+        return $"Hello, {name}!";
+    }
+}
+```
+
+### Your First ASP.NET Core App
+
+Creating an app is as easy as running one command:
+
+```bash
+dotnet new web -n MyFirstApp
+cd MyFirstApp
+dotnet run
+```
+
+Then open your browser to `http://localhost:5000` and see your app running!
+
+### Key Takeaways
+
+<InfoBox type="tip">
+**Remember these key points:**
+- ASP.NET Core is **free** and **open source**
+- It works on **Windows, Mac, and Linux**
+- It's one of the **fastest** web frameworks
+- You can build **websites, APIs, and real-time apps**
+- Getting started is as easy as one command!
+</InfoBox>
+
+<ProgressCheckpoint section="aspnet-core-internals" xpReward={5} />

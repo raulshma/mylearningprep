@@ -1,216 +1,106 @@
 # Built-in Middleware: Advanced Configuration
 
-Beyond basic usage, ASP.NET Core's built-in middleware offers extensive customization options for high-performance, enterprise-grade applications.
+Beyond basic usage, ASP.NET Core's built-in middleware offers extensive customization for enterprise-grade applications.
 
-## Advanced Explorer
-
-Toggle middleware and see complete configuration examples:
+## Section 1: Built-in Overview - Response Compression
 
 <BuiltInMiddlewareExplorer mode="advanced" />
 
-## Response Compression
-
-Reduce bandwidth and improve load times by compressing responses:
+### Response Compression
 
 ```csharp
-// 1. Configure services
 builder.Services.AddResponseCompression(options =>
 {
-    options.EnableForHttps = true;  // Important: compress HTTPS too
+    options.EnableForHttps = true;
     options.Providers.Add<BrotliCompressionProvider>();
     options.Providers.Add<GzipCompressionProvider>();
-    
-    // Compress these MIME types
     options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(
         new[] { "image/svg+xml", "application/json" });
 });
 
-// Configure compression levels
 builder.Services.Configure<BrotliCompressionProviderOptions>(options =>
 {
     options.Level = CompressionLevel.Optimal;
 });
 
-builder.Services.Configure<GzipCompressionProviderOptions>(options =>
-{
-    options.Level = CompressionLevel.SmallestSize;  // More compression
-});
-
-// 2. Add EARLY in pipeline (before static files for best effect)
+// Place BEFORE UseStaticFiles
 app.UseResponseCompression();
 ```
 
-<InfoBox type="important">
-  Place `UseResponseCompression()` **before** `UseStaticFiles()` — otherwise static files won't be compressed!
-</InfoBox>
-
-### Compression Provider Priority
+### Response Caching
 
 ```csharp
-builder.Services.AddResponseCompression(options =>
-{
-    // Order matters! First matching provider is used
-    options.Providers.Add<BrotliCompressionProvider>();  // Best compression
-    options.Providers.Add<GzipCompressionProvider>();     // Fallback
-    options.Providers.Add<DeflateCompressionProvider>(); // Older clients
-});
-```
-
-## Response Caching
-
-Cache responses server-side to reduce processing:
-
-```csharp
-// 1. Configure services
 builder.Services.AddResponseCaching(options =>
 {
-    options.MaximumBodySize = 1024 * 1024;  // 1 MB max cached response
-    options.SizeLimit = 100 * 1024 * 1024;   // 100 MB total cache size
-    options.UseCaseSensitivePaths = true;
+    options.MaximumBodySize = 1024 * 1024;
+    options.SizeLimit = 100 * 1024 * 1024;
 });
 
-// 2. Add to pipeline
 app.UseResponseCaching();
 
-// 3. Apply to endpoints
-app.MapGet("/api/products", async (ProductService service) =>
-{
-    return await service.GetAllAsync();
-})
-.WithMetadata(new ResponseCacheAttribute
-{
-    Duration = 60,           // Cache for 60 seconds
-    Location = ResponseCacheLocation.Any,
-    VaryByQueryKeys = new[] { "category", "page" }
-});
-
-// Or with MVC/Controllers:
-[ResponseCache(Duration = 120, VaryByHeader = "Accept-Encoding")]
-public async Task<IActionResult> GetProducts() { }
+// Apply to endpoints
+[ResponseCache(Duration = 60, VaryByHeader = "Accept-Encoding")]
+public IActionResult GetProducts() { }
 ```
 
-### Cache Profile for Reuse
+<ProgressCheckpoint section="builtin-overview" xpReward={21} />
+
+---
+
+## Section 2: Security Middleware - Rate Limiting
+
+### Rate Limiting (.NET 7+)
 
 ```csharp
-builder.Services.AddControllers(options =>
-{
-    options.CacheProfiles.Add("Default30", new CacheProfile
-    {
-        Duration = 30,
-        Location = ResponseCacheLocation.Any
-    });
-    
-    options.CacheProfiles.Add("NoCache", new CacheProfile
-    {
-        Duration = 0,
-        Location = ResponseCacheLocation.None,
-        NoStore = true
-    });
-});
-
-// Usage:
-[ResponseCache(CacheProfileName = "Default30")]
-public IActionResult CachedEndpoint() { }
-```
-
-## Rate Limiting Middleware (.NET 7+)
-
-Protect your API from abuse:
-
-```csharp
-// 1. Configure services
 builder.Services.AddRateLimiter(options =>
 {
-    // Fixed window: 100 requests per minute
     options.AddFixedWindowLimiter("fixed", limiterOptions =>
     {
         limiterOptions.PermitLimit = 100;
         limiterOptions.Window = TimeSpan.FromMinutes(1);
-        limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-        limiterOptions.QueueLimit = 10;  // Queue up to 10 extra
+        limiterOptions.QueueLimit = 10;
     });
     
-    // Sliding window: smoother rate limiting
     options.AddSlidingWindowLimiter("sliding", limiterOptions =>
     {
         limiterOptions.PermitLimit = 100;
         limiterOptions.Window = TimeSpan.FromMinutes(1);
-        limiterOptions.SegmentsPerWindow = 6;  // 10-second segments
+        limiterOptions.SegmentsPerWindow = 6;
     });
     
-    // Token bucket: burst-friendly
-    options.AddTokenBucketLimiter("token", limiterOptions =>
-    {
-        limiterOptions.TokenLimit = 100;
-        limiterOptions.ReplenishmentPeriod = TimeSpan.FromSeconds(10);
-        limiterOptions.TokensPerPeriod = 20;
-        limiterOptions.AutoReplenishment = true;
-    });
-    
-    // Custom rejection response
     options.OnRejected = async (context, token) =>
     {
         context.HttpContext.Response.StatusCode = 429;
         await context.HttpContext.Response.WriteAsJsonAsync(new
         {
-            error = "Too many requests",
-            retryAfter = context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var time) 
-                ? time.TotalSeconds : 60
+            error = "Too many requests"
         }, token);
     };
 });
 
-// 2. Add to pipeline
 app.UseRateLimiter();
 
-// 3. Apply to endpoints
 app.MapGet("/api/search", SearchHandler)
    .RequireRateLimiting("sliding");
-
-// Or apply globally
-app.MapGroup("/api")
-   .RequireRateLimiting("fixed")
-   .MapGet("/users", GetUsers)
-   .MapGet("/products", GetProducts);
 ```
 
-## Output Caching (.NET 7+)
-
-More flexible than Response Caching:
+### Output Caching (.NET 7+)
 
 ```csharp
-// 1. Configure services
 builder.Services.AddOutputCache(options =>
 {
-    // Named policies
-    options.AddPolicy("CacheFor60", builder =>
-        builder.Expire(TimeSpan.FromSeconds(60)));
-    
-    options.AddPolicy("VaryByQuery", builder =>
-        builder.SetVaryByQuery("page", "size", "sort")
-               .Expire(TimeSpan.FromMinutes(5)));
-    
-    options.AddPolicy("AuthenticatedOnly", builder =>
-        builder.With(c => c.HttpContext.User.Identity?.IsAuthenticated == true)
-               .Expire(TimeSpan.FromMinutes(10)));
-    
-    // Tag-based invalidation
     options.AddPolicy("Products", builder =>
         builder.Tag("products")
                .Expire(TimeSpan.FromHours(1)));
 });
 
-// 2. Add to pipeline
 app.UseOutputCache();
 
-// 3. Use policies
 app.MapGet("/api/products", GetProducts)
    .CacheOutput("Products");
 
-// 4. Invalidate by tag
-app.MapPost("/api/products", async (
-    IOutputCacheStore cache,
-    Product product) =>
+// Invalidate by tag
+app.MapPost("/api/products", async (IOutputCacheStore cache, Product product) =>
 {
     await SaveProduct(product);
     await cache.EvictByTagAsync("products", default);
@@ -218,37 +108,20 @@ app.MapPost("/api/products", async (
 });
 ```
 
-<InfoBox type="tip">
-  **Output Caching vs Response Caching:** Output Caching is server-side only and gives you more control (tag-based invalidation, programmatic eviction). Use Response Caching when you want clients/CDNs to cache too.
-</InfoBox>
+<ProgressCheckpoint section="security-middleware" xpReward={22} />
 
-## Health Checks Middleware
+---
 
-Monitor your application's health:
+## Section 3: Performance Middleware - Health Checks
+
+### Health Checks
 
 ```csharp
-// 1. Configure services
 builder.Services.AddHealthChecks()
     .AddCheck("self", () => HealthCheckResult.Healthy())
     .AddSqlServer(builder.Configuration.GetConnectionString("Default")!)
-    .AddRedis(builder.Configuration.GetConnectionString("Redis")!)
-    .AddCheck<CustomHealthCheck>("custom");
+    .AddRedis(builder.Configuration.GetConnectionString("Redis")!);
 
-// Custom health check
-public class CustomHealthCheck : IHealthCheck
-{
-    public Task<HealthCheckResult> CheckHealthAsync(
-        HealthCheckContext context, 
-        CancellationToken cancellationToken = default)
-    {
-        var isHealthy = CheckExternalService();
-        return Task.FromResult(isHealthy 
-            ? HealthCheckResult.Healthy("External service OK")
-            : HealthCheckResult.Unhealthy("External service down"));
-    }
-}
-
-// 2. Map endpoints
 app.MapHealthChecks("/health/ready", new HealthCheckOptions
 {
     Predicate = check => check.Tags.Contains("ready")
@@ -256,87 +129,45 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
 
 app.MapHealthChecks("/health/live", new HealthCheckOptions
 {
-    Predicate = _ => false  // Just checks if app is running
-});
-
-app.MapHealthChecks("/health", new HealthCheckOptions
-{
-    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+    Predicate = _ => false
 });
 ```
 
-## Rewriting and Redirecting
-
-URL manipulation middleware:
+### URL Rewriting
 
 ```csharp
-// URL Rewriting
 var rewriteOptions = new RewriteOptions()
-    .AddRedirect("old-path/(.*)", "new-path/$1", 301)  // Permanent redirect
+    .AddRedirect("old-path/(.*)", "new-path/$1", 301)
     .AddRedirectToHttpsPermanent()
-    .AddRewrite(@"^api/v1/(.*)", "api/v2/$1", skipRemainingRules: true)
-    .Add(new CustomRewriteRule());
+    .AddRewrite(@"^api/v1/(.*)", "api/v2/$1", skipRemainingRules: true);
 
 app.UseRewriter(rewriteOptions);
-
-// Custom rewrite rule
-public class CustomRewriteRule : IRule
-{
-    public void ApplyRule(RewriteContext context)
-    {
-        var request = context.HttpContext.Request;
-        
-        // Remove trailing slashes
-        if (request.Path.Value?.EndsWith("/") == true)
-        {
-            var newPath = request.Path.Value.TrimEnd('/');
-            context.Result = RuleResult.EndResponse;
-            context.HttpContext.Response.Redirect(newPath, permanent: true);
-        }
-    }
-}
 ```
 
-## Request Localization
-
-Multi-language support:
+### Request Localization
 
 ```csharp
-builder.Services.AddLocalization(options => 
-    options.ResourcesPath = "Resources");
-
 builder.Services.Configure<RequestLocalizationOptions>(options =>
 {
-    var supportedCultures = new[] 
-    { 
-        new CultureInfo("en-US"),
-        new CultureInfo("es-ES"),
-        new CultureInfo("fr-FR")
-    };
+    var supportedCultures = new[] { "en-US", "es-ES", "fr-FR" }
+        .Select(c => new CultureInfo(c)).ToArray();
     
     options.DefaultRequestCulture = new RequestCulture("en-US");
     options.SupportedCultures = supportedCultures;
     options.SupportedUICultures = supportedCultures;
-    
-    // Priority: Query string > Cookie > Accept-Language header
-    options.RequestCultureProviders = new List<IRequestCultureProvider>
-    {
-        new QueryStringRequestCultureProvider(),
-        new CookieRequestCultureProvider(),
-        new AcceptLanguageHeaderRequestCultureProvider()
-    };
 });
 
 app.UseRequestLocalization();
 ```
 
-## Key Takeaways
+### Key Takeaways
 
-- 📦 **Response Compression** — Brotli > Gzip, place before StaticFiles
-- 💾 **Response/Output Caching** — Server-side performance boost
-- 🚦 **Rate Limiting** — Protect APIs from abuse (Fixed/Sliding/Token Bucket)
-- 🏥 **Health Checks** — Monitor app and dependency health
-- 🔄 **URL Rewriting** — Redirects and path manipulation
-- 🌍 **Localization** — Multi-language cultural support
+| Middleware | Purpose |
+| :--------- | :------ |
+| **Compression** | Reduce bandwidth (Brotli > Gzip) |
+| **Rate Limiting** | Protect from abuse |
+| **Output Caching** | Server-side caching with tags |
+| **Health Checks** | Monitor app health |
+| **URL Rewriting** | Redirects and path manipulation |
 
-<ProgressCheckpoint section="performance-middleware" xpReward={65} />
+<ProgressCheckpoint section="performance-middleware" xpReward={22} />

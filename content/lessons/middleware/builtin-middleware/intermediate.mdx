@@ -1,14 +1,10 @@
 # Built-in Middleware: Comprehensive Guide
 
-ASP.NET Core includes a rich set of middleware components that handle common web application requirements. Understanding and configuring these correctly is essential for production applications.
+ASP.NET Core includes a rich set of middleware components that handle common web application requirements.
 
-## Interactive Middleware Explorer
-
-Explore each built-in middleware, toggle them on/off, and see the recommended configuration order:
+## Section 1: Built-in Overview
 
 <BuiltInMiddlewareExplorer mode="intermediate" />
-
-## Security Middleware
 
 ### Exception Handling
 
@@ -17,90 +13,70 @@ Configure how errors are displayed based on environment:
 ```csharp
 if (app.Environment.IsDevelopment())
 {
-    // Detailed error page with stack traces
     app.UseDeveloperExceptionPage();
 }
 else
 {
-    // User-friendly error page
     app.UseExceptionHandler("/Home/Error");
-    
-    // Add HSTS header for production
     app.UseHsts();
 }
 ```
 
 <InfoBox type="warning">
-  **Never** use `UseDeveloperExceptionPage()` in production! It exposes sensitive information like connection strings and stack traces.
+  **Never** use `UseDeveloperExceptionPage()` in production!
 </InfoBox>
 
-### HTTPS and HSTS
-
-Force secure connections:
+### Static Files Configuration
 
 ```csharp
-// Add security headers (production only)
-if (!app.Environment.IsDevelopment())
+// Serve from wwwroot
+app.UseStaticFiles();
+
+// Custom folder
+app.UseStaticFiles(new StaticFileOptions
 {
-    app.UseHsts();  // HTTP Strict Transport Security
-}
-
-// Redirect HTTP → HTTPS
-app.UseHttpsRedirection();
-```
-
-**HSTS Options:**
-
-```csharp
-builder.Services.AddHsts(options =>
-{
-    options.MaxAge = TimeSpan.FromDays(365);
-    options.IncludeSubDomains = true;
-    options.Preload = true;  // Submit to browser preload list
+    FileProvider = new PhysicalFileProvider(
+        Path.Combine(builder.Environment.ContentRootPath, "MyFiles")),
+    RequestPath = "/files"
 });
 ```
 
-### CORS (Cross-Origin Resource Sharing)
+<ProgressCheckpoint section="builtin-overview" xpReward={15} />
 
-Allow your API to be called from different domains:
+---
+
+## Section 2: Security Middleware
+
+### HTTPS and HSTS
 
 ```csharp
-// 1. Configure the policy
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+}
+app.UseHttpsRedirection();
+```
+
+### CORS Configuration
+
+```csharp
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowMyFrontend", policy =>
     {
-        policy.WithOrigins("https://myapp.com", "https://www.myapp.com")
+        policy.WithOrigins("https://myapp.com")
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials();  // For cookies/auth
-    });
-    
-    // Named policy for specific APIs
-    options.AddPolicy("PublicApi", policy =>
-    {
-        policy.AllowAnyOrigin()
-              .AllowAnyHeader()
-              .WithMethods("GET");  // Read-only
+              .AllowCredentials();
     });
 });
 
-// 2. Apply globally
 app.UseCors("AllowMyFrontend");
-
-// OR apply to specific endpoints
-app.MapGet("/api/public", () => "Hello")
-   .RequireCors("PublicApi");
 ```
-
-<InfoBox type="important">
-  Place `UseCors()` **after** `UseRouting()` but **before** `UseAuthorization()`.
-</InfoBox>
 
 ### Authentication & Authorization
 
 ```csharp
-// Configure authentication
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -108,149 +84,61 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         options.Audience = "myapi";
     });
 
-// Configure authorization policies
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminOnly", policy =>
         policy.RequireRole("Admin"));
-    
-    options.AddPolicy("PremiumUser", policy =>
-        policy.RequireClaim("subscription", "premium"));
 });
 
-// In the pipeline
 app.UseAuthentication();
 app.UseAuthorization();
 ```
 
-## Static Files Middleware
+<ProgressCheckpoint section="security-middleware" xpReward={15} />
 
-### Basic Configuration
+---
 
-```csharp
-// Serve files from wwwroot
-app.UseStaticFiles();
-```
+## Section 3: Performance Middleware
 
-### Custom File Location
+### Session Middleware
 
 ```csharp
-// Serve additional static files from a custom folder
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new PhysicalFileProvider(
-        Path.Combine(builder.Environment.ContentRootPath, "MyStaticFiles")),
-    RequestPath = "/files"  // URL: /files/image.png
-});
-```
-
-### Enable Directory Browsing (Dev Only!)
-
-```csharp
-if (app.Environment.IsDevelopment())
-{
-    app.UseDirectoryBrowser(new DirectoryBrowserOptions
-    {
-        FileProvider = new PhysicalFileProvider(
-            Path.Combine(builder.Environment.ContentRootPath, "uploads")),
-        RequestPath = "/uploads"
-    });
-}
-```
-
-### Default Files
-
-```csharp
-// Automatically serve index.html for directory requests
-app.UseDefaultFiles();  // Must come BEFORE UseStaticFiles
-app.UseStaticFiles();
-
-// Or combine them:
-app.UseFileServer();  // = UseDefaultFiles + UseStaticFiles + UseDirectoryBrowser
-```
-
-## Session Middleware
-
-Store user data across requests:
-
-```csharp
-// 1. Configure services
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
     options.IdleTimeout = TimeSpan.FromMinutes(30);
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
-    options.Cookie.SameSite = SameSiteMode.Strict;
 });
 
-// 2. Add to pipeline (after routing, before endpoints)
 app.UseSession();
-
-// 3. Use in your code
-app.MapGet("/cart/add", async (HttpContext context, int productId) =>
-{
-    var cart = context.Session.GetString("cart") ?? "[]";
-    // Modify cart...
-    context.Session.SetString("cart", newCart);
-    return Results.Ok();
-});
 ```
 
-<InfoBox type="tip">
-  For production, use Redis or SQL Server for distributed session storage instead of in-memory cache.
-</InfoBox>
-
-## The Recommended Pipeline Order
+### The Recommended Pipeline Order
 
 ```csharp
 var app = builder.Build();
 
-// 1. Exception/Error handling
 app.UseExceptionHandler("/Error");
 app.UseHsts();
-
-// 2. HTTPS
 app.UseHttpsRedirection();
-
-// 3. Static files (short-circuits for files)
 app.UseStaticFiles();
-
-// 4. Cookie policy (GDPR compliance)
-app.UseCookiePolicy();
-
-// 5. Routing
 app.UseRouting();
-
-// 6. Rate limiting
-app.UseRateLimiter();
-
-// 7. CORS
 app.UseCors();
-
-// 8. Authentication
 app.UseAuthentication();
-
-// 9. Authorization  
 app.UseAuthorization();
-
-// 10. Session
 app.UseSession();
-
-// 11. Response caching/compression
-app.UseResponseCaching();
-app.UseResponseCompression();
-
-// 12. Endpoints
 app.MapControllers();
 ```
 
-## Key Takeaways
+### Key Takeaways
 
-- 🔒 **Security middleware** — HTTPS, HSTS, CORS, Auth
-- 📁 **Static files** — Configurable with custom paths and options
-- 🍪 **Session** — Server-side state with cookie tracking
-- 📋 **Order matters** — Follow Microsoft's recommended sequence
-- ⚙️ **All configurable** — Each middleware has options to customize
+| Middleware | Purpose |
+| :--------- | :------ |
+| Exception Handler | Catch and display errors |
+| HTTPS/HSTS | Force secure connections |
+| CORS | Cross-origin requests |
+| Auth | Identity and permissions |
+| Session | Server-side state |
 
-<ProgressCheckpoint section="security-middleware" xpReward={45} />
+<ProgressCheckpoint section="performance-middleware" xpReward={15} />

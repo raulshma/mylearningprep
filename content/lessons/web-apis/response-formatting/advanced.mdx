@@ -2,9 +2,11 @@
 
 Master custom formatters, HATEOAS, and enterprise API response patterns.
 
-## Custom Output Formatters
+## Section 1: Custom Output Formatters
 
-Create formatters for specialized media types:
+<ResponseFormattingDemo mode="advanced" />
+
+### Creating a CSV Formatter
 
 ```csharp
 public class CsvOutputFormatter : TextOutputFormatter
@@ -56,9 +58,14 @@ builder.Services.AddControllers(options =>
 });
 ```
 
-<ResponseFormattingDemo mode="advanced" />
+<ProgressCheckpoint section="response-formatting-intro" xpReward={16} />
 
-## HATEOAS (Hypermedia)
+---
+
+## Section 2: HATEOAS and Envelope Pattern
+
+### HATEOAS (Hypermedia)
+
 
 Include navigation links in responses:
 
@@ -93,8 +100,7 @@ public ActionResult<ProductResponse> GetById(int id)
         {
             new() { Href = $"/api/products/{id}", Rel = "self", Method = "GET" },
             new() { Href = $"/api/products/{id}", Rel = "update", Method = "PUT" },
-            new() { Href = $"/api/products/{id}", Rel = "delete", Method = "DELETE" },
-            new() { Href = $"/api/products/{id}/reviews", Rel = "reviews", Method = "GET" }
+            new() { Href = $"/api/products/{id}", Rel = "delete", Method = "DELETE" }
         }
     };
 
@@ -102,9 +108,7 @@ public ActionResult<ProductResponse> GetById(int id)
 }
 ```
 
-## Envelope Pattern
-
-Wrap all responses in a consistent envelope:
+### Envelope Pattern
 
 ```csharp
 public class ApiEnvelope<T>
@@ -119,47 +123,16 @@ public class ApiMeta
 {
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
     public string? TraceId { get; set; }
-    public int? Page { get; set; }
-    public int? PageSize { get; set; }
-    public int? TotalCount { get; set; }
-}
-
-public class ApiError
-{
-    public string Code { get; set; }
-    public string Message { get; set; }
-    public IDictionary<string, string[]>? Details { get; set; }
-}
-
-// Response filter for automatic wrapping
-public class EnvelopeResultFilter : IAsyncResultFilter
-{
-    public async Task OnResultExecutionAsync(
-        ResultExecutingContext context,
-        ResultExecutionDelegate next)
-    {
-        if (context.Result is ObjectResult objectResult)
-        {
-            var envelope = new ApiEnvelope<object>
-            {
-                Success = objectResult.StatusCode is >= 200 and < 300,
-                Data = objectResult.Value,
-                Meta = new ApiMeta
-                {
-                    TraceId = context.HttpContext.TraceIdentifier
-                }
-            };
-            objectResult.Value = envelope;
-        }
-
-        await next();
-    }
 }
 ```
 
-## Conditional Responses (ETags)
+<ProgressCheckpoint section="response-formatting-intermediate" xpReward={16} />
 
-Implement caching with ETags:
+---
+
+## Section 3: ETags and Streaming
+
+### Conditional Responses (ETags)
 
 ```csharp
 [HttpGet("{id}")]
@@ -182,9 +155,7 @@ public ActionResult<Product> GetById(int id)
 }
 ```
 
-## Streaming Large Responses
-
-Stream large datasets efficiently:
+### Streaming Large Responses
 
 ```csharp
 [HttpGet("export")]
@@ -206,4 +177,14 @@ public FileResult DownloadReport()
 }
 ```
 
-<ProgressCheckpoint section="response-formatting-advanced" xpReward={50} />
+### Best Practices Summary
+
+| Pattern | Use Case |
+| :------ | :------- |
+| **Custom Formatters** | CSV, PDF, specialized formats |
+| **HATEOAS** | Discoverable APIs |
+| **Envelope Pattern** | Consistent response structure |
+| **ETags** | Caching and conditional requests |
+| **Streaming** | Large datasets |
+
+<ProgressCheckpoint section="response-formatting-advanced" xpReward={18} />

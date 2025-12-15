@@ -4,7 +4,9 @@ Imagine you hire an employee to be a chef. But then you also ask them to do the 
 
 **That's exactly the problem SRP solves!**
 
-## The Swiss Army Knife Problem 🔪
+---
+
+## Section 1: The Swiss Army Knife Problem 🔪
 
 Think about two types of knives:
 
@@ -21,13 +23,7 @@ A professional chef uses a dedicated chef's knife, not a Swiss Army knife. Why? 
 **The SRP Says:** Each class should have only **ONE job** and only **ONE reason to change**.
 </InfoBox>
 
-## Let's See the Problem
-
-Here's code that does TOO MANY things (just like our overworked employee):
-
-<SolidPrincipleDemo principle="S" mode="beginner" />
-
-## Real-World Analogy: The Restaurant 🍽️
+### Real-World Analogy: The Restaurant 🍽️
 
 Think of a well-run restaurant:
 
@@ -38,7 +34,17 @@ Think of a well-run restaurant:
 
 Each person has **ONE job**. If the chef also had to take payments, wait tables, AND seat guests, the kitchen would be chaos!
 
-## The Simple Rule
+<ProgressCheckpoint section="srp-introduction" xpReward={8} />
+
+---
+
+## Section 2: Let's See the Problem
+
+Here's code that does TOO MANY things (just like our overworked employee):
+
+<SolidPrincipleDemo principle="S" mode="beginner" />
+
+### The Simple Rule
 
 > **"A class should have only one reason to change."**
 > — Robert C. Martin (Uncle Bob)
@@ -51,7 +57,11 @@ Ask yourself:
 
 ✅ **Good:** "This class manages user data."
 
-## Why Does This Matter?
+<ProgressCheckpoint section="srp-understanding" xpReward={9} />
+
+---
+
+## Section 3: Why Does This Matter?
 
 | **Without SRP** 😰 | **With SRP** 😊 |
 |:-------------------|:----------------|
@@ -60,11 +70,13 @@ Ask yourself:
 | Difficult to test | Easy to test |
 | Big, scary files | Small, focused files |
 
-## Key Takeaways
+### Key Takeaways
 
+<InfoBox type="tip" title="Remember">
 - 📦 **One class = One job** (like one employee = one role)
 - 🔧 Use **specialized classes** (not Swiss Army classes)
 - 🧪 Smaller classes are **easier to test**
 - 🔄 Changes stay **isolated** and safe
+</InfoBox>
 
-<ProgressCheckpoint section="srp-introduction" xpReward={25} />
+<ProgressCheckpoint section="srp-application" xpReward={8} />

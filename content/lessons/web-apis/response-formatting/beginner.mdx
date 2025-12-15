@@ -2,7 +2,9 @@
 
 When you order food at a restaurant, you expect it to be served properly - on a plate, not thrown at you! Similarly, your API needs to format responses correctly. **Response formatting** is how your API presents data back to clients.
 
-## What is Response Formatting? 📤
+## Section 1: Introduction to Response Formatting
+
+### What is Response Formatting? 📤
 
 Response formatting is how your API sends data back. This includes:
 
@@ -12,25 +14,31 @@ Response formatting is how your API sends data back. This includes:
 
 <ResponseFormattingDemo mode="beginner" />
 
-## The Menu Translation Analogy 🌍
+### The Menu Translation Analogy 🌍
 
 > **Imagine you're at an international restaurant.**
 >
 > You can ask for the menu in English, Spanish, or French. The content is the same - but the format changes based on what you asked for. APIs work the same way with JSON, XML, etc!
 
-## Status Codes = Responses
+<ProgressCheckpoint section="response-formatting-intro" xpReward={8} />
+
+---
+
+## Section 2: Status Codes
+
+### Status Codes = Responses
 
 Think of status codes as the waiter's facial expressions:
 
-| Code    | Meaning         | Real Life                               |
-| :------ | :-------------- | :-------------------------------------- |
-| **200** | ✅ OK           | "Here's your order!"                    |
-| **201** | ✅ Created      | "Your reservation is made!"             |
-| **400** | ❌ Bad Request  | "Sorry, we don't understand your order" |
-| **404** | 🔍 Not Found    | "We don't have that dish"               |
-| **500** | 💥 Server Error | "Kitchen is on fire!"                   |
+| Code | Meaning | Real Life |
+| :--- | :------ | :-------- |
+| **200** | ✅ OK | "Here's your order!" |
+| **201** | ✅ Created | "Your reservation is made!" |
+| **400** | ❌ Bad Request | "Sorry, we don't understand your order" |
+| **404** | 🔍 Not Found | "We don't have that dish" |
+| **500** | 💥 Server Error | "Kitchen is on fire!" |
 
-## Simple Response Example
+### Simple Response Example
 
 ```csharp
 [HttpGet("{id}")]
@@ -45,7 +53,14 @@ public ActionResult<Product> GetProduct(int id)
 }
 ```
 
-## JSON = The Universal Language
+
+<ProgressCheckpoint section="response-formatting-intermediate" xpReward={8} />
+
+---
+
+## Section 3: JSON and Response Helpers
+
+### JSON = The Universal Language
 
 By default, ASP.NET Core returns **JSON** (JavaScript Object Notation):
 
@@ -59,14 +74,49 @@ By default, ASP.NET Core returns **JSON** (JavaScript Object Notation):
 
 **Why JSON?** It's lightweight, readable, and understood by every programming language!
 
-## Key Takeaways
+### Common Response Helpers
 
-| Concept          | Description                         |
-| :--------------- | :---------------------------------- |
-| **Status Code**  | Number telling if request succeeded |
-| **JSON**         | Default response format             |
-| **Ok()**         | Returns 200 with data               |
-| **NotFound()**   | Returns 404                         |
-| **BadRequest()** | Returns 400                         |
+```csharp
+[ApiController]
+[Route("api/[controller]")]
+public class ProductsController : ControllerBase
+{
+    // 200 OK with data
+    [HttpGet]
+    public ActionResult<List<Product>> GetAll()
+    {
+        return Ok(_service.GetAll());
+    }
 
-<ProgressCheckpoint section="response-formatting-intro" xpReward={25} />
+    // 201 Created
+    [HttpPost]
+    public ActionResult<Product> Create(Product product)
+    {
+        _service.Add(product);
+        return CreatedAtAction(nameof(GetById), 
+            new { id = product.Id }, product);
+    }
+
+    // 204 No Content
+    [HttpDelete("{id}")]
+    public ActionResult Delete(int id)
+    {
+        _service.Delete(id);
+        return NoContent();
+    }
+}
+```
+
+### Key Takeaways
+
+| Concept | Description |
+| :------ | :---------- |
+| **Status Code** | Number telling if request succeeded |
+| **JSON** | Default response format |
+| **Ok()** | Returns 200 with data |
+| **NotFound()** | Returns 404 |
+| **BadRequest()** | Returns 400 |
+| **CreatedAtAction()** | Returns 201 with location |
+| **NoContent()** | Returns 204 |
+
+<ProgressCheckpoint section="response-formatting-advanced" xpReward={9} />

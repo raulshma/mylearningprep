@@ -2,6 +2,109 @@
 
 Managing migrations in production environments requires careful planning and robust deployment strategies.
 
+---
+
+## Section 1: Introduction to Migrations
+
+### Production Migration Strategies
+
+Different approaches for different scenarios:
+
+| Strategy | When to Use | Pros | Cons |
+|:---------|:-----------|:-----|:-----|
+| **Runtime Migration** | Small apps, dev/test | Simple, automatic | Downtime, risky |
+| **SQL Scripts** | DBA-controlled | Reviewed, scheduled | Manual process |
+| **Migration Bundles** | Automated deployments | Self-contained, fast | Requires EF Core 6+ |
+| **Blue-Green Deployment** | Zero-downtime required | No downtime | Complex, expensive |
+
+### Zero-Downtime Migration Pattern
+
+For high-availability systems:
+
+<DotnetCodePreview
+  title="Backward-Compatible Migrations"
+  code={`// Phase 1: Add new column (nullable)
+public class AddEmailVerified : Migration
+{
+    protected override void Up(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.AddColumn<bool>(
+            name: "EmailVerified",
+            table: "Users",
+            nullable: true);  // Nullable during transition
+    }
+}
+
+// Deploy app version that writes to both old and new
+
+// Phase 2: Backfill data
+public class BackfillEmailVerified : Migration
+{
+    protected override void Up(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.Sql(@"
+            UPDATE Users 
+            SET EmailVerified = CASE 
+                WHEN EmailConfirmedAt IS NOT NULL THEN 1 
+                ELSE 0 
+            END
+            WHERE EmailVerified IS NULL");
+    }
+}
+
+// Phase 3: Make column required
+public class RequireEmailVerified : Migration
+{
+    protected override void Up(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.AlterColumn<bool>(
+            name: "EmailVerified",
+            table: "Users",
+            nullable: false,
+            defaultValue: false);
+    }
+}
+
+// Phase 4: Remove old column
+public class RemoveEmailConfirmedAt : Migration
+{
+    protected override void Up(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.DropColumn(
+            name: "EmailConfirmedAt",
+            table: "Users");
+    }
+}`}
+  steps={[
+    {
+      lineNumbers: [6, 7, 8, 9],
+      highlight: "Nullable first",
+      explanation: "Add as nullable to avoid breaking existing code"
+    },
+    {
+      lineNumbers: [18, 19, 20, 21, 22, 23],
+      highlight: "Backfill data",
+      explanation: "Populate new column from old data"
+    },
+    {
+      lineNumbers: [32, 33, 34, 35],
+      highlight: "Make required",
+      explanation: "Once backfilled, make it non-nullable"
+    },
+    {
+      lineNumbers: [43, 44, 45],
+      highlight: "Remove old",
+      explanation: "Finally remove the old column"
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="intro-migrations" xpReward={20} />
+
+---
+
+## Section 2: Update Database
+
 ## Migration Bundles (EF Core 6+)
 
 Migration bundles create self-contained executables for deployment:
@@ -190,6 +293,202 @@ VALUES ('20241214_ManualFix', '8.0.0');
 DELETE FROM __EFMigrationsHistory WHERE MigrationId = '20241214_Broken';
 ```
 
+### Database-Specific Migrations
+
+Handle differences between database providers:
+
+<DotnetCodePreview
+  title="Provider-Specific SQL"
+  code={`protected override void Up(MigrationBuilder migrationBuilder)
+{
+    // Check which provider is being used
+    var provider = migrationBuilder.ActiveProvider;
+    
+    if (provider == "Microsoft.EntityFrameworkCore.SqlServer")
+    {
+        migrationBuilder.Sql(@"
+            CREATE FULLTEXT INDEX ON Blogs(Title, Content)
+            KEY INDEX PK_Blogs");
+    }
+    else if (provider == "Npgsql.EntityFrameworkCore.PostgreSQL")
+    {
+        migrationBuilder.Sql(@"
+            CREATE INDEX idx_blogs_fulltext 
+            ON Blogs USING GIN(to_tsvector('english', Title || ' ' || Content))");
+    }
+}`}
+/>
+
+### Performance Optimization
+
+```csharp
+protected override void Up(MigrationBuilder migrationBuilder)
+{
+    // Create index concurrently (PostgreSQL)
+    migrationBuilder.Sql(
+        "CREATE INDEX CONCURRENTLY IX_Users_Email ON Users(Email)",
+        suppressTransaction: true);
+    
+    // Online index creation (SQL Server Enterprise)
+    migrationBuilder.CreateIndex(
+        name: "IX_Orders_CustomerId",
+        table: "Orders",
+        column: "CustomerId")
+        .Annotation("SqlServer:Online", true);
+}
+```
+
+<ProgressCheckpoint section="update-database" xpReward={20} />
+
+---
+
+## Section 3: Migration History
+
+## Migration History Table
+
+EF Core tracks applied migrations in `__EFMigrationsHistory`:
+
+```sql
+-- View migration history
+SELECT * FROM __EFMigrationsHistory ORDER BY MigrationId;
+
+-- Manually mark migration as applied (dangerous!)
+INSERT INTO __EFMigrationsHistory (MigrationId, ProductVersion)
+VALUES ('20241214_ManualFix', '8.0.0');
+
+-- Remove migration record (for re-running)
+DELETE FROM __EFMigrationsHistory WHERE MigrationId = '20241214_Broken';
+```
+
+### Custom Migration History
+
+```csharp
+// Custom history table with audit fields
+public class AuditedMigrationsHistory : HistoryRepository
+{
+    public AuditedMigrationsHistory(HistoryRepositoryDependencies dependencies)
+        : base(dependencies)
+    {
+    }
+
+    protected override void ConfigureTable(EntityTypeBuilder<HistoryRow> history)
+    {
+        base.ConfigureTable(history);
+        
+        history.Property<DateTime>("AppliedAt")
+            .HasDefaultValueSql("GETDATE()");
+        
+        history.Property<string>("AppliedBy")
+            .HasMaxLength(100);
+    }
+}
+
+// Register in OnConfiguring
+protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+{
+    optionsBuilder
+        .UseSqlServer(connectionString)
+        .ReplaceService<IHistoryRepository, AuditedMigrationsHistory>();
+}
+```
+
+### Handling Failed Migrations
+
+```csharp
+// Retry logic for transient failures
+public async Task ApplyMigrationsWithRetryAsync(DbContext context)
+{
+    var maxRetries = 3;
+    var delay = TimeSpan.FromSeconds(5);
+    
+    for (int i = 0; i < maxRetries; i++)
+    {
+        try
+        {
+            await context.Database.MigrateAsync();
+            return;
+        }
+        catch (Exception ex) when (i < maxRetries - 1)
+        {
+            _logger.LogWarning(ex, "Migration failed, retrying in {Delay}...", delay);
+            await Task.Delay(delay);
+            delay = delay.Multiply(2); // Exponential backoff
+        }
+    }
+}
+```
+
+### Migration Validation
+
+```csharp
+// Validate migrations before applying
+public async Task<bool> ValidateMigrationsAsync(DbContext context)
+{
+    var pendingMigrations = await context.Database.GetPendingMigrationsAsync();
+    
+    if (!pendingMigrations.Any())
+    {
+        _logger.LogInformation("No pending migrations");
+        return true;
+    }
+    
+    _logger.LogInformation("Pending migrations: {Count}", pendingMigrations.Count());
+    
+    foreach (var migration in pendingMigrations)
+    {
+        _logger.LogInformation("  - {Migration}", migration);
+    }
+    
+    // Check for breaking changes
+    var breakingMigrations = pendingMigrations
+        .Where(m => m.Contains("Breaking") || m.Contains("Drop"));
+    
+    if (breakingMigrations.Any())
+    {
+        _logger.LogWarning("Breaking migrations detected!");
+        return false;
+    }
+    
+    return true;
+}
+```
+
+### Monitoring and Alerting
+
+```csharp
+public class MigrationMonitor : IMigrationMonitor
+{
+    private readonly ILogger<MigrationMonitor> _logger;
+    private readonly IMetricsCollector _metrics;
+    
+    public async Task MonitorMigrationAsync(DbContext context)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        
+        try
+        {
+            var pendingCount = (await context.Database.GetPendingMigrationsAsync()).Count();
+            _metrics.RecordGauge("migrations.pending", pendingCount);
+            
+            await context.Database.MigrateAsync();
+            
+            stopwatch.Stop();
+            _metrics.RecordHistogram("migrations.duration", stopwatch.ElapsedMilliseconds);
+            _logger.LogInformation("Migrations applied successfully in {Duration}ms", 
+                stopwatch.ElapsedMilliseconds);
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            _metrics.IncrementCounter("migrations.failures");
+            _logger.LogError(ex, "Migration failed after {Duration}ms", 
+                stopwatch.ElapsedMilliseconds);
+            throw;
+        }
+    }
+}
+```
+
 ## Key Takeaways
 
 - Use **migration bundles** for production deployments
@@ -198,5 +497,9 @@ DELETE FROM __EFMigrationsHistory WHERE MigrationId = '20241214_Broken';
 - Plan **multi-step migrations** for breaking changes
 - Understand **transaction control** for complex operations
 - **Never manually modify** the migrations history in production
+- Implement **retry logic** for transient failures
+- **Monitor and alert** on migration execution
+- Use **custom history tables** for audit requirements
+- **Validate migrations** before applying in production
 
-<ProgressCheckpoint section="migration-history" xpReward={60} />
+<ProgressCheckpoint section="migration-history" xpReward={20} />

@@ -2,7 +2,9 @@
 
 At the advanced level, we explore LSP through the lens of **Design by Contract**, **covariance/contravariance**, **behavioral invariants**, and practical detection strategies in large .NET codebases.
 
-## Design by Contract (DbC)
+---
+
+## Section 1: Design by Contract (DbC)
 
 Bertrand Meyer's Design by Contract provides the formal foundation for LSP:
 
@@ -16,13 +18,12 @@ Bertrand Meyer's Design by Contract provides the formal foundation for LSP:
 **Formal Definition:** For type S to be a behavioral subtype of type T, program correctness using T must be preserved when using S instead.
 </InfoBox>
 
-## Covariance and Contravariance
+### Covariance and Contravariance
 
 C#'s type variance rules enforce LSP at the type system level:
 
-<DotnetCodePreview
-  title="Variance in Generic Interfaces"
-  code={`// Covariance (out) - Can return more specific types
+```csharp
+// Covariance (out) - Can return more specific types
 public interface IProducer<out T>
 {
     T Produce();  // Returns T
@@ -39,133 +40,13 @@ public interface IConsumer<in T>
 
 // IConsumer<Dog> <- IConsumer<Animal> ✅ (Animal is more general)
 IConsumer<Dog> dogConsumer = new AnimalConsumer();
-
-// Practical Example: Event handlers
-public delegate void EventHandler<in TEventArgs>(object sender, TEventArgs e);
-
-// More general handler can substitute for specific one
-EventHandler<MouseEventArgs> mouseHandler = 
-    (EventHandler<EventArgs>)((s, e) => { /* handles any event */ });`}
-  steps={[
-    {
-      lineNumbers: [2, 3, 4, 5],
-      highlight: "Covariance (out)",
-      explanation: "Producer returns T, so more specific T is safe (Dog for Animal)"
-    },
-    {
-      lineNumbers: [10, 11, 12, 13, 14],
-      highlight: "Contravariance (in)",
-      explanation: "Consumer accepts T, so more general T is safe (Animal for Dog)"
-    },
-    {
-      lineNumbers: [19, 20, 21, 22, 23],
-      highlight: "Real-World Application",
-      explanation: "Event handlers use contravariance - general handlers work for specific events"
-    }
-  ]}
-/>
-
-## Invariant Preservation
-
-Subclasses must preserve the invariants (always-true conditions) of their parent:
-
-```csharp
-public class Stack<T>
-{
-    private List<T> _items = new();
-    
-    // Invariant: Count is always >= 0
-    // Invariant: Pop result equals last Push value
-    
-    public int Count => _items.Count;
-    
-    public void Push(T item)
-    {
-        // Postcondition: Count increases by 1
-        _items.Add(item);
-    }
-    
-    public T Pop()
-    {
-        // Precondition: Count > 0
-        // Postcondition: Returns most recently pushed item
-        // Postcondition: Count decreases by 1
-        if (_items.Count == 0)
-            throw new InvalidOperationException("Stack empty");
-            
-        var last = _items[^1];
-        _items.RemoveAt(_items.Count - 1);
-        return last;
-    }
-}
-
-// ❌ This subclass violates invariants!
-public class LoggingStack<T> : Stack<T>
-{
-    public new T Pop()  // Hiding, not overriding
-    {
-        Log("Popping...");
-        var item = base.Pop();
-        
-        // Invariant violation: Push after Pop!
-        Push(item);  // ❌ Breaks: Count doesn't decrease
-        Log($"Popped: {item}");
-        
-        return item;
-    }
-}
 ```
 
-## History Constraint Violations
+<ProgressCheckpoint section="lsp-introduction" xpReward={20} />
 
-Beyond pre/postconditions, LSP includes **history constraints** — the sequence of state changes:
+---
 
-<DotnetCodePreview
-  title="History Constraint Violation"
-  code={`public class ImmutablePoint
-{
-    public int X { get; }
-    public int Y { get; }
-    
-    public ImmutablePoint(int x, int y) => (X, Y) = (x, y);
-    
-    // History constraint: X and Y never change after construction
-}
-
-public class MutablePoint : ImmutablePoint
-{
-    public new int X { get; set; }  // ❌ Violates immutability!
-    public new int Y { get; set; }  // ❌ Violates history!
-    
-    public MutablePoint(int x, int y) : base(x, y) { X = x; Y = y; }
-}
-
-// Client expecting immutability will be surprised
-public void DrawLine(ImmutablePoint start, ImmutablePoint end)
-{
-    var startX = start.X;
-    // ... some drawing logic ...
-    
-    // Assertion: start.X == startX should always hold
-    // But MutablePoint can break this!
-}`}
-  steps={[
-    {
-      lineNumbers: [1, 2, 3, 4, 5, 6, 7, 8, 9],
-      highlight: "Immutable Contract",
-      explanation: "History constraint: points never change once created"
-    },
-    {
-      lineNumbers: [11, 12, 13, 14, 15, 16, 17],
-      highlight: "Violation",
-      explanation: "Subclass makes it mutable, breaking the history constraint"
-    }
-  ]}
-/>
-
-<SolidPrincipleDemo principle="L" mode="advanced" />
-
-## Architecture-Level LSP: API Versioning
+## Section 2: Architecture-Level LSP
 
 LSP applies to API contracts between services:
 
@@ -199,36 +80,14 @@ public class OrderResponseV2 : OrderResponseV1
 | Add new enum value | ⚠️ | Old clients may break on unknown value |
 | Change field type | ❌ | Breaks deserialization |
 | Remove field | ❌ | Breaks dependent clients |
-| Change value semantics | ❌ | Behavioral change |
 
-## Detection Strategies
+<SolidPrincipleDemo principle="L" mode="advanced" />
 
-### Static Analysis
+<ProgressCheckpoint section="lsp-understanding" xpReward={20} />
 
-```csharp
-// NDepend rule: Detect LSP violations
-// Look for: throw new NotImplementedException()
-// Look for: base type checks in client code
+---
 
-Warn if: 
-    method.Body.Contains("NotImplementedException")
-    OR method.Body.Contains("throw new NotSupportedException")
-    
-// Roslyn analyzer example
-[DiagnosticAnalyzer(LanguageNames.CSharp)]
-public class LspViolationAnalyzer : DiagnosticAnalyzer
-{
-    public override void Initialize(AnalysisContext context)
-    {
-        context.RegisterSyntaxNodeAction(AnalyzeThrow, SyntaxKind.ThrowStatement);
-    }
-    
-    private void AnalyzeThrow(SyntaxNodeAnalysisContext context)
-    {
-        // Flag NotImplementedException in override methods
-    }
-}
-```
+## Section 3: Detection and Refactoring
 
 ### Contract Testing
 
@@ -249,42 +108,23 @@ public abstract class PaymentProcessorContractTests<T>
         Assert.True(result.Success);
         Assert.Equal(100m, result.ChargedAmount);
     }
-    
-    [Fact]
-    public void ProcessPayment_NegativeAmount_Throws()
-    {
-        var processor = CreateProcessor();
-        
-        Assert.Throws<ArgumentException>(() => 
-            processor.Process(-50m, "card"));
-    }
 }
 
 // All implementations run the same tests
 public class StripeProcessorTests : PaymentProcessorContractTests<StripeProcessor>
 {
-    protected override StripeProcessor CreateProcessor() => new StripeProcessor();
-}
-
-public class PayPalProcessorTests : PaymentProcessorContractTests<PayPalProcessor>
-{
-    protected override PayPalProcessor CreateProcessor() => new PayPalProcessor();
+    protected override StripeProcessor CreateProcessor() => new();
 }
 ```
 
-## Refactoring Away from LSP Violations
+### Refactoring Away from LSP Violations
 
-### Before: Inheritance-based violation
-
+**Before: Inheritance-based violation**
 ```csharp
 public abstract class Employee
 {
     public abstract decimal CalculateBonus();
-    public abstract void CheckIn();
-    public abstract void CheckOut();
 }
-
-public class FullTimeEmployee : Employee { /* All methods implemented */ }
 
 public class Contractor : Employee
 {
@@ -293,31 +133,23 @@ public class Contractor : Employee
 }
 ```
 
-### After: Role-based interfaces
-
+**After: Role-based interfaces**
 ```csharp
 public interface IEmployee { string Name { get; } }
 public interface IBonusEligible { decimal CalculateBonus(); }
-public interface ITimeTrackable { void CheckIn(); void CheckOut(); }
 
-public class FullTimeEmployee : IEmployee, IBonusEligible, ITimeTrackable
-{
-    // Implements all
-}
-
-public class Contractor : IEmployee, ITimeTrackable
-{
-    // Only implements what applies - no broken contracts!
-}
+public class FullTimeEmployee : IEmployee, IBonusEligible { /* ... */ }
+public class Contractor : IEmployee { /* No bonus interface */ }
 ```
 
-## Key Takeaways
+### Key Takeaways
 
+<InfoBox type="tip" title="Remember">
 - 📜 **Design by Contract** formalizes LSP expectations
 - ↕️ **Variance** enforces LSP at the type system level in C#
-- 🔄 **History constraints** extend beyond single method calls
 - 🌐 **API versioning** is architecture-level LSP
 - 🧪 **Contract tests** catch violations across implementations
 - 🔧 **Role interfaces** are the solution to false inheritance
+</InfoBox>
 
-<ProgressCheckpoint section="lsp-application" xpReward={60} />
+<ProgressCheckpoint section="lsp-application" xpReward={20} />

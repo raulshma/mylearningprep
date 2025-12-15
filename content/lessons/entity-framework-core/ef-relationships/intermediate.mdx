@@ -2,6 +2,52 @@
 
 Master the practical aspects of configuring and using entity relationships in EF Core.
 
+---
+
+## Section 1: Introduction to Relationships
+
+### Relationship Components
+
+Every relationship in EF Core has these components:
+
+- **Principal Entity** - The "parent" side (Blog in Blog→Posts)
+- **Dependent Entity** - The "child" side (Post in Blog→Posts)
+- **Foreign Key** - Property on dependent that references principal
+- **Navigation Properties** - Properties that let you traverse relationships
+
+```csharp
+public class Blog  // Principal
+{
+    public int Id { get; set; }  // Principal Key
+    public string Title { get; set; } = "";
+    
+    public ICollection<Post> Posts { get; set; } = new List<Post>();  // Collection Navigation
+}
+
+public class Post  // Dependent
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = "";
+    
+    public int BlogId { get; set; }  // Foreign Key
+    public Blog Blog { get; set; } = null!;  // Reference Navigation
+}
+```
+
+### Convention-Based Detection
+
+EF Core automatically detects relationships when:
+
+1. Navigation property exists
+2. FK property follows naming convention (`BlogId` or `Blog_Id`)
+3. Types match (FK type matches principal key type)
+
+<ProgressCheckpoint section="intro-relationships" xpReward={13} />
+
+---
+
+## Section 2: One-to-Many Configuration
+
 ## Relationship Configuration
 
 <RelationshipDiagram mode="intermediate" initialType="one-to-many" />
@@ -186,4 +232,124 @@ explanation: "The join table uses both FKs as its primary key"
 4. **Use Fluent API** for complex relationships
 5. **Consider using join entities** when you need payload data
 
-<ProgressCheckpoint section="one-to-many" xpReward={40} />
+<ProgressCheckpoint section="one-to-many" xpReward={14} />
+
+---
+
+## Section 3: Many-to-Many Configuration
+
+### Skip Navigation (EF Core 5+)
+
+Simple many-to-many without explicit join entity:
+
+```csharp
+public class Student
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public ICollection<Course> Courses { get; set; } = new List<Course>();
+}
+
+public class Course
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = "";
+    public ICollection<Student> Students { get; set; } = new List<Student>();
+}
+
+// EF Core creates join table automatically
+// Configure if needed:
+modelBuilder.Entity<Student>()
+    .HasMany(s => s.Courses)
+    .WithMany(c => c.Students)
+    .UsingEntity(j => j.ToTable("StudentCourses"));
+```
+
+### Accessing the Join Table
+
+```csharp
+// Add relationship
+var student = await context.Students.FindAsync(1);
+var course = await context.Courses.FindAsync(1);
+student.Courses.Add(course);
+await context.SaveChangesAsync();
+
+// Remove relationship
+student.Courses.Remove(course);
+await context.SaveChangesAsync();
+
+// Query through relationship
+var studentsInCourse = await context.Courses
+    .Where(c => c.Id == 1)
+    .SelectMany(c => c.Students)
+    .ToListAsync();
+```
+
+### Many-to-Many with Payload
+
+When you need extra data on the relationship:
+
+<DotnetCodePreview
+  title="Join Entity with Payload"
+  code={`public class Enrollment  // Explicit join entity
+{
+    public int StudentId { get; set; }
+    public Student Student { get; set; } = null!;
+    
+    public int CourseId { get; set; }
+    public Course Course { get; set; } = null!;
+    
+    // Payload - extra data about the relationship
+    public DateTime EnrollmentDate { get; set; }
+    public Grade? Grade { get; set; }
+}
+
+public class Student
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
+}
+
+public class Course
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = "";
+    public ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
+}`}
+  steps={[
+    {
+      lineNumbers: [10, 11],
+      highlight: "Payload properties",
+      explanation: "Extra data stored on the relationship itself"
+    },
+    {
+      lineNumbers: [18, 25],
+      highlight: "Navigate through join",
+      explanation: "Access enrollments instead of direct student/course"
+    }
+  ]}
+/>
+
+### Querying with Payload
+
+```csharp
+// Get student's courses with grades
+var studentCourses = await context.Enrollments
+    .Where(e => e.StudentId == 1)
+    .Select(e => new
+    {
+        CourseName = e.Course.Title,
+        EnrollmentDate = e.EnrollmentDate,
+        Grade = e.Grade
+    })
+    .ToListAsync();
+
+// Get students with A grade in a course
+var topStudents = await context.Enrollments
+    .Where(e => e.CourseId == 1 && e.Grade == Grade.A)
+    .Select(e => e.Student)
+    .ToListAsync();
+```
+
+<ProgressCheckpoint section="many-to-many" xpReward={13} />

@@ -2,28 +2,36 @@
 
 Ever filled out a form online? When you click submit, the website somehow knows which field is your name, which is your email, and whether you filled everything out correctly. ASP.NET Core does this same magic for APIs through **model binding** and **validation**!
 
-## What is Model Binding? 📝
+## Section 1: Introduction to Model Binding
+
+### What is Model Binding? 📝
 
 **Model binding** automatically takes data from the HTTP request and puts it into your action method parameters. It's like having a smart assistant who reads the incoming request and fills in all your variables!
 
 <ModelBindingVisualizer mode="beginner" />
 
-## The Form-Filling Analogy 📋
+### The Form-Filling Analogy 📋
 
 > **Imagine you're at a hotel check-in.**
 >
 > You provide your ID (URL parameter), your reservation number (query string), and your preferences form (request body). The front desk worker (model binding) takes all this information and fills in their system automatically!
 
-## Where Does Data Come From?
+### Where Does Data Come From?
 
-| Source     | What It Is          | Example                      |
-| :--------- | :------------------ | :--------------------------- |
-| **Route**  | Part of the URL     | `/api/products/42` → id = 42 |
-| **Query**  | After the ? in URL  | `?category=electronics`      |
-| **Body**   | The request content | JSON payload                 |
-| **Header** | HTTP headers        | `Authorization: Bearer ...`  |
+| Source | What It Is | Example |
+| :----- | :--------- | :------ |
+| **Route** | Part of the URL | `/api/products/42` → id = 42 |
+| **Query** | After the ? in URL | `?category=electronics` |
+| **Body** | The request content | JSON payload |
+| **Header** | HTTP headers | `Authorization: Bearer ...` |
 
-## Simple Example
+<ProgressCheckpoint section="model-binding-intro" xpReward={8} />
+
+---
+
+## Section 2: Basic Model Binding Examples
+
+### Simple Parameter Binding
 
 ```csharp
 // URL: /api/products/42?inStock=true
@@ -34,9 +42,43 @@ public string GetProduct(int id, bool inStock)
     // inStock = true (from query string)
     return $"Product {id}, In Stock: {inStock}";
 }
+
 ```
 
-## Validation = Checking the Answers ✅
+### Binding Complex Objects
+
+```csharp
+public class Product
+{
+    public string Name { get; set; }
+    public decimal Price { get; set; }
+}
+
+// POST /api/products with JSON body
+[HttpPost]
+public string CreateProduct(Product product)
+{
+    // product.Name and product.Price filled from JSON body
+    return $"Created: {product.Name}";
+}
+```
+
+### JSON Body Example
+
+```json
+{
+  "name": "Gaming Mouse",
+  "price": 49.99
+}
+```
+
+<ProgressCheckpoint section="model-binding-intermediate" xpReward={8} />
+
+---
+
+## Section 3: Basic Validation
+
+### Validation = Checking the Answers ✅
 
 **Validation** ensures the data is correct before you use it:
 
@@ -52,14 +94,43 @@ public class CreateProductDto
 }
 ```
 
-## Key Takeaways
+### Common Validation Attributes
 
-| Concept                | Description                             |
-| :--------------------- | :-------------------------------------- |
-| **Model Binding**      | Auto-fills parameters from request data |
-| **[Required]**         | Field must have a value                 |
-| **[StringLength]**     | Limits text length                      |
-| **[Range]**            | Limits numeric values                   |
-| **ModelState.IsValid** | Checks if all validation passed         |
+| Attribute | What It Checks |
+| :-------- | :------------- |
+| `[Required]` | Field must have a value |
+| `[StringLength(max)]` | Limits text length |
+| `[Range(min, max)]` | Limits numeric values |
+| `[EmailAddress]` | Valid email format |
+| `[Phone]` | Valid phone format |
 
-<ProgressCheckpoint section="model-binding-intro" xpReward={25} />
+### Automatic Validation
+
+With `[ApiController]`, validation happens automatically:
+
+```csharp
+[ApiController]
+[Route("api/[controller]")]
+public class ProductsController : ControllerBase
+{
+    [HttpPost]
+    public ActionResult Create(CreateProductDto product)
+    {
+        // If validation fails, ASP.NET returns 400 automatically!
+        // You only get here if data is valid
+        return Ok($"Created: {product.Name}");
+    }
+}
+```
+
+### Key Takeaways
+
+| Concept | Description |
+| :------ | :---------- |
+| **Model Binding** | Auto-fills parameters from request data |
+| **[Required]** | Field must have a value |
+| **[StringLength]** | Limits text length |
+| **[Range]** | Limits numeric values |
+| **[ApiController]** | Enables automatic validation |
+
+<ProgressCheckpoint section="model-binding-advanced" xpReward={9} />

@@ -2,6 +2,55 @@
 
 Master the practical aspects of LINQ with EF Core - from projections to eager loading and complex filtering.
 
+---
+
+## Section 1: Introduction to LINQ
+
+### Query Execution Model
+
+Understanding when queries execute:
+
+```csharp
+// Query is NOT executed yet (deferred execution)
+var query = context.Blogs.Where(b => b.Rating > 3);
+
+// Query executes NOW (materialization)
+var results = query.ToList();
+
+// These also trigger execution:
+var first = query.FirstOrDefault();  // Executes
+var count = query.Count();           // Executes
+var any = query.Any();               // Executes
+
+// Chaining doesn't execute
+var refined = query
+    .OrderBy(b => b.Title)
+    .Take(10);  // Still not executed!
+
+var final = refined.ToList();  // NOW it executes
+```
+
+### IQueryable vs IEnumerable
+
+```csharp
+// IQueryable - query runs on database
+IQueryable<Blog> dbQuery = context.Blogs
+    .Where(b => b.Rating > 3);  // SQL: WHERE Rating > 3
+
+// IEnumerable - filtering happens in memory
+IEnumerable<Blog> memoryQuery = context.Blogs
+    .ToList()  // Fetches ALL blogs
+    .Where(b => b.Rating > 3);  // Filters in C#
+
+// Always prefer IQueryable for database filtering!
+```
+
+<ProgressCheckpoint section="intro-linq" xpReward={13} />
+
+---
+
+## Section 2: Projections
+
 ## Complex Filtering
 
 <EntityFrameworkVisualizer mode="intermediate" />
@@ -200,4 +249,78 @@ MaxRating = context.Blogs.Max(b => b.Rating)
 4. **Avoid client evaluation** - Keep queries server-side
 5. **Check generated SQL** - Use ToQueryString() to verify
 
-<ProgressCheckpoint section="projections" xpReward={40} />
+<ProgressCheckpoint section="projections" xpReward={14} />
+
+---
+
+## Section 3: Eager Loading
+
+### Loading Strategies Compared
+
+| Strategy | When Loaded | Use Case |
+|:---------|:-----------|:---------|
+| **Eager** (Include) | With main query | Know you need related data |
+| **Explicit** (Load) | On demand | Conditional loading |
+| **Lazy** (proxies) | On access | Simple scenarios (careful!) |
+
+### Explicit Loading
+
+```csharp
+// Load blog first
+var blog = context.Blogs.Find(1);
+
+// Later, explicitly load posts
+context.Entry(blog)
+    .Collection(b => b.Posts)
+    .Load();
+
+// Load with filtering
+context.Entry(blog)
+    .Collection(b => b.Posts)
+    .Query()
+    .Where(p => p.IsPublished)
+    .Load();
+
+// Load reference (single entity)
+context.Entry(blog)
+    .Reference(b => b.Author)
+    .Load();
+```
+
+### Avoiding N+1 Problem
+
+```csharp
+// BAD: N+1 queries (1 for blogs + N for posts)
+var blogs = context.Blogs.ToList();
+foreach (var blog in blogs)
+{
+    // Each iteration triggers a new query!
+    Console.WriteLine(blog.Posts.Count);
+}
+
+// GOOD: Single query with Include
+var blogsWithPosts = context.Blogs
+    .Include(b => b.Posts)
+    .ToList();
+foreach (var blog in blogsWithPosts)
+{
+    // Posts already loaded - no extra queries
+    Console.WriteLine(blog.Posts.Count);
+}
+```
+
+### Filtered Includes (EF Core 5+)
+
+```csharp
+// Only include recent posts
+var blogs = context.Blogs
+    .Include(b => b.Posts.Where(p => p.CreatedDate > DateTime.Now.AddDays(-30)))
+    .ToList();
+
+// Include with ordering
+var blogsOrdered = context.Blogs
+    .Include(b => b.Posts.OrderByDescending(p => p.CreatedDate).Take(5))
+    .ToList();
+```
+
+<ProgressCheckpoint section="eager-loading" xpReward={13} />

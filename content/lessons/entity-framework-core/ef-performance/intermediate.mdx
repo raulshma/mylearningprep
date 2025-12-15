@@ -2,51 +2,99 @@
 
 Master practical performance optimization techniques to keep your EF Core applications fast and responsive.
 
-## Performance Monitoring
+## Section 1: Introduction to Performance
+
+### Performance Monitoring
 
 <PerformanceAnalyzer mode="intermediate" />
 
-## The N+1 Problem in Detail
+Understanding what queries EF Core generates is the first step to optimization. Enable logging to see exactly what's happening:
+
+<DotnetCodePreview
+  title="Enable Query Logging"
+  code={`// In your DbContext configuration
+protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+{
+    optionsBuilder
+        .UseSqlServer(connectionString)
+        .LogTo(Console.WriteLine, LogLevel.Information)
+        .EnableSensitiveDataLogging()  // Shows parameter values
+        .EnableDetailedErrors();        // Better error messages
+}`}
+  steps={[
+    {
+      lineNumbers: [6],
+      highlight: "LogTo",
+      explanation: "Outputs all SQL queries to console"
+    },
+    {
+      lineNumbers: [7],
+      highlight: "Sensitive data",
+      explanation: "Shows actual parameter values (dev only!)"
+    }
+  ]}
+/>
+
+### The N+1 Problem in Detail
 
 Detecting and fixing N+1 is crucial for performance:
 
 <DotnetCodePreview
   title="Detecting N+1"
-  code={`// Enable query logging
-optionsBuilder
-    .UseSqlServer(connectionString)
-    .LogTo(Console.WriteLine, LogLevel.Information);
-
-// Watch for repeated similar queries:
-// SELECT _ FROM Posts WHERE BlogId = 1
-// SELECT _ FROM Posts WHERE BlogId = 2
-// SELECT \* FROM Posts WHERE BlogId = 3
+  code={`// Watch for repeated similar queries in logs:
+// SELECT * FROM Posts WHERE BlogId = 1
+// SELECT * FROM Posts WHERE BlogId = 2
+// SELECT * FROM Posts WHERE BlogId = 3
 // ... this is N+1!
 
-// Fix with projection
+// Fix with projection instead of Include
 var blogData = context.Blogs
-.Select(b => new
-{
-b.Title,
-PostCount = b.Posts.Count(),
-LatestPost = b.Posts.OrderByDescending(p => p.Date).First()
-})
-.ToList();`}
-steps={[
-{
-lineNumbers: [2, 3, 4],
-highlight: "Enable logging",
-explanation: "See exactly what queries EF generates"
-},
-{
-lineNumbers: [13, 14, 15, 16, 17, 18, 19, 20],
-highlight: "Project instead of Include",
-explanation: "Projection can be more efficient than eager loading"
-}
-]}
+    .Select(b => new
+    {
+        b.Title,
+        PostCount = b.Posts.Count(),
+        LatestPost = b.Posts
+            .OrderByDescending(p => p.Date)
+            .FirstOrDefault()
+    })
+    .ToList();`}
+  steps={[
+    {
+      lineNumbers: [8, 9, 10, 11, 12, 13, 14, 15, 16],
+      highlight: "Projection",
+      explanation: "Select only what you need - often more efficient than Include"
+    }
+  ]}
 />
 
-## AsNoTracking for Read-Only Queries
+### Projection vs Include
+
+<DotnetCodePreview
+  title="When to Use Each"
+  code={`// Use Include when you need the full entity
+var blogs = context.Blogs
+    .Include(b => b.Posts)
+    .ToList();
+// Returns Blog objects with Posts collection
+
+// Use Projection when you need specific data
+var blogSummaries = context.Blogs
+    .Select(b => new BlogSummaryDto
+    {
+        Title = b.Title,
+        PostCount = b.Posts.Count()
+    })
+    .ToList();
+// Returns only the data you specified`}
+/>
+
+<ProgressCheckpoint section="intro-performance" xpReward={15} />
+
+---
+
+## Section 2: Tracking Optimization
+
+### AsNoTracking for Read-Only Queries
 
 When you don't need to modify data, skip change tracking:
 
@@ -58,117 +106,186 @@ var blogs = context.Blogs.ToList();
 
 // ✅ Read-only: no tracking (faster)
 var blogs = context.Blogs
-.AsNoTracking()
-.ToList();
+    .AsNoTracking()
+    .ToList();
 
 // For queries that never change data
 public IQueryable<Blog> GetBlogsForDisplay()
 {
-return context.Blogs.AsNoTracking();
-}
-
-// Global no-tracking
-services.AddDbContext<AppContext>(opt =>
-opt.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking));`}
-steps={[
-{
-lineNumbers: [6, 7, 8],
-highlight: "AsNoTracking",
-explanation: "Skips change tracking overhead"
-},
-{
-lineNumbers: [17, 18],
-highlight: "Global setting",
-explanation: "Default to no-tracking, opt-in to tracking when needed"
-}
-]}
+    return context.Blogs.AsNoTracking();
+}`}
+  steps={[
+    {
+      lineNumbers: [6, 7, 8],
+      highlight: "AsNoTracking",
+      explanation: "Skips change tracking overhead"
+    }
+  ]}
 />
 
-## Smart Loading Strategies
-
-### Eager Loading (Include)
+### Global No-Tracking Configuration
 
 <DotnetCodePreview
-  title="When to Use Include"
-  code={`// Good for: displaying lists with related data
-var blogsWithPosts = context.Blogs
-    .Include(b => b.Posts.Where(p => p.IsPublished))
+  title="Default to No-Tracking"
+  code={`// Configure globally - default to no tracking
+services.AddDbContext<AppContext>(options =>
+    options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking));
+
+// Then opt-in to tracking when needed
+var blog = context.Blogs
+    .AsTracking()  // Override global setting
+    .FirstOrDefault(b => b.Id == id);`}
+  steps={[
+    {
+      lineNumbers: [2, 3],
+      highlight: "Global setting",
+      explanation: "Default to no-tracking for all queries"
+    },
+    {
+      lineNumbers: [6, 7, 8],
+      highlight: "AsTracking",
+      explanation: "Opt-in to tracking when you need to update"
+    }
+  ]}
+/>
+
+### AsNoTrackingWithIdentityResolution
+
+When you need no-tracking but have duplicate entities:
+
+<DotnetCodePreview
+  title="Identity Resolution"
+  code={`// Problem: Same author appears multiple times
+var posts = context.Posts
+    .Include(p => p.Author)
+    .AsNoTracking()
+    .ToList();
+// Each post has its own Author instance (duplicates!)
+
+// Solution: Identity resolution
+var posts = context.Posts
+    .Include(p => p.Author)
+    .AsNoTrackingWithIdentityResolution()
+    .ToList();
+// Same author = same instance (no duplicates)`}
+  steps={[
+    {
+      lineNumbers: [10, 11],
+      highlight: "Identity resolution",
+      explanation: "Deduplicates entities while still avoiding tracking"
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="tracking-optimization" xpReward={13} />
+
+---
+
+## Section 3: Advanced Tuning
+
+### Smart Loading Strategies
+
+#### Eager Loading with Filtering
+
+<DotnetCodePreview
+  title="Filtered Includes"
+  code={`// Load only recent, published posts
+var blogs = context.Blogs
+    .Include(b => b.Posts
+        .Where(p => p.IsPublished)
+        .OrderByDescending(p => p.Date)
+        .Take(5))
     .Include(b => b.Author)
     .AsSplitQuery()  // Avoid Cartesian explosion
     .ToList();`}
+  steps={[
+    {
+      lineNumbers: [3, 4, 5, 6],
+      highlight: "Filtered Include",
+      explanation: "Only load the posts you actually need"
+    },
+    {
+      lineNumbers: [8],
+      highlight: "AsSplitQuery",
+      explanation: "Prevents data explosion with multiple includes"
+    }
+  ]}
 />
 
-### Explicit Loading
+#### Explicit Loading
 
 <DotnetCodePreview
   title="Load Related Data On Demand"
-  code={`// Load blog
+  code={`// Load blog first
 var blog = context.Blogs.Find(1);
 
-// Later, explicitly load posts
-context.Entry(blog)
-.Collection(b => b.Posts)
-.Load();
+// Later, explicitly load posts if needed
+await context.Entry(blog)
+    .Collection(b => b.Posts)
+    .LoadAsync();
 
 // With filtering
-context.Entry(blog)
-.Collection(b => b.Posts)
-.Query()
-.Where(p => p.IsPublished)
-.Load();`}
-steps={[
-{
-lineNumbers: [5, 6, 7],
-highlight: "Explicit load",
-explanation: "Load related data when you need it"
-},
-{
-lineNumbers: [10, 11, 12, 13, 14, 15],
-highlight: "Filtered load",
-explanation: "Only load published posts"
-}
-]}
+await context.Entry(blog)
+    .Collection(b => b.Posts)
+    .Query()
+    .Where(p => p.IsPublished)
+    .LoadAsync();`}
+  steps={[
+    {
+      lineNumbers: [5, 6, 7],
+      highlight: "Explicit load",
+      explanation: "Load related data when you need it"
+    },
+    {
+      lineNumbers: [10, 11, 12, 13, 14],
+      highlight: "Filtered load",
+      explanation: "Only load published posts"
+    }
+  ]}
 />
 
-## Efficient Bulk Operations
+### Efficient Bulk Operations
 
 <DotnetCodePreview
   title="Bulk Updates and Deletes (EF Core 7+)"
   code={`// ❌ Old way: load and update each
-var oldPosts = context.Posts.Where(p => p.Date < cutoff).ToList();
+var oldPosts = await context.Posts
+    .Where(p => p.Date < cutoff)
+    .ToListAsync();
 foreach (var post in oldPosts)
 {
     post.IsArchived = true;
 }
-context.SaveChanges();
+await context.SaveChangesAsync();
 // Many queries!
 
 // ✅ New way: ExecuteUpdate
-context.Posts
-.Where(p => p.Date < cutoff)
-.ExecuteUpdate(s => s.SetProperty(p => p.IsArchived, true));
+await context.Posts
+    .Where(p => p.Date < cutoff)
+    .ExecuteUpdateAsync(s => s
+        .SetProperty(p => p.IsArchived, true));
 // One SQL UPDATE!
 
 // Bulk delete
-context.Posts
-.Where(p => p.IsDeleted)
-.ExecuteDelete();
+await context.Posts
+    .Where(p => p.IsDeleted)
+    .ExecuteDeleteAsync();
 // One SQL DELETE!`}
-steps={[
-{
-lineNumbers: [11, 12, 13],
-highlight: "ExecuteUpdate",
-explanation: "Single UPDATE statement directly in database"
-},
-{
-lineNumbers: [17, 18, 19],
-highlight: "ExecuteDelete",
-explanation: "Single DELETE statement - no loading required"
-}
-]}
+  steps={[
+    {
+      lineNumbers: [13, 14, 15, 16],
+      highlight: "ExecuteUpdate",
+      explanation: "Single UPDATE statement directly in database"
+    },
+    {
+      lineNumbers: [20, 21, 22],
+      highlight: "ExecuteDelete",
+      explanation: "Single DELETE statement - no loading required"
+    }
+  ]}
 />
 
-## Index Awareness
+### Index Configuration
 
 <DotnetCodePreview
   title="Configuring Indexes"
@@ -177,15 +294,20 @@ explanation: "Single DELETE statement - no loading required"
     .IsUnique();
 
 modelBuilder.Entity<Post>()
-.HasIndex(p => p.BlogId); // FK index
+    .HasIndex(p => p.BlogId);  // FK index
 
 // Composite index for common queries
 modelBuilder.Entity<Post>()
-.HasIndex(p => new { p.BlogId, p.PublishDate })
-.IsDescending(false, true); // EF Core 7+`}
+    .HasIndex(p => new { p.BlogId, p.PublishDate })
+    .IsDescending(false, true);  // EF Core 7+
+
+// Include columns for covering index
+modelBuilder.Entity<Post>()
+    .HasIndex(p => p.BlogId)
+    .IncludeProperties(p => new { p.Title, p.Date });`}
 />
 
-## Best Practices Summary
+### Best Practices Summary
 
 1. **Enable logging** during development
 2. **Use AsNoTracking** for read-only scenarios
@@ -195,4 +317,4 @@ modelBuilder.Entity<Post>()
 6. **Use ExecuteUpdate/Delete** for bulk operations
 7. **Add indexes** on frequently queried columns
 
-<ProgressCheckpoint section="tracking-optimization" xpReward={40} />
+<ProgressCheckpoint section="advanced-tuning" xpReward={12} />

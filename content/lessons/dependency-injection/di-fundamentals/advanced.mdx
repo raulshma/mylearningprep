@@ -1,8 +1,10 @@
 # Dependency Injection Fundamentals
 
-At its core, Dependency Injection implements the **Inversion of Control** principle through a **container** that manages object creation, lifetime, and dependency resolution. Let's explore the internal mechanics.
+At its core, Dependency Injection implements the **Inversion of Control** principle through a **container** that manages object creation, lifetime, and dependency resolution.
 
-## The Composition Root Pattern
+---
+
+## Section 1: The Composition Root Pattern
 
 The **Composition Root** is the single location in your application where the object graph is composed. In ASP.NET Core, this is `Program.cs`.
 
@@ -21,112 +23,35 @@ var app = builder.Build();
 
 <InfoBox type="important">
   **Critical Rule:** The Composition Root is the ONLY place where you should
-  reference concrete implementations. Everywhere else, depend only on
-  interfaces.
+  reference concrete implementations. Everywhere else, depend only on interfaces.
 </InfoBox>
 
-## Service Descriptors: How Registration Works
+<ProgressCheckpoint section="di-what-is" xpReward={20} />
+
+---
+
+## Section 2: Service Descriptors and Resolution
 
 When you call `AddScoped<IUserRepository, UserRepository>()`, the container creates a `ServiceDescriptor`:
 
 ```csharp
-// What happens internally
 var descriptor = new ServiceDescriptor(
     serviceType: typeof(IUserRepository),
     implementationType: typeof(UserRepository),
     lifetime: ServiceLifetime.Scoped
 );
-
-builder.Services.Add(descriptor);
 ```
 
-You can also register services explicitly:
+### Constructor Selection Strategy
 
-```csharp
-// Factory-based registration
-builder.Services.AddScoped<IUserRepository>(provider =>
-{
-    var config = provider.GetRequiredService<IConfiguration>();
-    var connectionString = config.GetConnectionString("Default");
-    return new UserRepository(connectionString);
-});
-
-// Instance registration (for singletons)
-var logger = new ConsoleLogger();
-builder.Services.AddSingleton<ILogger>(logger);
-```
+The built-in container:
+1. Finds all **public constructors**
+2. Checks if all parameters can be resolved
+3. Selects the constructor with the **most parameters** that can be satisfied
 
 <DIContainerExplorer mode="advanced" />
 
-## Dependency Resolution: The Resolution Algorithm
-
-When resolving a service, the container follows this algorithm:
-
-```csharp
-// Simplified resolution logic
-public object Resolve(Type serviceType)
-{
-    // 1. Find the registration
-    var descriptor = FindDescriptor(serviceType);
-    if (descriptor == null)
-        throw new InvalidOperationException($"No service for {serviceType}");
-
-    // 2. Check lifetime cache
-    if (descriptor.Lifetime == ServiceLifetime.Singleton)
-    {
-        return GetOrCreateSingleton(descriptor);
-    }
-    else if (descriptor.Lifetime == ServiceLifetime.Scoped)
-    {
-        return GetOrCreateScoped(descriptor);
-    }
-
-    // 3. Create new instance (Transient)
-    return CreateInstance(descriptor);
-}
-
-private object CreateInstance(ServiceDescriptor descriptor)
-{
-    // Get constructor with most parameters the container can satisfy
-    var ctor = SelectConstructor(descriptor.ImplementationType);
-
-    // Recursively resolve all constructor parameters
-    var parameters = ctor.GetParameters()
-        .Select(p => Resolve(p.ParameterType))
-        .ToArray();
-
-    return ctor.Invoke(parameters);
-}
-```
-
-## Constructor Selection Strategy
-
-The built-in container uses this strategy:
-
-1. Find all **public constructors**
-2. For each constructor, check if all parameters can be resolved
-3. Select the constructor with the **most parameters** that can be satisfied
-4. If ambiguous, throw `InvalidOperationException`
-
-```csharp
-public class UserService
-{
-    // Constructor 1: 2 parameters
-    public UserService(IUserRepository repo, ILogger logger) { }
-
-    // Constructor 2: 3 parameters (this one is chosen if all can be resolved)
-    public UserService(IUserRepository repo, ILogger logger, IEmailService email) { }
-}
-```
-
-<InfoBox type="warning">
-  **Avoid multiple constructors.** The ambiguity rules can be confusing. Prefer
-  a single constructor with all dependencies.
-</InfoBox>
-
-## Open Generics Registration
-
-Register a generic type definition to handle all closed generic types:
+### Open Generics Registration
 
 ```csharp
 // Registration
@@ -139,30 +64,23 @@ public class ProductsController
 }
 ```
 
-This is how EF Core's `DbSet<T>` and MediatR's `IRequestHandler<T>` work.
+<ProgressCheckpoint section="di-why-matters" xpReward={20} />
 
-## Decorator Pattern with DI
+---
 
-Decorators wrap existing implementations to add behavior:
+## Section 3: Advanced Patterns and Anti-Patterns
+
+### Decorator Pattern with DI
 
 ```csharp
 // Base implementation
-public class UserRepository : IUserRepository
-{
-    public User GetById(int id) => _db.Users.Find(id);
-}
+public class UserRepository : IUserRepository { /* ... */ }
 
 // Caching decorator
 public class CachedUserRepository : IUserRepository
 {
     private readonly IUserRepository _inner;
     private readonly IMemoryCache _cache;
-
-    public CachedUserRepository(IUserRepository inner, IMemoryCache cache)
-    {
-        _inner = inner;
-        _cache = cache;
-    }
 
     public User GetById(int id)
     {
@@ -172,127 +90,30 @@ public class CachedUserRepository : IUserRepository
 }
 ```
 
-Registration with decoration:
+### Anti-Pattern: Service Locator
 
 ```csharp
-// Manual decoration
-builder.Services.AddScoped<UserRepository>();  // Register base
-builder.Services.AddScoped<IUserRepository>(provider =>
-{
-    var inner = provider.GetRequiredService<UserRepository>();
-    var cache = provider.GetRequiredService<IMemoryCache>();
-    return new CachedUserRepository(inner, cache);
-});
-
-// With Scrutor library (cleaner)
-builder.Services.AddScoped<IUserRepository, UserRepository>();
-builder.Services.Decorate<IUserRepository, CachedUserRepository>();
-```
-
-## Keyed Services (.NET 8+)
-
-.NET 8 introduced keyed services for resolving multiple implementations:
-
-```csharp
-// Registration with keys
-builder.Services.AddKeyedSingleton<IStorage, LocalStorage>("local");
-builder.Services.AddKeyedSingleton<IStorage, S3Storage>("s3");
-builder.Services.AddKeyedSingleton<IStorage, AzureBlobStorage>("azure");
-
-// Resolution by key
-public class FileUploader
-{
-    public FileUploader(
-        [FromKeyedServices("s3")] IStorage storage)
-    {
-        _storage = storage;  // Gets S3Storage
-    }
-}
-
-// Or resolve at runtime
-public class DynamicUploader
-{
-    private readonly IServiceProvider _provider;
-
-    public async Task Upload(string storageType, Stream file)
-    {
-        var storage = _provider.GetRequiredKeyedService<IStorage>(storageType);
-        await storage.SaveAsync(file);
-    }
-}
-```
-
-## Service Provider Validation
-
-Enable validation to catch registration errors at startup:
-
-```csharp
-var builder = WebApplication.CreateBuilder(args);
-
-// Enable DI validation
-builder.Host.UseDefaultServiceProvider(options =>
-{
-    options.ValidateScopes = true;    // Detect scope violations
-    options.ValidateOnBuild = true;   // Validate at startup, not first request
-});
-```
-
-This catches issues like:
-
-- Missing service registrations
-- Scope violations (scoped in singleton)
-- Circular dependencies
-
-<DIPatternShowcase pattern="service-locator" mode="advanced" />
-
-## Anti-Patterns to Avoid
-
-### Service Locator Anti-Pattern
-
-```csharp
-// ❌ Don't do this
+// ❌ Don't do this - hidden dependencies!
 public class OrderService
 {
     private readonly IServiceProvider _provider;
-
     public void Process(Order order)
     {
-        // Hidden dependencies!
         var payment = _provider.GetRequiredService<IPaymentService>();
-        var inventory = _provider.GetRequiredService<IInventoryService>();
     }
 }
 ```
 
-**Exception:** Factories are the acceptable place to use `IServiceProvider`.
+<DIPatternShowcase pattern="service-locator" mode="advanced" />
 
-### Captive Dependency
+### Key Takeaways
 
-```csharp
-// ❌ Scoped service captured in singleton = memory leak
-builder.Services.AddSingleton<MySingleton>();
-builder.Services.AddScoped<MyScopedService>();
-
-public class MySingleton
-{
-    private readonly MyScopedService _scoped;  // Lives forever now!
-
-    public MySingleton(MyScopedService scoped)
-    {
-        _scoped = scoped;  // CAPTIVE DEPENDENCY!
-    }
-}
-```
-
-**Solution:** Use `IServiceScopeFactory` to create scopes in singletons.
-
-## Key Takeaways
-
+<InfoBox type="tip" title="Remember">
 - 🏠 **Composition Root** - Single location for all registrations
 - 🔍 **Resolution algorithm** - Constructor selection & recursive resolution
 - 📦 **Open generics** - `typeof(IRepository<>)` handles all `IRepository<T>`
 - 🎭 **Decorators** - Wrap implementations to add cross-cutting concerns
-- 🔑 **Keyed services** - .NET 8+ feature for multiple implementations
 - ✅ **ValidateOnBuild** - Catch DI errors at startup
+</InfoBox>
 
-<ProgressCheckpoint section="di-how-works" xpReward={60} />
+<ProgressCheckpoint section="di-how-works" xpReward={20} />

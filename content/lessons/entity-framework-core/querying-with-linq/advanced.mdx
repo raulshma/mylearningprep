@@ -2,6 +2,70 @@
 
 Master advanced LINQ patterns for complex queries, performance optimization, and raw SQL integration.
 
+---
+
+## Section 1: Introduction to LINQ
+
+### Query Translation Deep Dive
+
+Understanding how LINQ translates to SQL:
+
+```csharp
+// LINQ
+var query = context.Blogs
+    .Where(b => b.Rating > 3 && b.Title.Contains("Tech"))
+    .OrderByDescending(b => b.CreatedDate)
+    .Select(b => new { b.Title, b.Url });
+
+// Generated SQL
+// SELECT [b].[Title], [b].[Url]
+// FROM [Blogs] AS [b]
+// WHERE [b].[Rating] > 3 AND [b].[Title] LIKE N'%Tech%'
+// ORDER BY [b].[CreatedDate] DESC
+```
+
+### Client vs Server Evaluation
+
+```csharp
+// SERVER evaluation (good) - runs on database
+var blogs = context.Blogs
+    .Where(b => b.Title.ToLower().Contains("tech"))
+    .ToList();
+
+// CLIENT evaluation (bad) - fetches all, filters in memory
+var blogs2 = context.Blogs
+    .AsEnumerable()  // Forces client evaluation
+    .Where(b => CustomMethod(b.Title))  // Can't translate to SQL
+    .ToList();
+
+// EF Core throws for untranslatable queries by default
+// To allow client evaluation (use carefully):
+optionsBuilder.ConfigureWarnings(w => 
+    w.Throw(RelationalEventId.QueryClientEvaluationWarning));
+```
+
+### Expression Trees
+
+```csharp
+// LINQ uses expression trees for translation
+Expression<Func<Blog, bool>> filter = b => b.Rating > 3;
+
+// You can build expressions dynamically
+var parameter = Expression.Parameter(typeof(Blog), "b");
+var property = Expression.Property(parameter, "Rating");
+var constant = Expression.Constant(3);
+var comparison = Expression.GreaterThan(property, constant);
+var lambda = Expression.Lambda<Func<Blog, bool>>(comparison, parameter);
+
+var results = context.Blogs.Where(lambda).ToList();
+```
+
+<ProgressCheckpoint section="intro-linq" xpReward={20} />
+
+---
+
+## Section 2: Projections
+
 ## Query Analysis
 
 <EntityFrameworkVisualizer mode="advanced" />
@@ -196,6 +260,128 @@ Add context to queries for debugging:
 // SELECT \* FROM Blogs WHERE IsPublished = 1`}
 />
 
+<ProgressCheckpoint section="projections" xpReward={20} />
+
+---
+
+## Section 3: Eager Loading
+
+### Advanced Include Patterns
+
+```csharp
+// Auto-include (EF Core 5+)
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    modelBuilder.Entity<Blog>()
+        .Navigation(b => b.Author)
+        .AutoInclude();  // Always included
+}
+
+// Ignore auto-include for specific query
+var blogs = context.Blogs
+    .IgnoreAutoIncludes()
+    .ToList();
+```
+
+### Global Query Filters
+
+```csharp
+// Soft delete filter
+protected override void OnModelCreating(ModelBuilder modelBuilder)
+{
+    modelBuilder.Entity<Blog>()
+        .HasQueryFilter(b => !b.IsDeleted);
+    
+    modelBuilder.Entity<Post>()
+        .HasQueryFilter(p => !p.IsDeleted && !p.Blog.IsDeleted);
+}
+
+// All queries automatically filter deleted items
+var blogs = context.Blogs.ToList();  // Only non-deleted
+
+// Bypass filter when needed
+var allBlogs = context.Blogs
+    .IgnoreQueryFilters()
+    .ToList();
+```
+
+### Tracking vs No-Tracking
+
+```csharp
+// Tracking (default) - entities are cached and change-tracked
+var blog = context.Blogs.FirstOrDefault();
+blog.Title = "Changed";
+context.SaveChanges();  // Update is detected
+
+// No-tracking - read-only, better performance
+var readOnlyBlogs = context.Blogs
+    .AsNoTracking()
+    .ToList();
+
+// No-tracking with identity resolution (EF Core 5+)
+var blogs = context.Blogs
+    .Include(b => b.Posts)
+    .AsNoTrackingWithIdentityResolution()
+    .ToList();
+
+// Configure globally
+optionsBuilder.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
+```
+
+### Streaming Large Results
+
+```csharp
+// Don't load everything into memory
+// BAD for large datasets:
+var allBlogs = context.Blogs.ToList();
+
+// GOOD: Stream results
+await foreach (var blog in context.Blogs.AsAsyncEnumerable())
+{
+    ProcessBlog(blog);
+}
+
+// Or use chunking
+var pageSize = 1000;
+var page = 0;
+
+while (true)
+{
+    var batch = await context.Blogs
+        .OrderBy(b => b.Id)
+        .Skip(page * pageSize)
+        .Take(pageSize)
+        .ToListAsync();
+    
+    if (!batch.Any()) break;
+    
+    ProcessBatch(batch);
+    page++;
+}
+```
+
+### Query Interceptors
+
+```csharp
+public class QueryHintInterceptor : DbCommandInterceptor
+{
+    public override InterceptionResult<DbDataReader> ReaderExecuting(
+        DbCommand command,
+        CommandEventData eventData,
+        InterceptionResult<DbDataReader> result)
+    {
+        // Add query hint
+        command.CommandText = command.CommandText
+            .Replace("SELECT", "SELECT /*+ MAX_EXECUTION_TIME(5000) */");
+        
+        return result;
+    }
+}
+
+// Register
+optionsBuilder.AddInterceptors(new QueryHintInterceptor());
+```
+
 ## Key Takeaways
 
 - Use **ToQueryString()** to inspect generated SQL
@@ -204,5 +390,9 @@ Add context to queries for debugging:
 - **Split queries** for multiple collection includes
 - **Dynamic building** with IQueryable for flexible filters
 - **Tags** for debugging and profiling
+- **Global filters** for soft delete and multi-tenancy
+- **No-tracking** for read-only scenarios
+- **Streaming** for large result sets
+- **Interceptors** for cross-cutting query modifications
 
-<ProgressCheckpoint section="eager-loading" xpReward={60} />
+<ProgressCheckpoint section="eager-loading" xpReward={20} />

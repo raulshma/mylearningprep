@@ -2,7 +2,9 @@
 
 At the advanced level, we explore ISP in the context of **microservices API design**, **CQRS patterns**, **interface composition**, and the relationship between ISP and other architectural patterns.
 
-## ISP and Microservices Contracts
+---
+
+## Section 1: ISP and Microservices Contracts
 
 In microservices, ISP applies to **service contracts** (APIs). Fat APIs lead to tight coupling:
 
@@ -14,61 +16,42 @@ public interface IOrderService
     // Customer operations
     Task<Order> CreateOrder(CreateOrderRequest req);
     Task<Order> GetOrder(Guid orderId);
-    Task<OrderStatus> GetOrderStatus(Guid orderId);
     
     // Admin operations
     Task<IEnumerable<Order>> GetAllOrders(DateRange range);
-    Task UpdateOrderStatus(Guid orderId, OrderStatus status);
     Task RefundOrder(Guid orderId);
-    
-    // Analytics operations
-    Task<OrderMetrics> GetDailyMetrics(DateTime date);
-    Task<RevenueReport> GenerateRevenueReport(DateRange range);
     
     // Fulfillment operations
     Task<ShippingLabel> GenerateShippingLabel(Guid orderId);
-    Task MarkAsShipped(Guid orderId, string trackingNumber);
 }
-
-// Customer mobile app ONLY needs:
-// - CreateOrder, GetOrder, GetOrderStatus
-// But it's coupled to the ENTIRE interface!
 
 // ✅ Segregated Contracts (Backend-for-Frontend pattern)
 public interface ICustomerOrderApi
 {
     Task<Order> CreateOrder(CreateOrderRequest req);
     Task<Order> GetOrder(Guid orderId);
-    Task<OrderStatus> GetOrderStatus(Guid orderId);
 }
 
 public interface IAdminOrderApi
 {
     Task<IEnumerable<Order>> GetAllOrders(DateRange range);
-    Task UpdateOrderStatus(Guid orderId, OrderStatus status);
     Task RefundOrder(Guid orderId);
 }
 
 public interface IFulfillmentOrderApi
 {
     Task<ShippingLabel> GenerateShippingLabel(Guid orderId);
-    Task MarkAsShipped(Guid orderId, string trackingNumber);
 }`}
   steps={[
     {
-      lineNumbers: [2, 3, 4, 5, 6, 7, 8],
+      lineNumbers: [2, 3, 4, 5, 6, 7],
       highlight: "Fat API",
       explanation: "Single interface for ALL clients - causes tight coupling"
     },
     {
-      lineNumbers: [26, 27, 28, 29, 30, 31],
+      lineNumbers: [16, 17, 18, 19, 20],
       highlight: "Customer API",
       explanation: "Mobile app only gets what it needs - decoupled!"
-    },
-    {
-      lineNumbers: [33, 34, 35, 36, 37, 38],
-      highlight: "Admin API",
-      explanation: "Admin portal has its own focused contract"
     }
   ]}
 />
@@ -77,7 +60,11 @@ public interface IFulfillmentOrderApi
 **BFF Pattern:** Backend-for-Frontend is ISP at the architecture level. Each client type gets a tailored API instead of a one-size-fits-all contract.
 </InfoBox>
 
-## CQRS: ISP for Read/Write
+<ProgressCheckpoint section="isp-introduction" xpReward={20} />
+
+---
+
+## Section 2: CQRS - ISP for Read/Write
 
 Command Query Responsibility Segregation is ISP applied to data access:
 
@@ -87,11 +74,9 @@ public interface IRepository<T>
 {
     T GetById(int id);
     IEnumerable<T> GetAll();
-    IQueryable<T> Query();
     void Add(T entity);
     void Update(T entity);
     void Delete(int id);
-    void SaveChanges();
 }
 
 // CQRS: Segregated Read and Write
@@ -99,7 +84,6 @@ public interface IReader<T>
 {
     T GetById(int id);
     IEnumerable<T> GetAll();
-    IQueryable<T> Query();
 }
 
 public interface IWriter<T>
@@ -114,8 +98,6 @@ public class OrderQueryHandler
 {
     private readonly IReader<Order> _reader;
     
-    public OrderQueryHandler(IReader<Order> reader) => _reader = reader;
-    
     public Order Handle(GetOrderQuery query) 
         => _reader.GetById(query.OrderId);
 }
@@ -124,8 +106,6 @@ public class OrderQueryHandler
 public class CreateOrderHandler
 {
     private readonly IWriter<Order> _writer;
-    
-    public CreateOrderHandler(IWriter<Order> writer) => _writer = writer;
     
     public void Handle(CreateOrderCommand cmd)
     {
@@ -137,32 +117,11 @@ public class CreateOrderHandler
 
 <SolidPrincipleDemo principle="I" mode="advanced" />
 
-## Interface Composition Patterns
+<ProgressCheckpoint section="isp-understanding" xpReward={20} />
 
-### Marker Interfaces
+---
 
-Empty interfaces used for tagging capabilities:
-
-```csharp
-// Marker interfaces - contain no methods
-public interface IAuditable { }
-public interface ISoftDeletable { }
-public interface ICacheable { }
-
-// Entity can be composed with capabilities
-public class Order : IAuditable, ISoftDeletable
-{
-    public int Id { get; set; }
-    public DateTime CreatedAt { get; set; }
-    public DateTime? DeletedAt { get; set; }
-}
-
-// Generic constraint using marker
-public class AuditMiddleware<T> where T : IAuditable
-{
-    public void OnSave(T entity) => entity.AuditFields.Updated = DateTime.UtcNow;
-}
-```
+## Section 3: Interface Composition and Trade-offs
 
 ### Mixin-Style Interfaces with Default Implementation (C# 8+)
 
@@ -182,113 +141,18 @@ public interface ISoftDeletable
     bool IsDeleted => DeletedAt.HasValue;
     
     void SoftDelete() => DeletedAt = DateTime.UtcNow;
-    void Restore() => DeletedAt = null;
 }
 
 // Compose behaviors without inheritance hierarchy
 public class Product : ITimestamped, ISoftDeletable
 {
     public int Id { get; set; }
-    public string Name { get; set; }
-    
-    // Interface implementations
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public DateTime? DeletedAt { get; set; }
-    
-    // Gets Touch(), SoftDelete(), Restore() for free!
+    // Gets Touch(), SoftDelete() for free!
 }
 ```
-
-## ISP and Dependency Injection
-
-ISP enables precise dependency graphs:
-
-```csharp
-// Without ISP: Controller depends on HUGE service
-public class OrderController
-{
-    private readonly IOrderService _service;  // 20+ methods we don't use!
-    
-    public OrderController(IOrderService service) => _service = service;
-}
-
-// With ISP: Controller depends on exactly what it needs
-public class OrderController
-{
-    private readonly IOrderQuerier _querier;
-    private readonly IOrderCommander _commander;
-    
-    public OrderController(IOrderQuerier querier, IOrderCommander commander)
-    {
-        _querier = querier;
-        _commander = commander;
-    }
-    
-    [HttpGet("{id}")]
-    public Order Get(int id) => _querier.GetById(id);
-    
-    [HttpPost]
-    public void Create(Order order) => _commander.Create(order);
-}
-```
-
-### Testing Benefits
-
-```csharp
-// Without ISP: Must mock 20+ methods
-var mockService = new Mock<IOrderService>();
-mockService.Setup(s => s.GetById(It.IsAny<int>())).Returns(testOrder);
-// Ignore the other 19 methods...
-
-// With ISP: Mock only what's used
-var mockQuerier = new Mock<IOrderQuerier>();
-mockQuerier.Setup(q => q.GetById(It.IsAny<int>())).Returns(testOrder);
-// That's it!
-```
-
-## Architecture Patterns Enabled by ISP
-
-| Pattern | How ISP Helps |
-|:--------|:--------------|
-| **CQRS** | Separate read/write interfaces |
-| **BFF** | Client-specific API surfaces |
-| **Microservices** | Bounded context contracts |
-| **Clean Architecture** | Use case-specific ports |
-| **Event-Driven** | Focused event handlers |
-
-## Detecting ISP Violations
-
-### Static Analysis Rules
-
-```csharp
-// NDepend query for ISP violations
-from t in Types
-where t.IsInterface
-let methods = t.Methods.Where(m => !m.IsConstructor)
-let avgUsage = methods.Average(m => 
-    m.MethodsCallingMe.Count() / (double)t.TypesImplementingMe.Count)
-where avgUsage < 0.5  // Methods used by less than 50% of implementers
-select new { t, avgUsage, methods.Count() }
-```
-
-### Metrics
-
-| Metric | Threshold | Indicates |
-|:-------|:----------|:----------|
-| Methods per interface | > 5-7 | May need splitting |
-| Implementer method usage | < 80% | Unused methods = ISP smell |
-| Interface fan-out | High | Too many dependents |
-
-## Trade-offs
-
-### When Many Small Interfaces Hurt
-
-| Scenario | Problem |
-|:---------|:--------|
-| **Extreme fragmentation** | `IHasId`, `IHasName`, `IHasPrice` - too granular |
-| **Loss of cohesion** | Splitting naturally cohesive concepts |
-| **Cognitive overload** | 50 interfaces harder than 5 |
 
 ### Finding Balance
 
@@ -296,7 +160,6 @@ select new { t, avgUsage, methods.Count() }
 // Too granular - overkill
 interface IHasId { int Id { get; } }
 interface IHasName { string Name { get; } }
-interface IHasPrice { decimal Price { get; } }
 
 // Better - cohesive grouping
 interface IProduct
@@ -305,20 +168,16 @@ interface IProduct
     string Name { get; }
     decimal Price { get; }
 }
-
-interface IDiscountable
-{
-    decimal ApplyDiscount(decimal percentage);
-}
 ```
 
-## Key Takeaways
+### Key Takeaways
 
+<InfoBox type="tip" title="Remember">
 - 🌐 **API-level ISP** applies to microservice contracts
 - 📖 **CQRS** is ISP for data access (read/write separation)
 - 🧩 **Composition** via multiple small interfaces
 - 💉 **DI benefits** from precise, focused dependencies
-- 📊 **Measure** with usage ratios and method counts
 - ⚖️ **Balance** granularity vs. cognitive load
+</InfoBox>
 
-<ProgressCheckpoint section="isp-application" xpReward={60} />
+<ProgressCheckpoint section="isp-application" xpReward={20} />

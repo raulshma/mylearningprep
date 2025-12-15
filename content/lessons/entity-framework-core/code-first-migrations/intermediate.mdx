@@ -2,6 +2,90 @@
 
 Migrations are the foundation of database evolution in EF Core. Let's dive into the practical aspects of creating, managing, and applying migrations.
 
+---
+
+## Section 1: Introduction to Migrations
+
+### Migration Workflow
+
+The complete migration workflow in a team environment:
+
+```mermaid
+Developer A          Developer B          Database
+    │                    │                    │
+    ├─ Change Model      │                    │
+    ├─ Add Migration     │                    │
+    ├─ Commit & Push ────┼───────────────────>│
+    │                    │                    │
+    │                    ├─ Pull Changes      │
+    │                    ├─ Update Database ──┼──> Apply Migration
+    │                    │                    │
+```
+
+### Migration File Anatomy
+
+When you create a migration, three files are generated:
+
+1. **{timestamp}_{name}.cs** - The migration class
+2. **{timestamp}_{name}.Designer.cs** - Metadata snapshot
+3. **{ContextName}ModelSnapshot.cs** - Current model state
+
+<DotnetCodePreview
+  title="Migration Class Structure"
+  code={`[DbContext(typeof(BloggingContext))]
+[Migration("20241214120000_AddBlogRating")]
+public partial class AddBlogRating : Migration
+{
+    // Metadata about the migration
+    protected override void BuildTargetModel(ModelBuilder modelBuilder)
+    {
+        // Model snapshot at this point in time
+    }
+    
+    // Forward migration
+    protected override void Up(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.AddColumn<int>(
+            name: "Rating",
+            table: "Blogs",
+            type: "int",
+            nullable: false,
+            defaultValue: 0);
+    }
+    
+    // Reverse migration
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.DropColumn(
+            name: "Rating",
+            table: "Blogs");
+    }
+}`}
+  steps={[
+    {
+      lineNumbers: [1, 2],
+      highlight: "Attributes",
+      explanation: "Links migration to context and provides unique ID"
+    },
+    {
+      lineNumbers: [12, 13, 14, 15, 16, 17, 18, 19],
+      highlight: "Up method",
+      explanation: "Applies the migration - adds Rating column"
+    },
+    {
+      lineNumbers: [22, 23, 24, 25, 26],
+      highlight: "Down method",
+      explanation: "Reverts the migration - removes Rating column"
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="intro-migrations" xpReward={13} />
+
+---
+
+## Section 2: Update Database
+
 ## Migration Commands Deep Dive
 
 <MigrationVisualizer mode="intermediate" />
@@ -148,6 +232,40 @@ Sometimes you need raw SQL:
 }`}
 />
 
+### Generating SQL Scripts
+
+For production environments where you can't run migrations directly:
+
+```powershell
+# Generate SQL for all migrations
+dotnet ef migrations script -o migration.sql
+
+# Generate SQL from specific migration to another
+dotnet ef migrations script FromMigration ToMigration -o update.sql
+
+# Generate idempotent script (can run multiple times)
+dotnet ef migrations script --idempotent -o safe-migration.sql
+```
+
+### Applying Migrations Programmatically
+
+```csharp
+// In Program.cs - apply migrations at startup
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<BloggingContext>();
+    
+    // Apply pending migrations
+    await context.Database.MigrateAsync();
+}
+
+// Or check if migrations are needed
+if ((await context.Database.GetPendingMigrationsAsync()).Any())
+{
+    await context.Database.MigrateAsync();
+}
+```
+
 ## Best Practices
 
 1. **Meaningful names**: Use descriptive names like `AddBlogRating` not `Migration1`
@@ -156,4 +274,87 @@ Sometimes you need raw SQL:
 4. **Review generated SQL**: Always check what EF generates
 5. **Never edit applied migrations**: Create new migrations to fix issues
 
-<ProgressCheckpoint section="update-database" xpReward={40} />
+<ProgressCheckpoint section="update-database" xpReward={14} />
+
+---
+
+## Section 3: Migration History
+
+### Understanding the History Table
+
+The `__EFMigrationsHistory` table structure:
+
+```sql
+CREATE TABLE [__EFMigrationsHistory] (
+    [MigrationId] nvarchar(150) NOT NULL,
+    [ProductVersion] nvarchar(32) NOT NULL,
+    CONSTRAINT [PK___EFMigrationsHistory] PRIMARY KEY ([MigrationId])
+);
+```
+
+### Querying Migration Status
+
+```csharp
+// Get applied migrations
+var appliedMigrations = await context.Database
+    .GetAppliedMigrationsAsync();
+
+foreach (var migration in appliedMigrations)
+{
+    Console.WriteLine($"Applied: {migration}");
+}
+
+// Get pending migrations
+var pendingMigrations = await context.Database
+    .GetPendingMigrationsAsync();
+
+foreach (var migration in pendingMigrations)
+{
+    Console.WriteLine($"Pending: {migration}");
+}
+
+// Get all migrations (from code)
+var allMigrations = context.Database
+    .GetMigrations();
+```
+
+### Handling Migration Conflicts
+
+When working in teams, conflicts can occur:
+
+```powershell
+# Scenario: Two developers create migrations simultaneously
+
+# Developer A creates: 20241214120000_AddRating
+# Developer B creates: 20241214120100_AddUrl
+
+# When B pulls A's changes, they have:
+# - 20241214120000_AddRating (from A)
+# - 20241214120100_AddUrl (from B)
+
+# Solution 1: Remove B's migration and recreate
+dotnet ef migrations remove
+git pull
+dotnet ef database update
+dotnet ef migrations add AddUrl
+
+# Solution 2: Manually adjust timestamp (advanced)
+# Rename B's migration file to come after A's
+```
+
+### Custom History Table
+
+```csharp
+protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+{
+    optionsBuilder.UseSqlServer(
+        connectionString,
+        options => options.MigrationsHistoryTable(
+            tableName: "MyMigrationHistory",
+            schema: "audit"
+        )
+    );
+}
+```
+
+<ProgressCheckpoint section="migration-history" xpReward={13} />

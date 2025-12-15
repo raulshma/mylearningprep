@@ -2,7 +2,9 @@
 
 At the advanced level, we explore OCP in enterprise contexts: **plugin architectures**, **reflection-based extensions**, **middleware pipelines**, and the trade-offs of premature abstraction.
 
-## OCP in ASP.NET Core Architecture
+---
+
+## Section 1: OCP in ASP.NET Core Architecture
 
 ASP.NET Core itself is a masterclass in OCP. The framework is **closed** to modification but **open** to extension through:
 
@@ -18,7 +20,7 @@ ASP.NET Core itself is a masterclass in OCP. The framework is **closed** to modi
 **Framework Insight:** When designing APIs or frameworks, study ASP.NET Core's extension patterns. They demonstrate OCP at scale.
 </InfoBox>
 
-## Case Study: Building a Plugin System
+### Building a Plugin System
 
 Let's build a file processing system that supports unlimited file formats without modification:
 
@@ -49,41 +51,6 @@ public class FileProcessorRegistry
             p.SupportedExtensions.Contains(extension, 
                 StringComparer.OrdinalIgnoreCase));
     }
-}
-
-// 3. Implement processors (open for extension)
-public class PdfProcessor : IFileProcessor
-{
-    public string[] SupportedExtensions => new[] { ".pdf" };
-    
-    public async Task<ProcessingResult> ProcessAsync(
-        Stream fileStream, ProcessingOptions options)
-    {
-        // PDF-specific processing
-        using var document = PdfDocument.Load(fileStream);
-        return new ProcessingResult 
-        { 
-            PageCount = document.PageCount,
-            TextContent = await document.ExtractTextAsync()
-        };
-    }
-}
-
-// Adding DOCX support = new class, zero changes elsewhere!
-public class DocxProcessor : IFileProcessor
-{
-    public string[] SupportedExtensions => new[] { ".docx", ".doc" };
-    
-    public async Task<ProcessingResult> ProcessAsync(
-        Stream fileStream, ProcessingOptions options)
-    {
-        using var doc = new WordDocument(fileStream);
-        return new ProcessingResult 
-        { 
-            PageCount = doc.Sections.Count,
-            TextContent = doc.GetText()
-        };
-    }
 }`}
   steps={[
     {
@@ -95,68 +62,15 @@ public class DocxProcessor : IFileProcessor
       lineNumbers: [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25],
       highlight: "Registry (Closed)",
       explanation: "Core logic never changes - just discovers registered processors"
-    },
-    {
-      lineNumbers: [43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55],
-      highlight: "New Extension",
-      explanation: "Adding DOCX = implement interface, register via DI. Zero modification!"
     }
   ]}
 />
 
-### Auto-Registration with Reflection
+<ProgressCheckpoint section="ocp-introduction" xpReward={20} />
 
-Use assembly scanning to automatically discover and register plugins:
+---
 
-```csharp
-// Program.cs - Auto-register all processors
-services.Scan(scan => scan
-    .FromAssembliesOf(typeof(IFileProcessor))
-    .AddClasses(classes => classes.AssignableTo<IFileProcessor>())
-    .AsImplementedInterfaces()
-    .WithScopedLifetime());
-
-// Or manually with reflection
-var processorTypes = AppDomain.CurrentDomain.GetAssemblies()
-    .SelectMany(a => a.GetTypes())
-    .Where(t => typeof(IFileProcessor).IsAssignableFrom(t) && !t.IsAbstract);
-
-foreach (var type in processorTypes)
-{
-    services.AddScoped(typeof(IFileProcessor), type);
-}
-```
-
-### External Plugin Loading
-
-For true plugin architecture, load from external assemblies:
-
-```csharp
-public class PluginLoader
-{
-    public IEnumerable<IFileProcessor> LoadPlugins(string pluginDirectory)
-    {
-        var pluginPaths = Directory.GetFiles(pluginDirectory, "*.dll");
-        
-        foreach (var path in pluginPaths)
-        {
-            var assembly = Assembly.LoadFrom(path);
-            var processorTypes = assembly.GetTypes()
-                .Where(t => typeof(IFileProcessor).IsAssignableFrom(t))
-                .Where(t => !t.IsAbstract);
-                
-            foreach (var type in processorTypes)
-            {
-                yield return (IFileProcessor)Activator.CreateInstance(type)!;
-            }
-        }
-    }
-}
-```
-
-<SolidPrincipleDemo principle="O" mode="advanced" />
-
-## OCP in Middleware Pipelines
+## Section 2: OCP in Middleware Pipelines
 
 ASP.NET Core's middleware is a perfect OCP example:
 
@@ -177,7 +91,7 @@ public class LoggingMiddleware
 }
 
 // Application: Closed to modification, open to new middleware
-app.UseMiddleware<LoggingMiddleware>();  // Add without changing app
+app.UseMiddleware<LoggingMiddleware>();
 app.UseMiddleware<AuthenticationMiddleware>();
 app.UseMiddleware<RateLimitingMiddleware>();  // Just add more!
 ```
@@ -200,17 +114,12 @@ public class OrderValidationPipeline
     
     public async Task<ValidationResult> ValidateAsync(Order order)
     {
-        var results = new List<ValidationResult>();
-        
         foreach (var validator in _validators.OrderBy(v => v.Order))
         {
             var result = await validator.ValidateAsync(order);
-            results.Add(result);
-            
-            if (!result.IsValid) break;  // Short-circuit on failure
+            if (!result.IsValid) return result;
         }
-        
-        return ValidationResult.Combine(results);
+        return ValidationResult.Success;
     }
 }
 
@@ -220,7 +129,13 @@ public class PaymentValidator : IOrderValidator { /* ... */ }
 public class FraudValidator : IOrderValidator { /* new! */ }
 ```
 
-## Trade-offs: When OCP Goes Wrong
+<SolidPrincipleDemo principle="O" mode="advanced" />
+
+<ProgressCheckpoint section="ocp-understanding" xpReward={20} />
+
+---
+
+## Section 3: Trade-offs and Best Practices
 
 ### The Premature Abstraction Anti-Pattern
 
@@ -253,56 +168,7 @@ public class SimpleFormatter
 | Payment processors, file formats | Simple CRUD operations |
 | Algorithm variations | Stable domain logic |
 
-## Advanced Patterns
-
-### Specification Pattern
-
-Compose complex business rules without modification:
-
-```csharp
-public interface ISpecification<T>
-{
-    bool IsSatisfiedBy(T entity);
-}
-
-public class AndSpecification<T> : ISpecification<T>
-{
-    private readonly ISpecification<T> _left, _right;
-    
-    public bool IsSatisfiedBy(T entity) 
-        => _left.IsSatisfiedBy(entity) && _right.IsSatisfiedBy(entity);
-}
-
-// Usage: Compose rules without modifying any class
-var premiumRule = new IsPremiumCustomer();
-var highValueRule = new HasMinimumOrderValue(1000m);
-var targetCustomer = new AndSpecification(premiumRule, highValueRule);
-```
-
-### Chain of Responsibility
-
-Each handler decides whether to process or pass along:
-
-```csharp
-public abstract class Handler<T>
-{
-    protected Handler<T>? _next;
-    
-    public void SetNext(Handler<T> next) => _next = next;
-    
-    public virtual void Handle(T request)
-    {
-        _next?.Handle(request);
-    }
-}
-
-// Add handlers without modifying the chain
-public class AuthHandler : Handler<Request> { /* ... */ }
-public class ValidationHandler : Handler<Request> { /* ... */ }
-public class LoggingHandler : Handler<Request> { /* new! */ }
-```
-
-## Measuring OCP Compliance
+### Measuring OCP Compliance
 
 | Metric | Indicates OCP Violation |
 |:-------|:-----------------------|
@@ -311,12 +177,14 @@ public class LoggingHandler : Handler<Request> { /* new! */ }
 | **Modification Frequency** | Same files changed repeatedly |
 | **Test Fragility** | Unrelated tests break |
 
-## Key Takeaways
+### Key Takeaways
 
+<InfoBox type="tip" title="Remember">
 - 🔌 **Plugin architecture** is the ultimate OCP expression
 - 🔍 **Reflection** enables runtime extension discovery
 - 🚀 **Middleware patterns** compose behaviors elegantly
 - ⚖️ **YAGNI balance** is crucial — don't over-abstract early
 - 📊 **Measure** with modification frequency and test fragility
+</InfoBox>
 
-<ProgressCheckpoint section="ocp-application" xpReward={60} />
+<ProgressCheckpoint section="ocp-application" xpReward={20} />

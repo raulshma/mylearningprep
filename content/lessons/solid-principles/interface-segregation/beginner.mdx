@@ -4,7 +4,9 @@ Have you ever used a TV remote with 100 buttons, when you only use 5 of them? Vo
 
 **The Interface Segregation Principle is about giving people ONLY what they need.**
 
-## The Remote Control Problem 📺
+---
+
+## Section 1: The Remote Control Problem 📺
 
 | **Monster Remote** 🎛️ | **Simple Remote** 🔘 |
 |:-----------------------|:--------------------|
@@ -19,13 +21,17 @@ Would you rather have a simple remote with exactly what you need, or a complicat
 **The ISP Says:** Don't force users to depend on methods they don't use. Keep interfaces small and focused!
 </InfoBox>
 
-## The Worker Analogy 👷
+### The Worker Analogy 👷
 
 Imagine an interface for workers:
 
 <SolidPrincipleDemo principle="I" mode="beginner" />
 
-## The Problem Explained
+<ProgressCheckpoint section="isp-introduction" xpReward={8} />
+
+---
+
+## Section 2: The Problem Explained
 
 When you create a **giant interface** with too many methods:
 
@@ -55,34 +61,19 @@ When you create a **giant interface** with too many methods:
 
 The robot is FORCED to implement `Eat()` and `Sleep()` even though it never uses them!
 
-## Real-World Examples
+### Real-World Examples
 
 | Too Big Interface | Better Approach |
 |:------------------|:----------------|
 | 📱 One mega-app | Small focused apps |
 | 🛠️ Giant Swiss Army knife | Specific tools |
 | 📋 Forms asking 50 questions | Short, relevant forms |
-| 🍽️ 20-page restaurant menu | One-page menu |
 
-## The Simple Rule
+<ProgressCheckpoint section="isp-understanding" xpReward={9} />
 
-> **"Clients should not be forced to depend on interfaces they do not use."**
-> — Robert C. Martin
+---
 
-Ask yourself:
-- Does every class that implements this interface use ALL the methods?
-- Am I forcing anyone to implement empty or fake methods?
-
-## Good vs Bad Interfaces
-
-| **❌ Bad (Fat Interface)** | **✅ Good (Segregated)** |
-|:---------------------------|:------------------------|
-| `IWorker { Work(), Eat(), Sleep(), Report() }` | `IWorkable { Work() }` + `IFeedable { Eat() }` |
-| Forces unused implementations | Pick only what you need |
-| Classes have empty methods | Every method is meaningful |
-| Changes affect everyone | Changes are isolated |
-
-## Solution: Split It Up!
+## Section 3: Solution - Split It Up!
 
 ```
      Segregated Interfaces
@@ -96,22 +87,27 @@ Ask yourself:
             ▼                ▼                   ▼
      ┌─────────────────────────────────────────────────┐
      │ Human: IWorkable, IFeedable, ISleepable        │
-     │ ───────────────────────────────────────         │
      │ ✅ Implements all three - makes sense!          │
      └─────────────────────────────────────────────────┘
      
      ┌─────────────────────────────────────────────────┐
      │ Robot: IWorkable                                │
-     │ ─────────────────                               │
      │ ✅ Only implements Work() - no fake methods!    │
      └─────────────────────────────────────────────────┘
 ```
 
-## Key Takeaways
+### The Simple Rule
 
+> **"Clients should not be forced to depend on interfaces they do not use."**
+> — Robert C. Martin
+
+### Key Takeaways
+
+<InfoBox type="tip" title="Remember">
 - 📺 **Simple remotes** - Give users only what they need
 - 🧩 **Small interfaces** - Many small beats one large
 - 🚫 **No empty methods** - Every method should be useful
 - 🤖 **Flexibility** - Classes pick only interfaces they need
+</InfoBox>
 
-<ProgressCheckpoint section="isp-introduction" xpReward={25} />
+<ProgressCheckpoint section="isp-application" xpReward={8} />

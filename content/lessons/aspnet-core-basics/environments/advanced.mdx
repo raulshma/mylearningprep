@@ -2,9 +2,13 @@
 
 Master environment-based configuration with startup customization, environment-specific service registration, and production-ready patterns for multi-environment deployments.
 
-## IWebHostEnvironment Deep Dive
+---
+
+## Section 1: IWebHostEnvironment Deep Dive
 
 The `IWebHostEnvironment` interface provides rich environment information:
+
+<EnvironmentSwitcher mode="advanced" />
 
 ```csharp
 public interface IWebHostEnvironment : IHostEnvironment
@@ -32,9 +36,47 @@ public interface IHostEnvironment
 }
 ```
 
-<EnvironmentSwitcher mode="advanced" />
+### Custom Environment Detection
 
-## Environment-Specific Service Registration
+```csharp
+// Override environment for special scenarios
+builder.Host.ConfigureHostConfiguration(config =>
+{
+    var envOverride = Environment.GetEnvironmentVariable("APP_ENVIRONMENT_OVERRIDE");
+    if (!string.IsNullOrEmpty(envOverride))
+    {
+        config.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Environment"] = envOverride
+        });
+    }
+});
+```
+
+### Feature Flags Based on Environment
+
+```csharp
+public class FeatureFlags
+{
+    public bool EnableBetaFeatures { get; set; }
+    public bool EnableDetailedLogging { get; set; }
+    public bool EnableEmailNotifications { get; set; }
+}
+
+// Configure based on environment
+builder.Services.Configure<FeatureFlags>(options =>
+{
+    options.EnableBetaFeatures = builder.Environment.IsDevelopment();
+    options.EnableDetailedLogging = !builder.Environment.IsProduction();
+    options.EnableEmailNotifications = builder.Environment.IsProduction();
+});
+```
+
+<ProgressCheckpoint section="env-basics" xpReward={18} />
+
+---
+
+## Section 2: Environment-Specific Service Registration
 
 ### Conditional Service Registration
 
@@ -85,50 +127,9 @@ else
 {
     Startup.ConfigureProductionServices(builder.Services);
 }
-
-// Or use reflection-based discovery:
-// StartupDevelopment, StartupProduction, etc.
 ```
 
-## Custom Environment Detection
-
-### Feature Flags Based on Environment
-
-```csharp
-public class FeatureFlags
-{
-    public bool EnableBetaFeatures { get; set; }
-    public bool EnableDetailedLogging { get; set; }
-    public bool EnableEmailNotifications { get; set; }
-}
-
-// Configure based on environment
-builder.Services.Configure<FeatureFlags>(options =>
-{
-    options.EnableBetaFeatures = builder.Environment.IsDevelopment();
-    options.EnableDetailedLogging = !builder.Environment.IsProduction();
-    options.EnableEmailNotifications = builder.Environment.IsProduction();
-});
-```
-
-### Custom Environment Provider
-
-```csharp
-// Override environment for special scenarios
-builder.Host.ConfigureHostConfiguration(config =>
-{
-    var envOverride = Environment.GetEnvironmentVariable("APP_ENVIRONMENT_OVERRIDE");
-    if (!string.IsNullOrEmpty(envOverride))
-    {
-        config.AddInMemoryCollection(new Dictionary<string, string?>
-        {
-            ["Environment"] = envOverride
-        });
-    }
-});
-```
-
-## Startup Filters by Environment
+### Startup Filters by Environment
 
 ```csharp
 public class DevelopmentStartupFilter : IStartupFilter
@@ -153,10 +154,15 @@ if (builder.Environment.IsDevelopment())
 }
 ```
 
-## Environment in Docker and Kubernetes
+<ProgressCheckpoint section="env-intermediate" xpReward={18} />
 
-### Docker Compose
+---
 
+## Section 3: Production Deployment Patterns
+
+### Docker and Kubernetes
+
+**Docker Compose**
 ```yaml
 version: '3.8'
 services:
@@ -169,8 +175,7 @@ services:
       - db
 ```
 
-### Kubernetes ConfigMap
-
+**Kubernetes ConfigMap**
 ```yaml
 apiVersion: v1
 kind: ConfigMap
@@ -199,7 +204,7 @@ spec:
               key: connection-string
 ```
 
-## Environment-Aware Health Checks
+### Environment-Aware Health Checks
 
 ```csharp
 builder.Services.AddHealthChecks()
@@ -218,10 +223,9 @@ if (!builder.Environment.IsDevelopment())
 }
 ```
 
-## Secure Environment Handling
+### Secure Environment Handling
 
-### Never Use Development in Production
-
+**Never Use Development in Production**
 ```csharp
 // Fail fast if misconfigured
 if (!builder.Environment.IsDevelopment())
@@ -241,8 +245,7 @@ if (!builder.Environment.IsDevelopment())
 }
 ```
 
-### Validate Environment at Startup
-
+**Validate Environment at Startup**
 ```csharp
 // Ensure production has required configuration
 if (builder.Environment.IsProduction())
@@ -265,4 +268,16 @@ if (builder.Environment.IsProduction())
 }
 ```
 
-<ProgressCheckpoint section="env-advanced" xpReward={55} />
+### Key Takeaways
+
+<InfoBox type="tip">
+**Remember:**
+- Use `IWebHostEnvironment` for full environment info including paths
+- Register different services based on environment for testing/mocking
+- Use startup filters for environment-specific middleware
+- Validate required configuration in production at startup
+- Block sensitive endpoints (Swagger, etc.) in production
+- Use ConfigMaps and Secrets in Kubernetes for environment config
+</InfoBox>
+
+<ProgressCheckpoint section="env-advanced" xpReward={19} />

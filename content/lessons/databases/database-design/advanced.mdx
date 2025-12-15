@@ -2,7 +2,139 @@
 
 Master advanced database design patterns, denormalization strategies, and enterprise-scale considerations.
 
-## 📐 Beyond 3NF
+---
+
+## Section 1: Introduction to Design
+
+### Enterprise Design Principles
+
+#### SOLID Principles for Databases
+
+- **Single Responsibility** - Each table has one clear purpose
+- **Open/Closed** - Design for extension (add columns/tables, don't modify existing)
+- **Liskov Substitution** - Subtypes should work like parent types (table inheritance)
+- **Interface Segregation** - Don't force tables to have unused columns
+- **Dependency Inversion** - Depend on abstractions (views) not concrete tables
+
+#### Design for Scale
+
+```sql
+-- Partition key selection
+-- BAD: Random UUID (no locality)
+CREATE TABLE Events (
+    Id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    Data JSONB
+);
+
+-- GOOD: Time-based partitioning
+CREATE TABLE Events (
+    Id BIGSERIAL,
+    CreatedAt TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    Data JSONB,
+    PRIMARY KEY (CreatedAt, Id)
+) PARTITION BY RANGE (CreatedAt);
+```
+
+<ProgressCheckpoint section="intro-design" xpReward={18} />
+
+---
+
+## Section 2: Relationships
+
+### Advanced Relationship Patterns
+
+#### Polymorphic Associations
+
+```sql
+-- Comments can belong to Posts OR Photos
+CREATE TABLE Comments (
+    Id INT PRIMARY KEY,
+    CommentableType VARCHAR(50) NOT NULL,  -- 'Post' or 'Photo'
+    CommentableId INT NOT NULL,
+    Content TEXT NOT NULL,
+    
+    -- Can't enforce with foreign key!
+    -- Use triggers or app-level validation
+    CHECK (CommentableType IN ('Post', 'Photo'))
+);
+
+-- Better: Separate junction tables
+CREATE TABLE PostComments (
+    CommentId INT PRIMARY KEY,
+    PostId INT NOT NULL,
+    FOREIGN KEY (CommentId) REFERENCES Comments(Id),
+    FOREIGN KEY (PostId) REFERENCES Posts(Id)
+);
+
+CREATE TABLE PhotoComments (
+    CommentId INT PRIMARY KEY,
+    PhotoId INT NOT NULL,
+    FOREIGN KEY (CommentId) REFERENCES Comments(Id),
+    FOREIGN KEY (PhotoId) REFERENCES Photos(Id)
+);
+```
+
+#### Self-Referencing Relationships
+
+```sql
+-- Employee hierarchy (manager-employee)
+CREATE TABLE Employees (
+    Id INT PRIMARY KEY,
+    Name VARCHAR(100) NOT NULL,
+    ManagerId INT NULL,
+    FOREIGN KEY (ManagerId) REFERENCES Employees(Id)
+);
+
+-- Query: Get all reports under a manager (recursive CTE)
+WITH RECURSIVE EmployeeHierarchy AS (
+    -- Anchor: Start with the manager
+    SELECT Id, Name, ManagerId, 0 AS Level
+    FROM Employees
+    WHERE Id = 1  -- CEO
+    
+    UNION ALL
+    
+    -- Recursive: Get direct reports
+    SELECT e.Id, e.Name, e.ManagerId, eh.Level + 1
+    FROM Employees e
+    INNER JOIN EmployeeHierarchy eh ON e.ManagerId = eh.Id
+)
+SELECT * FROM EmployeeHierarchy;
+```
+
+#### Closure Table Pattern
+
+```sql
+-- For complex hierarchies (categories, org charts)
+CREATE TABLE Categories (
+    Id INT PRIMARY KEY,
+    Name VARCHAR(100) NOT NULL
+);
+
+-- Stores ALL ancestor-descendant pairs
+CREATE TABLE CategoryPaths (
+    AncestorId INT NOT NULL,
+    DescendantId INT NOT NULL,
+    Depth INT NOT NULL,
+    PRIMARY KEY (AncestorId, DescendantId),
+    FOREIGN KEY (AncestorId) REFERENCES Categories(Id),
+    FOREIGN KEY (DescendantId) REFERENCES Categories(Id)
+);
+
+-- Query: Get all descendants (any depth)
+SELECT c.* 
+FROM Categories c
+JOIN CategoryPaths cp ON c.Id = cp.DescendantId
+WHERE cp.AncestorId = 5;
+```
+
+<ProgressCheckpoint section="relationships" xpReward={19} />
+
+---
+
+## Section 3: Normalization
+
+### 📐 Beyond 3NF
 
 ### Boyce-Codd Normal Form (BCNF)
 
@@ -316,4 +448,108 @@ END;
 | **Soft Delete** | Consider for user-facing data |
 | **Versioning** | Use temporal tables or audit logs |
 
-<ProgressCheckpoint section="normalization" xpReward={75} />
+<ProgressCheckpoint section="normalization" xpReward={19} />
+
+---
+
+## Section 4: Constraints
+
+### Advanced Constraint Techniques
+
+#### Exclusion Constraints (PostgreSQL)
+
+```sql
+-- Prevent overlapping time ranges
+CREATE TABLE Bookings (
+    Id SERIAL PRIMARY KEY,
+    RoomId INT NOT NULL,
+    DateRange daterange NOT NULL,
+    
+    EXCLUDE USING GIST (
+        RoomId WITH =,
+        DateRange WITH &&
+    )
+);
+
+-- Can't book same room for overlapping dates
+INSERT INTO Bookings (RoomId, DateRange) 
+VALUES (1, '[2024-01-01, 2024-01-05)');  -- OK
+
+INSERT INTO Bookings (RoomId, DateRange) 
+VALUES (1, '[2024-01-03, 2024-01-07)');  -- ERROR: Overlaps!
+```
+
+#### Computed Columns with Constraints
+
+```sql
+-- SQL Server: Persisted computed column
+CREATE TABLE Orders (
+    Id INT PRIMARY KEY,
+    Subtotal DECIMAL(18,2) NOT NULL,
+    TaxRate DECIMAL(5,4) NOT NULL,
+    Tax AS (Subtotal * TaxRate) PERSISTED,
+    Total AS (Subtotal + (Subtotal * TaxRate)) PERSISTED,
+    
+    CHECK (Subtotal >= 0),
+    CHECK (TaxRate BETWEEN 0 AND 1)
+);
+```
+
+#### Conditional Unique Indexes
+
+```sql
+-- SQL Server: Unique only for active records
+CREATE UNIQUE INDEX IX_Users_Email_Active
+ON Users(Email)
+WHERE IsDeleted = 0;
+
+-- PostgreSQL: Partial unique index
+CREATE UNIQUE INDEX ix_users_email_active
+ON users(email)
+WHERE is_deleted = false;
+```
+
+#### Cross-Table Constraints with Triggers
+
+```sql
+-- Ensure order total matches sum of line items
+CREATE TRIGGER trg_validate_order_total
+ON OrderItems
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    IF EXISTS (
+        SELECT o.Id
+        FROM Orders o
+        LEFT JOIN (
+            SELECT OrderId, SUM(Quantity * Price) AS CalculatedTotal
+            FROM OrderItems
+            GROUP BY OrderId
+        ) oi ON o.Id = oi.OrderId
+        WHERE ABS(o.Total - COALESCE(oi.CalculatedTotal, 0)) > 0.01
+    )
+    BEGIN
+        RAISERROR('Order total does not match line items', 16, 1);
+        ROLLBACK;
+    END
+END;
+```
+
+### Domain-Driven Design Constraints
+
+```sql
+-- Value objects as constraints
+CREATE DOMAIN email_address AS VARCHAR(255)
+CHECK (VALUE ~ '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}$');
+
+CREATE DOMAIN positive_money AS DECIMAL(18,2)
+CHECK (VALUE >= 0);
+
+CREATE TABLE Users (
+    Id INT PRIMARY KEY,
+    Email email_address NOT NULL,
+    Balance positive_money DEFAULT 0
+);
+```
+
+<ProgressCheckpoint section="constraints" xpReward={19} />

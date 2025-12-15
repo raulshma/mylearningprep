@@ -4,7 +4,16 @@
   "description": "How to change your API without breaking everyone's code.",
   "milestone": "rest-design",
   "order": 3,
-  "sections": ["versioning-intro", "strategies", "aspnet-implementation"],
+  "sections": [
+    "api-contract",
+    "versioning-solution",
+    "url-versioning",
+    "real-world-example",
+    "when-to-version",
+    "versioning-intro",
+    "strategies",
+    "aspnet-implementation"
+  ],
   "levels": {
     "beginner": { "estimatedMinutes": 8, "xpReward": 20 },
     "intermediate": { "estimatedMinutes": 12, "xpReward": 30 },

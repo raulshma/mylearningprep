@@ -2,7 +2,86 @@
 
 Unlock PostgreSQL's unique features that set it apart from other databases!
 
-## 📦 JSONB - The Document Store Inside Postgres
+---
+
+## Section 1: Introduction to PostgreSQL
+
+### PostgreSQL Architecture
+
+Understanding PostgreSQL's process model:
+
+- **Postmaster** - Main server process that listens for connections
+- **Backend processes** - One per client connection
+- **Background workers** - Autovacuum, WAL writer, checkpointer
+- **Shared memory** - Buffer cache, WAL buffers, lock tables
+
+### Configuration Files
+
+| File | Purpose |
+|:-----|:--------|
+| `postgresql.conf` | Main configuration |
+| `pg_hba.conf` | Client authentication |
+| `pg_ident.conf` | User name mapping |
+
+```sql
+-- View current settings
+SHOW all;
+SHOW shared_buffers;
+SHOW max_connections;
+
+-- Reload configuration
+SELECT pg_reload_conf();
+```
+
+<ProgressCheckpoint section="intro-postgres" xpReward={12} />
+
+---
+
+## Section 2: psql Basics
+
+### Advanced psql Features
+
+```sql
+-- Variables
+\set user_id 42
+SELECT * FROM users WHERE id = :user_id;
+
+-- Conditional execution
+\if :user_id > 10
+    SELECT 'High ID';
+\else
+    SELECT 'Low ID';
+\endif
+
+-- Watch query (auto-refresh)
+\watch 2  -- Refresh every 2 seconds
+
+-- Copy data
+\copy users TO 'users.csv' CSV HEADER;
+\copy users FROM 'users.csv' CSV HEADER;
+```
+
+### Query Performance Analysis
+
+```sql
+-- Explain query plan
+EXPLAIN SELECT * FROM users WHERE email = 'test@example.com';
+
+-- Explain with actual execution
+EXPLAIN ANALYZE SELECT * FROM users WHERE email = 'test@example.com';
+
+-- Verbose output
+EXPLAIN (ANALYZE, BUFFERS, VERBOSE) 
+SELECT * FROM users WHERE email = 'test@example.com';
+```
+
+<ProgressCheckpoint section="psql-basics" xpReward={13} />
+
+---
+
+## Section 3: Unique Features
+
+### 📦 JSONB - The Document Store Inside Postgres
 
 PostgreSQL's JSONB type stores JSON documents with full query capability:
 
@@ -271,4 +350,103 @@ REFRESH MATERIALIZED VIEW CONCURRENTLY mv_user_stats;
 | Full-Text Search | Search engine features |
 | Materialized Views | Cache expensive queries |
 
-<ProgressCheckpoint section="psql-basics" xpReward={50} />
+<ProgressCheckpoint section="unique-features" xpReward={12} />
+
+---
+
+## Section 4: .NET with Npgsql
+
+### Advanced Npgsql Features
+
+```csharp
+// Working with arrays
+using var cmd = new NpgsqlCommand(
+    "SELECT * FROM articles WHERE @tag = ANY(tags)", 
+    connection);
+cmd.Parameters.AddWithValue("tag", "postgres");
+
+// Working with JSONB
+using var cmd2 = new NpgsqlCommand(
+    "SELECT * FROM products WHERE attributes @> @filter", 
+    connection);
+cmd2.Parameters.AddWithValue("filter", NpgsqlDbType.Jsonb, "{\"brand\":\"Apple\"}");
+
+// Bulk copy (fast inserts)
+using var writer = connection.BeginBinaryImport(
+    "COPY users (name, email) FROM STDIN (FORMAT BINARY)");
+foreach (var user in users)
+{
+    writer.StartRow();
+    writer.Write(user.Name);
+    writer.Write(user.Email);
+}
+await writer.CompleteAsync();
+```
+
+### Entity Framework Core with PostgreSQL
+
+```csharp
+// Configure for PostgreSQL
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(connectionString, npgsqlOptions =>
+    {
+        npgsqlOptions.EnableRetryOnFailure(3);
+        npgsqlOptions.CommandTimeout(60);
+    })
+    .UseSnakeCaseNamingConvention()  // user_id instead of UserId
+);
+
+// Entity with array
+public class Article
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = "";
+    public List<string> Tags { get; set; } = new();  // Maps to TEXT[]
+}
+
+// Query arrays
+var articles = await context.Articles
+    .Where(a => a.Tags.Contains("postgres"))
+    .ToListAsync();
+
+// Entity with JSONB
+public class Product
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    
+    [Column(TypeName = "jsonb")]
+    public Dictionary<string, object> Attributes { get; set; } = new();
+}
+```
+
+### Migrations with Npgsql
+
+```csharp
+// In migration
+protected override void Up(MigrationBuilder migrationBuilder)
+{
+    // Create extension
+    migrationBuilder.Sql("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"");
+    
+    // Create table with PostgreSQL-specific types
+    migrationBuilder.CreateTable(
+        name: "events",
+        columns: table => new
+        {
+            id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "uuid_generate_v4()"),
+            data = table.Column<string>(type: "jsonb", nullable: false),
+            tags = table.Column<List<string>>(type: "text[]", nullable: false),
+            created_at = table.Column<DateTime>(type: "timestamptz", nullable: false, defaultValueSql: "NOW()")
+        });
+    
+    // Create GIN index for JSONB
+    migrationBuilder.CreateIndex(
+        name: "ix_events_data",
+        table: "events",
+        column: "data")
+        .Annotation("Npgsql:IndexMethod", "GIN");
+}
+```
+
+<ProgressCheckpoint section="dotnet-npgsql" xpReward={13} />

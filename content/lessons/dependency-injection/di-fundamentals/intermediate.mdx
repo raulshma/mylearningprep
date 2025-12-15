@@ -2,7 +2,9 @@
 
 Dependency Injection (DI) is a design pattern that implements **Inversion of Control (IoC)** - a principle where the control of object creation is transferred from the class itself to an external entity.
 
-## Understanding Inversion of Control
+---
+
+## Section 1: Understanding Inversion of Control
 
 Traditional programming has a **top-down** control flow:
 
@@ -12,8 +14,6 @@ public class OrderProcessor
 {
     private readonly PaymentService _payment = new PaymentService();
     private readonly InventoryService _inventory = new InventoryService();
-    private readonly NotificationService _notification = new NotificationService();
-
     // This class is in CONTROL of everything
 }
 ```
@@ -26,51 +26,42 @@ public class OrderProcessor
 {
     private readonly IPaymentService _payment;
     private readonly IInventoryService _inventory;
-    private readonly INotificationService _notification;
 
     // Dependencies are GIVEN, not created
-    public OrderProcessor(
-        IPaymentService payment,
-        IInventoryService inventory,
-        INotificationService notification)
+    public OrderProcessor(IPaymentService payment, IInventoryService inventory)
     {
         _payment = payment;
         _inventory = inventory;
-        _notification = notification;
     }
 }
 ```
 
 <InfoBox type="important">
-  **IoC vs DI:** IoC is the **principle**, DI is the **pattern** that implements
-  it. DI is one way to achieve IoC.
+  **IoC vs DI:** IoC is the **principle**, DI is the **pattern** that implements it.
 </InfoBox>
 
-## Types of Dependency Injection
+<ProgressCheckpoint section="di-what-is" xpReward={13} />
+
+---
+
+## Section 2: Types of Dependency Injection
 
 ### Constructor Injection (Recommended ✅)
-
-Dependencies are provided through the constructor.
 
 <DIPatternShowcase pattern="constructor-injection" mode="intermediate" />
 
 **Why Constructor Injection?**
-
 - Dependencies are **explicit** - visible in the constructor signature
 - Dependencies are **required** - cannot create the object without them
 - Object is **fully initialized** after construction
-- Works perfectly with immutability (`readonly` fields)
 
 ### Method Injection (Occasionally Useful)
-
-Dependencies are passed as method parameters:
 
 ```csharp
 public class ReportGenerator
 {
     public Report Generate(IDataSource dataSource)
     {
-        // Dependency provided per-method call
         var data = dataSource.Fetch();
         return new Report(data);
     }
@@ -81,57 +72,35 @@ public class ReportGenerator
 
 ### Property Injection (Avoid ⚠️)
 
-Dependencies are set via properties after construction:
-
 ```csharp
 public class Service
 {
     public ILogger? Logger { get; set; }  // Optional dependency
-
-    public void DoWork()
-    {
-        Logger?.Log("Working...");  // Must null-check!
-    }
+    public void DoWork() => Logger?.Log("Working...");
 }
 ```
 
 **Problems:** Object may be in an invalid state before properties are set.
 
-## The Dependency Inversion Principle
+<ProgressCheckpoint section="di-why-matters" xpReward={14} />
 
-DI implements the **D** in SOLID - Dependency Inversion Principle:
+---
 
-> "Depend on abstractions, not concretions."
-
-<DIPatternShowcase pattern="tight-coupling" mode="intermediate" />
-
-| Tight Coupling                | Loose Coupling                |
-| :---------------------------- | :---------------------------- |
-| Depends on `SqlDatabase`      | Depends on `IDatabase`        |
-| Can only use SQL Server       | Can use any database          |
-| Tests need real database      | Tests use mock database       |
-| Change requires recompilation | Change requires config update |
-
-## How ASP.NET Core DI Works
+## Section 3: How ASP.NET Core DI Works
 
 In ASP.NET Core, DI is built-in and works in three steps:
 
 ### 1. Register Services (Startup)
-
 ```csharp
-// Program.cs
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddSingleton<ILogger, ConsoleLogger>();
-builder.Services.AddTransient<IEmailService, SmtpEmailService>();
 ```
 
 ### 2. Request Dependencies (Constructor)
-
 ```csharp
 public class UsersController : ControllerBase
 {
     private readonly IUserRepository _repository;
-
     public UsersController(IUserRepository repository)
     {
         _repository = repository;  // Automatically injected!
@@ -140,30 +109,17 @@ public class UsersController : ControllerBase
 ```
 
 ### 3. Container Resolves (Runtime)
-
-The DI container:
-
-1. Sees `UsersController` needs `IUserRepository`
-2. Looks up what implements `IUserRepository`
-3. Creates `UserRepository` (and its dependencies)
-4. Injects it into the controller
+The DI container sees what's needed, looks up the registration, and injects it.
 
 <DependencyInjectionVisualizer mode="intermediate" />
 
-## Benefits of DI
+### Key Takeaways
 
-| Aspect          | Without DI                   | With DI                 |
-| :-------------- | :--------------------------- | :---------------------- |
-| **Testing**     | Need real dependencies       | Use mocks/fakes         |
-| **Flexibility** | Hardcoded implementations    | Swap via configuration  |
-| **Maintenance** | Changes ripple everywhere    | Changes are isolated    |
-| **Coupling**    | Tight (classes know details) | Loose (only interfaces) |
-
-## Key Takeaways
-
+<InfoBox type="tip" title="Remember">
 - 🔄 **IoC** inverts control - dependencies flow IN instead of being created
 - 💉 **Constructor injection** is the preferred DI method
 - 📐 **Program to interfaces** - depend on abstractions
 - 🏗️ **ASP.NET Core** has DI built-in via `IServiceCollection`
+</InfoBox>
 
-<ProgressCheckpoint section="di-why-matters" xpReward={40} />
+<ProgressCheckpoint section="di-how-works" xpReward={13} />

@@ -2,9 +2,11 @@
 
 Master custom binders, complex validation scenarios, and enterprise-grade validation patterns.
 
-## Custom Model Binders
+## Section 1: Custom Model Binders
 
-Create specialized binding logic:
+<ModelBindingVisualizer mode="advanced" />
+
+### Creating a Custom Binder
 
 ```csharp
 // Custom binder for comma-separated values
@@ -45,7 +47,7 @@ public class CommaSeparatedModelBinderProvider : IModelBinderProvider
     }
 }
 
-// Register
+// Register in Program.cs
 builder.Services.AddControllers(options =>
 {
     options.ModelBinderProviders.Insert(0, new CommaSeparatedModelBinderProvider());
@@ -56,11 +58,14 @@ builder.Services.AddControllers(options =>
 public ActionResult GetMany([FromQuery] List<int> ids) { }
 ```
 
-<ModelBindingVisualizer mode="advanced" />
+<ProgressCheckpoint section="model-binding-intro" xpReward={16} />
 
-## IValidatableObject
+---
 
-Implement cross-property validation:
+## Section 2: IValidatableObject and Custom Attributes
+
+### Cross-Property Validation
+
 
 ```csharp
 public class DateRangeDto : IValidatableObject
@@ -91,9 +96,41 @@ public class DateRangeDto : IValidatableObject
 }
 ```
 
-## FluentValidation Integration
+### Custom Validation Attributes
 
-Use FluentValidation for complex rules:
+```csharp
+[AttributeUsage(AttributeTargets.Property)]
+public class FutureDateAttribute : ValidationAttribute
+{
+    protected override ValidationResult? IsValid(
+        object? value,
+        ValidationContext validationContext)
+    {
+        if (value is DateTime date && date <= DateTime.Today)
+        {
+            return new ValidationResult(
+                ErrorMessage ?? "Date must be in the future");
+        }
+        return ValidationResult.Success;
+    }
+}
+
+// Usage
+public class AppointmentDto
+{
+    [Required]
+    [FutureDate(ErrorMessage = "Appointment must be in the future")]
+    public DateTime AppointmentDate { get; set; }
+}
+```
+
+<ProgressCheckpoint section="model-binding-intermediate" xpReward={16} />
+
+---
+
+## Section 3: FluentValidation and Global Error Handling
+
+### FluentValidation Integration
 
 ```csharp
 // Install: dotnet add package FluentValidation.AspNetCore
@@ -113,21 +150,9 @@ public class CreateOrderValidator : AbstractValidator<CreateOrderRequest>
 
         RuleForEach(x => x.Items).ChildRules(item =>
         {
-            item.RuleFor(x => x.Quantity)
-                .GreaterThan(0);
-            item.RuleFor(x => x.UnitPrice)
-                .GreaterThan(0);
+            item.RuleFor(x => x.Quantity).GreaterThan(0);
+            item.RuleFor(x => x.UnitPrice).GreaterThan(0);
         });
-
-        RuleFor(x => x)
-            .Must(HaveValidTotal)
-            .WithMessage("Order total exceeds credit limit");
-    }
-
-    private bool HaveValidTotal(CreateOrderRequest order)
-    {
-        var total = order.Items.Sum(i => i.Quantity * i.UnitPrice);
-        return total <= 10000;
     }
 }
 
@@ -136,50 +161,7 @@ builder.Services.AddValidatorsFromAssemblyContaining<CreateOrderValidator>();
 builder.Services.AddFluentValidationAutoValidation();
 ```
 
-## Custom Validation Attributes
-
-Create reusable validation rules:
-
-```csharp
-[AttributeUsage(AttributeTargets.Property)]
-public class FutureDateAttribute : ValidationAttribute
-{
-    protected override ValidationResult? IsValid(
-        object? value,
-        ValidationContext validationContext)
-    {
-        if (value is DateTime date && date <= DateTime.Today)
-        {
-            return new ValidationResult(
-                ErrorMessage ?? "Date must be in the future");
-        }
-        return ValidationResult.Success;
-    }
-}
-
-// Async validation attribute
-public class UniqueEmailAttribute : ValidationAttribute
-{
-    protected override ValidationResult? IsValid(
-        object? value,
-        ValidationContext context)
-    {
-        var dbContext = context.GetRequiredService<AppDbContext>();
-        var email = value as string;
-
-        if (dbContext.Users.Any(u => u.Email == email))
-        {
-            return new ValidationResult("Email already exists");
-        }
-
-        return ValidationResult.Success;
-    }
-}
-```
-
-## Global Error Handling
-
-Customize validation error responses:
+### Global Error Response Customization
 
 ```csharp
 builder.Services.AddControllers()
@@ -206,4 +188,14 @@ builder.Services.AddControllers()
     });
 ```
 
-<ProgressCheckpoint section="model-binding-advanced" xpReward={50} />
+### Best Practices Summary
+
+| Pattern | Use Case |
+| :------ | :------- |
+| **Data Annotations** | Simple property validation |
+| **IValidatableObject** | Cross-property validation |
+| **Custom Attributes** | Reusable validation rules |
+| **FluentValidation** | Complex business rules |
+| **Custom Binders** | Special data formats |
+
+<ProgressCheckpoint section="model-binding-advanced" xpReward={18} />

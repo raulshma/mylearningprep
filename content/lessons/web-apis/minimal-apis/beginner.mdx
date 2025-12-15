@@ -2,19 +2,21 @@
 
 Imagine you want a quick snack from a food truck instead of a full restaurant experience. **Minimal APIs** are like that food truck - less setup, faster service, perfect when you don't need all the bells and whistles!
 
-## What are Minimal APIs? ⚡
+## Section 1: Introduction to Minimal APIs
+
+### What are Minimal APIs? ⚡
 
 Minimal APIs are a simplified way to create HTTP endpoints in ASP.NET Core. Instead of creating controller classes, you define routes directly in your `Program.cs` file with just a few lines of code!
 
 <MinimalApiBuilder mode="beginner" />
 
-## The Food Truck Analogy 🚐
+### The Food Truck Analogy 🚐
 
 > **Controllers are like restaurants** - full kitchen, wait staff, formal service.
 >
 > **Minimal APIs are like food trucks** - quick setup, direct service, get what you need fast!
 
-## Your First Minimal API
+### Your First Minimal API
 
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
@@ -30,16 +32,22 @@ app.Run();
 
 **Just 5 lines** and you have a working API! No controllers, no classes, no complexity.
 
-## Common Map Methods
+<ProgressCheckpoint section="minimal-apis-intro" xpReward={8} />
 
-| Method      | Purpose    | Example              |
-| :---------- | :--------- | :------------------- |
-| `MapGet`    | Read data  | Get list of items    |
-| `MapPost`   | Create new | Add new item         |
-| `MapPut`    | Update     | Modify existing item |
-| `MapDelete` | Remove     | Delete an item       |
+---
 
-## Adding Parameters
+## Section 2: HTTP Methods and Parameters
+
+### Common Map Methods
+
+| Method | Purpose | Example |
+| :----- | :------ | :------ |
+| `MapGet` | Read data | Get list of items |
+| `MapPost` | Create new | Add new item |
+| `MapPut` | Update | Modify existing item |
+| `MapDelete` | Remove | Delete an item |
+
+### Adding Parameters
 
 ```csharp
 // Route parameter
@@ -47,24 +55,78 @@ app.MapGet("/products/{id}", (int id) => $"Product {id}");
 
 // Query parameter: /search?term=laptop
 app.MapGet("/search", (string term) => $"Searching for {term}");
+
+// Multiple parameters
+app.MapGet("/products/{id}/reviews", (int id, int page = 1) => 
+    $"Reviews for product {id}, page {page}");
 ```
 
-## When to Use Minimal APIs
 
-| ✅ Great For     | ❌ Not Ideal For       |
-| :--------------- | :--------------------- |
-| Small projects   | Large enterprise apps  |
-| Microservices    | Complex business logic |
-| Quick prototypes | When you need filters  |
+### POST with Request Body
+
+```csharp
+app.MapPost("/products", (Product product) => 
+{
+    // product is automatically deserialized from JSON body
+    return $"Created: {product.Name}";
+});
+```
+
+<ProgressCheckpoint section="minimal-apis-intermediate" xpReward={8} />
+
+---
+
+## Section 3: When to Use Minimal APIs
+
+### Comparison with Controllers
+
+| ✅ Great For | ❌ Not Ideal For |
+| :----------- | :--------------- |
+| Small projects | Large enterprise apps |
+| Microservices | Complex business logic |
+| Quick prototypes | When you need filters |
 | Learning ASP.NET | Team prefers OOP style |
 
-## Key Takeaways
+### Complete CRUD Example
 
-| Concept            | Description                           |
-| :----------------- | :------------------------------------ |
-| **MapGet**         | Creates a GET endpoint                |
-| **MapPost**        | Creates a POST endpoint               |
-| **Lambda**         | Arrow function defining handler       |
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
+
+var products = new List<Product>();
+
+app.MapGet("/products", () => products);
+
+app.MapGet("/products/{id}", (int id) => 
+    products.FirstOrDefault(p => p.Id == id) is Product p 
+        ? Results.Ok(p) 
+        : Results.NotFound());
+
+app.MapPost("/products", (Product product) => 
+{
+    products.Add(product);
+    return Results.Created($"/products/{product.Id}", product);
+});
+
+app.MapDelete("/products/{id}", (int id) => 
+{
+    var product = products.FirstOrDefault(p => p.Id == id);
+    if (product is null) return Results.NotFound();
+    products.Remove(product);
+    return Results.NoContent();
+});
+
+app.Run();
+```
+
+### Key Takeaways
+
+| Concept | Description |
+| :------ | :---------- |
+| **MapGet** | Creates a GET endpoint |
+| **MapPost** | Creates a POST endpoint |
+| **Lambda** | Arrow function defining handler |
+| **Results** | Helper class for HTTP responses |
 | **No controllers** | Routes defined directly in Program.cs |
 
-<ProgressCheckpoint section="minimal-apis-intro" xpReward={25} />
+<ProgressCheckpoint section="minimal-apis-advanced" xpReward={9} />

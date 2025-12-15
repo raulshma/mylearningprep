@@ -2,7 +2,102 @@
 
 Master PostgreSQL's advanced features for enterprise-scale applications.
 
-## 🧩 Extensions - Superpowers for Postgres
+---
+
+## Section 1: Introduction to PostgreSQL
+
+### PostgreSQL Internals
+
+Understanding how PostgreSQL manages data:
+
+#### MVCC (Multi-Version Concurrency Control)
+
+```sql
+-- Each row can have multiple versions
+-- Readers don't block writers, writers don't block readers
+
+-- View transaction IDs
+SELECT txid_current();
+
+-- View row versions (requires pageinspect extension)
+CREATE EXTENSION pageinspect;
+SELECT lp, t_xmin, t_xmax, t_ctid 
+FROM heap_page_items(get_raw_page('users', 0));
+```
+
+#### VACUUM and Autovacuum
+
+```sql
+-- Manual vacuum
+VACUUM users;
+VACUUM FULL users;  -- Reclaims space but locks table
+
+-- Analyze for query planner
+ANALYZE users;
+
+-- Both together
+VACUUM ANALYZE users;
+
+-- Check autovacuum settings
+SELECT name, setting 
+FROM pg_settings 
+WHERE name LIKE 'autovacuum%';
+```
+
+<ProgressCheckpoint section="intro-postgres" xpReward={18} />
+
+---
+
+## Section 2: psql Basics
+
+### Performance Monitoring Queries
+
+```sql
+-- Active queries
+SELECT 
+    pid,
+    now() - query_start AS duration,
+    state,
+    query
+FROM pg_stat_activity
+WHERE state != 'idle'
+ORDER BY duration DESC;
+
+-- Table sizes
+SELECT 
+    schemaname,
+    tablename,
+    pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size
+FROM pg_tables
+WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
+ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
+
+-- Index usage
+SELECT 
+    schemaname,
+    tablename,
+    indexname,
+    idx_scan,
+    idx_tup_read,
+    idx_tup_fetch
+FROM pg_stat_user_indexes
+ORDER BY idx_scan ASC;
+
+-- Cache hit ratio
+SELECT 
+    sum(heap_blks_read) as heap_read,
+    sum(heap_blks_hit)  as heap_hit,
+    sum(heap_blks_hit) / (sum(heap_blks_hit) + sum(heap_blks_read)) as ratio
+FROM pg_statio_user_tables;
+```
+
+<ProgressCheckpoint section="psql-basics" xpReward={19} />
+
+---
+
+## Section 3: Unique Features
+
+### 🧩 Extensions - Superpowers for Postgres
 
 PostgreSQL's extension system adds incredible functionality:
 
@@ -345,4 +440,193 @@ var products = await context.Products
 | Connections | Use PgBouncer for high-concurrency apps |
 | Monitoring | Enable pg_stat_statements in production |
 
-<ProgressCheckpoint section="unique-features" xpReward={75} />
+<ProgressCheckpoint section="unique-features" xpReward={19} />
+
+---
+
+## Section 4: .NET with Npgsql
+
+### High-Performance Npgsql Patterns
+
+```csharp
+// Connection pooling configuration
+var connectionString = "Host=localhost;Database=myapp;Username=postgres;Password=secret;" +
+                      "Minimum Pool Size=10;Maximum Pool Size=100;" +
+                      "Connection Idle Lifetime=300;Connection Pruning Interval=10";
+
+// Prepared statements (reuse query plans)
+using var cmd = new NpgsqlCommand("SELECT * FROM users WHERE id = $1", connection);
+cmd.Parameters.Add(new NpgsqlParameter { Value = userId });
+await cmd.PrepareAsync();  // Prepare once
+var reader = await cmd.ExecuteReaderAsync();  // Execute many times
+
+// Binary import for bulk inserts
+using var writer = connection.BeginBinaryImport(
+    "COPY orders (user_id, amount, created_at) FROM STDIN (FORMAT BINARY)");
+
+foreach (var order in orders)
+{
+    writer.StartRow();
+    writer.Write(order.UserId, NpgsqlDbType.Integer);
+    writer.Write(order.Amount, NpgsqlDbType.Numeric);
+    writer.Write(order.CreatedAt, NpgsqlDbType.TimestampTz);
+}
+
+await writer.CompleteAsync();
+Console.WriteLine($"Imported {writer.RowsWritten} rows");
+```
+
+### Advanced EF Core with PostgreSQL
+
+```csharp
+// Configure advanced features
+builder.Services.AddDbContext<AppDbContext>(options =>
+{
+    options.UseNpgsql(connectionString, npgsqlOptions =>
+    {
+        // Retry logic
+        npgsqlOptions.EnableRetryOnFailure(
+            maxRetryCount: 5,
+            maxRetryDelay: TimeSpan.FromSeconds(30),
+            errorCodesToAdd: null
+        );
+        
+        // Use array pooling for better performance
+        npgsqlOptions.UseArrayPool();
+        
+        // Enable range types
+        npgsqlOptions.UseRangeTypes();
+        
+        // PostGIS for geographic data
+        npgsqlOptions.UseNetTopologySuite();
+    })
+    .UseSnakeCaseNamingConvention()
+    .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);  // Read-only by default
+});
+
+// Custom value converters for JSONB
+public class AppDbContext : DbContext
+{
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        // JSONB with custom type
+        modelBuilder.Entity<Product>()
+            .Property(p => p.Metadata)
+            .HasColumnType("jsonb")
+            .HasConversion(
+                v => JsonSerializer.Serialize(v, (JsonSerializerOptions)null),
+                v => JsonSerializer.Deserialize<ProductMetadata>(v, (JsonSerializerOptions)null)
+            );
+        
+        // Array type
+        modelBuilder.Entity<Article>()
+            .Property(a => a.Tags)
+            .HasColumnType("text[]");
+        
+        // Range type
+        modelBuilder.Entity<Booking>()
+            .Property(b => b.DateRange)
+            .HasColumnType("daterange");
+        
+        // Generated column
+        modelBuilder.Entity<User>()
+            .Property(u => u.SearchVector)
+            .HasColumnType("tsvector")
+            .HasComputedColumnSql("to_tsvector('english', name || ' ' || email)", stored: true);
+        
+        // GIN index for full-text search
+        modelBuilder.Entity<User>()
+            .HasIndex(u => u.SearchVector)
+            .HasMethod("GIN");
+    }
+}
+```
+
+### Listening to PostgreSQL Notifications
+
+```csharp
+// PostgreSQL LISTEN/NOTIFY for real-time updates
+public class NotificationService : BackgroundService
+{
+    private readonly string _connectionString;
+    private readonly ILogger<NotificationService> _logger;
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        await using var connection = new NpgsqlConnection(_connectionString);
+        await connection.OpenAsync(stoppingToken);
+        
+        connection.Notification += (sender, args) =>
+        {
+            _logger.LogInformation(
+                "Received notification on channel {Channel}: {Payload}",
+                args.Channel,
+                args.Payload
+            );
+        };
+        
+        await using (var cmd = new NpgsqlCommand("LISTEN order_updates", connection))
+        {
+            await cmd.ExecuteNonQueryAsync(stoppingToken);
+        }
+        
+        // Keep connection alive
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            await connection.WaitAsync(stoppingToken);
+        }
+    }
+}
+
+// Trigger to send notifications
+/*
+CREATE OR REPLACE FUNCTION notify_order_update()
+RETURNS trigger AS $$
+BEGIN
+    PERFORM pg_notify('order_updates', row_to_json(NEW)::text);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER order_update_trigger
+AFTER INSERT OR UPDATE ON orders
+FOR EACH ROW EXECUTE FUNCTION notify_order_update();
+*/
+```
+
+### Dapper with PostgreSQL
+
+```csharp
+using Dapper;
+
+// Query with parameters
+var users = await connection.QueryAsync<User>(
+    "SELECT * FROM users WHERE created_at > @date",
+    new { date = DateTime.UtcNow.AddDays(-30) }
+);
+
+// Query JSONB
+var products = await connection.QueryAsync<Product>(
+    "SELECT id, name, attributes->>'brand' as brand FROM products WHERE attributes @> @filter",
+    new { filter = "{\"category\":\"electronics\"}" }
+);
+
+// Query arrays
+var articles = await connection.QueryAsync<Article>(
+    "SELECT * FROM articles WHERE @tag = ANY(tags)",
+    new { tag = "postgres" }
+);
+
+// Bulk insert with COPY
+var copyCommand = "COPY users (name, email) FROM STDIN (FORMAT BINARY)";
+using var writer = connection.BeginBinaryImport(copyCommand);
+foreach (var user in users)
+{
+    writer.StartRow();
+    writer.Write(user.Name);
+    writer.Write(user.Email);
+}
+await writer.CompleteAsync();
+```
+
+<ProgressCheckpoint section="dotnet-npgsql" xpReward={19} />

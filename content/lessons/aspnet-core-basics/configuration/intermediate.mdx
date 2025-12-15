@@ -2,7 +2,11 @@
 
 ASP.NET Core features a flexible, hierarchical configuration system that reads key-value settings from multiple sources. Understanding this system is crucial for building configurable, maintainable applications.
 
-## Configuration Sources
+---
+
+## Section 1: Configuration Basics
+
+### Configuration Sources
 
 Configuration is loaded from multiple providers in order, where later sources override earlier ones:
 
@@ -21,7 +25,7 @@ var builder = WebApplication.CreateBuilder(args);
 // 5. Command-line arguments
 ```
 
-## appsettings.json Structure
+### appsettings.json Structure
 
 ```json
 {
@@ -43,7 +47,21 @@ var builder = WebApplication.CreateBuilder(args);
 }
 ```
 
-## Accessing Configuration
+### Configuration Precedence
+
+| Priority | Source | Use Case |
+|:---------|:-------|:---------|
+| 1 (lowest) | appsettings.json | Default values |
+| 2 | appsettings.{Env}.json | Environment overrides |
+| 3 | User Secrets | Dev-only secrets |
+| 4 | Environment Variables | Container/cloud config |
+| 5 (highest) | Command Line | Runtime overrides |
+
+<ProgressCheckpoint section="config-basics" xpReward={15} />
+
+---
+
+## Section 2: Reading Configuration
 
 ### Direct Access with IConfiguration
 
@@ -62,7 +80,7 @@ public class EmailService
         // Access flat values
         string smtpServer = _configuration["EmailSettings:SmtpServer"];
         
-        // Access with GetValue<T> for type conversion
+        // Access with GetValue&lt;T&gt; for type conversion
         int port = _configuration.GetValue<int>("EmailSettings:Port");
         
         // Get connection strings (special method)
@@ -80,7 +98,7 @@ string server = emailSection["SmtpServer"];
 int port = emailSection.GetValue<int>("Port");
 ```
 
-## Environment-Specific Configuration
+### Environment-Specific Configuration
 
 Create environment-specific files that override base settings:
 
@@ -105,7 +123,7 @@ appsettings.Production.json   # Production overrides
 }
 ```
 
-## User Secrets (Development Only)
+### User Secrets (Development Only)
 
 Store sensitive data safely during development:
 
@@ -120,40 +138,35 @@ dotnet user-secrets set "EmailSettings:Password" "my-secret-password"
 # Windows: %APPDATA%\Microsoft\UserSecrets\<user_secrets_id>\secrets.json
 ```
 
-Access them the same way as any other configuration:
+<ProgressCheckpoint section="config-intermediate" xpReward={15} />
 
-```csharp
-string password = _configuration["EmailSettings:Password"];
-```
+---
 
-## Environment Variables
-
-Great for Docker containers and cloud deployments:
-
-```bash
-# Use double underscore for hierarchy (replaces colon)
-export EmailSettings__SmtpServer="smtp.production.com"
-export ConnectionStrings__DefaultConnection="Server=prod-db;..."
-```
-
-## The Options Pattern
+## Section 3: The Options Pattern
 
 For strongly-typed configuration access:
 
+### Define Options Class
+
 ```csharp
-// 1. Define an options class
 public class EmailSettings
 {
     public string SmtpServer { get; set; } = string.Empty;
     public int Port { get; set; }
     public string FromAddress { get; set; } = string.Empty;
 }
+```
 
-// 2. Register in Program.cs
+### Register in Program.cs
+
+```csharp
 builder.Services.Configure<EmailSettings>(
     builder.Configuration.GetSection("EmailSettings"));
+```
 
-// 3. Inject and use
+### Inject and Use
+
+```csharp
 public class EmailService
 {
     private readonly EmailSettings _settings;
@@ -170,4 +183,24 @@ public class EmailService
 }
 ```
 
-<ProgressCheckpoint section="config-intermediate" xpReward={40} />
+### Environment Variables
+
+Great for Docker containers and cloud deployments:
+
+```bash
+# Use double underscore for hierarchy (replaces colon)
+export EmailSettings__SmtpServer="smtp.production.com"
+export ConnectionStrings__DefaultConnection="Server=prod-db;..."
+```
+
+### Key Takeaways
+
+<InfoBox type="tip">
+**Remember:**
+- Configuration sources are layered with later sources overriding earlier ones
+- Use `IConfiguration` for direct access, Options pattern for strongly-typed access
+- User Secrets keep sensitive data out of source control during development
+- Environment variables use `__` instead of `:` for hierarchy
+</InfoBox>
+
+<ProgressCheckpoint section="config-advanced" xpReward={10} />

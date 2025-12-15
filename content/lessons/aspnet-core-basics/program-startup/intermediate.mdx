@@ -2,7 +2,11 @@
 
 In modern ASP.NET Core (.NET 6+), application configuration is streamlined into a single `Program.cs` file using the **minimal hosting model**. Let's explore how services are registered and the request pipeline is configured.
 
-## The Minimal Hosting Model
+---
+
+## Section 1: Program Basics
+
+### The Minimal Hosting Model
 
 The minimal hosting model combines what used to be separate `Program.cs` and `Startup.cs` files:
 
@@ -10,20 +14,13 @@ The minimal hosting model combines what used to be separate `Program.cs` and `St
 var builder = WebApplication.CreateBuilder(args);
 
 // === SERVICE REGISTRATION ===
-// Services are registered with the DI container here
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Custom services
-builder.Services.AddScoped<IUserService, UserService>();
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
-
 var app = builder.Build();
 
 // === MIDDLEWARE PIPELINE ===
-// Order matters! Each middleware processes requests in sequence
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -31,14 +28,13 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
 ```
 
-## WebApplicationBuilder
+### WebApplicationBuilder
 
 The `WebApplicationBuilder` provides access to:
 
@@ -68,7 +64,13 @@ builder.Logging.AddConsole();
 builder.Logging.SetMinimumLevel(LogLevel.Debug);
 ```
 
-## Service Lifetimes
+<ProgressCheckpoint section="program-basics" xpReward={15} />
+
+---
+
+## Section 2: Services and Dependency Injection
+
+### Service Lifetimes
 
 When registering services, choose the appropriate lifetime:
 
@@ -83,32 +85,82 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddTransient<IEmailSender, EmailSender>();
 ```
 
-## Middleware Pipeline
+| Lifetime | When to Use | Example |
+|:---------|:------------|:--------|
+| **Singleton** | Stateless, thread-safe services | Caching, configuration |
+| **Scoped** | Per-request state | DbContext, user services |
+| **Transient** | Lightweight, stateless | Email sender, validators |
+
+### Registering Custom Services
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+// Interface to implementation
+builder.Services.AddScoped<IUserService, UserService>();
+
+// With factory
+builder.Services.AddScoped<IEmailService>(sp =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+    return new SmtpEmailService(config["Smtp:Host"]);
+});
+
+// DbContext
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
+
+// HttpClient
+builder.Services.AddHttpClient<IWeatherClient, WeatherClient>(client =>
+{
+    client.BaseAddress = new Uri("https://api.weather.com");
+});
+```
+
+<ProgressCheckpoint section="program-intermediate" xpReward={15} />
+
+---
+
+## Section 3: Middleware Pipeline
+
+### How Middleware Works
 
 Middleware components form a **pipeline** that processes HTTP requests:
 
 <MiddlewarePipelineSimulator mode="intermediate" />
 
+Each middleware can:
+- Handle the request and short-circuit the pipeline
+- Pass the request to the next middleware
+- Perform work before AND after the next middleware
+
 ### Common Middleware Order
 
+Order matters! Here's the recommended sequence:
+
 ```csharp
-// 1. Exception handling (should be first to catch all errors)
+var app = builder.Build();
+
+// 1. Exception handling (first to catch all errors)
 app.UseExceptionHandler("/Error");
 
-// 2. HSTS (only in production)
-app.UseHsts();
+// 2. HSTS (production only)
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+}
 
 // 3. HTTPS redirection
 app.UseHttpsRedirection();
 
-// 4. Static files (serve CSS, JS, images)
+// 4. Static files (CSS, JS, images)
 app.UseStaticFiles();
 
 // 5. Routing (match URL to endpoint)
 app.UseRouting();
 
 // 6. CORS (if needed)
-app.UseCors();
+app.UseCors("AllowAll");
 
 // 7. Authentication (who are you?)
 app.UseAuthentication();
@@ -118,9 +170,11 @@ app.UseAuthorization();
 
 // 9. Endpoint execution
 app.MapControllers();
+
+app.Run();
 ```
 
-## Minimal APIs vs Controllers
+### Minimal APIs vs Controllers
 
 In .NET 6+, you can define endpoints directly in Program.cs:
 
@@ -128,14 +182,30 @@ In .NET 6+, you can define endpoints directly in Program.cs:
 // Minimal API approach
 app.MapGet("/hello", () => "Hello World!");
 
-app.MapPost("/users", async (User user, IUserService service) =>
+app.MapGet("/users/{id}", async (int id, IUserService service) =>
 {
-    await service.CreateAsync(user);
+    var user = await service.GetByIdAsync(id);
+    return user is null ? Results.NotFound() : Results.Ok(user);
+});
+
+app.MapPost("/users", async (CreateUserDto dto, IUserService service) =>
+{
+    var user = await service.CreateAsync(dto);
     return Results.Created($"/users/{user.Id}", user);
 });
 
-// vs Traditional Controllers
+// Traditional Controllers
 app.MapControllers();  // Uses [ApiController] classes
 ```
 
-<ProgressCheckpoint section="program-intermediate" xpReward={40} />
+### Best Practices
+
+<InfoBox type="tip">
+**Program.cs Best Practices:**
+- Keep Program.cs clean - move complex registration to extension methods
+- Use environment checks for dev-only middleware
+- Follow the recommended middleware order
+- Use Minimal APIs for simple endpoints, Controllers for complex ones
+</InfoBox>
+
+<ProgressCheckpoint section="program-advanced" xpReward={10} />

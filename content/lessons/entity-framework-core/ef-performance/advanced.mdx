@@ -4,7 +4,92 @@ Master advanced performance techniques for high-throughput and enterprise-scale 
 
 <PerformanceAnalyzer mode="advanced" initialScenario="projection" />
 
-## DbContext Pooling
+## Section 1: Introduction to Performance
+
+### Performance Architecture Overview
+
+At scale, EF Core performance requires understanding the full request lifecycle:
+
+```
+Request → Connection Pool → DbContext → Query Translation → SQL Execution → Result Materialization → Response
+```
+
+Each stage has optimization opportunities. Let's examine the critical ones.
+
+### Query Translation Analysis
+
+Understanding how LINQ translates to SQL is essential:
+
+<DotnetCodePreview
+  title="Query Translation Inspection"
+  code={`// Get the SQL that will be generated
+var query = context.Blogs
+    .Where(b => b.Posts.Any(p => p.IsPublished))
+    .OrderBy(b => b.Title);
+
+// View the SQL (EF Core 5+)
+var sql = query.ToQueryString();
+Console.WriteLine(sql);
+
+// Output:
+// SELECT [b].[Id], [b].[Title], [b].[Url]
+// FROM [Blogs] AS [b]
+// WHERE EXISTS (
+//     SELECT 1 FROM [Posts] AS [p]
+//     WHERE [p].[BlogId] = [b].[Id] AND [p].[IsPublished] = 1)
+// ORDER BY [b].[Title]`}
+  steps={[
+    {
+      lineNumbers: [7],
+      highlight: "ToQueryString",
+      explanation: "Inspect generated SQL without executing"
+    }
+  ]}
+/>
+
+### Client vs Server Evaluation
+
+<DotnetCodePreview
+  title="Avoiding Client Evaluation"
+  code={`// ❌ Bad: Forces client evaluation
+var blogs = context.Blogs
+    .Where(b => MyCustomMethod(b.Title))  // Can't translate!
+    .ToList();
+// Loads ALL blogs, filters in memory
+
+// ✅ Good: Server-side evaluation
+var blogs = context.Blogs
+    .Where(b => b.Title.Contains(searchTerm))
+    .ToList();
+// Filters in database
+
+// For complex logic, use raw SQL
+var blogs = context.Blogs
+    .FromSqlRaw(@"
+        SELECT * FROM Blogs 
+        WHERE SOUNDEX(Title) = SOUNDEX({0})", searchTerm)
+    .ToList();`}
+  steps={[
+    {
+      lineNumbers: [3],
+      highlight: "Client evaluation",
+      explanation: "Custom methods force loading all data first"
+    },
+    {
+      lineNumbers: [13, 14, 15, 16],
+      highlight: "Raw SQL",
+      explanation: "Use database functions that LINQ can't express"
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="intro-performance" xpReward={20} />
+
+---
+
+## Section 2: Tracking Optimization
+
+### DbContext Pooling
 
 Reduce context creation overhead in high-throughput scenarios:
 
@@ -17,35 +102,124 @@ builder.Services.AddDbContextPool<BloggingContext>(options =>
 
 // Factory for controlled lifetime
 builder.Services.AddPooledDbContextFactory<BloggingContext>(options =>
-options.UseSqlServer(connectionString));
+    options.UseSqlServer(connectionString));
 
 // Using factory in services
 public class BackgroundProcessor
 {
-private readonly IDbContextFactory<BloggingContext> \_factory;
+    private readonly IDbContextFactory<BloggingContext> _factory;
 
     public async Task ProcessAsync()
     {
         await using var context = await _factory.CreateDbContextAsync();
         // Short-lived context usage
     }
-
 }`}
-steps={[
-{
-lineNumbers: [2, 3, 4],
-highlight: "AddDbContextPool",
-explanation: "Reuses context instances instead of creating new ones"
-},
-{
-lineNumbers: [7, 8],
-highlight: "Factory pattern",
-explanation: "Better control over context lifetime in background services"
-}
-]}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4],
+      highlight: "AddDbContextPool",
+      explanation: "Reuses context instances instead of creating new ones"
+    },
+    {
+      lineNumbers: [7, 8],
+      highlight: "Factory pattern",
+      explanation: "Better control over context lifetime in background services"
+    }
+  ]}
 />
 
-## Compiled Queries
+### Change Tracker Optimization
+
+<DotnetCodePreview
+  title="Managing the Change Tracker"
+  code={`// Clear tracker after bulk operations
+public async Task ProcessLargeBatchAsync()
+{
+    const int batchSize = 1000;
+    
+    while (true)
+    {
+        var batch = await context.Orders
+            .Where(o => !o.IsProcessed)
+            .Take(batchSize)
+            .ToListAsync();
+
+        if (batch.Count == 0) break;
+
+        foreach (var order in batch)
+        {
+            order.IsProcessed = true;
+        }
+
+        await context.SaveChangesAsync();
+        
+        // Essential: Clear tracker to free memory
+        context.ChangeTracker.Clear();
+    }
+}
+
+// Check tracker state
+var trackedEntities = context.ChangeTracker.Entries().Count();
+var modifiedEntities = context.ChangeTracker.Entries()
+    .Count(e => e.State == EntityState.Modified);`}
+  steps={[
+    {
+      lineNumbers: [22],
+      highlight: "Clear tracker",
+      explanation: "Essential for large batches to prevent memory issues"
+    },
+    {
+      lineNumbers: [27, 28, 29],
+      highlight: "Inspect tracker",
+      explanation: "Debug what entities are being tracked"
+    }
+  ]}
+/>
+
+### Auto-Detect Changes Configuration
+
+<DotnetCodePreview
+  title="Controlling Change Detection"
+  code={`// Disable auto-detect for bulk operations
+context.ChangeTracker.AutoDetectChangesEnabled = false;
+
+try
+{
+    foreach (var entity in largeCollection)
+    {
+        context.Add(entity);
+    }
+    
+    // Manually detect changes before save
+    context.ChangeTracker.DetectChanges();
+    await context.SaveChangesAsync();
+}
+finally
+{
+    context.ChangeTracker.AutoDetectChangesEnabled = true;
+}`}
+  steps={[
+    {
+      lineNumbers: [2],
+      highlight: "Disable auto-detect",
+      explanation: "Prevents expensive change detection on every Add"
+    },
+    {
+      lineNumbers: [11],
+      highlight: "Manual detection",
+      explanation: "Call once before SaveChanges"
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="tracking-optimization" xpReward={20} />
+
+---
+
+## Section 3: Advanced Tuning
+
+### Compiled Queries
 
 Eliminate query parsing overhead for hot paths:
 
@@ -60,8 +234,8 @@ Eliminate query parsing overhead for hot paths:
                 .Include(b => b.Posts)
                 .FirstOrDefault(b => b.Id == id));
 
-    private static readonly Func<BloggingContext, string, IAsyncEnumerable<Blog>> SearchBlogs =
-        EF.CompileAsyncQuery((BloggingContext ctx, string term) =>
+    private static readonly Func<BloggingContext, string, IAsyncEnumerable<Blog>> 
+        SearchBlogs = EF.CompileAsyncQuery((BloggingContext ctx, string term) =>
             ctx.Blogs
                 .Where(b => b.Title.Contains(term))
                 .OrderBy(b => b.Title));
@@ -71,29 +245,27 @@ Eliminate query parsing overhead for hot paths:
     public Task<Blog?> GetBlogAsync(int id) => GetByIdAsync(_context, id);
 
     public IAsyncEnumerable<Blog> Search(string term) => SearchBlogs(_context, term);
-
 }`}
-steps={[
-{
-lineNumbers: [4, 5, 6, 7, 8],
-highlight: "Compiled async query",
-explanation: "Query is parsed once at startup, not on every call"
-},
-{
-lineNumbers: [10, 11, 12, 13, 14],
-highlight: "Streaming results",
-explanation: "IAsyncEnumerable for efficient streaming of large result sets"
-}
-]}
+  steps={[
+    {
+      lineNumbers: [4, 5, 6, 7, 8],
+      highlight: "Compiled async query",
+      explanation: "Query is parsed once at startup, not on every call"
+    },
+    {
+      lineNumbers: [10, 11, 12, 13, 14],
+      highlight: "Streaming results",
+      explanation: "IAsyncEnumerable for efficient streaming of large result sets"
+    }
+  ]}
 />
 
-## Query Optimization Techniques
-
-### Avoid Cartesian Explosion with Split Queries
+### Split Query Strategy
 
 <DotnetCodePreview
-  title="Split Query Strategy"
+  title="Avoiding Cartesian Explosion"
   code={`// Multiple collection includes can cause Cartesian explosion
+// 10 blogs × 100 posts × 50 comments = 50,000 rows!
 var blogs = context.Blogs
     .Include(b => b.Posts)
     .Include(b => b.Tags)
@@ -101,117 +273,51 @@ var blogs = context.Blogs
     .AsSplitQuery()  // Separate queries for each include
     .ToList();
 
-// Configure globally for all queries
+// Configure globally
 protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 {
-optionsBuilder.UseSqlServer(connectionString)
-.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+    optionsBuilder.UseSqlServer(connectionString)
+        .UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
 }
 
 // Override for single query when needed
 var blogs = context.Blogs
-.Include(b => b.Posts)
-.AsSingleQuery()
-.ToList();`}
-/>
-
-### Filtered Includes
-
-<DotnetCodePreview
-  title="Precise Data Loading"
-  code={`// Only load what you need from related data
-var blogs = context.Blogs
-    .Include(b => b.Posts
-        .Where(p => p.PublishDate > DateTime.UtcNow.AddDays(-30))
-        .OrderByDescending(p => p.PublishDate)
-        .Take(5))
-    .AsNoTracking()
+    .Include(b => b.Posts)
+    .AsSingleQuery()
     .ToList();`}
 />
 
-## Batch Processing for Large Datasets
-
-<DotnetCodePreview
-  title="Efficient Batch Processing"
-  code={`public async Task ProcessLargeBatchAsync()
-{
-    const int batchSize = 1000;
-    int processed = 0;
-
-    while (true)
-    {
-        var batch = await context.Orders
-            .Where(o => !o.IsProcessed)
-            .OrderBy(o => o.Id)
-            .Skip(processed)
-            .Take(batchSize)
-            .ToListAsync();
-
-        if (batch.Count == 0) break;
-
-        foreach (var order in batch)
-        {
-            order.IsProcessed = true;
-        }
-
-        await context.SaveChangesAsync();
-
-        // Clear change tracker to free memory
-        context.ChangeTracker.Clear();
-
-        processed += batch.Count;
-    }
-
-}
-
-// Alternative: Use ExecuteUpdate for pure updates
-await context.Orders
-.Where(o => !o.IsProcessed && o.Date < cutoff)
-.ExecuteUpdateAsync(s => s.SetProperty(o => o.IsProcessed, true));`}
-steps={[
-{
-lineNumbers: [24],
-highlight: "Clear tracker",
-explanation: "Essential for large batches to prevent memory issues"
-},
-{
-lineNumbers: [31, 32, 33],
-highlight: "ExecuteUpdate",
-explanation: "Most efficient for bulk updates without loading"
-}
-]}
-/>
-
-## Performance Diagnostics
+### Performance Diagnostics
 
 <DotnetCodePreview
   title="Custom Performance Interceptor"
   code={`public class SlowQueryInterceptor : DbCommandInterceptor
 {
     private const int SlowQueryThresholdMs = 500;
+    private readonly ILogger<SlowQueryInterceptor> _logger;
 
-    public override DbDataReader ReaderExecuted(
+    public override async ValueTask<DbDataReader> ReaderExecutedAsync(
         DbCommand command,
         CommandExecutedEventData eventData,
-        DbDataReader result)
+        DbDataReader result,
+        CancellationToken cancellationToken = default)
     {
         if (eventData.Duration.TotalMilliseconds > SlowQueryThresholdMs)
         {
-            Log.Warning(
+            _logger.LogWarning(
                 "Slow query detected ({Duration}ms): {Query}",
                 eventData.Duration.TotalMilliseconds,
                 command.CommandText);
         }
         return result;
     }
-
 }
 
 // Register interceptor
-optionsBuilder.AddInterceptors(new SlowQueryInterceptor());`}
+optionsBuilder.AddInterceptors(new SlowQueryInterceptor(logger));`}
 />
 
-## Connection Resiliency
+### Connection Resiliency
 
 <DotnetCodePreview
   title="Retry Logic for Transient Failures"
@@ -223,32 +329,35 @@ optionsBuilder.AddInterceptors(new SlowQueryInterceptor());`}
         errorNumbersToAdd: null);
     
     options.CommandTimeout(30);
+    options.MinBatchSize(1);
+    options.MaxBatchSize(100);
 });
 
 // Custom execution strategy
 public class CustomExecutionStrategy : SqlServerRetryingExecutionStrategy
 {
-public CustomExecutionStrategy(ExecutionStrategyDependencies deps)
-: base(deps, 3) { }
+    public CustomExecutionStrategy(ExecutionStrategyDependencies deps)
+        : base(deps, maxRetryCount: 3) { }
 
     protected override bool ShouldRetryOn(Exception exception)
     {
         // Add custom retry conditions
+        if (exception is TimeoutException) return true;
         return base.ShouldRetryOn(exception);
     }
-
 }`}
 />
 
-## Key Takeaways
+### Key Performance Techniques Summary
 
-| Technique                | When to Use                  | Impact                      |
-| :----------------------- | :--------------------------- | :-------------------------- |
-| **DbContext Pooling**    | Web apps, high throughput    | Reduces allocation overhead |
-| **Compiled Queries**     | Frequently executed queries  | Eliminates parsing time     |
-| **Split Queries**        | Multiple collection includes | Prevents data explosion     |
-| **AsNoTracking**         | Read-only scenarios          | Reduces memory and CPU      |
-| **ExecuteUpdate/Delete** | Bulk operations              | Minimizes round trips       |
-| **Query Interceptors**   | Diagnostics, auditing        | Visibility into queries     |
+| Technique | When to Use | Impact |
+| :-------- | :---------- | :----- |
+| **DbContext Pooling** | Web apps, high throughput | Reduces allocation overhead |
+| **Compiled Queries** | Frequently executed queries | Eliminates parsing time |
+| **Split Queries** | Multiple collection includes | Prevents data explosion |
+| **AsNoTracking** | Read-only scenarios | Reduces memory and CPU |
+| **ExecuteUpdate/Delete** | Bulk operations | Minimizes round trips |
+| **Query Interceptors** | Diagnostics, auditing | Visibility into queries |
+| **Connection Resiliency** | Cloud/distributed systems | Handles transient failures |
 
-<ProgressCheckpoint section="advanced-tuning" xpReward={60} />
+<ProgressCheckpoint section="advanced-tuning" xpReward={20} />

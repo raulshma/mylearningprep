@@ -2,13 +2,17 @@
 
 Now that you understand DI, let's learn the **right way** to use it and the common mistakes to avoid! 🎯
 
-## The Golden Rule: Constructor Injection
+---
+
+## Section 1: Injection Patterns
+
+### The Golden Rule: Constructor Injection
 
 The most important pattern in DI is **constructor injection** - receiving dependencies through the constructor.
 
 <DIPatternShowcase pattern="constructor-injection" mode="beginner" />
 
-### Why Constructor Injection is Best
+#### Why Constructor Injection is Best
 
 | Benefit          | Explanation                                                     |
 | :--------------- | :-------------------------------------------------------------- |
@@ -17,7 +21,7 @@ The most important pattern in DI is **constructor injection** - receiving depend
 | **Testable** 🧪  | Easy to pass fake versions for testing                          |
 | **Immutable** 🔒 | Dependencies don't change after creation                        |
 
-## The "new" Keyword is a Code Smell
+### The "new" Keyword is a Code Smell
 
 In DI-powered code, avoid using `new` for services:
 
@@ -54,7 +58,7 @@ public class UserService
   Program.cs), it's usually wrong!
 </InfoBox>
 
-## Depend on Interfaces, Not Classes
+### Depend on Interfaces, Not Classes
 
 Always inject **interfaces**, not concrete classes:
 
@@ -74,7 +78,7 @@ public class OrderService
 }
 ```
 
-## Make Dependencies Readonly
+### Make Dependencies Readonly
 
 Always use `readonly` for injected dependencies:
 
@@ -93,9 +97,13 @@ public class ProductService
 
 This prevents accidental changes and makes your code safer!
 
-## Common Mistakes to Avoid
+<ProgressCheckpoint section="injection-patterns" xpReward={8} />
 
-### ❌ Mistake 1: Too Many Dependencies
+---
+
+## Section 2: Common Anti-Patterns
+
+### ❌ Anti-Pattern 1: Too Many Dependencies
 
 ```csharp
 // BAD: This class does too much!
@@ -116,7 +124,7 @@ public class GodService
 
 **Fix:** Split into smaller, focused classes!
 
-### ❌ Mistake 2: Using new for Services
+### ❌ Anti-Pattern 2: Using new for Services
 
 ```csharp
 // BAD: Don't create services with "new"
@@ -125,7 +133,7 @@ var service = new UserService();  // Where are the dependencies?
 
 **Fix:** Let the DI container create everything!
 
-### ❌ Mistake 3: Storing in Static Fields
+### ❌ Anti-Pattern 3: Service Locator Pattern
 
 ```csharp
 // BAD: Don't store services in static fields
@@ -137,6 +145,124 @@ public static class ServiceLocator
 
 **Fix:** Inject where needed, don't use global state!
 
+### ❌ Anti-Pattern 4: Property Injection
+
+```csharp
+// BAD: Optional dependencies are confusing
+public class OrderService
+{
+    public ILogger Logger { get; set; }  // Might be null!
+
+    public void Process()
+    {
+        Logger?.LogInfo("Processing...");  // Have to check for null
+    }
+}
+```
+
+**Fix:** Use constructor injection so dependencies are always there!
+
+<ProgressCheckpoint section="common-anti-patterns" xpReward={9} />
+
+---
+
+## Section 3: Best Practices
+
+### ✅ Practice 1: Keep Constructors Small
+
+Aim for 3-5 dependencies maximum:
+
+```csharp
+// ✅ GOOD - Focused class with few dependencies
+public class UserService
+{
+    private readonly IUserRepository _repository;
+    private readonly IEmailService _emailService;
+    private readonly ILogger<UserService> _logger;
+
+    public UserService(
+        IUserRepository repository,
+        IEmailService emailService,
+        ILogger<UserService> logger)
+    {
+        _repository = repository;
+        _emailService = emailService;
+        _logger = logger;
+    }
+}
+```
+
+### ✅ Practice 2: Use Interfaces for Abstraction
+
+```csharp
+// Define interface
+public interface IEmailService
+{
+    void Send(string to, string message);
+}
+
+// Implement interface
+public class SmtpEmailService : IEmailService
+{
+    public void Send(string to, string message)
+    {
+        // Send via SMTP
+    }
+}
+
+// Inject interface
+public class UserService
+{
+    private readonly IEmailService _emailService;
+
+    public UserService(IEmailService emailService)
+    {
+        _emailService = emailService;
+    }
+}
+```
+
+### ✅ Practice 3: Register in Program.cs
+
+All service registrations should be in one place:
+
+```csharp
+// Program.cs
+var builder = WebApplication.CreateBuilder(args);
+
+// Register all services here
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddTransient<IEmailService, SmtpEmailService>();
+
+var app = builder.Build();
+```
+
+### ✅ Practice 4: Test with Fake Implementations
+
+DI makes testing easy:
+
+```csharp
+// Create a fake for testing
+public class FakeEmailService : IEmailService
+{
+    public List<string> SentEmails { get; } = new();
+
+    public void Send(string to, string message)
+    {
+        SentEmails.Add(to);  // Just track, don't actually send
+    }
+}
+
+// Use in test
+var fakeEmail = new FakeEmailService();
+var service = new UserService(repository, fakeEmail, logger);
+
+service.CreateUser("test@example.com");
+
+Assert.Contains("test@example.com", fakeEmail.SentEmails);
+```
+
 ## Key Takeaways
 
 - 💉 **Constructor injection** is the best pattern
@@ -144,5 +270,6 @@ public static class ServiceLocator
 - 📜 **Use interfaces** (`IUserService`) not classes (`UserService`)
 - 🔒 **Make dependencies readonly** to prevent changes
 - 📏 **Keep constructors small** (3-5 dependencies max)
+- 🧪 **Easy testing** with fake implementations
 
-<ProgressCheckpoint section="injection-patterns" xpReward={25} />
+<ProgressCheckpoint section="best-practices" xpReward={8} />

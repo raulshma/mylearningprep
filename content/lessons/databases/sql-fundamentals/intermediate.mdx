@@ -2,7 +2,51 @@
 
 Now that you know the basics, let's dive deeper into more powerful SQL features that will make you a database pro!
 
-## 🔗 JOINs - Connecting Tables
+---
+
+## Section 1: Introduction to SQL
+
+### SQL in the Real World
+
+In production applications, SQL is used for:
+
+- **Data retrieval** - Fetching user profiles, product catalogs, order history
+- **Data manipulation** - Creating accounts, updating inventory, processing transactions
+- **Reporting** - Generating sales reports, analytics dashboards
+- **Data integrity** - Ensuring consistency through constraints and transactions
+
+### Database Tables and Relationships
+
+Real applications use multiple related tables:
+
+```sql
+-- Users table
+CREATE TABLE Users (
+    Id INT PRIMARY KEY,
+    Name VARCHAR(100),
+    Email VARCHAR(100) UNIQUE,
+    CreatedAt DATETIME
+);
+
+-- Orders table (related to Users)
+CREATE TABLE Orders (
+    Id INT PRIMARY KEY,
+    UserId INT,
+    Total DECIMAL(10,2),
+    OrderDate DATETIME,
+    FOREIGN KEY (UserId) REFERENCES Users(Id)
+);
+```
+
+The `FOREIGN KEY` creates a relationship: each order belongs to one user.
+
+<ProgressCheckpoint section="intro-sql" xpReward={12} />
+
+---
+
+## Section 2: SELECT Queries
+
+### 🔗 JOINs - Connecting Tables
 
 Real databases have multiple related tables. JOINs let you combine data from different tables based on relationships.
 
@@ -31,7 +75,7 @@ LEFT JOIN Orders ON Users.Id = Orders.UserId;`}
   ]}
 />
 
-### Types of JOINs Visualized
+#### Types of JOINs Visualized
 
 | JOIN Type | What It Returns | Use When |
 |:----------|:----------------|:---------|
@@ -40,7 +84,7 @@ LEFT JOIN Orders ON Users.Id = Orders.UserId;`}
 | RIGHT JOIN | All right + matching left | Rarely used (use LEFT JOIN instead) |
 | FULL OUTER JOIN | All rows from both | You need complete picture of both |
 
-## 📊 Aggregate Functions
+### 📊 Aggregate Functions
 
 Aggregate functions perform calculations across multiple rows:
 
@@ -81,7 +125,7 @@ SELECT SUM(Total) AS Revenue FROM Orders;`}
   ]}
 />
 
-## 📁 GROUP BY - Grouping Data
+### 📁 GROUP BY - Grouping Data
 
 GROUP BY organizes your data into groups and lets you aggregate within each group:
 
@@ -109,7 +153,7 @@ GROUP BY Users.Id, Users.Name;`}
   ]}
 />
 
-## 🎯 HAVING - Filtering Groups
+### 🎯 HAVING - Filtering Groups
 
 HAVING is like WHERE, but for grouped data:
 
@@ -128,7 +172,69 @@ HAVING COUNT(Orders.Id) > 5;
 > - WHERE filters individual rows BEFORE grouping
 > - HAVING filters groups AFTER grouping
 
-## 📦 Subqueries
+<ProgressCheckpoint section="select-queries" xpReward={13} />
+
+---
+
+## Section 3: INSERT, UPDATE, DELETE
+
+### Batch INSERT Operations
+
+Insert multiple rows at once:
+
+```sql
+-- Insert multiple users
+INSERT INTO Users (Name, Email, Age)
+VALUES 
+    ('Alice', 'alice@email.com', 28),
+    ('Bob', 'bob@email.com', 35),
+    ('Charlie', 'charlie@email.com', 42);
+```
+
+### UPDATE with Calculations
+
+```sql
+-- Increase all prices by 10%
+UPDATE Products
+SET Price = Price * 1.10
+WHERE Category = 'Electronics';
+
+-- Update based on another table
+UPDATE Users
+SET LastOrderDate = (
+    SELECT MAX(OrderDate)
+    FROM Orders
+    WHERE Orders.UserId = Users.Id
+)
+WHERE EXISTS (SELECT 1 FROM Orders WHERE Orders.UserId = Users.Id);
+```
+
+### Conditional DELETE
+
+```sql
+-- Delete old inactive users
+DELETE FROM Users
+WHERE IsActive = 0 
+  AND LastLoginDate < DATEADD(year, -2, GETDATE());
+
+-- Delete with JOIN (SQL Server syntax)
+DELETE Orders
+FROM Orders
+INNER JOIN Users ON Orders.UserId = Users.Id
+WHERE Users.IsDeleted = 1;
+```
+
+<InfoBox type="warning">
+  **Always test UPDATE and DELETE with SELECT first!** Replace UPDATE/DELETE with SELECT * to see what rows will be affected.
+</InfoBox>
+
+<ProgressCheckpoint section="insert-update-delete" xpReward={12} />
+
+---
+
+## Section 4: WHERE Clauses
+
+### 📦 Subqueries in WHERE
 
 Subqueries are queries inside queries - powerful for complex logic:
 
@@ -157,7 +263,30 @@ WHERE Id IN (SELECT DISTINCT UserId FROM Orders);`}
   ]}
 />
 
-## 🔄 Set Operations
+### Advanced WHERE Patterns
+
+```sql
+-- EXISTS for checking related records
+SELECT Name
+FROM Users u
+WHERE EXISTS (
+    SELECT 1 FROM Orders o 
+    WHERE o.UserId = u.Id AND o.Total > 1000
+);
+
+-- NOT IN for exclusion
+SELECT Name
+FROM Users
+WHERE Id NOT IN (SELECT UserId FROM Banned);
+
+-- Complex conditions
+SELECT *
+FROM Products
+WHERE (Category = 'Electronics' AND Price < 500)
+   OR (Category = 'Books' AND InStock = 1);
+```
+
+### 🔄 Set Operations
 
 Combine results from multiple queries:
 
@@ -167,7 +296,7 @@ SELECT Name FROM Users
 UNION
 SELECT Name FROM ArchivedUsers;
 
--- UNION ALL: Include duplicates
+-- UNION ALL: Include duplicates (faster)
 SELECT Name FROM Users
 UNION ALL
 SELECT Name FROM ArchivedUsers;
@@ -196,5 +325,6 @@ SELECT Email FROM Unsubscribed;
 | HAVING | `HAVING condition` | Filter grouped results |
 | Subquery | `(SELECT ... FROM ...)` | Query within a query |
 | UNION | `query1 UNION query2` | Combine query results |
+| EXISTS | `WHERE EXISTS (subquery)` | Check for related records |
 
-<ProgressCheckpoint section="select-queries" xpReward={50} />
+<ProgressCheckpoint section="where-clauses" xpReward={13} />

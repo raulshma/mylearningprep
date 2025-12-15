@@ -2,7 +2,9 @@
 
 The ASP.NET Core DI container (`Microsoft.Extensions.DependencyInjection`) provides multiple ways to register services, from simple interface-to-implementation mappings to factory-based registrations.
 
-## IServiceCollection Methods
+---
+
+## Section 1: IServiceCollection Methods
 
 The `IServiceCollection` interface provides methods for all three lifetimes:
 
@@ -21,7 +23,7 @@ builder.Services.AddScoped<UserRepository>();
 var logger = new ConsoleLogger();
 builder.Services.AddSingleton<ILogger>(logger);
 
-// Form 4: Type objects
+// Form 4: Type objects (open generics)
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
 ```
 
@@ -46,12 +48,16 @@ builder.Services.AddScoped<IUserService>(provider =>
 ```
 
 <InfoBox type="tip">
-  Factory-based registration is useful when: - Constructor requires runtime
-  values (connection strings) - You need conditional creation logic - You want
-  to wrap with decorators
+  Factory-based registration is useful when: Constructor requires runtime values, You need conditional creation logic, or You want to wrap with decorators.
 </InfoBox>
 
-## TryAdd Methods: Safe Registration
+<ProgressCheckpoint section="container-basics" xpReward={13} />
+
+---
+
+## Section 2: TryAdd and Multiple Implementations
+
+### TryAdd Methods: Safe Registration
 
 `TryAdd*` methods only register if the service **isn't already registered**:
 
@@ -63,33 +69,7 @@ builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 builder.Services.TryAddScoped<IEmailService, SmtpEmailService>();
 ```
 
-This is especially useful for library authors:
-
-```csharp
-// Library extension method
-public static IServiceCollection AddMyLibrary(this IServiceCollection services)
-{
-    // Won't override if user already registered their own
-    services.TryAddScoped<IEmailService, DefaultEmailService>();
-    return services;
-}
-```
-
-### TryAddEnumerable: Add if Not Same Implementation
-
-```csharp
-// Only adds if this exact implementation isn't registered
-services.TryAddEnumerable(
-    ServiceDescriptor.Scoped<IValidator, EmailValidator>()
-);
-
-// This WILL add because it's a different implementation
-services.TryAddEnumerable(
-    ServiceDescriptor.Scoped<IValidator, PhoneValidator>()
-);
-```
-
-## Multiple Implementations
+### Multiple Implementations
 
 Register multiple implementations of the same interface:
 
@@ -125,34 +105,13 @@ public class NotificationService
 When injecting a single `INotifier`, you get the **last registered** implementation. Use `IEnumerable<T>` to get all.
 </InfoBox>
 
-## Replace and Remove
+<ProgressCheckpoint section="registration-methods" xpReward={14} />
 
-### Replace an Existing Registration
+---
 
-```csharp
-// Replace existing registration with new one
-builder.Services.Replace(
-    ServiceDescriptor.Scoped<IEmailService, NewEmailService>()
-);
-```
+## Section 3: Extension Methods and Best Practices
 
-### Remove a Registration
-
-```csharp
-// Find and remove
-var descriptor = builder.Services
-    .FirstOrDefault(d => d.ServiceType == typeof(IEmailService));
-
-if (descriptor != null)
-{
-    builder.Services.Remove(descriptor);
-}
-
-// Or remove all of a type
-builder.Services.RemoveAll<IEmailService>();
-```
-
-## Extension Method Pattern
+### Extension Method Pattern
 
 Organize registrations into extension methods:
 
@@ -168,27 +127,15 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IUserValidator, UserValidator>();
         return services;
     }
-
-    public static IServiceCollection AddEmailServices(
-        this IServiceCollection services,
-        string smtpHost)
-    {
-        services.AddTransient<IEmailService>(provider =>
-            new SmtpEmailService(smtpHost));
-        return services;
-    }
 }
 
 // Usage in Program.cs
-builder.Services
-    .AddUserServices()
-    .AddEmailServices("smtp.example.com");
+builder.Services.AddUserServices();
 ```
 
-## Resolving Services
+### Resolving Services
 
-### In Constructors (Preferred)
-
+**In Constructors (Preferred):**
 ```csharp
 public class UserController
 {
@@ -196,8 +143,7 @@ public class UserController
 }
 ```
 
-### Via IServiceProvider (Avoid in App Code)
-
+**Via IServiceProvider (Avoid in App Code):**
 ```csharp
 // Only use in factories or composition root!
 app.Services.GetRequiredService<IUserService>();
@@ -213,41 +159,14 @@ app.Services.GetService<IUserService>();  // Returns null if not found
 
 Always prefer `GetRequiredService<T>()` - fail fast, clear error messages.
 
-## Common Registration Patterns
+### Key Takeaways
 
-### Configuration Options
-
-```csharp
-builder.Services.Configure<SmtpOptions>(
-    builder.Configuration.GetSection("Smtp"));
-
-builder.Services.AddTransient<IEmailService, SmtpEmailService>();
-
-public class SmtpEmailService
-{
-    public SmtpEmailService(IOptions<SmtpOptions> options)
-    {
-        var host = options.Value.Host;
-    }
-}
-```
-
-### DbContext Registration
-
-```csharp
-builder.Services.AddDbContext<AppDbContext>(options =>
-{
-    options.UseSqlServer(
-        builder.Configuration.GetConnectionString("Default"));
-});
-```
-
-## Key Takeaways
-
+<InfoBox type="tip" title="Remember">
 - 📝 **Multiple registration forms** - Interface+impl, self, instance, factory
 - 🔒 **TryAdd methods** - Register only if not already registered
 - 📋 **Multiple implementations** - Use `IEnumerable<T>` to get all
 - 🔧 **Extension methods** - Organize registrations cleanly
 - ⚠️ **GetRequiredService** - Prefer over `GetService` for fail-fast behavior
+</InfoBox>
 
-<ProgressCheckpoint section="registration-methods" xpReward={40} />
+<ProgressCheckpoint section="advanced-registration" xpReward={13} />

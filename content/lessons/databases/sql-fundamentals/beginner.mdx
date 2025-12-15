@@ -2,7 +2,11 @@
 
 Welcome to the world of databases! SQL (Structured Query Language) is the universal language for talking to databases. Let's learn how to speak it!
 
-## 🗣️ What is SQL?
+---
+
+## Section 1: Introduction to SQL
+
+### 🗣️ What is SQL?
 
 Imagine you have a giant filing cabinet with thousands of folders. SQL is like having a super-smart assistant who can:
 
@@ -13,7 +17,7 @@ Imagine you have a giant filing cabinet with thousands of folders. SQL is like h
 
 > **Think of it this way:** SQL is like ordering at a restaurant. You tell the database what you want, and it brings it to you!
 
-## The Four Magic Words: CRUD
+### The Four Magic Words: CRUD
 
 Every database operation falls into four categories, known as **CRUD**:
 
@@ -24,13 +28,19 @@ Every database operation falls into four categories, known as **CRUD**:
 | **U**pdate | UPDATE | Changes existing data | Modifying your order |
 | **D**elete | DELETE | Removes data | Canceling an order |
 
-## Try It Out!
+### Try It Out!
 
 Use the interactive visualizer below to see how each SQL command works:
 
 <SqlQueryVisualizer mode="beginner" />
 
-## SELECT - Reading Data 📖
+<ProgressCheckpoint section="intro-sql" xpReward={7} />
+
+---
+
+## Section 2: SELECT Queries
+
+### SELECT - Reading Data 📖
 
 SELECT is the most common SQL command. It's how you ask questions about your data.
 
@@ -55,7 +65,27 @@ SELECT Name, Email FROM Users;`}
   ]}
 />
 
-## INSERT - Adding Data ➕
+### Selecting Multiple Columns
+
+```sql
+-- Get three specific columns
+SELECT Name, Email, Age FROM Users;
+
+-- You can rename columns with AS
+SELECT Name AS FullName, Email AS EmailAddress FROM Users;
+```
+
+<InfoBox type="tip">
+  **Pro Tip:** Only select the columns you need! It makes your queries faster and uses less memory.
+</InfoBox>
+
+<ProgressCheckpoint section="select-queries" xpReward={8} />
+
+---
+
+## Section 3: INSERT, UPDATE, DELETE
+
+### INSERT - Adding Data ➕
 
 INSERT adds new records to your table - like putting a new card in a filing cabinet.
 
@@ -77,7 +107,7 @@ VALUES ('Alice', 'alice@email.com', 28);`}
   ]}
 />
 
-## UPDATE - Changing Data ✏️
+### UPDATE - Changing Data ✏️
 
 UPDATE modifies existing records. Be careful - you can change many records at once!
 
@@ -105,7 +135,7 @@ WHERE Name = 'Alice';`}
   ]}
 />
 
-## DELETE - Removing Data 🗑️
+### DELETE - Removing Data 🗑️
 
 DELETE permanently removes records. Once gone, they're gone forever (without backups)!
 
@@ -131,7 +161,13 @@ WHERE Name = 'Alice';
   ]}
 />
 
-## 🔍 WHERE - Filtering Your Data
+<ProgressCheckpoint section="insert-update-delete" xpReward={8} />
+
+---
+
+## Section 4: WHERE Clauses
+
+### 🔍 WHERE - Filtering Your Data
 
 The WHERE clause is like a filter - it lets you specify exactly which rows you want to work with.
 
@@ -142,8 +178,38 @@ SELECT * FROM Users WHERE Age > 25;
 -- Find users named 'Bob'
 SELECT * FROM Users WHERE Name = 'Bob';
 
--- Combine conditions
+-- Combine conditions with AND
 SELECT * FROM Users WHERE Age > 25 AND Active = 1;
+
+-- Use OR for alternatives
+SELECT * FROM Users WHERE Age < 18 OR Age > 65;
+```
+
+### Comparison Operators
+
+| Operator | Meaning | Example |
+|:---------|:--------|:--------|
+| `=` | Equal to | `WHERE Age = 25` |
+| `!=` or `<>` | Not equal | `WHERE Status != 'Inactive'` |
+| `>` | Greater than | `WHERE Age > 18` |
+| `<` | Less than | `WHERE Price < 100` |
+| `>=` | Greater or equal | `WHERE Score >= 90` |
+| `<=` | Less or equal | `WHERE Stock <= 10` |
+
+### Special WHERE Operators
+
+```sql
+-- LIKE for pattern matching
+SELECT * FROM Users WHERE Email LIKE '%@gmail.com';
+
+-- IN for multiple values
+SELECT * FROM Users WHERE Age IN (18, 21, 25, 30);
+
+-- BETWEEN for ranges
+SELECT * FROM Products WHERE Price BETWEEN 10 AND 50;
+
+-- IS NULL for missing values
+SELECT * FROM Users WHERE Phone IS NULL;
 ```
 
 ## Quick Summary
@@ -154,5 +220,6 @@ SELECT * FROM Users WHERE Age > 25 AND Active = 1;
 | INSERT | Add new data | Column values |
 | UPDATE | Change data | **Always use WHERE!** |
 | DELETE | Remove data | **Always use WHERE!** |
+| WHERE | Filter rows | With UPDATE/DELETE |
 
-<ProgressCheckpoint section="intro-sql" xpReward={30} />
+<ProgressCheckpoint section="where-clauses" xpReward={7} />

@@ -2,7 +2,11 @@
 
 Let's explore advanced DI patterns, composition strategies, and architectural considerations for enterprise applications.
 
-## The Composition Root
+---
+
+## Section 1: Injection Patterns
+
+### The Composition Root
 
 The **Composition Root** is the single location where the entire object graph is composed. In ASP.NET Core, this is `Program.cs`.
 
@@ -67,9 +71,9 @@ public static class ApplicationServiceExtensions
 }
 ```
 
-## Advanced Factory Patterns
+### Advanced Factory Patterns
 
-### Abstract Factory
+#### Abstract Factory
 
 ```csharp
 public interface INotificationChannelFactory
@@ -105,7 +109,7 @@ public class NotificationChannelFactory : INotificationChannelFactory
 }
 ```
 
-### Func<T> Factory
+#### Func<T> Factory
 
 For simple scenarios, inject `Func<T>` instead of `IServiceProvider`:
 
@@ -133,7 +137,7 @@ public class MyService
 }
 ```
 
-## Decorator Chain Pattern
+### Decorator Chain Pattern
 
 Build a processing pipeline using decorators:
 
@@ -181,7 +185,193 @@ builder.Services.Decorate(typeof(IRequestHandler<,>), typeof(ValidationDecorator
 builder.Services.Decorate(typeof(IRequestHandler<,>), typeof(LoggingDecorator<,>));
 ```
 
-## Conditional Registration
+<ProgressCheckpoint section="injection-patterns" xpReward={20} />
+
+---
+
+## Section 2: Common Anti-Patterns
+
+### Service Locator Anti-Pattern
+
+<DIPatternShowcase pattern="service-locator" mode="advanced" />
+
+The Service Locator pattern hides dependencies and creates runtime coupling:
+
+```csharp
+// ❌ ANTI-PATTERN
+public class OrderProcessor
+{
+    private readonly IServiceProvider _provider;
+
+    public async Task ProcessAsync(Order order)
+    {
+        // Dependencies hidden - not visible in constructor
+        var validator = _provider.GetRequiredService<IOrderValidator>();
+        var payment = _provider.GetRequiredService<IPaymentService>();
+        var inventory = _provider.GetRequiredService<IInventoryService>();
+
+        // Runtime failure if service not registered
+    }
+}
+```
+
+**Problems:**
+
+1. **Hidden dependencies** - Can't see what the class needs
+2. **Runtime failures** - Missing services discovered at runtime, not compile-time
+3. **Testing complexity** - Must mock `IServiceProvider` instead of actual dependencies
+4. **Tight coupling** - Direct dependency on DI container
+
+**When acceptable:**
+
+- Factories that need runtime type resolution
+- Middleware that creates scopes
+- Background services managing scoped lifetimes
+
+### Captive Dependency
+
+A captive dependency occurs when a longer-lived service captures a shorter-lived dependency:
+
+```csharp
+// ❌ ANTI-PATTERN: Singleton capturing Scoped
+public class CachingService  // Registered as Singleton
+{
+    private readonly AppDbContext _context;  // DbContext is Scoped!
+
+    public CachingService(AppDbContext context)
+    {
+        _context = context;  // Captured! Will live for app lifetime
+    }
+}
+```
+
+**Fix with IServiceScopeFactory:**
+
+```csharp
+// ✅ CORRECT
+public class CachingService
+{
+    private readonly IServiceScopeFactory _scopeFactory;
+
+    public CachingService(IServiceScopeFactory scopeFactory)
+    {
+        _scopeFactory = scopeFactory;
+    }
+
+    public async Task<User> GetUserAsync(int id)
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        return await context.Users.FindAsync(id);
+    }
+}
+```
+
+### Circular Dependencies
+
+```csharp
+// ❌ ANTI-PATTERN
+public class ServiceA
+{
+    public ServiceA(ServiceB b) { }
+}
+
+public class ServiceB
+{
+    public ServiceB(ServiceA a) { }  // Circular!
+}
+```
+
+**Solutions:**
+
+1. **Introduce mediator/event bus:**
+
+```csharp
+public class ServiceA
+{
+    private readonly IMediator _mediator;
+
+    public async Task DoWorkAsync()
+    {
+        await _mediator.Send(new ServiceBCommand());
+    }
+}
+```
+
+2. **Use Lazy<T>:**
+
+```csharp
+public class ServiceA
+{
+    private readonly Lazy<ServiceB> _serviceB;
+
+    public ServiceA(Lazy<ServiceB> serviceB)
+    {
+        _serviceB = serviceB;
+    }
+
+    public void DoWork()
+    {
+        _serviceB.Value.Process();  // Resolved on demand
+    }
+}
+```
+
+### Constructor Over-Injection
+
+```csharp
+// ❌ ANTI-PATTERN: God class
+public class OrderService
+{
+    public OrderService(
+        IOrderRepository orders,
+        IUserRepository users,
+        IProductRepository products,
+        IInventoryService inventory,
+        IPaymentService payment,
+        IShippingService shipping,
+        IEmailService email,
+        INotificationService notifications,
+        IAnalyticsService analytics,
+        ILogger<OrderService> logger)  // 10 dependencies!
+    { }
+}
+```
+
+**Fix with Facade pattern:**
+
+```csharp
+// ✅ BETTER: Introduce facades
+public interface IOrderFulfillment
+{
+    Task FulfillAsync(Order order);
+}
+
+public class OrderService
+{
+    private readonly IOrderRepository _orders;
+    private readonly IOrderFulfillment _fulfillment;
+    private readonly ILogger<OrderService> _logger;
+
+    public OrderService(
+        IOrderRepository orders,
+        IOrderFulfillment fulfillment,
+        ILogger<OrderService> logger)
+    {
+        _orders = orders;
+        _fulfillment = fulfillment;
+        _logger = logger;
+    }
+}
+```
+
+<ProgressCheckpoint section="common-anti-patterns" xpReward={20} />
+
+---
+
+## Section 3: Best Practices
+
+### Conditional Registration
 
 Register different implementations based on environment or configuration:
 
@@ -216,9 +406,9 @@ builder.Services.Scan(scan => scan
     .WithScopedLifetime());
 ```
 
-## Integration Testing with DI
+### Integration Testing with DI
 
-### WebApplicationFactory Customization
+#### WebApplicationFactory Customization
 
 ```csharp
 public class CustomWebApplicationFactory : WebApplicationFactory<Program>
@@ -266,7 +456,7 @@ public class UserApiTests : IClassFixture<CustomWebApplicationFactory>
 }
 ```
 
-## Module Pattern
+### Module Pattern
 
 Organize registrations into cohesive modules:
 
@@ -320,7 +510,7 @@ builder.Services.AddModules(
     new PaymentModule());
 ```
 
-## Anti-Pattern Detection Checklist
+### Anti-Pattern Detection Checklist
 
 | Smell                      | Detection                      | Fix                      |
 | :------------------------- | :----------------------------- | :----------------------- |
@@ -331,7 +521,28 @@ builder.Services.AddModules(
 | Hidden Dependency          | Static service calls           | Explicit injection       |
 | Ambient Context            | `HttpContext.Current`          | `IHttpContextAccessor`   |
 
-<DIPatternShowcase pattern="service-locator" mode="advanced" />
+### Validation at Startup
+
+Catch configuration errors early:
+
+```csharp
+builder.Services.AddOptions<EmailOptions>()
+    .Bind(builder.Configuration.GetSection("Email"))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+public class EmailOptions
+{
+    [Required]
+    public string SmtpHost { get; set; } = "";
+
+    [Range(1, 65535)]
+    public int Port { get; set; } = 587;
+
+    [EmailAddress]
+    public string FromAddress { get; set; } = "";
+}
+```
 
 ## Key Takeaways
 
@@ -341,5 +552,7 @@ builder.Services.AddModules(
 - 🧪 **WebApplicationFactory** - Replace services for integration testing
 - 📦 **Module pattern** - Organize registrations into cohesive units
 - 🔍 **Anti-pattern detection** - Know the smells and their fixes
+- ⚠️ **Captive dependencies** - Use `IServiceScopeFactory` for scope management
+- 🔄 **Circular dependencies** - Break with mediator or `Lazy<T>`
 
-<ProgressCheckpoint section="best-practices" xpReward={60} />
+<ProgressCheckpoint section="best-practices" xpReward={20} />

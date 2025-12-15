@@ -2,23 +2,39 @@
 
 Beyond the basics, ASP.NET Core controllers support sophisticated patterns for building enterprise-grade APIs.
 
-## Custom Action Results
+## Section 1: Custom Action Results and Responses
+
+<WebApiControllerVisualizer mode="advanced" />
+
+### Custom Action Results
 
 Create reusable action results for consistent responses:
 
 ```csharp
-public class ApiResponse<T> : ActionResult
+public class ApiResponse<T>
 {
     public T? Data { get; set; }
     public string? Message { get; set; }
     public bool Success { get; set; }
     public IEnumerable<string>? Errors { get; set; }
+}
+
+public class ApiResult<T> : ActionResult
+{
+    private readonly ApiResponse<T> _response;
+    private readonly int _statusCode;
+
+    public ApiResult(ApiResponse<T> response, int statusCode = 200)
+    {
+        _response = response;
+        _statusCode = statusCode;
+    }
 
     public override async Task ExecuteResultAsync(ActionContext context)
     {
-        var result = new ObjectResult(this)
+        var result = new ObjectResult(_response)
         {
-            StatusCode = Success ? 200 : 400
+            StatusCode = _statusCode
         };
         await result.ExecuteResultAsync(context);
     }
@@ -26,44 +42,103 @@ public class ApiResponse<T> : ActionResult
 
 // Usage
 [HttpGet("{id}")]
-public ApiResponse<Product> GetById(int id)
+public ActionResult<ApiResponse<Product>> GetById(int id)
 {
     var product = _service.GetById(id);
-    return product is null
-        ? new ApiResponse<Product> { Success = false, Message = "Not found" }
-        : new ApiResponse<Product> { Success = true, Data = product };
+    
+    if (product is null)
+    {
+        return new ApiResult<Product>(
+            new ApiResponse<Product> { Success = false, Message = "Not found" },
+            404
+        );
+    }
+    
+    return new ApiResult<Product>(
+        new ApiResponse<Product> { Success = true, Data = product }
+    );
 }
 ```
 
-<WebApiControllerVisualizer mode="advanced" />
-
-## Action Filters
-
-Filters execute code before/after actions:
+### Problem Details for Errors
 
 ```csharp
-// Custom validation filter
+[HttpGet("{id}")]
+public ActionResult<Product> GetById(int id)
+{
+    var product = _service.GetById(id);
+    
+    if (product is null)
+    {
+        return Problem(
+            title: "Product not found",
+            detail: $"No product exists with ID {id}",
+            statusCode: 404,
+            instance: HttpContext.Request.Path
+        );
+    }
+    
+    return Ok(product);
+}
+```
+
+<ProgressCheckpoint section="controllers-actions-intro" xpReward={16} />
+
+---
+
+## Section 2: Action Filters and Cross-Cutting Concerns
+
+### Custom Validation Filter
+
+```csharp
 public class ValidateModelAttribute : ActionFilterAttribute
 {
     public override void OnActionExecuting(ActionExecutingContext context)
     {
         if (!context.ModelState.IsValid)
         {
-            context.Result = new BadRequestObjectResult(
-                new ValidationProblemDetails(context.ModelState));
+            var errors = context.ModelState
+                .Where(e => e.Value?.Errors.Count > 0)
+                .SelectMany(e => e.Value!.Errors.Select(err => 
+                    $"{e.Key}: {err.ErrorMessage}"));
+
+            context.Result = new BadRequestObjectResult(new
+            {
+                Success = false,
+                Errors = errors
+            });
         }
     }
 }
+```
 
-// Custom logging filter
+### Logging Filter
+
+```csharp
 public class LoggingFilterAttribute : ActionFilterAttribute
 {
     public override void OnActionExecuting(ActionExecutingContext context)
     {
         var logger = context.HttpContext.RequestServices
             .GetRequiredService<ILogger<LoggingFilterAttribute>>();
-        logger.LogInformation("Executing {Action}",
-            context.ActionDescriptor.DisplayName);
+        
+        logger.LogInformation(
+            "Executing {Action} with arguments: {@Arguments}",
+            context.ActionDescriptor.DisplayName,
+            context.ActionArguments
+        );
+    }
+
+    public override void OnActionExecuted(ActionExecutedContext context)
+    {
+        var logger = context.HttpContext.RequestServices
+            .GetRequiredService<ILogger<LoggingFilterAttribute>>();
+        
+        logger.LogInformation(
+            "Executed {Action} with result: {ResultType}",
+            context.ActionDescriptor.DisplayName,
+            context.Result?.GetType().Name
+        );
     }
 }
 
@@ -73,9 +148,40 @@ public class LoggingFilterAttribute : ActionFilterAttribute
 public class ProductsController : ControllerBase { }
 ```
 
-## API Versioning
+### Exception Filter
 
-Support multiple API versions:
+```csharp
+public class ApiExceptionFilterAttribute : ExceptionFilterAttribute
+{
+    public override void OnException(ExceptionContext context)
+    {
+        var logger = context.HttpContext.RequestServices
+            .GetRequiredService<ILogger<ApiExceptionFilterAttribute>>();
+
+        logger.LogError(context.Exception, "Unhandled exception");
+
+        context.Result = new ObjectResult(new
+        {
+            Success = false,
+            Message = "An unexpected error occurred",
+            TraceId = Activity.Current?.Id ?? context.HttpContext.TraceIdentifier
+        })
+        {
+            StatusCode = 500
+        };
+
+        context.ExceptionHandled = true;
+    }
+}
+```
+
+<ProgressCheckpoint section="controllers-actions-intermediate" xpReward={16} />
+
+---
+
+## Section 3: Advanced Patterns
+
+### API Versioning
 
 ```csharp
 // Using URL segment versioning
@@ -87,19 +193,25 @@ public class ProductsController : ControllerBase
 {
     [HttpGet]
     [MapToApiVersion("1.0")]
-    public ActionResult<List<ProductV1>> GetAllV1()
+    public ActionResult<List<ProductV1Dto>> GetAllV1()
         => Ok(_service.GetAllV1());
 
     [HttpGet]
     [MapToApiVersion("2.0")]
-    public ActionResult<List<ProductV2>> GetAllV2()
+    public ActionResult<List<ProductV2Dto>> GetAllV2()
         => Ok(_service.GetAllV2());
 }
+
+// Program.cs configuration
+builder.Services.AddApiVersioning(options =>
+{
+    options.DefaultApiVersion = new ApiVersion(1, 0);
+    options.AssumeDefaultVersionWhenUnspecified = true;
+    options.ReportApiVersions = true;
+});
 ```
 
-## CQRS Pattern with MediatR
-
-Decouple controllers from business logic:
+### CQRS Pattern with MediatR
 
 ```csharp
 public class ProductsController : ControllerBase
@@ -111,7 +223,10 @@ public class ProductsController : ControllerBase
 
     [HttpGet("{id}")]
     public async Task<ActionResult<ProductDto>> GetById(int id)
-        => Ok(await _mediator.Send(new GetProductQuery(id)));
+    {
+        var result = await _mediator.Send(new GetProductQuery(id));
+        return result is null ? NotFound() : Ok(result);
+    }
 
     [HttpPost]
     public async Task<ActionResult<int>> Create(CreateProductCommand command)
@@ -119,12 +234,18 @@ public class ProductsController : ControllerBase
         var id = await _mediator.Send(command);
         return CreatedAtAction(nameof(GetById), new { id }, id);
     }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(int id, UpdateProductCommand command)
+    {
+        if (id != command.Id) return BadRequest();
+        await _mediator.Send(command);
+        return NoContent();
+    }
 }
 ```
 
-## Cancellation Token Support
-
-Handle client disconnections gracefully:
+### Cancellation Token Support
 
 ```csharp
 [HttpGet]
@@ -143,9 +264,7 @@ public async Task<ActionResult<List<Product>>> GetAll(
 }
 ```
 
-## Controller Testing
-
-Test controllers with WebApplicationFactory:
+### Controller Testing
 
 ```csharp
 public class ProductsControllerTests : IClassFixture<WebApplicationFactory<Program>>
@@ -154,7 +273,14 @@ public class ProductsControllerTests : IClassFixture<WebApplicationFactory<Progr
 
     public ProductsControllerTests(WebApplicationFactory<Program> factory)
     {
-        _client = factory.CreateClient();
+        _client = factory.WithWebHostBuilder(builder =>
+        {
+            builder.ConfigureServices(services =>
+            {
+                // Replace real services with mocks
+                services.AddScoped<IProductService, MockProductService>();
+            });
+        }).CreateClient();
     }
 
     [Fact]
@@ -167,7 +293,25 @@ public class ProductsControllerTests : IClassFixture<WebApplicationFactory<Progr
             .ReadFromJsonAsync<List<Product>>();
         Assert.NotEmpty(products);
     }
+
+    [Fact]
+    public async Task GetById_NotFound_Returns404()
+    {
+        var response = await _client.GetAsync("/api/products/999");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
 }
 ```
 
-<ProgressCheckpoint section="controllers-actions-advanced" xpReward={50} />
+### Best Practices Summary
+
+| Pattern | When to Use |
+| :------ | :---------- |
+| **Custom Action Results** | Consistent API response format |
+| **Action Filters** | Cross-cutting concerns (logging, validation) |
+| **API Versioning** | Breaking changes, multiple clients |
+| **MediatR/CQRS** | Complex business logic, clean architecture |
+| **Cancellation Tokens** | Long-running operations |
+
+<ProgressCheckpoint section="controllers-actions-advanced" xpReward={18} />

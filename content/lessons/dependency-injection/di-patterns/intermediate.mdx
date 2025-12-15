@@ -2,9 +2,11 @@
 
 Let's explore common DI patterns, anti-patterns to avoid, and practical guidelines for writing maintainable, testable code.
 
-## Constructor Injection Best Practices
+---
 
-### Explicit Dependencies
+## Section 1: Injection Patterns
+
+### Constructor Injection Best Practices
 
 List ALL required dependencies in the constructor:
 
@@ -47,7 +49,7 @@ public class OrderService
 }
 ```
 
-## The Options Pattern
+### The Options Pattern
 
 Use `IOptions<T>` for configuration instead of raw values:
 
@@ -78,7 +80,7 @@ public class EmailService
 }
 ```
 
-### Options Interfaces Compared
+#### Options Interfaces Compared
 
 | Interface             | When to Use                                      |
 | :-------------------- | :----------------------------------------------- |
@@ -86,62 +88,7 @@ public class EmailService
 | `IOptionsSnapshot<T>` | Scoped, updates per request (reloadable configs) |
 | `IOptionsMonitor<T>`  | Singleton but watches for changes                |
 
-## Service Locator Anti-Pattern
-
-**Avoid** injecting `IServiceProvider` and resolving manually:
-
-<DIPatternShowcase pattern="service-locator" mode="intermediate" />
-
-```csharp
-// ❌ ANTI-PATTERN: Service Locator
-public class OrderService
-{
-    private readonly IServiceProvider _provider;
-
-    public OrderService(IServiceProvider provider)
-    {
-        _provider = provider;
-    }
-
-    public void Process(Order order)
-    {
-        // Hidden dependencies - not visible in constructor!
-        var payment = _provider.GetRequiredService<IPaymentService>();
-        var email = _provider.GetRequiredService<IEmailService>();
-    }
-}
-```
-
-**Problems:**
-
-1. Dependencies are **hidden** (not visible in constructor)
-2. **Harder to test** (need to mock IServiceProvider)
-3. **Runtime failures** instead of compile-time errors
-
-### When Service Locator is Acceptable
-
-The ONLY acceptable places:
-
-- **Factories** that create objects at runtime
-- **Middleware** that needs scoped services
-- **Background services** that need to create scopes
-
-```csharp
-// ✅ OK: Factory using IServiceProvider
-public class NotifierFactory : INotifierFactory
-{
-    private readonly IServiceProvider _provider;
-
-    public INotifier Create(string type) => type switch
-    {
-        "email" => _provider.GetRequiredService<EmailNotifier>(),
-        "sms" => _provider.GetRequiredService<SmsNotifier>(),
-        _ => throw new ArgumentException("Unknown type")
-    };
-}
-```
-
-## Factory Pattern with DI
+### Factory Pattern with DI
 
 Use factories for runtime object creation:
 
@@ -191,9 +138,68 @@ public class ReportController
 }
 ```
 
-## Common Anti-Patterns
+<ProgressCheckpoint section="injection-patterns" xpReward={13} />
 
-### 1. Captive Dependency
+---
+
+## Section 2: Common Anti-Patterns
+
+### Service Locator Anti-Pattern
+
+**Avoid** injecting `IServiceProvider` and resolving manually:
+
+<DIPatternShowcase pattern="service-locator" mode="intermediate" />
+
+```csharp
+// ❌ ANTI-PATTERN: Service Locator
+public class OrderService
+{
+    private readonly IServiceProvider _provider;
+
+    public OrderService(IServiceProvider provider)
+    {
+        _provider = provider;
+    }
+
+    public void Process(Order order)
+    {
+        // Hidden dependencies - not visible in constructor!
+        var payment = _provider.GetRequiredService<IPaymentService>();
+        var email = _provider.GetRequiredService<IEmailService>();
+    }
+}
+```
+
+**Problems:**
+
+1. Dependencies are **hidden** (not visible in constructor)
+2. **Harder to test** (need to mock IServiceProvider)
+3. **Runtime failures** instead of compile-time errors
+
+#### When Service Locator is Acceptable
+
+The ONLY acceptable places:
+
+- **Factories** that create objects at runtime
+- **Middleware** that needs scoped services
+- **Background services** that need to create scopes
+
+```csharp
+// ✅ OK: Factory using IServiceProvider
+public class NotifierFactory : INotifierFactory
+{
+    private readonly IServiceProvider _provider;
+
+    public INotifier Create(string type) => type switch
+    {
+        "email" => _provider.GetRequiredService<EmailNotifier>(),
+        "sms" => _provider.GetRequiredService<SmsNotifier>(),
+        _ => throw new ArgumentException("Unknown type")
+    };
+}
+```
+
+### Captive Dependency
 
 ```csharp
 // ❌ Scoped service captured in singleton
@@ -203,9 +209,29 @@ public class MySingleton
 }
 ```
 
-**Fix:** Use `IServiceScopeFactory` in singletons.
+**Fix:** Use `IServiceScopeFactory` in singletons:
 
-### 2. Circular Dependency
+```csharp
+// ✅ CORRECT: Create scope when needed
+public class MySingleton
+{
+    private readonly IServiceScopeFactory _scopeFactory;
+
+    public MySingleton(IServiceScopeFactory scopeFactory)
+    {
+        _scopeFactory = scopeFactory;
+    }
+
+    public void DoWork()
+    {
+        using var scope = _scopeFactory.CreateScope();
+        var scoped = scope.ServiceProvider.GetRequiredService<MyScopedService>();
+        scoped.Process();
+    }
+}
+```
+
+### Circular Dependency
 
 ```csharp
 // ❌ A depends on B, B depends on A
@@ -213,9 +239,22 @@ public class ServiceA { public ServiceA(ServiceB b) { } }
 public class ServiceB { public ServiceB(ServiceA a) { } }  // Boom!
 ```
 
-**Fix:** Introduce a third service or use `Lazy<T>`.
+**Fix:** Introduce a third service or use `Lazy<T>`:
 
-### 3. Constructor Over-Injection
+```csharp
+// ✅ Break cycle with Lazy<T>
+public class ServiceA
+{
+    private readonly Lazy<ServiceB> _serviceB;
+
+    public ServiceA(Lazy<ServiceB> serviceB)
+    {
+        _serviceB = serviceB;
+    }
+}
+```
+
+### Constructor Over-Injection
 
 ```csharp
 // ❌ Too many dependencies = class does too much
@@ -227,7 +266,13 @@ public class GodClass
 
 **Fix:** Split into smaller classes (Single Responsibility Principle).
 
-## Testing with DI
+<ProgressCheckpoint section="common-anti-patterns" xpReward={14} />
+
+---
+
+## Section 3: Best Practices
+
+### Testing with DI
 
 Constructor injection makes testing straightforward:
 
@@ -257,6 +302,104 @@ public class UserServiceTests
 }
 ```
 
+### Organizing Service Registrations
+
+Group related services together:
+
+```csharp
+// Program.cs
+var builder = WebApplication.CreateBuilder(args);
+
+// Infrastructure services
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+
+// Application services
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IOrderService, OrderService>();
+
+// External services
+builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection("Email"));
+builder.Services.AddTransient<IEmailService, SmtpEmailService>();
+
+var app = builder.Build();
+```
+
+### Extension Methods for Registration
+
+Create extension methods for cleaner registration:
+
+```csharp
+public static class ServiceCollectionExtensions
+{
+    public static IServiceCollection AddApplicationServices(
+        this IServiceCollection services)
+    {
+        services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IOrderService, OrderService>();
+        services.AddScoped<IProductService, ProductService>();
+        return services;
+    }
+
+    public static IServiceCollection AddInfrastructure(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddDbContext<AppDbContext>(options =>
+            options.UseSqlServer(configuration.GetConnectionString("Default")));
+
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IOrderRepository, OrderRepository>();
+
+        return services;
+    }
+}
+
+// Usage in Program.cs
+builder.Services.AddApplicationServices();
+builder.Services.AddInfrastructure(builder.Configuration);
+```
+
+### Conditional Registration
+
+Register different implementations based on environment:
+
+```csharp
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddScoped<IEmailService, FakeEmailService>();
+}
+else
+{
+    builder.Services.AddScoped<IEmailService, SmtpEmailService>();
+}
+```
+
+### Validation at Startup
+
+Validate configuration at startup:
+
+```csharp
+builder.Services.AddOptions<EmailOptions>()
+    .Bind(builder.Configuration.GetSection("Email"))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+public class EmailOptions
+{
+    [Required]
+    public string SmtpHost { get; set; } = "";
+
+    [Range(1, 65535)]
+    public int Port { get; set; } = 587;
+
+    [EmailAddress]
+    public string FromAddress { get; set; } = "";
+}
+```
+
 ## Key Takeaways
 
 - 💉 **Constructor injection** - All dependencies explicit and visible
@@ -264,5 +407,7 @@ public class UserServiceTests
 - 🚫 **Avoid Service Locator** - Except in factories/middleware
 - 🏭 **Factory pattern** - For runtime object creation
 - 🧪 **Easy testing** - Inject mocks via constructor
+- 📦 **Extension methods** - Organize registrations cleanly
+- ✅ **Validate early** - Use ValidateOnStart for options
 
-<ProgressCheckpoint section="common-anti-patterns" xpReward={40} />
+<ProgressCheckpoint section="best-practices" xpReward={13} />

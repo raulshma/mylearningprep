@@ -2,12 +2,15 @@
 
 Master sophisticated routing techniques for complex API architectures.
 
-## Custom Route Constraints
+## Section 1: Custom Route Constraints
+
+<RoutingAttributeExplorer mode="advanced" />
+
+### Creating Custom Constraints
 
 Create reusable constraints for domain-specific validation:
 
 ```csharp
-// Custom constraint for valid product codes
 public class ProductCodeConstraint : IRouteConstraint
 {
     public bool Match(
@@ -39,21 +42,35 @@ builder.Services.Configure<RouteOptions>(options =>
 public ActionResult<Product> GetByCode(string code) { }
 ```
 
-<RoutingAttributeExplorer mode="advanced" />
-
-## Endpoint Metadata
-
-Access and apply metadata to endpoints:
+### Composite Constraints
 
 ```csharp
-// Custom metadata attribute
+// Multiple constraints on one parameter
+[HttpGet("{id:int:min(1):max(10000)}")]
+public ActionResult<Product> GetById(int id) { }
+
+// Custom constraint with built-in
+[HttpGet("{code:productCode:required}")]
+public ActionResult<Product> GetByCode(string code) { }
+```
+
+<ProgressCheckpoint section="routing-intro" xpReward={16} />
+
+---
+
+## Section 2: Endpoint Metadata and Areas
+
+### Custom Endpoint Metadata
+
+
+```csharp
 [AttributeUsage(AttributeTargets.Method)]
-public class RequiresPremiumAttribute : Attribute, IEndpointMetadata
+public class RequiresPremiumAttribute : Attribute
 {
     public string Plan { get; set; } = "Premium";
 }
 
-// Usage
+// Usage on action
 [HttpGet("premium-features")]
 [RequiresPremium(Plan = "Enterprise")]
 public ActionResult GetPremiumFeatures() { }
@@ -67,14 +84,14 @@ app.Use(async (context, next) =>
 
     if (requiresPremium != null)
     {
-        // Check user's subscription
+        // Check user's subscription plan
     }
 
     await next();
 });
 ```
 
-## Area Routing
+### Area Routing
 
 Organize large APIs into areas:
 
@@ -90,37 +107,13 @@ public class UsersController : ControllerBase
 }
 ```
 
-## Dynamic Route Generation
+<ProgressCheckpoint section="routing-intermediate" xpReward={16} />
 
-Generate routes programmatically:
+---
 
-```csharp
-// Route provider for dynamic endpoints
-public class FeatureRouteConvention : IApplicationModelConvention
-{
-    public void Apply(ApplicationModel application)
-    {
-        foreach (var controller in application.Controllers)
-        {
-            var feature = controller.ControllerType
-                .GetCustomAttribute<FeatureAttribute>();
+## Section 3: Route Precedence and Link Generation
 
-            if (feature != null)
-            {
-                controller.Selectors[0].AttributeRouteModel =
-                    new AttributeRouteModel
-                    {
-                        Template = $"api/features/{feature.Name}/[controller]"
-                    };
-            }
-        }
-    }
-}
-```
-
-## Route Precedence
-
-Understanding route matching priority:
+### Route Matching Priority
 
 ```csharp
 // More specific routes match first
@@ -138,9 +131,7 @@ Understanding route matching priority:
 [HttpGet("{**path}")]  // /api/products/any/nested/path
 ```
 
-## Link Generation
-
-Generate URLs for routing:
+### Link Generation
 
 ```csharp
 public class ProductsController : ControllerBase
@@ -155,7 +146,6 @@ public class ProductsController : ControllerBase
     {
         _service.Add(product);
 
-        // Generate URL to the GetById action
         var url = _linkGenerator.GetPathByAction(
             action: nameof(GetById),
             controller: "Products",
@@ -169,11 +159,10 @@ public class ProductsController : ControllerBase
 }
 ```
 
-## Route Debugging
-
-Inspect registered routes:
+### Route Debugging
 
 ```csharp
+// Debug endpoint to inspect all routes
 app.MapGet("/debug/routes", (IEnumerable<EndpointDataSource> sources) =>
 {
     var endpoints = sources
@@ -190,4 +179,14 @@ app.MapGet("/debug/routes", (IEnumerable<EndpointDataSource> sources) =>
 });
 ```
 
-<ProgressCheckpoint section="routing-advanced" xpReward={50} />
+### Best Practices Summary
+
+| Pattern | Use Case |
+| :------ | :------- |
+| **Custom Constraints** | Domain-specific validation |
+| **Endpoint Metadata** | Cross-cutting concerns |
+| **Areas** | Large API organization |
+| **Named Routes** | Link generation |
+| **Catch-all Routes** | Fallback handling |
+
+<ProgressCheckpoint section="routing-advanced" xpReward={18} />

@@ -1,125 +1,104 @@
-# Advanced Multi-Mapping with Dapper
+# Multi-Mapping - Advanced
 
-You've mastered the basics of multi-mapping. Now let's tackle complex scenarios: one-to-many relationships, handling duplicates, custom split logic, and performance optimization for large-scale applications.
+Master enterprise-grade multi-mapping patterns including multi-level hierarchies, generic helpers, performance optimization, and architectural best practices.
 
-<InfoBox type="tip" title="Advanced Techniques Ahead">
-This lesson covers aggregated collections, dictionary-based lookups for deduplication, and architectural patterns for maintainable data access layers.
+<InfoBox type="tip" title="Expert Level">
+This lesson covers complex hierarchies, reusable extension methods, caching strategies, and production-ready repository patterns.
 </InfoBox>
 
-<ProgressCheckpoint section="introduction-multi-mapping" xpReward={12} />
+<ProgressCheckpoint section="introduction-multi-mapping" xpReward={14} />
 
-## One-to-Many Relationships: The Grouping Challenge
+## Section 1: Advanced Multi-Mapping Architecture
 
-The most common advanced scenario is mapping one-to-many relationships. For example, one customer has many orders. The challenge? SQL JOINs create duplicate parent records.
+### Understanding the Data Flow
 
-### The Problem
-
-```sql
-SELECT c.*, o.*
-FROM Customers c
-LEFT JOIN Orders o ON o.CustomerId = c.CustomerId
-WHERE c.CustomerId = 1
+```
+SQL Result (Flat Rows)
+    ↓
+Dapper Multi-Map Function
+    ↓
+Dictionary Deduplication
+    ↓
+Object Graph (Hierarchical)
 ```
 
-**Result:**
-| CustomerId | Name  | Email       | OrderId | Total |
-|------------|-------|-------------|---------|-------|
-| 1          | Alice | alice@...   | 101     | 50.00 |
-| 1          | Alice | alice@...   | 102     | 75.00 |
-| 1          | Alice | alice@...   | 103     | 30.00 |
+### Memory-Efficient Streaming
 
-Notice Alice appears three times! We need to **deduplicate** and build a collection.
-
-### Solution: Dictionary-Based Deduplication
+For very large datasets, consider streaming:
 
 ```csharp
-public class Customer
+public async IAsyncEnumerable<Customer> StreamCustomersWithOrdersAsync(
+    [EnumeratorCancellation] CancellationToken ct = default)
 {
-    public int CustomerId { get; set; }
-    public string Name { get; set; }
-    public string Email { get; set; }
-    public List<Order> Orders { get; set; } = new List<Order>();
-}
+    var sql = @"
+        SELECT c.*, o.*
+        FROM Customers c
+        LEFT JOIN Orders o ON o.CustomerId = c.CustomerId
+        ORDER BY c.CustomerId, o.OrderId";
 
-public class Order
-{
-    public int OrderId { get; set; }
-    public int CustomerId { get; set; }
-    public decimal Total { get; set; }
-    public DateTime OrderDate { get; set; }
-}
+    await using var connection = new SqlConnection(_connectionString);
+    await connection.OpenAsync(ct);
 
-var sql = @"
-    SELECT c.*, o.*
-    FROM Customers c
-    LEFT JOIN Orders o ON o.CustomerId = c.CustomerId
-    WHERE c.CustomerId = @customerId";
+    Customer? currentCustomer = null;
 
-var customerDictionary = new Dictionary<int, Customer>();
-
-var result = connection.Query<Customer, Order, Customer>(
-    sql,
-    (customer, order) =>
+    await foreach (var row in connection.Query<Customer, Order, (Customer, Order)>(
+        sql,
+        (c, o) => (c, o),
+        splitOn: "OrderId",
+        buffered: false
+    ).ToAsyncEnumerable().WithCancellation(ct))
     {
-        // Check if we've seen this customer before
-        if (!customerDictionary.TryGetValue(customer.CustomerId, out var existingCustomer))
+        if (currentCustomer == null || currentCustomer.CustomerId != row.Item1.CustomerId)
         {
-            // First time seeing this customer
-            existingCustomer = customer;
-            customerDictionary.Add(customer.CustomerId, existingCustomer);
+            if (currentCustomer != null)
+            {
+                yield return currentCustomer;
+            }
+            currentCustomer = row.Item1;
         }
 
-        // Add the order to the customer's collection
-        if (order != null) // Handle LEFT JOIN nulls
+        if (row.Item2 != null)
         {
-            existingCustomer.Orders.Add(order);
+            currentCustomer.Orders.Add(row.Item2);
         }
+    }
 
-        return existingCustomer;
-    },
-    new { customerId = 1 },
-    splitOn: "OrderId"
-);
-
-// Get the unique customer with all orders
-var customer = customerDictionary.Values.FirstOrDefault();
-
-Console.WriteLine($"Customer: {customer.Name}");
-foreach (var order in customer.Orders)
-{
-    Console.WriteLine($"  Order #{order.OrderId}: ${order.Total}");
+    if (currentCustomer != null)
+    {
+        yield return currentCustomer;
+    }
 }
 ```
 
-<KeyConcept title="Why Use a Dictionary?">
-Without the dictionary, Dapper would create a new Customer object for each row, giving you three separate Alice objects. The dictionary acts as a **lookup cache** to ensure we only have one Customer instance, with all orders added to its collection.
-</KeyConcept>
+<ProgressCheckpoint section="two-type-mapping" xpReward={14} />
 
-<ProgressCheckpoint section="two-type-mapping" xpReward={12} />
+---
 
-## Generic Helper Method for One-to-Many
+## Section 2: Generic Multi-Mapping Extensions
 
-Create a reusable extension method:
+### Reusable One-to-Many Helper
 
 ```csharp
-public static class DapperExtensions
+public static class DapperMultiMapExtensions
 {
-    public static IEnumerable<TParent> QueryOneToMany<TParent, TChild, TKey>(
+    public static async Task<IEnumerable<TParent>> QueryParentChildAsync<TParent, TChild, TKey>(
         this IDbConnection connection,
         string sql,
         Func<TParent, TKey> parentKeySelector,
-        Func<TParent, IList<TChild>> childListSelector,
-        object param = null,
-        string splitOn = "Id")
+        Action<TParent, TChild> addChild,
+        object? param = null,
+        string splitOn = "Id",
+        IDbTransaction? transaction = null)
+        where TKey : notnull
     {
         var lookup = new Dictionary<TKey, TParent>();
 
-        connection.Query<TParent, TChild, TParent>(
+        await connection.QueryAsync<TParent, TChild, TParent>(
             sql,
             (parent, child) =>
             {
                 var key = parentKeySelector(parent);
-                
+
                 if (!lookup.TryGetValue(key, out var existingParent))
                 {
                     existingParent = parent;
@@ -128,13 +107,13 @@ public static class DapperExtensions
 
                 if (child != null)
                 {
-                    var childList = childListSelector(existingParent);
-                    childList.Add(child);
+                    addChild(existingParent, child);
                 }
 
                 return existingParent;
             },
             param,
+            transaction,
             splitOn: splitOn
         );
 
@@ -143,177 +122,296 @@ public static class DapperExtensions
 }
 
 // Usage - much cleaner!
-var customers = connection.QueryOneToMany<Customer, Order, int>(
+var customers = await connection.QueryParentChildAsync<Customer, Order, int>(
     sql,
-    parent => parent.CustomerId,           // Key selector
-    parent => parent.Orders,                // Child collection selector
-    new { customerId = 1 },
+    c => c.CustomerId,
+    (c, o) => c.Orders.Add(o),
+    new { minOrderTotal = 100 },
     splitOn: "OrderId"
 );
 ```
 
-<ProgressCheckpoint section="spliton-parameter" xpReward={12} />
-
-## Multi-Level Relationships
-
-What if an Order has OrderItems, creating a three-level hierarchy?
+### Three-Level Hierarchy Helper
 
 ```csharp
-public class Customer
+public static async Task<IEnumerable<TGrandparent>> QueryThreeLevelAsync<TGrandparent, TParent, TChild, TGrandparentKey, TParentKey>(
+    this IDbConnection connection,
+    string sql,
+    Func<TGrandparent, TGrandparentKey> grandparentKeySelector,
+    Func<TParent, TParentKey> parentKeySelector,
+    Func<TParent, TGrandparentKey> parentToGrandparentKey,
+    Action<TGrandparent, TParent> addParent,
+    Action<TParent, TChild> addChild,
+    object? param = null,
+    string splitOn = "Id,Id")
+    where TGrandparentKey : notnull
+    where TParentKey : notnull
 {
-    public int CustomerId { get; set; }
-    public string Name { get; set; }
-    public List<Order> Orders { get; set; } = new List<Order>();
-}
+    var grandparentLookup = new Dictionary<TGrandparentKey, TGrandparent>();
+    var parentLookup = new Dictionary<TParentKey, TParent>();
 
-public class Order
-{
-    public int OrderId { get; set; }
-    public DateTime OrderDate { get; set; }
-    public decimal Total { get; set; }
-    public List<OrderItem> Items { get; set; } = new List<OrderItem>();
-}
-
-public class OrderItem
-{
-    public int OrderItemId { get; set; }
-    public int OrderId { get; set; }
-    public string ProductName { get; set; }
-    public int Quantity { get; set; }
-    public decimal Price { get; set; }
-}
-
-var sql = @"
-    SELECT c.*, o.*, oi.*
-    FROM Customers c
-    LEFT JOIN Orders o ON o.CustomerId = c.CustomerId
-    LEFT JOIN OrderItems oi ON oi.OrderId = o.OrderId
-    WHERE c.CustomerId = @customerId";
-
-var customerLookup = new Dictionary<int, Customer>();
-var orderLookup = new Dictionary<int, Order>();
-
-var result = connection.Query<Customer, Order, OrderItem, Customer>(
-    sql,
-    (customer, order, orderItem) =>
-    {
-        // Deduplicate customer
-        if (!customerLookup.TryGetValue(customer.CustomerId, out var existingCustomer))
+    await connection.QueryAsync<TGrandparent, TParent, TChild, TGrandparent>(
+        sql,
+        (grandparent, parent, child) =>
         {
-            existingCustomer = customer;
-            customerLookup.Add(customer.CustomerId, existingCustomer);
-        }
+            var gpKey = grandparentKeySelector(grandparent);
 
-        // Deduplicate order
-        if (order != null)
-        {
-            if (!orderLookup.TryGetValue(order.OrderId, out var existingOrder))
+            if (!grandparentLookup.TryGetValue(gpKey, out var existingGp))
             {
-                existingOrder = order;
-                orderLookup.Add(order.OrderId, existingOrder);
-                existingCustomer.Orders.Add(existingOrder);
+                existingGp = grandparent;
+                grandparentLookup.Add(gpKey, existingGp);
             }
 
-            // Add item to order
-            if (orderItem != null)
+            if (parent != null)
             {
-                existingOrder.Items.Add(orderItem);
+                var pKey = parentKeySelector(parent);
+
+                if (!parentLookup.TryGetValue(pKey, out var existingParent))
+                {
+                    existingParent = parent;
+                    parentLookup.Add(pKey, existingParent);
+                    addParent(existingGp, existingParent);
+                }
+
+                if (child != null)
+                {
+                    addChild(existingParent, child);
+                }
             }
-        }
 
-        return existingCustomer;
-    },
-    new { customerId = 1 },
-    splitOn: "OrderId,OrderItemId"
-);
+            return existingGp;
+        },
+        param,
+        splitOn: splitOn
+    );
 
-var customer = customerLookup.Values.First();
-```
-
-<DapperMultiMappingVisualizer />
-
-<ProgressCheckpoint section="three-plus-types" xpReward={12} />
-
-## QueryMultiple: Avoiding JOIN Complexity
-
-Sometimes it's more efficient to execute multiple queries instead of complex JOINs:
-
-```csharp
-var sql = @"
-    SELECT * FROM Customers WHERE CustomerId = @customerId;
-    SELECT * FROM Orders WHERE CustomerId = @customerId;
-    SELECT oi.* 
-    FROM OrderItems oi
-    INNER JOIN Orders o ON o.OrderId = oi.OrderId
-    WHERE o.CustomerId = @customerId;";
-
-using (var multi = connection.QueryMultiple(sql, new { customerId = 1 }))
-{
-    var customer = multi.ReadSingle<Customer>();
-    customer.Orders = multi.Read<Order>().ToList();
-    var items = multi.Read<OrderItem>().ToList();
-
-    // Group items by OrderId
-    var itemsByOrder = items.GroupBy(i => i.OrderId);
-    
-    foreach (var order in customer.Orders)
-    {
-        order.Items = itemsByOrder
-            .FirstOrDefault(g => g.Key == order.OrderId)?
-            .ToList() ?? new List<OrderItem>();
-    }
+    return grandparentLookup.Values;
 }
 ```
 
-**Pros:**
-- Simpler SQL
-- No duplicate rows
-- Often better performance for large datasets
+<ProgressCheckpoint section="spliton-parameter" xpReward={14} />
 
-**Cons:**
-- More code to assemble objects
-- Multiple roundtrips (though batched)
+---
 
-<ProgressCheckpoint section="real-world-examples" xpReward={12} />
+## Section 3: Advanced SplitOn Strategies
 
-## Performance Optimization Strategies
-
-### Strategy 1: Pagination with Multi-Mapping
+### Dynamic SplitOn Resolution
 
 ```csharp
-public class PagedResult<T>
+public class MultiMapConfig<T>
 {
-    public List<T> Items { get; set; }
-    public int TotalCount { get; set; }
-    public int PageNumber { get; set; }
-    public int PageSize { get; set; }
+    public string SplitColumn { get; set; } = "Id";
+    public Func<T, bool> IsValid { get; set; } = _ => true;
 }
 
-public async Task<PagedResult<Customer>> GetCustomersWithOrdersAsync(
-    int pageNumber, 
-    int pageSize)
+public async Task<List<Order>> GetOrdersWithDynamicMappingAsync(
+    MultiMapConfig<Customer> customerConfig,
+    MultiMapConfig<Address> addressConfig)
 {
-    var offset = (pageNumber - 1) * pageSize;
-    
     var sql = @"
-        SELECT COUNT(DISTINCT c.CustomerId) FROM Customers c;
-        
-        SELECT c.*, o.*
-        FROM (
-            SELECT * FROM Customers
-            ORDER BY CustomerId
-            OFFSET @offset ROWS FETCH NEXT @pageSize ROWS ONLY
-        ) c
-        LEFT JOIN Orders o ON o.CustomerId = c.CustomerId
-        ORDER BY c.CustomerId, o.OrderId";
+        SELECT o.*, c.*, a.*
+        FROM Orders o
+        INNER JOIN Customers c ON c.CustomerId = o.CustomerId
+        LEFT JOIN Addresses a ON a.AddressId = o.ShippingAddressId";
 
-    using (var multi = await connection.QueryMultipleAsync(sql, new { offset, pageSize }))
+    var splitOn = $"{customerConfig.SplitColumn},{addressConfig.SplitColumn}";
+
+    await using var connection = new SqlConnection(_connectionString);
+    return (await connection.QueryAsync<Order, Customer, Address, Order>(
+        sql,
+        (order, customer, address) =>
+        {
+            if (customerConfig.IsValid(customer))
+                order.Customer = customer;
+            if (address != null && addressConfig.IsValid(address))
+                order.ShippingAddress = address;
+            return order;
+        },
+        splitOn: splitOn
+    )).ToList();
+}
+```
+
+### Handling Ambiguous Column Names
+
+```csharp
+// When both tables have 'Id', 'Name', etc.
+var sql = @"
+    SELECT 
+        o.Id AS OrderId,
+        o.Total,
+        o.OrderDate,
+        -- Customer columns with prefix
+        c.Id AS Customer_Id,
+        c.Name AS Customer_Name,
+        c.Email AS Customer_Email,
+        -- Address columns with prefix
+        a.Id AS Address_Id,
+        a.Street AS Address_Street,
+        a.City AS Address_City
+    FROM Orders o
+    INNER JOIN Customers c ON c.Id = o.CustomerId
+    LEFT JOIN Addresses a ON a.Id = o.AddressId";
+
+// Custom type with column mapping
+public class CustomerDto
+{
+    [Column("Customer_Id")]
+    public int Id { get; set; }
+    [Column("Customer_Name")]
+    public string Name { get; set; }
+    [Column("Customer_Email")]
+    public string Email { get; set; }
+}
+
+// Use splitOn with the aliased names
+var orders = connection.Query<Order, CustomerDto, AddressDto, Order>(
+    sql,
+    (order, customer, address) => { /* ... */ },
+    splitOn: "Customer_Id,Address_Id"
+);
+```
+
+<ProgressCheckpoint section="three-plus-types" xpReward={14} />
+
+---
+
+## Section 4: Complex Multi-Level Hierarchies
+
+### Four-Level Deep: Company → Department → Employee → Project
+
+```csharp
+public class Company
+{
+    public int CompanyId { get; set; }
+    public string Name { get; set; }
+    public List<Department> Departments { get; set; } = new();
+}
+
+public class Department
+{
+    public int DepartmentId { get; set; }
+    public string Name { get; set; }
+    public List<Employee> Employees { get; set; } = new();
+}
+
+public class Employee
+{
+    public int EmployeeId { get; set; }
+    public string Name { get; set; }
+    public List<Project> Projects { get; set; } = new();
+}
+
+public class Project
+{
+    public int ProjectId { get; set; }
+    public string Name { get; set; }
+}
+
+public async Task<Company?> GetCompanyHierarchyAsync(int companyId)
+{
+    var sql = @"
+        SELECT c.*, d.*, e.*, p.*
+        FROM Companies c
+        LEFT JOIN Departments d ON d.CompanyId = c.CompanyId
+        LEFT JOIN Employees e ON e.DepartmentId = d.DepartmentId
+        LEFT JOIN EmployeeProjects ep ON ep.EmployeeId = e.EmployeeId
+        LEFT JOIN Projects p ON p.ProjectId = ep.ProjectId
+        WHERE c.CompanyId = @companyId
+        ORDER BY d.DepartmentId, e.EmployeeId";
+
+    var companyLookup = new Dictionary<int, Company>();
+    var deptLookup = new Dictionary<int, Department>();
+    var empLookup = new Dictionary<int, Employee>();
+    var projectsAdded = new HashSet<(int, int)>(); // (EmployeeId, ProjectId)
+
+    await using var connection = new SqlConnection(_connectionString);
+    await connection.QueryAsync<Company, Department, Employee, Project, Company>(
+        sql,
+        (company, dept, emp, project) =>
+        {
+            if (!companyLookup.TryGetValue(company.CompanyId, out var existingCompany))
+            {
+                existingCompany = company;
+                companyLookup.Add(company.CompanyId, existingCompany);
+            }
+
+            if (dept != null)
+            {
+                if (!deptLookup.TryGetValue(dept.DepartmentId, out var existingDept))
+                {
+                    existingDept = dept;
+                    deptLookup.Add(dept.DepartmentId, existingDept);
+                    existingCompany.Departments.Add(existingDept);
+                }
+
+                if (emp != null)
+                {
+                    if (!empLookup.TryGetValue(emp.EmployeeId, out var existingEmp))
+                    {
+                        existingEmp = emp;
+                        empLookup.Add(emp.EmployeeId, existingEmp);
+                        existingDept.Employees.Add(existingEmp);
+                    }
+
+                    if (project != null)
+                    {
+                        var key = (emp.EmployeeId, project.ProjectId);
+                        if (!projectsAdded.Contains(key))
+                        {
+                            existingEmp.Projects.Add(project);
+                            projectsAdded.Add(key);
+                        }
+                    }
+                }
+            }
+
+            return existingCompany;
+        },
+        new { companyId },
+        splitOn: "DepartmentId,EmployeeId,ProjectId"
+    );
+
+    return companyLookup.Values.FirstOrDefault();
+}
+```
+
+<ProgressCheckpoint section="real-world-examples" xpReward={14} />
+
+---
+
+## Section 5: Production Patterns
+
+### Repository with Caching
+
+```csharp
+public class CachedCustomerRepository : ICustomerRepository
+{
+    private readonly IDbConnectionFactory _connectionFactory;
+    private readonly IMemoryCache _cache;
+    private readonly TimeSpan _cacheDuration = TimeSpan.FromMinutes(5);
+
+    public async Task<Customer?> GetWithOrdersAsync(int customerId)
     {
-        var totalCount = await multi.ReadSingleAsync<int>();
+        var cacheKey = $"customer:{customerId}:with-orders";
+
+        if (_cache.TryGetValue(cacheKey, out Customer? cached))
+        {
+            return cached;
+        }
+
+        await using var connection = _connectionFactory.CreateConnection();
         
+        var sql = @"
+            SELECT c.*, o.*
+            FROM Customers c
+            LEFT JOIN Orders o ON o.CustomerId = c.CustomerId
+            WHERE c.CustomerId = @customerId";
+
         var customerDict = new Dictionary<int, Customer>();
-        
-        var customers = await multi.ReadAsync<Customer, Order, Customer>(
+
+        await connection.QueryAsync<Customer, Order, Customer>(
+            sql,
             (customer, order) =>
             {
                 if (!customerDict.TryGetValue(customer.CustomerId, out var existing))
@@ -321,186 +419,202 @@ public async Task<PagedResult<Customer>> GetCustomersWithOrdersAsync(
                     existing = customer;
                     customerDict.Add(customer.CustomerId, existing);
                 }
+                if (order != null) existing.Orders.Add(order);
+                return existing;
+            },
+            new { customerId },
+            splitOn: "OrderId"
+        );
 
-                if (order != null)
+        var result = customerDict.Values.FirstOrDefault();
+        
+        if (result != null)
+        {
+            _cache.Set(cacheKey, result, _cacheDuration);
+        }
+
+        return result;
+    }
+}
+```
+
+### Specification Pattern for Dynamic Queries
+
+```csharp
+public interface ISpecification<T>
+{
+    string ToSql();
+    object GetParameters();
+}
+
+public class CustomerWithOrdersSpecification : ISpecification<Customer>
+{
+    public int? MinOrderCount { get; set; }
+    public decimal? MinTotalSpent { get; set; }
+    public DateTime? OrdersSince { get; set; }
+
+    public string ToSql()
+    {
+        var sql = new StringBuilder(@"
+            SELECT c.*, o.*
+            FROM Customers c
+            LEFT JOIN Orders o ON o.CustomerId = c.CustomerId
+            WHERE 1=1");
+
+        if (MinOrderCount.HasValue)
+            sql.Append(" AND c.CustomerId IN (SELECT CustomerId FROM Orders GROUP BY CustomerId HAVING COUNT(*) >= @MinOrderCount)");
+        
+        if (MinTotalSpent.HasValue)
+            sql.Append(" AND c.CustomerId IN (SELECT CustomerId FROM Orders GROUP BY CustomerId HAVING SUM(Total) >= @MinTotalSpent)");
+        
+        if (OrdersSince.HasValue)
+            sql.Append(" AND o.OrderDate >= @OrdersSince");
+
+        sql.Append(" ORDER BY c.CustomerId, o.OrderDate DESC");
+        
+        return sql.ToString();
+    }
+
+    public object GetParameters() => new
+    {
+        MinOrderCount,
+        MinTotalSpent,
+        OrdersSince
+    };
+}
+```
+
+<ProgressCheckpoint section="performance-tips" xpReward={15} />
+
+---
+
+## Section 6: Performance Optimization
+
+### Benchmark Comparison
+
+| Approach | 10K Customers + 50K Orders | Memory | Time |
+|----------|---------------------------|--------|------|
+| N+1 Queries | 10,001 DB calls | 200 MB | ~8000 ms |
+| Multi-Map JOIN | 1 DB call | 150 MB | ~400 ms |
+| QueryMultiple | 2 DB calls | 100 MB | ~350 ms |
+| Paginated (100/page) | 1 DB call | 15 MB | ~50 ms |
+
+### Optimized Pagination
+
+```csharp
+public async Task<PagedResult<Customer>> GetCustomersPagedAsync(
+    int page, 
+    int pageSize,
+    CancellationToken ct = default)
+{
+    var offset = (page - 1) * pageSize;
+
+    var sql = @"
+        -- Get total count
+        SELECT COUNT(DISTINCT CustomerId) FROM Customers;
+        
+        -- Get paginated customers with orders
+        WITH PagedCustomers AS (
+            SELECT CustomerId, Name, Email,
+                   ROW_NUMBER() OVER (ORDER BY CustomerId) AS RowNum
+            FROM Customers
+        )
+        SELECT pc.CustomerId, pc.Name, pc.Email, o.*
+        FROM PagedCustomers pc
+        LEFT JOIN Orders o ON o.CustomerId = pc.CustomerId
+        WHERE pc.RowNum BETWEEN @offset + 1 AND @offset + @pageSize
+        ORDER BY pc.CustomerId, o.OrderDate DESC";
+
+    await using var connection = new SqlConnection(_connectionString);
+    await using var multi = await connection.QueryMultipleAsync(
+        sql, 
+        new { offset, pageSize }
+    );
+
+    var totalCount = await multi.ReadSingleAsync<int>();
+    
+    var customerDict = new Dictionary<int, Customer>();
+    await multi.ReadAsync<Customer, Order, Customer>(
+        (customer, order) =>
+        {
+            if (!customerDict.TryGetValue(customer.CustomerId, out var existing))
+            {
+                existing = customer;
+                customerDict.Add(customer.CustomerId, existing);
+            }
+            if (order != null) existing.Orders.Add(order);
+            return existing;
+        },
+        splitOn: "OrderId"
+    );
+
+    return new PagedResult<Customer>
+    {
+        Items = customerDict.Values.ToList(),
+        TotalCount = totalCount,
+        Page = page,
+        PageSize = pageSize,
+        TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+    };
+}
+```
+
+### Connection and Query Optimization
+
+```csharp
+public class OptimizedRepository
+{
+    private readonly string _connectionString;
+
+    // Use CommandDefinition for fine-grained control
+    public async Task<List<Customer>> GetCustomersOptimizedAsync(
+        CancellationToken ct = default)
+    {
+        var sql = @"
+            SELECT c.CustomerId, c.Name, c.Email,
+                   o.OrderId, o.Total, o.OrderDate
+            FROM Customers c
+            LEFT JOIN Orders o ON o.CustomerId = c.CustomerId
+            ORDER BY c.CustomerId";
+
+        var command = new CommandDefinition(
+            sql,
+            cancellationToken: ct,
+            commandTimeout: 30,
+            flags: CommandFlags.Buffered
+        );
+
+        await using var connection = new SqlConnection(_connectionString);
+        
+        var customerDict = new Dictionary<int, Customer>();
+
+        await connection.QueryAsync<Customer, Order, Customer>(
+            command.CommandText,
+            (customer, order) =>
+            {
+                if (!customerDict.TryGetValue(customer.CustomerId, out var existing))
                 {
-                    existing.Orders.Add(order);
+                    existing = customer;
+                    customerDict.Add(customer.CustomerId, existing);
                 }
-
+                if (order != null) existing.Orders.Add(order);
                 return existing;
             },
             splitOn: "OrderId"
         );
 
-        return new PagedResult<Customer>
-        {
-            Items = customerDict.Values.ToList(),
-            TotalCount = totalCount,
-            PageNumber = pageNumber,
-            PageSize = pageSize
-        };
-    }
-}
-```
-
-### Strategy 2: Lazy Loading Alternative
-
-Instead of loading everything, provide a method to load related data on demand:
-
-```csharp
-public class Customer
-{
-    private readonly IDbConnection _connection;
-    
-    public int CustomerId { get; set; }
-    public string Name { get; set; }
-    
-    private List<Order> _orders;
-    public List<Order> Orders
-    {
-        get
-        {
-            if (_orders == null)
-            {
-                _orders = LoadOrders();
-            }
-            return _orders;
-        }
-    }
-    
-    private List<Order> LoadOrders()
-    {
-        return _connection.Query<Order>(
-            "SELECT * FROM Orders WHERE CustomerId = @customerId",
-            new { customerId = CustomerId }
-        ).ToList();
-    }
-}
-```
-
-**Note:** This violates some SOLID principles and isn't recommended for production. Better to use a repository pattern.
-
-<ProgressCheckpoint section="performance-tips" xpReward={10} />
-
-## Architectural Patterns
-
-### Repository Pattern with Multi-Mapping
-
-```csharp
-public interface ICustomerRepository
-{
-    Task<Customer> GetWithOrdersAsync(int customerId);
-    Task<IEnumerable<Customer>> GetAllWithOrdersAsync();
-}
-
-public class CustomerRepository : ICustomerRepository
-{
-    private readonly string _connectionString;
-
-    public CustomerRepository(string connectionString)
-    {
-        _connectionString = connectionString;
-    }
-
-    public async Task<Customer> GetWithOrdersAsync(int customerId)
-    {
-        using (var connection = new SqlConnection(_connectionString))
-        {
-            var sql = @"
-                SELECT c.*, o.*
-                FROM Customers c
-                LEFT JOIN Orders o ON o.CustomerId = c.CustomerId
-                WHERE c.CustomerId = @customerId";
-
-            var customerDict = new Dictionary<int, Customer>();
-
-            await connection.QueryAsync<Customer, Order, Customer>(
-                sql,
-                (customer, order) =>
-                {
-                    if (!customerDict.TryGetValue(customer.CustomerId, out var existing))
-                    {
-                        existing = customer;
-                        customerDict.Add(customer.CustomerId, existing);
-                    }
-
-                    if (order != null)
-                    {
-                        existing.Orders.Add(order);
-                    }
-
-                    return existing;
-                },
-                new { customerId },
-                splitOn: "OrderId"
-            );
-
-            return customerDict.Values.FirstOrDefault();
-        }
-    }
-
-    public async Task<IEnumerable<Customer>> GetAllWithOrdersAsync()
-    {
-        // Similar implementation with dictionary deduplication
-        // ...
-    }
-}
-```
-
-### Using with Dependency Injection
-
-```csharp
-// Startup.cs or Program.cs
-services.AddScoped<ICustomerRepository, CustomerRepository>(sp =>
-    new CustomerRepository(Configuration.GetConnectionString("DefaultConnection"))
-);
-
-// Controller
-public class CustomersController : ControllerBase
-{
-    private readonly ICustomerRepository _customerRepo;
-
-    public CustomersController(ICustomerRepository customerRepo)
-    {
-        _customerRepo = customerRepo;
-    }
-
-    [HttpGet("{id}/with-orders")]
-    public async Task<ActionResult<Customer>> GetWithOrders(int id)
-    {
-        var customer = await _customerRepo.GetWithOrdersAsync(id);
-        
-        if (customer == null)
-            return NotFound();
-            
-        return Ok(customer);
+        return customerDict.Values.ToList();
     }
 }
 ```
 
 <InfoBox type="success" title="Advanced Mastery Complete! 🏆">
 You've conquered:
-- One-to-many relationship mapping with deduplication
-- Multi-level hierarchies (Customer → Order → OrderItem)
-- QueryMultiple for complex scenarios
-- Pagination strategies with multi-mapping
-- Repository pattern integration
-- Production-ready architectural approaches
+- Generic multi-mapping extension methods
+- Four-level deep hierarchies
+- Caching and specification patterns
+- Performance optimization strategies
+- Production-ready repository patterns
 
-You're now equipped to handle enterprise-level data access scenarios with Dapper!
+You're now equipped to handle any multi-mapping scenario in enterprise applications!
 </InfoBox>
-
-## Performance Benchmarks
-
-Based on real-world scenarios:
-
-| Approach | 1000 Customers + 5000 Orders | Memory | Query Time |
-|----------|------------------------------|--------|------------|
-| N+1 Queries | 1001 DB calls | 50 MB | ~2000 ms |
-| Multi-Mapping JOIN | 1 DB call | 75 MB | ~150 ms |
-| QueryMultiple | 2 DB calls | 45 MB | ~120 ms |
-| Paginated Multi-Map | 1 DB call (per page) | 8 MB | ~25 ms |
-
-**Recommendation:** Use QueryMultiple or paginated approaches for large datasets.
-
-Continue exploring Dapper's ecosystem with Dapper.Contrib for CRUD operations and Dapper.FluentMap for advanced mapping scenarios!

@@ -2,6 +2,67 @@
 
 DbContext is the foundation of Entity Framework Core - understanding how it works under the hood will help you write more efficient data access code.
 
+---
+
+## Section 1: Introduction to DbContext
+
+### DbContext Lifecycle
+
+Understanding when and how to create/dispose DbContext:
+
+```csharp
+// BAD: Long-lived context (memory leaks, stale data)
+public class MyService
+{
+    private readonly BloggingContext _context = new BloggingContext();
+    // This context lives for the entire service lifetime!
+}
+
+// GOOD: Short-lived context with using
+public class MyService
+{
+    public void DoWork()
+    {
+        using var context = new BloggingContext();
+        // Context is disposed when method ends
+    }
+}
+
+// BEST: Dependency injection (scoped lifetime)
+public class MyService
+{
+    private readonly BloggingContext _context;
+    
+    public MyService(BloggingContext context)
+    {
+        _context = context;  // DI container manages lifetime
+    }
+}
+```
+
+### Connection Management
+
+```csharp
+// DbContext manages connections automatically
+using var context = new BloggingContext();
+
+// Connection opens on first query
+var blogs = context.Blogs.ToList();  // Opens connection
+
+// Connection closes after query completes
+// Multiple queries reuse the same connection
+
+var posts = context.Posts.ToList();  // Reuses connection
+
+// Connection closes when context is disposed
+```
+
+<ProgressCheckpoint section="intro-dbcontext" xpReward={13} />
+
+---
+
+## Section 2: DbSet Basics
+
 ## DbContext Configuration
 
 Every DbContext needs to know how to connect to the database. You can configure this in multiple ways:
@@ -140,4 +201,112 @@ explanation: "Remove() marks the entity for deletion"
 3. **One DbContext per request**: In web apps, use scoped lifetime
 4. **Use async methods**: Prefer `ToListAsync()`, `FirstOrDefaultAsync()`, etc.
 
-<ProgressCheckpoint section="dbset-basics" xpReward={40} />
+<ProgressCheckpoint section="dbset-basics" xpReward={13} />
+
+---
+
+## Section 3: SaveChanges
+
+### SaveChanges Internals
+
+What happens when you call SaveChanges():
+
+1. **Detect Changes** - Scans tracked entities for modifications
+2. **Validate** - Checks constraints and validation rules
+3. **Generate SQL** - Creates INSERT/UPDATE/DELETE statements
+4. **Execute** - Sends commands to database in a transaction
+5. **Update State** - Marks entities as Unchanged
+
+```csharp
+// Manual change detection
+context.ChangeTracker.DetectChanges();
+
+// Disable automatic detection for performance
+context.ChangeTracker.AutoDetectChangesEnabled = false;
+
+// Make changes
+context.Blogs.Add(new Blog { Title = "Test" });
+
+// Manually detect before save
+context.ChangeTracker.DetectChanges();
+await context.SaveChangesAsync();
+
+// Re-enable
+context.ChangeTracker.AutoDetectChangesEnabled = true;
+```
+
+### Transaction Handling
+
+```csharp
+// SaveChanges uses implicit transaction
+await context.SaveChangesAsync();  // All or nothing
+
+// Explicit transaction for multiple SaveChanges
+using var transaction = await context.Database.BeginTransactionAsync();
+
+try
+{
+    context.Blogs.Add(new Blog { Title = "Blog 1" });
+    await context.SaveChangesAsync();
+    
+    context.Posts.Add(new Post { Title = "Post 1", BlogId = 1 });
+    await context.SaveChangesAsync();
+    
+    await transaction.CommitAsync();
+}
+catch
+{
+    await transaction.RollbackAsync();
+    throw;
+}
+```
+
+### Handling Concurrency
+
+```csharp
+try
+{
+    await context.SaveChangesAsync();
+}
+catch (DbUpdateConcurrencyException ex)
+{
+    foreach (var entry in ex.Entries)
+    {
+        var databaseValues = await entry.GetDatabaseValuesAsync();
+        
+        if (databaseValues == null)
+        {
+            // Entity was deleted
+            Console.WriteLine("Entity was deleted by another user");
+        }
+        else
+        {
+            // Entity was modified
+            entry.OriginalValues.SetValues(databaseValues);
+            // Retry or merge changes
+        }
+    }
+}
+```
+
+### Bulk Operations
+
+```csharp
+// Adding many entities
+var blogs = Enumerable.Range(1, 1000)
+    .Select(i => new Blog { Title = $"Blog {i}" })
+    .ToList();
+
+context.Blogs.AddRange(blogs);  // More efficient than Add() in loop
+await context.SaveChangesAsync();
+
+// Removing many entities
+var blogsToDelete = await context.Blogs
+    .Where(b => b.Title.StartsWith("Old"))
+    .ToListAsync();
+
+context.Blogs.RemoveRange(blogsToDelete);
+await context.SaveChangesAsync();
+```
+
+<ProgressCheckpoint section="savechanges" xpReward={14} />

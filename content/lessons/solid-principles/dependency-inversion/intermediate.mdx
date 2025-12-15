@@ -5,7 +5,9 @@ The Dependency Inversion Principle has two parts:
 1. **High-level modules should not depend on low-level modules.** Both should depend on abstractions.
 2. **Abstractions should not depend on details.** Details should depend on abstractions.
 
-## Understanding High-Level vs Low-Level
+---
+
+## Section 1: Understanding High-Level vs Low-Level
 
 | Level | Description | Examples |
 |:------|:------------|:---------|
@@ -16,30 +18,11 @@ The Dependency Inversion Principle has two parts:
 **Key Insight:** "High-level" doesn't mean more important. It means closer to the business domain. "Low-level" means closer to implementation details.
 </InfoBox>
 
-## The Problem: Inverted Dependencies
-
-Traditional layered architecture creates **fragile dependencies**:
+### The Problem: Inverted Dependencies
 
 <DotnetCodePreview
   title="Violating DIP: Direct Dependencies"
-  code={`// Low-level module (infrastructure)
-public class SqlServerDatabase
-{
-    private readonly string _connectionString;
-    
-    public SqlServerDatabase(string connectionString)
-    {
-        _connectionString = connectionString;
-    }
-    
-    public void SaveOrder(Order order)
-    {
-        using var connection = new SqlConnection(_connectionString);
-        // SQL-specific implementation
-    }
-}
-
-// High-level module (business logic)
+  code={`// High-level module (business logic)
 public class OrderService
 {
     // ❌ DIRECT dependency on concrete implementation
@@ -59,17 +42,12 @@ public class OrderService
 }`}
   steps={[
     {
-      lineNumbers: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-      highlight: "Low-Level Module",
-      explanation: "Infrastructure detail - SQL Server specific code"
-    },
-    {
-      lineNumbers: [20, 21, 22],
+      lineNumbers: [4, 5],
       highlight: "Direct Dependency",
       explanation: "High-level module depends on concrete low-level class"
     },
     {
-      lineNumbers: [24, 25, 26, 27],
+      lineNumbers: [8, 9, 10],
       highlight: "Self-Created Dependency",
       explanation: "OrderService creates its own database - cannot be swapped!"
     }
@@ -77,12 +55,14 @@ public class OrderService
 />
 
 **Problems:**
-
 - ❌ Can't test `OrderService` without SQL Server
 - ❌ Can't switch to PostgreSQL without modifying `OrderService`
-- ❌ Business logic polluted with infrastructure decisions
 
-## The Solution: Invert the Dependency
+<ProgressCheckpoint section="dip-introduction" xpReward={13} />
+
+---
+
+## Section 2: The Solution - Invert the Dependency
 
 <DotnetCodePreview
   title="Applying DIP: Abstraction Layer"
@@ -114,32 +94,14 @@ public class OrderService
 // Low-level module implements the abstraction
 public class SqlServerOrderRepository : IOrderRepository
 {
-    private readonly string _connectionString;
-    
-    public SqlServerOrderRepository(string connectionString)
-    {
-        _connectionString = connectionString;
-    }
-    
-    public void Save(Order order)
-    {
-        using var connection = new SqlConnection(_connectionString);
-        // SQL-specific implementation
-    }
-    
+    public void Save(Order order) { /* SQL implementation */ }
     public Order GetById(int id) { /* ... */ }
 }
 
 // Alternative implementation - same interface!
 public class MongoOrderRepository : IOrderRepository
 {
-    private readonly IMongoDatabase _db;
-    
-    public void Save(Order order)
-    {
-        _db.GetCollection<Order>("orders").InsertOne(order);
-    }
-    
+    public void Save(Order order) { /* MongoDB implementation */ }
     public Order GetById(int id) { /* ... */ }
 }`}
   steps={[
@@ -149,12 +111,12 @@ public class MongoOrderRepository : IOrderRepository
       explanation: "Interface defines what's needed, not how it's done"
     },
     {
-      lineNumbers: [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22],
-      highlight: "High-Level Module",
-      explanation: "Depends on abstraction, receives implementation via constructor"
+      lineNumbers: [12, 13, 14, 15],
+      highlight: "Constructor Injection",
+      explanation: "Receives implementation via constructor - can be swapped!"
     },
     {
-      lineNumbers: [42, 43, 44, 45, 46, 47, 48, 49, 50, 51],
+      lineNumbers: [32, 33, 34, 35],
       highlight: "Alternative Implementation",
       explanation: "Same interface, different database - OrderService unchanged!"
     }
@@ -163,22 +125,20 @@ public class MongoOrderRepository : IOrderRepository
 
 <SolidPrincipleDemo principle="D" mode="intermediate" />
 
-## Dependency Injection in ASP.NET Core
+<ProgressCheckpoint section="dip-understanding" xpReward={14} />
+
+---
+
+## Section 3: Dependency Injection in ASP.NET Core
 
 ASP.NET Core has built-in dependency injection that makes DIP easy:
 
 ```csharp
-// Program.cs / Startup.cs - Configuration
+// Program.cs - Configuration
 var builder = WebApplication.CreateBuilder(args);
 
 // Register abstraction with implementation
 builder.Services.AddScoped<IOrderRepository, SqlServerOrderRepository>();
-
-// Or based on configuration
-if (builder.Configuration["Database"] == "Mongo")
-    builder.Services.AddScoped<IOrderRepository, MongoOrderRepository>();
-else
-    builder.Services.AddScoped<IOrderRepository, SqlServerOrderRepository>();
 
 // Controller receives dependency automatically
 public class OrdersController : ControllerBase
@@ -193,7 +153,7 @@ public class OrdersController : ControllerBase
 }
 ```
 
-## Service Lifetimes
+### Service Lifetimes
 
 | Lifetime | Description | Use Case |
 |:---------|:------------|:---------|
@@ -201,87 +161,30 @@ public class OrdersController : ControllerBase
 | **Scoped** | One instance per request | Database contexts, unit of work |
 | **Singleton** | One instance for application | Caches, configuration |
 
-```csharp
-services.AddTransient<IEmailSender, SmtpEmailSender>();  // New each time
-services.AddScoped<IOrderRepository, SqlOrderRepository>(); // Per request
-services.AddSingleton<ICacheService, RedisCacheService>();  // App lifetime
-```
-
-## Testing Benefits
-
-DIP enables easy unit testing:
+### Testing Benefits
 
 ```csharp
-// Without DIP: Need real database
-[Test]
-public void PlaceOrder_Tests()
-{
-    var service = new OrderService();  // Creates real SqlServerDatabase!
-    // Need SQL Server running... 😱
-}
-
 // With DIP: Use test doubles
 [Test]
 public void PlaceOrder_SavesOrder_ToRepository()
 {
-    // Arrange
     var mockRepository = new Mock<IOrderRepository>();
     var service = new OrderService(mockRepository.Object);
     
-    // Act
     service.PlaceOrder(new OrderRequest { /* ... */ });
     
-    // Assert
     mockRepository.Verify(r => r.Save(It.IsAny<Order>()), Times.Once);
 }
-
-// Or use a simple fake
-public class FakeOrderRepository : IOrderRepository
-{
-    public List<Order> SavedOrders { get; } = new();
-    
-    public void Save(Order order) => SavedOrders.Add(order);
-    public Order GetById(int id) => SavedOrders.FirstOrDefault(o => o.Id == id);
-}
 ```
 
-## Common Mistakes
+### Key Takeaways
 
-### ❌ Service Locator Anti-Pattern
-
-```csharp
-public class OrderService
-{
-    public void PlaceOrder()
-    {
-        // ❌ Hides dependencies, hard to test
-        var repo = ServiceLocator.Resolve<IOrderRepository>();
-        repo.Save(new Order());
-    }
-}
-```
-
-### ✅ Constructor Injection
-
-```csharp
-public class OrderService
-{
-    private readonly IOrderRepository _repo;
-    
-    // ✅ Explicit dependencies, easy to test
-    public OrderService(IOrderRepository repo)
-    {
-        _repo = repo;
-    }
-}
-```
-
-## Key Takeaways
-
+<InfoBox type="tip" title="Remember">
 - 🔌 **Depend on interfaces** not concrete classes
 - 💉 **Inject dependencies** through constructors
 - 🏁 **Configure at startup** not in business logic
 - 🧪 **Testing is easy** with mock implementations
 - 🔄 **Swapping is easy** change config, not code
+</InfoBox>
 
-<ProgressCheckpoint section="dip-understanding" xpReward={40} />
+<ProgressCheckpoint section="dip-application" xpReward={13} />

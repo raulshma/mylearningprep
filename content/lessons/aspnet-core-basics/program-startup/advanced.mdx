@@ -2,28 +2,25 @@
 
 Understanding the startup internals enables you to customize hosting, implement advanced service registration patterns, and optimize application bootstrap time.
 
-## Generic Host Architecture
+---
+
+## Section 1: Program Basics - Generic Host Architecture
+
+### The Foundation
 
 `WebApplication` is built on top of the **Generic Host** (`IHost`), providing a consistent model for all .NET applications:
 
 ```csharp
-// Under the hood, WebApplication.CreateBuilder does this:
-var hostBuilder = Host.CreateDefaultBuilder(args)
-    .ConfigureWebHostDefaults(webBuilder =>
-    {
-        webBuilder.ConfigureKestrel(options => { /* ... */ });
-        webBuilder.UseStartup<Startup>();  // Old pattern
-    });
-
-// Modern equivalent with WebApplicationBuilder:
+// WebApplication.CreateBuilder wraps these underlying builders:
 var builder = WebApplication.CreateBuilder(args);
 
-// Access the underlying builders:
+// Access the underlying IHostBuilder
 builder.Host.ConfigureContainer<ContainerBuilder>(container =>
 {
-    // Autofac registration
+    // Third-party DI container (e.g., Autofac)
 });
 
+// Access the underlying IWebHostBuilder
 builder.WebHost.ConfigureKestrel(options =>
 {
     options.ListenAnyIP(5000);
@@ -34,7 +31,7 @@ builder.WebHost.ConfigureKestrel(options =>
 });
 ```
 
-## Configuration Providers
+### Configuration Providers
 
 Default configuration providers are loaded in this order (later overrides earlier):
 
@@ -42,30 +39,60 @@ Default configuration providers are loaded in this order (later overrides earlie
 var builder = WebApplication.CreateBuilder(args);
 
 // Default providers (already configured):
-// 1. ChainedConfigurationProvider
-// 2. appsettings.json
-// 3. appsettings.{Environment}.json  
-// 4. User Secrets (Development only)
-// 5. Environment variables
-// 6. Command-line arguments
+// 1. appsettings.json
+// 2. appsettings.{Environment}.json  
+// 3. User Secrets (Development only)
+// 4. Environment variables
+// 5. Command-line arguments
 
 // Add custom providers:
 builder.Configuration
     .AddJsonFile("custom-settings.json", optional: true, reloadOnChange: true)
-    .AddAzureKeyVault(...)
-    .AddAzureAppConfiguration(...);
+    .AddAzureKeyVault(new Uri("https://myvault.vault.azure.net/"), new DefaultAzureCredential())
+    .AddAzureAppConfiguration(options =>
+    {
+        options.Connect(connectionString)
+               .UseFeatureFlags();
+    });
 ```
 
-## Advanced Service Registration
+### Service Validation
+
+```csharp
+// Validate services at startup (catches DI issues early)
+builder.Host.UseDefaultServiceProvider(options =>
+{
+    options.ValidateScopes = true;      // Detect scope issues
+    options.ValidateOnBuild = true;     // Validate all registrations at startup
+});
+```
+
+<ProgressCheckpoint section="program-basics" xpReward={20} />
+
+---
+
+## Section 2: Advanced Service Registration
 
 ### Factory Registration
 
 ```csharp
+// Register with factory for complex initialization
 builder.Services.AddScoped<IDbConnection>(provider =>
 {
     var config = provider.GetRequiredService<IConfiguration>();
     var connectionString = config.GetConnectionString("Default");
-    return new SqlConnection(connectionString);
+    var connection = new SqlConnection(connectionString);
+    connection.Open();
+    return connection;
+});
+
+// Conditional registration
+builder.Services.AddScoped<IEmailService>(provider =>
+{
+    var env = provider.GetRequiredService<IHostEnvironment>();
+    return env.IsDevelopment()
+        ? new FakeEmailService()
+        : new SmtpEmailService(provider.GetRequiredService<IConfiguration>());
 });
 ```
 
@@ -75,14 +102,17 @@ builder.Services.AddScoped<IDbConnection>(provider =>
 // Register multiple implementations with keys
 builder.Services.AddKeyedScoped<INotificationService, EmailService>("email");
 builder.Services.AddKeyedScoped<INotificationService, SmsService>("sms");
+builder.Services.AddKeyedScoped<INotificationService, PushService>("push");
 
-// Resolve by key
+// Resolve by key in constructor
 public class OrderService
 {
     public OrderService(
-        [FromKeyedServices("email")] INotificationService emailService)
+        [FromKeyedServices("email")] INotificationService emailService,
+        [FromKeyedServices("sms")] INotificationService smsService)
     {
-        // Uses EmailService implementation
+        // emailService is EmailService
+        // smsService is SmsService
     }
 }
 ```
@@ -90,65 +120,103 @@ public class OrderService
 ### Decorator Pattern
 
 ```csharp
+// Base implementation
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 
-// Decorate with caching
+// Decorate with caching (requires Scrutor package)
 builder.Services.Decorate<IUserRepository, CachedUserRepository>();
 
-// CachedUserRepository wraps UserRepository
-public class CachedUserRepository : IUserRepository
+// Manual decoration
+builder.Services.AddScoped<IUserRepository>(sp =>
 {
-    private readonly IUserRepository _inner;
-    private readonly IMemoryCache _cache;
-    
-    public CachedUserRepository(IUserRepository inner, IMemoryCache cache)
-    {
-        _inner = inner;
-        _cache = cache;
-    }
-}
+    var inner = new UserRepository(sp.GetRequiredService<AppDbContext>());
+    var cache = sp.GetRequiredService<IMemoryCache>();
+    return new CachedUserRepository(inner, cache);
+});
 ```
 
-## Startup Pipeline Customization
-
-### Terminal Middleware
+### Options Pattern
 
 ```csharp
-// Terminal middleware short-circuits the pipeline
+// Strongly-typed configuration
+builder.Services.Configure<JwtSettings>(
+    builder.Configuration.GetSection("Jwt"));
+
+// With validation
+builder.Services.AddOptions<SmtpSettings>()
+    .Bind(builder.Configuration.GetSection("Smtp"))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+// Named options
+builder.Services.Configure<ApiClientSettings>("GitHub",
+    builder.Configuration.GetSection("GitHub"));
+builder.Services.Configure<ApiClientSettings>("Stripe",
+    builder.Configuration.GetSection("Stripe"));
+```
+
+<ProgressCheckpoint section="program-intermediate" xpReward={20} />
+
+---
+
+## Section 3: Middleware Pipeline Internals
+
+### Custom Middleware
+
+```csharp
+// Inline middleware
+app.Use(async (context, next) =>
+{
+    var stopwatch = Stopwatch.StartNew();
+    
+    await next(context);  // Call next middleware
+    
+    stopwatch.Stop();
+    context.Response.Headers["X-Response-Time"] = $"{stopwatch.ElapsedMilliseconds}ms";
+});
+
+// Terminal middleware (short-circuits pipeline)
 app.Use(async (context, next) =>
 {
     if (context.Request.Path == "/health")
     {
         context.Response.StatusCode = 200;
         await context.Response.WriteAsync("Healthy");
-        return;  // Don't call next - short-circuit
+        return;  // Don't call next
     }
-    
-    await next(context);  // Continue to next middleware
+    await next(context);
 });
 ```
 
-### Branching with Map
+### Pipeline Branching
 
 ```csharp
-// Branch the pipeline for specific paths
+// Branch for specific paths
 app.Map("/api", apiApp =>
 {
     apiApp.UseAuthentication();
     apiApp.UseAuthorization();
-    apiApp.Run(async context =>
-    {
-        await context.Response.WriteAsync("API endpoint");
-    });
+    apiApp.UseMiddleware<ApiRateLimitingMiddleware>();
 });
 
-app.MapWhen(context => context.Request.Query.ContainsKey("debug"), debugApp =>
-{
-    debugApp.UseMiddleware<DiagnosticsMiddleware>();
-});
+// Conditional branching
+app.MapWhen(
+    context => context.Request.Headers.ContainsKey("X-Debug"),
+    debugApp =>
+    {
+        debugApp.UseMiddleware<DiagnosticsMiddleware>();
+    });
+
+// UseWhen (continues to main pipeline)
+app.UseWhen(
+    context => context.Request.Path.StartsWithSegments("/admin"),
+    adminApp =>
+    {
+        adminApp.UseMiddleware<AdminAuditMiddleware>();
+    });
 ```
 
-## Hosted Services
+### Hosted Services
 
 Background services that run with the application:
 
@@ -157,49 +225,63 @@ builder.Services.AddHostedService<QueueProcessorService>();
 
 public class QueueProcessorService : BackgroundService
 {
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ILogger<QueueProcessorService> _logger;
+
+    public QueueProcessorService(
+        IServiceScopeFactory scopeFactory,
+        ILogger<QueueProcessorService> logger)
+    {
+        _scopeFactory = scopeFactory;
+        _logger = logger;
+    }
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            await ProcessQueueAsync();
+            try
+            {
+                using var scope = _scopeFactory.CreateScope();
+                var processor = scope.ServiceProvider.GetRequiredService<IQueueProcessor>();
+                await processor.ProcessAsync(stoppingToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing queue");
+            }
+            
             await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
         }
     }
 }
 ```
 
-## Startup Diagnostics
-
 ### Startup Filters
 
 ```csharp
-// IStartupFilter allows modifying the middleware pipeline
-public class RequestLoggingStartupFilter : IStartupFilter
+// IStartupFilter modifies the middleware pipeline
+public class SecurityHeadersStartupFilter : IStartupFilter
 {
     public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next)
     {
         return app =>
         {
-            app.UseMiddleware<RequestLoggingMiddleware>();
-            next(app);  // Call the rest of the pipeline
+            app.Use(async (context, nextMiddleware) =>
+            {
+                context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+                context.Response.Headers["X-Frame-Options"] = "DENY";
+                await nextMiddleware();
+            });
+            
+            next(app);  // Continue with rest of pipeline
         };
     }
 }
 
-builder.Services.AddTransient<IStartupFilter, RequestLoggingStartupFilter>();
-```
-
-### Service Validation
-
-```csharp
-// Validate services are correctly registered at startup
-builder.Host.UseDefaultServiceProvider(options =>
-{
-    options.ValidateScopes = true;  // Detect scope issues
-    options.ValidateOnBuild = true;  // Validate all registrations at startup
-});
+builder.Services.AddTransient<IStartupFilter, SecurityHeadersStartupFilter>();
 ```
 
 <MiddlewarePipelineSimulator mode="advanced" />
 
-<ProgressCheckpoint section="program-advanced" xpReward={60} />
+<ProgressCheckpoint section="program-advanced" xpReward={20} />

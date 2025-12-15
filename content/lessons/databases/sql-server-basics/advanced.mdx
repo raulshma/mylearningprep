@@ -2,7 +2,131 @@
 
 Master SQL Server performance, monitoring, and enterprise integration patterns.
 
-## 📊 Query Execution Plans
+---
+
+## Section 1: Introduction to SQL Server
+
+### SQL Server Internals
+
+Understanding how SQL Server stores and manages data:
+
+#### Pages and Extents
+
+- **Page** - 8KB unit of storage (smallest unit SQL Server reads/writes)
+- **Extent** - 8 contiguous pages (64KB)
+- **Uniform extent** - All pages belong to one object
+- **Mixed extent** - Pages shared by multiple small objects
+
+```sql
+-- View page allocation
+DBCC IND('MyAppDb', 'Users', -1);
+
+-- View page contents (use with caution!)
+DBCC TRACEON(3604);
+DBCC PAGE('MyAppDb', 1, 152, 3);
+```
+
+#### Buffer Pool and Memory Management
+
+```sql
+-- Check buffer pool usage
+SELECT 
+    DB_NAME(database_id) AS DatabaseName,
+    COUNT(*) * 8 / 1024 AS BufferPoolMB
+FROM sys.dm_os_buffer_descriptors
+WHERE database_id > 4
+GROUP BY database_id
+ORDER BY BufferPoolMB DESC;
+
+-- Memory clerks
+SELECT 
+    type,
+    SUM(pages_kb) / 1024 AS MemoryMB
+FROM sys.dm_os_memory_clerks
+GROUP BY type
+ORDER BY MemoryMB DESC;
+```
+
+<ProgressCheckpoint section="intro-sql-server" xpReward={18} />
+
+---
+
+## Section 2: SQL Server Management Studio (SSMS)
+
+### Extended Events
+
+Modern replacement for SQL Profiler:
+
+```sql
+-- Create Extended Event session
+CREATE EVENT SESSION [QueryPerformance]
+ON SERVER
+ADD EVENT sqlserver.sql_statement_completed
+(
+    ACTION(sqlserver.sql_text, sqlserver.database_name)
+    WHERE duration > 1000000  -- 1 second in microseconds
+)
+ADD TARGET package0.event_file
+(
+    SET filename = N'C:\Temp\QueryPerformance.xel'
+);
+
+-- Start the session
+ALTER EVENT SESSION [QueryPerformance]
+ON SERVER STATE = START;
+
+-- Query the results
+SELECT 
+    event_data.value('(event/@timestamp)[1]', 'datetime2') AS EventTime,
+    event_data.value('(event/data[@name="duration"]/value)[1]', 'bigint') / 1000 AS DurationMS,
+    event_data.value('(event/action[@name="sql_text"]/value)[1]', 'nvarchar(max)') AS QueryText
+FROM (
+    SELECT CAST(event_data AS XML) AS event_data
+    FROM sys.fn_xe_file_target_read_file('C:\Temp\QueryPerformance*.xel', null, null, null)
+) AS events;
+```
+
+### Dynamic Management Views (DMVs)
+
+```sql
+-- Currently executing queries
+SELECT 
+    session_id,
+    status,
+    command,
+    cpu_time,
+    total_elapsed_time,
+    reads,
+    writes,
+    SUBSTRING(st.text, 
+        (er.statement_start_offset / 2) + 1,
+        ((CASE er.statement_end_offset
+            WHEN -1 THEN DATALENGTH(st.text)
+            ELSE er.statement_end_offset
+        END - er.statement_start_offset) / 2) + 1
+    ) AS QueryText
+FROM sys.dm_exec_requests er
+CROSS APPLY sys.dm_exec_sql_text(er.sql_handle) st
+WHERE session_id > 50;
+
+-- Blocking chains
+SELECT 
+    blocking_session_id,
+    session_id,
+    wait_type,
+    wait_time,
+    wait_resource
+FROM sys.dm_exec_requests
+WHERE blocking_session_id <> 0;
+```
+
+<ProgressCheckpoint section="ssms-basics" xpReward={19} />
+
+---
+
+## Section 3: T-SQL Features
+
+### 📊 Query Execution Plans
 
 Execution plans show exactly how SQL Server runs your queries:
 
@@ -264,4 +388,217 @@ await bulkCopy.WriteToServerAsync(dataTable);
 | Memory | Check for memory grants and spills |
 | TempDB | Monitor for contention |
 
-<ProgressCheckpoint section="tsql-features" xpReward={75} />
+<ProgressCheckpoint section="tsql-features" xpReward={19} />
+
+---
+
+## Section 4: .NET Integration
+
+### Entity Framework Core with SQL Server
+
+```csharp
+// DbContext configuration
+public class AppDbContext : DbContext
+{
+    public AppDbContext(DbContextOptions<AppDbContext> options)
+        : base(options)
+    {
+    }
+
+    public DbSet<User> Users { get; set; }
+    public DbSet<Order> Orders { get; set; }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        // SQL Server specific configurations
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.ToTable("Users");
+            entity.HasKey(e => e.Id);
+            
+            entity.Property(e => e.Id)
+                .UseIdentityColumn(1, 1);  // IDENTITY(1,1)
+            
+            entity.Property(e => e.Name)
+                .HasMaxLength(100)
+                .IsUnicode(true);  // NVARCHAR
+            
+            entity.Property(e => e.Balance)
+                .HasColumnType("decimal(18,2)");
+            
+            entity.Property(e => e.CreatedAt)
+                .HasColumnType("datetime2")
+                .HasDefaultValueSql("GETDATE()");
+            
+            // Index
+            entity.HasIndex(e => e.Email)
+                .IsUnique()
+                .HasDatabaseName("IX_Users_Email");
+        });
+
+        // Relationship
+        modelBuilder.Entity<Order>()
+            .HasOne(o => o.User)
+            .WithMany(u => u.Orders)
+            .HasForeignKey(o => o.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+```
+
+### Raw SQL and Stored Procedures with EF Core
+
+```csharp
+// Raw SQL query
+var users = await context.Users
+    .FromSqlRaw("SELECT * FROM Users WHERE CreatedAt > {0}", startDate)
+    .ToListAsync();
+
+// Stored procedure
+var orders = await context.Orders
+    .FromSqlRaw("EXEC GetUserOrders @UserId = {0}, @MinTotal = {1}", 
+        userId, minTotal)
+    .ToListAsync();
+
+// Execute non-query
+await context.Database.ExecuteSqlRawAsync(
+    "UPDATE Users SET LastLoginDate = GETDATE() WHERE Id = {0}", 
+    userId);
+```
+
+### Advanced Connection Resiliency
+
+```csharp
+builder.Services.AddDbContext<AppDbContext>(options =>
+{
+    options.UseSqlServer(
+        connectionString,
+        sqlOptions =>
+        {
+            // Retry on transient failures
+            sqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(30),
+                errorNumbersToAdd: new[] { 4060, 40197, 40501, 40613, 49918, 49919, 49920 }
+            );
+            
+            // Command timeout
+            sqlOptions.CommandTimeout(60);
+            
+            // Use row versioning for optimistic concurrency
+            sqlOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+            
+            // Migrations assembly
+            sqlOptions.MigrationsAssembly("MyApp.Data");
+        }
+    );
+    
+    // Enable sensitive data logging in development
+    if (builder.Environment.IsDevelopment())
+    {
+        options.EnableSensitiveDataLogging();
+        options.EnableDetailedErrors();
+    }
+});
+```
+
+### Bulk Operations with EFCore.BulkExtensions
+
+```csharp
+// Install: EFCore.BulkExtensions
+using EFCore.BulkExtensions;
+
+// Bulk insert (much faster than SaveChanges)
+var users = GenerateUsers(10000);
+await context.BulkInsertAsync(users);
+
+// Bulk update
+await context.BulkUpdateAsync(users);
+
+// Bulk delete
+await context.BulkDeleteAsync(users);
+
+// Bulk insert or update
+await context.BulkInsertOrUpdateAsync(users);
+```
+
+### Temporal Tables with EF Core
+
+```csharp
+// Configure temporal table
+modelBuilder.Entity<User>(entity =>
+{
+    entity.ToTable("Users", tb => tb.IsTemporal(ttb =>
+    {
+        ttb.HasPeriodStart("ValidFrom");
+        ttb.HasPeriodEnd("ValidTo");
+        ttb.UseHistoryTable("UsersHistory");
+    }));
+});
+
+// Query historical data
+var historicalUsers = await context.Users
+    .TemporalAsOf(DateTime.UtcNow.AddDays(-30))
+    .Where(u => u.Id == userId)
+    .ToListAsync();
+
+// Query all history
+var allHistory = await context.Users
+    .TemporalAll()
+    .Where(u => u.Id == userId)
+    .OrderBy(u => EF.Property<DateTime>(u, "ValidFrom"))
+    .ToListAsync();
+```
+
+### Performance Monitoring
+
+```csharp
+// Log slow queries
+builder.Services.AddDbContext<AppDbContext>(options =>
+{
+    options.UseSqlServer(connectionString)
+        .LogTo(
+            message => Console.WriteLine(message),
+            new[] { DbLoggerCategory.Database.Command.Name },
+            LogLevel.Information,
+            DbContextLoggerOptions.SingleLine | DbContextLoggerOptions.UtcTime
+        );
+});
+
+// Custom interceptor for query logging
+public class QueryLoggingInterceptor : DbCommandInterceptor
+{
+    private readonly ILogger<QueryLoggingInterceptor> _logger;
+
+    public QueryLoggingInterceptor(ILogger<QueryLoggingInterceptor> logger)
+    {
+        _logger = logger;
+    }
+
+    public override async ValueTask<DbDataReader> ReaderExecutedAsync(
+        DbCommand command,
+        CommandExecutedEventData eventData,
+        DbDataReader result,
+        CancellationToken cancellationToken = default)
+    {
+        if (eventData.Duration.TotalMilliseconds > 1000)
+        {
+            _logger.LogWarning(
+                "Slow query detected: {Duration}ms - {CommandText}",
+                eventData.Duration.TotalMilliseconds,
+                command.CommandText);
+        }
+
+        return await base.ReaderExecutedAsync(command, eventData, result, cancellationToken);
+    }
+}
+
+// Register interceptor
+builder.Services.AddDbContext<AppDbContext>(options =>
+{
+    options.UseSqlServer(connectionString)
+        .AddInterceptors(new QueryLoggingInterceptor(logger));
+});
+```
+
+<ProgressCheckpoint section="dotnet-integration" xpReward={19} />

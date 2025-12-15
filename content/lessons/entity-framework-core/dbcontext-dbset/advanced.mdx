@@ -2,6 +2,75 @@
 
 Master the advanced patterns and internal workings of DbContext for high-performance applications.
 
+---
+
+## Section 1: Introduction to DbContext
+
+### DbContext Internals
+
+Understanding the internal architecture:
+
+```csharp
+// DbContext components
+public class BloggingContext : DbContext
+{
+    // 1. Model - Metadata about entities and relationships
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        // Model is built here
+    }
+    
+    // 2. ChangeTracker - Tracks entity states
+    public void InspectChangeTracker()
+    {
+        foreach (var entry in ChangeTracker.Entries())
+        {
+            Console.WriteLine($"{entry.Entity.GetType().Name}: {entry.State}");
+        }
+    }
+    
+    // 3. Database - Database operations
+    public async Task EnsureCreatedAsync()
+    {
+        await Database.EnsureCreatedAsync();
+    }
+}
+```
+
+### Custom DbContext Initialization
+
+```csharp
+public class BloggingContext : DbContext
+{
+    public BloggingContext(DbContextOptions<BloggingContext> options)
+        : base(options)
+    {
+        // Custom initialization
+        ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
+        ChangeTracker.AutoDetectChangesEnabled = false;
+        ChangeTracker.LazyLoadingEnabled = false;
+    }
+    
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        if (!optionsBuilder.IsConfigured)
+        {
+            optionsBuilder
+                .UseSqlServer("connection-string")
+                .UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking)
+                .EnableSensitiveDataLogging()
+                .EnableDetailedErrors();
+        }
+    }
+}
+```
+
+<ProgressCheckpoint section="intro-dbcontext" xpReward={20} />
+
+---
+
+## Section 2: DbSet Basics
+
 ## DbContext Pooling
 
 For high-throughput scenarios, creating new DbContext instances can be expensive. EF Core 2.0+ offers **context pooling**:
@@ -178,6 +247,165 @@ return result;
 }`}
 />
 
+### Custom DbSet Implementation
+
+```csharp
+// Custom DbSet with additional methods
+public class AuditableDbSet<T> : DbSet<T> where T : class
+{
+    private readonly DbContext _context;
+    
+    public AuditableDbSet(DbContext context)
+    {
+        _context = context;
+    }
+    
+    public async Task<T> AddWithAuditAsync(T entity, string userId)
+    {
+        // Set audit properties
+        var entry = _context.Entry(entity);
+        entry.Property("CreatedBy").CurrentValue = userId;
+        entry.Property("CreatedAt").CurrentValue = DateTime.UtcNow;
+        
+        _context.Set<T>().Add(entity);
+        await _context.SaveChangesAsync();
+        
+        return entity;
+    }
+}
+```
+
+<ProgressCheckpoint section="dbset-basics" xpReward={20} />
+
+---
+
+## Section 3: SaveChanges
+
+### Advanced SaveChanges Patterns
+
+#### Optimistic Concurrency with Timestamps
+
+```csharp
+public class Blog
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = "";
+    
+    [Timestamp]
+    public byte[] RowVersion { get; set; } = Array.Empty<byte>();
+}
+
+// Handling conflicts
+public async Task<bool> UpdateBlogAsync(Blog blog)
+{
+    context.Blogs.Update(blog);
+    
+    try
+    {
+        await context.SaveChangesAsync();
+        return true;
+    }
+    catch (DbUpdateConcurrencyException ex)
+    {
+        var entry = ex.Entries.Single();
+        var databaseValues = await entry.GetDatabaseValuesAsync();
+        
+        if (databaseValues == null)
+        {
+            // Entity was deleted
+            return false;
+        }
+        
+        // Client wins strategy
+        entry.OriginalValues.SetValues(databaseValues);
+        await context.SaveChangesAsync();
+        return true;
+    }
+}
+```
+
+#### Custom SaveChanges with Auditing
+
+```csharp
+public override async Task<int> SaveChangesAsync(
+    CancellationToken cancellationToken = default)
+{
+    // Automatic auditing
+    var entries = ChangeTracker.Entries()
+        .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified);
+    
+    foreach (var entry in entries)
+    {
+        if (entry.Entity is IAuditable auditable)
+        {
+            if (entry.State == EntityState.Added)
+            {
+                auditable.CreatedAt = DateTime.UtcNow;
+                auditable.CreatedBy = _currentUser.Id;
+            }
+            else
+            {
+                auditable.ModifiedAt = DateTime.UtcNow;
+                auditable.ModifiedBy = _currentUser.Id;
+            }
+        }
+    }
+    
+    return await base.SaveChangesAsync(cancellationToken);
+}
+```
+
+#### Batch Operations with ExecuteUpdate/ExecuteDelete
+
+```csharp
+// EF Core 7+: Bulk update without loading entities
+await context.Blogs
+    .Where(b => b.Rating < 3)
+    .ExecuteUpdateAsync(setters => setters
+        .SetProperty(b => b.IsActive, false)
+        .SetProperty(b => b.ModifiedAt, DateTime.UtcNow));
+
+// Bulk delete
+await context.Posts
+    .Where(p => p.CreatedAt < DateTime.UtcNow.AddYears(-1))
+    .ExecuteDeleteAsync();
+```
+
+#### Transaction Savepoints
+
+```csharp
+using var transaction = await context.Database.BeginTransactionAsync();
+
+try
+{
+    // First operation
+    context.Blogs.Add(new Blog { Title = "Blog 1" });
+    await context.SaveChangesAsync();
+    
+    // Create savepoint
+    await transaction.CreateSavepointAsync("AfterBlog");
+    
+    try
+    {
+        // Second operation (might fail)
+        context.Posts.Add(new Post { Title = "Post 1", BlogId = 999 });
+        await context.SaveChangesAsync();
+    }
+    catch
+    {
+        // Rollback to savepoint (keeps Blog 1)
+        await transaction.RollbackToSavepointAsync("AfterBlog");
+    }
+    
+    await transaction.CommitAsync();
+}
+catch
+{
+    await transaction.RollbackAsync();
+    throw;
+}
+```
+
 ## Key Takeaways
 
 - Use **DbContext pooling** for high-throughput scenarios
@@ -185,5 +413,8 @@ return result;
 - Consider **compiled models** for faster startup with large schemas
 - Use **IDbContextFactory** when you need explicit lifetime control
 - Monitor performance with **query logging** and **diagnostics**
+- Override **SaveChangesAsync** for automatic auditing
+- Use **ExecuteUpdate/ExecuteDelete** for bulk operations without loading entities
+- Implement **optimistic concurrency** with timestamps or row versions
 
-<ProgressCheckpoint section="savechanges" xpReward={60} />
+<ProgressCheckpoint section="savechanges" xpReward={20} />

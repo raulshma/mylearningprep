@@ -1,58 +1,39 @@
 # Implementing OpenAPI/Swagger in ASP.NET Core
 
-Let's learn how to set up, configure, and enhance Swagger documentation in your .NET APIs. We'll go from basic setup to rich, professional documentation.
+Let's learn how to set up, configure, and enhance Swagger documentation in your .NET APIs.
 
-## Setting Up Swagger in ASP.NET Core 🛠️
+## Section 1: Installation & Basic Setup 🛠️
 
 ### Step 1: Install Swashbuckle
-
-**Swashbuckle** is the most popular library for generating OpenAPI documentation in .NET.
 
 ```bash
 dotnet add package Swashbuckle.AspNetCore
 ```
 
-<ProgressCheckpoint section="installation" xpReward={5} />
+<ProgressCheckpoint section="installation" xpReward={3} />
 
 ### Step 2: Configure Services
-
-Add Swagger services in `Program.cs`:
 
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
 
-// Add controllers
 builder.Services.AddControllers();
-
-// Add API Explorer (required for Swagger)
 builder.Services.AddEndpointsApiExplorer();
-
-// Add Swagger generation
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
-    // Enable Swagger middleware
-    app.UseSwagger();        // Generates /swagger/v1/swagger.json
-    app.UseSwaggerUI();      // Generates /swagger/index.html
+    app.UseSwagger();      // Generates /swagger/v1/swagger.json
+    app.UseSwaggerUI();    // Generates /swagger/index.html
 }
 
-app.UseHttpsRedirection();
-app.UseAuthorization();
 app.MapControllers();
-
 app.Run();
 ```
 
-**What This Does:**
-- `AddSwaggerGen()`: Configures Swagger document generation
-- `UseSwagger()`: Serves the OpenAPI JSON at `/swagger/v1/swagger.json`
-- `UseSwaggerUI()`: Serves the interactive UI at `/swagger`
-
-<ProgressCheckpoint section="basic-setup" xpReward={10} />
+<ProgressCheckpoint section="basic-setup" xpReward={5} />
 
 ### Step 3: Test It!
 
@@ -61,50 +42,9 @@ Run your application and navigate to:
 https://localhost:5001/swagger
 ```
 
-You'll see your API documentation! 🎉
-
-<InfoBox type="success">
-  **Pro Tip:** New ASP.NET Core Web API projects come with Swagger pre-configured! Check your Program.cs file.
-</InfoBox>
-
-<ProgressCheckpoint section="first-run" xpReward={5} />
-
-## Enhancing Documentation with Attributes 📝
-
-### Basic Controller Documentation
-
-```csharp
-[ApiController]
-[Route("api/[controller]")]
-public class ProductsController : ControllerBase
-{
-    // Swagger automatically detects this endpoint
-    [HttpGet]
-    public IActionResult GetAll()
-    {
-        return Ok(new[] { "Product1", "Product2" });
-    }
-    
-    // Swagger knows this takes an ID parameter
-    [HttpGet("{id}")]
-    public IActionResult GetById(int id)
-    {
-        return Ok(new { Id = id, Name = "Product" });
-    }
-}
-```
-
-**Swagger automatically generates:**
-- Endpoint paths
-- HTTP methods
-- Parameters
-- Basic response types
-
-<ProgressCheckpoint section="basic-docs" xpReward={5} />
+<ProgressCheckpoint section="first-run" xpReward={2} />
 
 ### Adding Response Type Information
-
-Tell Swagger what responses to expect:
 
 ```csharp
 [HttpGet("{id}")]
@@ -113,160 +53,71 @@ Tell Swagger what responses to expect:
 public IActionResult GetById(int id)
 {
     var product = _repository.GetById(id);
-    
-    if (product == null)
-        return NotFound();
-    
+    if (product == null) return NotFound();
     return Ok(product);
 }
-
-[HttpPost]
-[ProducesResponseType(StatusCodes.Status201Created, Type = typeof(ProductDto))]
-[ProducesResponseType(StatusCodes.Status400BadRequest)]
-public IActionResult Create([FromBody] CreateProductDto dto)
-{
-    if (!ModelState.IsValid)
-        return BadRequest(ModelState);
-    
-    var product = _repository.Create(dto);
-    return CreatedAtAction(nameof(GetById), new { id = product.Id }, product);
-}
 ```
 
-**Result in Swagger:**
-```
-GET /api/products/{id}
-Responses:
-  200 - Success (ProductDto)
-  404 - Not Found
+<ProgressCheckpoint section="basic-docs" xpReward={3} />
 
-POST /api/products
-Responses:
-  201 - Created (ProductDto)
-  400 - Bad Request
-```
+<ProgressCheckpoint section="response-types" xpReward={2} />
 
-<ProgressCheckpoint section="response-types" xpReward={10} />
+---
 
-## XML Comments: Rich Documentation 📚
+## Section 2: XML Comments & Rich Documentation 📚
 
-### Step 1: Enable XML Documentation
+### Enable XML Documentation
 
 Edit your `.csproj` file:
 
 ```xml
-<Project Sdk="Microsoft.NET.Sdk.Web">
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <NoWarn>$(NoWarn);1591</NoWarn> <!-- Suppress missing XML comment warnings -->
-  </PropertyGroup>
-</Project>
+<PropertyGroup>
+  <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  <NoWarn>$(NoWarn);1591</NoWarn>
+</PropertyGroup>
 ```
 
-<ProgressCheckpoint section="xml-setup" xpReward={5} />
+<ProgressCheckpoint section="xml-setup" xpReward={2} />
 
-### Step 2: Configure Swagger to Use XML Comments
+### Configure Swagger to Use XML Comments
 
 ```csharp
 builder.Services.AddSwaggerGen(options =>
 {
-    // Get XML file path
     var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
-    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFilename);
-    
-    // Include XML comments
-    options.IncludeXmlComments(xmlPath);
+    options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFilename));
 });
 ```
 
-<ProgressCheckpoint section="xml-config" xpReward={5} />
+<ProgressCheckpoint section="xml-config" xpReward={2} />
 
-### Step 3: Add XML Comments to Your Code
+
+### Add XML Comments to Your Code
 
 ```csharp
 /// <summary>
-/// Manages product operations
+/// Retrieves a specific product by ID
 /// </summary>
-[ApiController]
-[Route("api/[controller]")]
-public class ProductsController : ControllerBase
+/// <param name="id">The unique identifier of the product</param>
+/// <returns>The requested product</returns>
+/// <response code="200">Returns the product</response>
+/// <response code="404">If the product is not found</response>
+[HttpGet("{id}")]
+[ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ProductDto))]
+[ProducesResponseType(StatusCodes.Status404NotFound)]
+public IActionResult GetById(int id)
 {
-    /// <summary>
-    /// Retrieves all products from the catalog
-    /// </summary>
-    /// <returns>A list of all products</returns>
-    /// <response code="200">Returns the list of products</response>
-    [HttpGet]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    public IActionResult GetAll()
-    {
-        return Ok(_repository.GetAll());
-    }
-
-    /// <summary>
-    /// Retrieves a specific product by ID
-    /// </summary>
-    /// <param name="id">The unique identifier of the product</param>
-    /// <returns>The requested product</returns>
-    /// <response code="200">Returns the product</response>
-    /// <response code="404">If the product is not found</response>
-    /// <remarks>
-    /// Sample request:
-    /// 
-    ///     GET /api/products/1
-    /// 
-    /// </remarks>
-    [HttpGet("{id}")]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ProductDto))]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public IActionResult GetById(int id)
-    {
-        var product = _repository.GetById(id);
-        
-        if (product == null)
-            return NotFound();
-        
-        return Ok(product);
-    }
-
-    /// <summary>
-    /// Creates a new product
-    /// </summary>
-    /// <param name="dto">The product creation data</param>
-    /// <returns>The newly created product</returns>
-    /// <response code="201">Returns the newly created product</response>
-    /// <response code="400">If the product data is invalid</response>
-    /// <remarks>
-    /// Sample request:
-    /// 
-    ///     POST /api/products
-    ///     {
-    ///        "name": "Laptop",
-    ///        "price": 999.99,
-    ///        "category": "Electronics"
-    ///     }
-    /// 
-    /// </remarks>
-    [HttpPost]
-    [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(ProductDto))]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public IActionResult Create([FromBody] CreateProductDto dto)
-    {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-        
-        var product = _repository.Create(dto);
-        return CreatedAtAction(nameof(GetById), new { id = product.Id }, product);
-    }
+    var product = _repository.GetById(id);
+    if (product == null) return NotFound();
+    return Ok(product);
 }
 ```
 
-**Result:** Rich, detailed documentation in Swagger UI! 🎨
+<ProgressCheckpoint section="xml-comments" xpReward={5} />
 
-<ProgressCheckpoint section="xml-comments" xpReward={15} />
+---
 
-## Customizing Swagger UI 🎨
+## Section 3: Customization & Best Practices 🎨
 
 ### Add API Information
 
@@ -278,238 +129,98 @@ builder.Services.AddSwaggerGen(options =>
         Version = "v1",
         Title = "Product API",
         Description = "An ASP.NET Core Web API for managing products",
-        TermsOfService = new Uri("https://example.com/terms"),
         Contact = new OpenApiContact
         {
             Name = "Support Team",
-            Email = "support@example.com",
-            Url = new Uri("https://example.com/contact")
-        },
-        License = new OpenApiLicense
-        {
-            Name = "MIT License",
-            Url = new Uri("https://opensource.org/licenses/MIT")
+            Email = "support@example.com"
         }
     });
-    
-    // Include XML comments
-    var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
-    options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFilename));
 });
 ```
 
-<ProgressCheckpoint section="api-info" xpReward={10} />
+<ProgressCheckpoint section="api-info" xpReward={3} />
 
 ### Organize Endpoints with Tags
 
 ```csharp
-/// <summary>
-/// Product management endpoints
-/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 [Tags("Products")]
-public class ProductsController : ControllerBase
-{
-    // Endpoints here
-}
-
-/// <summary>
-/// User management endpoints
-/// </summary>
-[ApiController]
-[Route("api/[controller]")]
-[Tags("Users")]
-public class UsersController : ControllerBase
-{
-    // Endpoints here
-}
+public class ProductsController : ControllerBase { }
 ```
 
-**Result:** Endpoints are grouped by tags in Swagger UI!
-
-<ProgressCheckpoint section="tags" xpReward={5} />
+<ProgressCheckpoint section="tags" xpReward={2} />
 
 ### Add Example Values
 
 ```csharp
 public class CreateProductDto
 {
-    /// <summary>
-    /// The product name
-    /// </summary>
+    /// <summary>The product name</summary>
     /// <example>Wireless Mouse</example>
     [Required]
     public string Name { get; set; }
     
-    /// <summary>
-    /// The product price in USD
-    /// </summary>
+    /// <summary>The product price in USD</summary>
     /// <example>29.99</example>
     [Required]
-    [Range(0.01, 10000)]
     public decimal Price { get; set; }
-    
-    /// <summary>
-    /// The product category
-    /// </summary>
-    /// <example>Electronics</example>
-    public string? Category { get; set; }
 }
 ```
 
-**Result:** Swagger shows example values in the UI!
+<ProgressCheckpoint section="examples" xpReward={2} />
 
-<ProgressCheckpoint section="examples" xpReward={10} />
-
-## Data Annotations for Validation 🔍
-
-Swagger automatically documents validation rules:
+### Data Annotations for Validation
 
 ```csharp
 public class CreateUserDto
 {
-    /// <summary>
-    /// User's full name
-    /// </summary>
-    [Required(ErrorMessage = "Name is required")]
+    [Required]
     [StringLength(100, MinimumLength = 2)]
     public string Name { get; set; }
     
-    /// <summary>
-    /// User's email address
-    /// </summary>
     [Required]
     [EmailAddress]
     public string Email { get; set; }
     
-    /// <summary>
-    /// User's age
-    /// </summary>
-    [Range(18, 120, ErrorMessage = "Age must be between 18 and 120")]
+    [Range(18, 120)]
     public int Age { get; set; }
-    
-    /// <summary>
-    /// User's phone number (optional)
-    /// </summary>
-    [Phone]
-    public string? PhoneNumber { get; set; }
 }
 ```
 
-**Swagger Shows:**
-- Required fields (marked with *)
-- String length constraints
-- Range constraints
-- Format requirements (email, phone)
+Swagger automatically shows validation rules!
 
-<ProgressCheckpoint section="validation" xpReward={10} />
+<ProgressCheckpoint section="validation" xpReward={2} />
 
-## Multiple API Versions in Swagger 📚
+### Multiple API Versions
 
 ```csharp
 builder.Services.AddSwaggerGen(options =>
 {
-    // Define v1
-    options.SwaggerDoc("v1", new OpenApiInfo
-    {
-        Version = "v1",
-        Title = "My API v1",
-        Description = "Version 1 of the API"
-    });
-    
-    // Define v2
-    options.SwaggerDoc("v2", new OpenApiInfo
-    {
-        Version = "v2",
-        Title = "My API v2",
-        Description = "Version 2 of the API with new features"
-    });
+    options.SwaggerDoc("v1", new OpenApiInfo { Title = "My API v1" });
+    options.SwaggerDoc("v2", new OpenApiInfo { Title = "My API v2" });
 });
 
-// Configure UI to show both versions
 app.UseSwaggerUI(options =>
 {
-    options.SwaggerEndpoint("/swagger/v1/swagger.json", "My API V1");
-    options.SwaggerEndpoint("/swagger/v2/swagger.json", "My API V2");
+    options.SwaggerEndpoint("/swagger/v1/swagger.json", "V1");
+    options.SwaggerEndpoint("/swagger/v2/swagger.json", "V2");
 });
 ```
 
-**Result:** Dropdown in Swagger UI to switch between versions!
+<ProgressCheckpoint section="versioning" xpReward={2} />
 
-<ProgressCheckpoint section="versioning" xpReward={10} />
-
-## Excluding Endpoints from Swagger 🚫
-
-Sometimes you want to hide certain endpoints:
+### Excluding Endpoints
 
 ```csharp
-[ApiController]
-[Route("api/[controller]")]
-public class InternalController : ControllerBase
+[HttpGet("internal")]
+[ApiExplorerSettings(IgnoreApi = true)]
+public IActionResult InternalEndpoint()
 {
-    // This endpoint will appear in Swagger
-    [HttpGet("public")]
-    public IActionResult PublicEndpoint()
-    {
-        return Ok("Public");
-    }
-    
-    // This endpoint will NOT appear in Swagger
-    [HttpGet("internal")]
-    [ApiExplorerSettings(IgnoreApi = true)]
-    public IActionResult InternalEndpoint()
-    {
-        return Ok("Internal");
-    }
+    return Ok("Internal");
 }
 ```
 
-<ProgressCheckpoint section="excluding" xpReward={5} />
+<ProgressCheckpoint section="excluding" xpReward={2} />
 
-## Complete Configuration Example 🎯
-
-Here's a production-ready Swagger configuration:
-
-```csharp
-builder.Services.AddSwaggerGen(options =>
-{
-    // API Info
-    options.SwaggerDoc("v1", new OpenApiInfo
-    {
-        Version = "v1",
-        Title = "MyInterviewPrep API",
-        Description = "API for interview preparation platform",
-        Contact = new OpenApiContact
-        {
-            Name = "Support",
-            Email = "support@myinterviewprep.com"
-        }
-    });
-    
-    // XML Comments
-    var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
-    options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFilename));
-    
-    // Use full names for schemas (avoids conflicts)
-    options.CustomSchemaIds(type => type.FullName);
-    
-    // Order actions by method
-    options.OrderActionsBy(apiDesc => $"{apiDesc.ActionDescriptor.RouteValues["controller"]}_{apiDesc.HttpMethod}");
-});
-
-// Swagger UI Configuration
-app.UseSwaggerUI(options =>
-{
-    options.SwaggerEndpoint("/swagger/v1/swagger.json", "v1");
-    options.RoutePrefix = "swagger"; // Access at /swagger
-    options.DocumentTitle = "MyInterviewPrep API Documentation";
-    options.DefaultModelsExpandDepth(2);
-    options.DefaultModelRendering(Swashbuckle.AspNetCore.SwaggerUI.ModelRendering.Model);
-    options.DisplayRequestDuration();
-    options.EnableDeepLinking();
-    options.EnableFilter();
-});
-```
-
-<ProgressCheckpoint section="integration" xpReward={30} />
+<ProgressCheckpoint section="integration" xpReward={5} />

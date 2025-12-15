@@ -2,11 +2,11 @@
 
 ASP.NET Core's model binding system automatically maps HTTP request data to action parameters and model properties. Understanding binding sources and validation gives you precise control over data flow.
 
-## Binding Source Attributes
+## Section 1: Binding Source Attributes
 
 <ModelBindingVisualizer mode="intermediate" />
 
-Explicitly specify where data comes from:
+### Explicitly Specifying Sources
 
 ```csharp
 [HttpPut("{id}")]
@@ -22,18 +22,16 @@ public ActionResult Update(
 
 ### Binding Source Summary
 
-| Attribute        | Source            | Default For      |
-| :--------------- | :---------------- | :--------------- |
-| `[FromRoute]`    | URL path segments | Route parameters |
-| `[FromQuery]`    | Query string      | Simple types     |
-| `[FromBody]`     | Request body      | Complex types    |
-| `[FromHeader]`   | HTTP headers      | -                |
-| `[FromForm]`     | Form data         | -                |
-| `[FromServices]` | DI container      | -                |
+| Attribute | Source | Default For |
+| :-------- | :----- | :---------- |
+| `[FromRoute]` | URL path segments | Route parameters |
+| `[FromQuery]` | Query string | Simple types |
+| `[FromBody]` | Request body | Complex types |
+| `[FromHeader]` | HTTP headers | - |
+| `[FromForm]` | Form data | - |
+| `[FromServices]` | DI container | - |
 
-## Complex Type Binding
-
-For complex objects, use `[FromBody]`:
+### Complex Type Binding
 
 ```csharp
 public class CreateOrderRequest
@@ -50,9 +48,13 @@ public ActionResult CreateOrder([FromBody] CreateOrderRequest request)
 }
 ```
 
-## Data Annotations for Validation
+<ProgressCheckpoint section="model-binding-intro" xpReward={13} />
 
-Common validation attributes:
+---
+
+## Section 2: Data Annotations for Validation
+
+### Common Validation Attributes
 
 ```csharp
 public class ProductDto
@@ -73,14 +75,11 @@ public class ProductDto
     [RegularExpression(@"^[A-Z]{3}-\d{4}$",
         ErrorMessage = "SKU format: ABC-1234")]
     public string? SKU { get; set; }
-
-    [Compare(nameof(Price),
-        ErrorMessage = "Sale price must match price")]
-    public decimal ConfirmPrice { get; set; }
 }
+
 ```
 
-## Checking Validation in Actions
+### Checking Validation Manually
 
 With `[ApiController]`, validation is automatic. Without it:
 
@@ -98,7 +97,7 @@ public ActionResult Create([FromBody] ProductDto product)
 }
 ```
 
-## ValidationProblemDetails Response
+### ValidationProblemDetails Response
 
 Failed validation returns standardized error format:
 
@@ -114,9 +113,13 @@ Failed validation returns standardized error format:
 }
 ```
 
-## Collection Binding
+<ProgressCheckpoint section="model-binding-intermediate" xpReward={13} />
 
-Bind arrays and lists:
+---
+
+## Section 3: Collection Binding and Best Practices
+
+### Binding Arrays and Lists
 
 ```csharp
 // Query: ?ids=1&ids=2&ids=3
@@ -134,4 +137,36 @@ public ActionResult CreateMany([FromBody] List<ProductDto> products)
 }
 ```
 
-<ProgressCheckpoint section="model-binding-intermediate" xpReward={40} />
+### Nested Object Binding
+
+```csharp
+public class OrderDto
+{
+    [Required]
+    public CustomerInfo Customer { get; set; }
+    
+    [Required]
+    [MinLength(1, ErrorMessage = "At least one item required")]
+    public List<OrderItemDto> Items { get; set; }
+}
+
+public class CustomerInfo
+{
+    [Required]
+    public string Name { get; set; }
+    
+    [Required]
+    [EmailAddress]
+    public string Email { get; set; }
+}
+```
+
+### Best Practices
+
+1. **Use DTOs** - Don't bind directly to domain entities
+2. **Validate early** - Use data annotations for simple rules
+3. **Be explicit** - Use `[FromBody]`, `[FromQuery]` when ambiguous
+4. **Custom error messages** - Make validation errors user-friendly
+5. **Nullable types** - Use `?` for optional properties
+
+<ProgressCheckpoint section="model-binding-advanced" xpReward={14} />

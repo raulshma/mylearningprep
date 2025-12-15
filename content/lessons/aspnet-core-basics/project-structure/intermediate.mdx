@@ -2,7 +2,11 @@
 
 A well-organized project structure is crucial for maintainability. ASP.NET Core follows conventions that, once understood, make navigating any project intuitive.
 
-## Standard Project Layout
+---
+
+## Section 1: Project Basics
+
+### Standard Project Layout
 
 When you create a new Web API project with `dotnet new webapi`, you get:
 
@@ -21,23 +25,50 @@ MyWebApi/
 
 <ProjectStructureExplorer mode="intermediate" />
 
-## Key Files Explained
+### File Purposes
 
-### Program.cs - Application Entry Point
+| File/Folder | Purpose |
+|:------------|:--------|
+| `Program.cs` | Application entry point, service registration, middleware |
+| `appsettings.json` | Configuration (connection strings, settings) |
+| `appsettings.{Environment}.json` | Environment-specific overrides |
+| `*.csproj` | Project definition, dependencies, build settings |
+| `Properties/launchSettings.json` | Development launch profiles |
+| `Controllers/` | API endpoint handlers |
 
-The heart of your application. Modern .NET uses **top-level statements** and the minimal hosting model:
+### Environment-Specific Configuration
+
+ASP.NET Core automatically loads configuration based on environment:
+
+```
+appsettings.json                    ← Always loaded (base settings)
+appsettings.Development.json        ← Loaded in Development
+appsettings.Production.json         ← Loaded in Production
+```
+
+<ProgressCheckpoint section="project-basics" xpReward={12} />
+
+---
+
+## Section 2: Project Structure Deep Dive
+
+### Program.cs - The Heart of Your App
+
+Modern .NET uses **top-level statements** and the minimal hosting model:
 
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Register services
+// 1. Register services (Dependency Injection)
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
 
 var app = builder.Build();
 
-// 2. Configure middleware pipeline
+// 2. Configure middleware pipeline (order matters!)
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -45,13 +76,14 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
 ```
 
-### appsettings.json - Configuration
+### appsettings.json Structure
 
 Hierarchical configuration in JSON format:
 
@@ -65,12 +97,34 @@ Hierarchical configuration in JSON format:
   },
   "AllowedHosts": "*",
   "ConnectionStrings": {
-    "DefaultConnection": "Server=localhost;Database=MyDb;..."
+    "DefaultConnection": "Server=localhost;Database=MyDb;Trusted_Connection=true"
+  },
+  "Jwt": {
+    "Secret": "your-secret-key",
+    "Issuer": "your-app",
+    "ExpirationMinutes": 60
   }
 }
 ```
 
-### .csproj - Project File
+### Common Folder Conventions
+
+| Folder | Purpose | Example |
+|:-------|:--------|:--------|
+| `Controllers/` | API endpoints | `UsersController.cs` |
+| `Models/` | DTOs, view models | `UserDto.cs` |
+| `Services/` | Business logic | `UserService.cs` |
+| `Data/` | DbContext, repositories | `AppDbContext.cs` |
+| `Middleware/` | Custom middleware | `LoggingMiddleware.cs` |
+| `Extensions/` | Extension methods | `ServiceExtensions.cs` |
+
+<ProgressCheckpoint section="project-structure" xpReward={12} />
+
+---
+
+## Section 3: Advanced Project Configuration
+
+### The .csproj File
 
 Defines target framework, dependencies, and build settings:
 
@@ -80,26 +134,37 @@ Defines target framework, dependencies, and build settings:
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>MyCompany.MyApi</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
   </ItemGroup>
 </Project>
 ```
 
-### launchSettings.json - Development Profiles
+### launchSettings.json
 
 Controls how the app runs during development:
 
 ```json
 {
+  "$schema": "https://json.schemastore.org/launchsettings.json",
   "profiles": {
     "http": {
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": true,
+      "launchUrl": "swagger",
       "applicationUrl": "http://localhost:5000",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    },
+    "https": {
+      "commandName": "Project",
+      "applicationUrl": "https://localhost:5001;http://localhost:5000",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
@@ -108,16 +173,45 @@ Controls how the app runs during development:
 }
 ```
 
-## Common Folder Conventions
+### Organizing a Growing Project
 
-| Folder | Purpose |
-|:-------|:--------|
-| `Controllers/` | API endpoints (Web API) |
-| `Models/` | Data transfer objects, view models |
-| `Services/` | Business logic classes |
-| `Data/` | DbContext, repositories, migrations |
-| `wwwroot/` | Static files (CSS, JS, images) |
-| `Views/` | Razor views (MVC only) |
-| `Pages/` | Razor Pages |
+As your project grows, consider this structure:
 
-<ProgressCheckpoint section="project-structure" xpReward={35} />
+```
+MyWebApi/
+├── Controllers/
+│   ├── UsersController.cs
+│   └── ProductsController.cs
+├── Models/
+│   ├── Dtos/
+│   │   ├── UserDto.cs
+│   │   └── CreateUserDto.cs
+│   └── Entities/
+│       └── User.cs
+├── Services/
+│   ├── IUserService.cs
+│   └── UserService.cs
+├── Data/
+│   ├── AppDbContext.cs
+│   └── Repositories/
+│       └── UserRepository.cs
+├── Middleware/
+│   └── ExceptionHandlingMiddleware.cs
+├── Extensions/
+│   └── ServiceCollectionExtensions.cs
+├── Program.cs
+└── appsettings.json
+```
+
+### Best Practices
+
+<InfoBox type="tip">
+**Project Organization Tips:**
+- Keep `Program.cs` clean - move service registration to extension methods
+- Use folders to group related files
+- Follow naming conventions (`*Controller`, `*Service`, `*Repository`)
+- Separate DTOs from domain entities
+- Use environment-specific config files
+</InfoBox>
+
+<ProgressCheckpoint section="project-advanced" xpReward={11} />

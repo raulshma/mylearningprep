@@ -2,18 +2,20 @@
 
 Understanding the project file format, SDK conventions, and build process is essential for advanced scenarios like multi-targeting, custom build tasks, and NuGet package creation.
 
-## SDK-Style Project Files
+---
 
-ASP.NET Core uses the **SDK-style project format** introduced with .NET Core. The `Sdk` attribute determines default behavior:
+## Section 1: Project Basics - SDK-Style Projects
+
+### SDK-Style Project Format
+
+ASP.NET Core uses the **SDK-style project format**. The `Sdk` attribute determines default behavior:
 
 ```xml
-<!-- Web SDK includes ASP.NET Core defaults -->
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 </Project>
 ```
@@ -24,38 +26,47 @@ ASP.NET Core uses the **SDK-style project format** introduced with .NET Core. Th
 |:----|:---------|
 | `Microsoft.NET.Sdk` | Class libraries, console apps |
 | `Microsoft.NET.Sdk.Web` | ASP.NET Core applications |
-| `Microsoft.NET.Sdk.Worker` | Background services, hosted services |
+| `Microsoft.NET.Sdk.Worker` | Background services |
 | `Microsoft.NET.Sdk.Razor` | Razor class libraries |
-| `Microsoft.NET.Sdk.BlazorWebAssembly` | Blazor WebAssembly apps |
+| `Microsoft.NET.Sdk.BlazorWebAssembly` | Blazor WebAssembly |
 
 <ProjectStructureExplorer mode="advanced" />
 
-## Implicit Usings
+### Implicit Usings
 
 The Web SDK automatically includes common namespaces:
 
 ```csharp
-// These are implicitly available (no using statement needed):
+// Implicitly available (no using statement needed):
 global using Microsoft.AspNetCore.Builder;
-global using Microsoft.AspNetCore.Hosting;
 global using Microsoft.AspNetCore.Http;
-global using Microsoft.Extensions.Configuration;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.Hosting;
 global using Microsoft.Extensions.Logging;
 global using System.Net.Http.Json;
 ```
 
-To view or customize, check the `obj/` folder for `*.GlobalUsings.g.cs`.
+To customize, add to your `.csproj`:
+```xml
+<ItemGroup>
+  <Using Include="MyCompany.Common" />
+  <Using Remove="System.Net.Http.Json" />
+</ItemGroup>
+```
 
-## MSBuild Properties
+<ProgressCheckpoint section="project-basics" xpReward={18} />
 
-### Common Properties
+---
+
+## Section 2: Project Structure - MSBuild Deep Dive
+
+### Common MSBuild Properties
 
 ```xml
 <PropertyGroup>
   <!-- Framework targeting -->
   <TargetFramework>net8.0</TargetFramework>
+  <TargetFrameworks>net8.0;net7.0</TargetFrameworks>
   
   <!-- Language features -->
   <Nullable>enable</Nullable>
@@ -67,31 +78,71 @@ To view or customize, check the `obj/` folder for `*.GlobalUsings.g.cs`.
   <AssemblyName>MyApi</AssemblyName>
   <RootNamespace>MyCompany.MyApi</RootNamespace>
   
+  <!-- Build settings -->
+  <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  <WarningsAsErrors>CS8600;CS8602;CS8603</WarningsAsErrors>
+  
   <!-- Docker support -->
   <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
   
-  <!-- Trimming (for AOT) -->
+  <!-- AOT/Trimming -->
   <PublishTrimmed>true</PublishTrimmed>
-  <IsTrimmable>true</IsTrimmable>
+  <PublishAot>true</PublishAot>
 </PropertyGroup>
 ```
 
 ### Multi-Targeting
+
+Support multiple .NET versions:
 
 ```xml
 <PropertyGroup>
   <TargetFrameworks>net8.0;net7.0;net6.0</TargetFrameworks>
 </PropertyGroup>
 
+<!-- Conditional compilation -->
 <ItemGroup Condition="'$(TargetFramework)' == 'net6.0'">
-  <!-- Polyfills for older frameworks -->
   <PackageReference Include="IndexRange" Version="1.0.0" />
 </ItemGroup>
+
+<!-- In code -->
+#if NET8_0_OR_GREATER
+    // Use .NET 8 features
+#elif NET7_0
+    // Use .NET 7 features
+#endif
 ```
 
-## Build and Publish Pipeline
+### Directory.Build.props
 
-### Build Process
+Centralize settings across all projects:
+
+```xml
+<!-- Directory.Build.props (at solution root) -->
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Company>MyCompany</Company>
+    <Authors>Development Team</Authors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+</Project>
+```
+
+<ProgressCheckpoint section="project-structure" xpReward={18} />
+
+---
+
+## Section 3: Advanced Project Configuration
+
+### Build and Publish Pipeline
 
 ```bash
 # Restore dependencies
@@ -103,68 +154,121 @@ dotnet build
 # Build for production
 dotnet build -c Release
 
-# Output goes to:
-# bin/Debug/net8.0/  or  bin/Release/net8.0/
+# Publish options
+dotnet publish -c Release                              # Framework-dependent
+dotnet publish -c Release --self-contained -r linux-x64  # Self-contained
+dotnet publish -c Release -r win-x64 -p:PublishSingleFile=true  # Single file
+dotnet publish -c Release -r linux-x64 -p:PublishAot=true       # Native AOT
 ```
 
-### Publish Options
-
-```bash
-# Framework-dependent deployment (requires .NET runtime on target)
-dotnet publish -c Release
-
-# Self-contained (includes runtime)
-dotnet publish -c Release --self-contained -r linux-x64
-
-# Single file
-dotnet publish -c Release --self-contained -r win-x64 \
-  -p:PublishSingleFile=true
-
-# Native AOT (minimal API only)
-dotnet publish -c Release -r linux-x64 -p:PublishAot=true
-```
-
-## Directory.Build.props
-
-Centralize MSBuild properties across all projects in a solution:
+### Custom Build Targets
 
 ```xml
-<!-- Directory.Build.props (at solution root) -->
-<Project>
+<Target Name="GenerateVersion" BeforeTargets="Build">
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <Company>MyCompany</Company>
+    <Version>1.0.0.$([System.DateTime]::Now.ToString('yyyyMMdd'))</Version>
   </PropertyGroup>
+</Target>
 
-  <ItemGroup>
-    <!-- Common analyzers for all projects -->
-    <PackageReference Include="StyleCop.Analyzers" Version="1.2.0">
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-  </ItemGroup>
-</Project>
+<Target Name="CopyConfig" AfterTargets="Publish">
+  <Copy SourceFiles="config.template.json" 
+        DestinationFiles="$(PublishDir)config.json" />
+</Target>
 ```
 
-## Source Generators
+### Source Generators
 
 ASP.NET Core leverages source generators for performance:
 
 ```csharp
-// Enable compile-time request delegate generation
+// Enable compile-time JSON serialization
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.TypeInfoResolverChain.Insert(0, 
         AppJsonSerializerContext.Default);
 });
 
-// Source-generated JSON serializer
 [JsonSerializable(typeof(WeatherForecast))]
 [JsonSerializable(typeof(WeatherForecast[]))]
+[JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
 internal partial class AppJsonSerializerContext : JsonSerializerContext
 {
 }
 ```
 
-<ProgressCheckpoint section="project-advanced" xpReward={55} />
+### NuGet Package Creation
+
+Turn your project into a reusable package:
+
+```xml
+<PropertyGroup>
+  <PackageId>MyCompany.MyLibrary</PackageId>
+  <Version>1.0.0</Version>
+  <Authors>Your Name</Authors>
+  <Description>A useful library</Description>
+  <PackageTags>aspnetcore;utilities</PackageTags>
+  <PackageLicenseExpression>MIT</PackageLicenseExpression>
+  <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+</PropertyGroup>
+```
+
+### Enterprise Project Structure
+
+For large applications:
+
+```
+src/
+├── MyApp.Api/                    # Web API project
+│   ├── Controllers/
+│   ├── Middleware/
+│   └── Program.cs
+├── MyApp.Application/            # Business logic
+│   ├── Services/
+│   ├── Interfaces/
+│   └── Validators/
+├── MyApp.Domain/                 # Domain entities
+│   ├── Entities/
+│   ├── ValueObjects/
+│   └── Events/
+├── MyApp.Infrastructure/         # External concerns
+│   ├── Data/
+│   ├── ExternalServices/
+│   └── Messaging/
+└── MyApp.Shared/                 # Shared DTOs, constants
+    ├── Dtos/
+    └── Constants/
+
+tests/
+├── MyApp.UnitTests/
+├── MyApp.IntegrationTests/
+└── MyApp.ArchitectureTests/
+
+Directory.Build.props             # Shared MSBuild properties
+Directory.Packages.props          # Central package management
+MyApp.sln
+```
+
+### Central Package Management
+
+```xml
+<!-- Directory.Packages.props -->
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="8.0.0" />
+    <PackageVersion Include="Serilog" Version="3.1.1" />
+    <PackageVersion Include="xunit" Version="2.6.2" />
+  </ItemGroup>
+</Project>
+
+<!-- In individual .csproj files -->
+<ItemGroup>
+  <PackageReference Include="Microsoft.EntityFrameworkCore" />
+  <!-- Version comes from Directory.Packages.props -->
+</ItemGroup>
+```
+
+<ProgressCheckpoint section="project-advanced" xpReward={19} />

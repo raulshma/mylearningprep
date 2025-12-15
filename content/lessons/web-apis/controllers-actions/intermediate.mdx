@@ -2,11 +2,11 @@
 
 Controllers in ASP.NET Core are the entry points for handling HTTP requests. They inherit from `ControllerBase` (for APIs) or `Controller` (for MVC with views) and contain action methods that respond to specific routes.
 
-## Controller Architecture
+## Section 1: Controller Architecture
 
 <WebApiControllerVisualizer mode="intermediate" />
 
-## The [ApiController] Attribute
+### The [ApiController] Attribute
 
 The `[ApiController]` attribute enables several API-specific behaviors:
 
@@ -23,16 +23,36 @@ public class ProductsController : ControllerBase
 
 ### Key Behaviors Enabled
 
-| Feature                        | Description                                            |
-| :----------------------------- | :----------------------------------------------------- |
-| **Automatic Model Validation** | Returns 400 Bad Request if ModelState is invalid       |
-| **Binding Source Inference**   | Complex types from body, simple types from route/query |
-| **Problem Details**            | Standardized error response format (RFC 7807)          |
-| **Attribute Routing Required** | Convention-based routing disabled                      |
+| Feature | Description |
+| :------ | :---------- |
+| **Automatic Model Validation** | Returns 400 Bad Request if ModelState is invalid |
+| **Binding Source Inference** | Complex types from body, simple types from route/query |
+| **Problem Details** | Standardized error response format (RFC 7807) |
+| **Attribute Routing Required** | Convention-based routing disabled |
 
-## Action Return Types
+### ControllerBase vs Controller
 
-Actions can return various types:
+```csharp
+// For APIs - use ControllerBase (lighter)
+public class ProductsController : ControllerBase
+{
+    // No view support, just API methods
+}
+
+// For MVC with views - use Controller
+public class HomeController : Controller
+{
+    // Has View(), PartialView(), etc.
+}
+```
+
+<ProgressCheckpoint section="controllers-actions-intro" xpReward={13} />
+
+---
+
+## Section 2: Action Return Types
+
+### Different Return Type Options
 
 ```csharp
 // Specific type - automatically wrapped in 200 OK
@@ -57,7 +77,18 @@ public IActionResult Create(Product product)
 }
 ```
 
-## Dependency Injection in Controllers
+### Common Action Results
+
+| Method | Status Code | Use Case |
+| :----- | :---------- | :------- |
+| `Ok()` | 200 | Successful GET/PUT |
+| `Created()` | 201 | Successful POST |
+| `NoContent()` | 204 | Successful DELETE/PUT |
+| `BadRequest()` | 400 | Validation failure |
+| `NotFound()` | 404 | Resource not found |
+| `Conflict()` | 409 | Duplicate/conflict |
+
+### Dependency Injection in Controllers
 
 Controllers support constructor injection:
 
@@ -84,18 +115,13 @@ public class ProductsController : ControllerBase
 }
 ```
 
-## Common Action Results
+<ProgressCheckpoint section="controllers-actions-intermediate" xpReward={13} />
 
-| Method         | Status Code | Use Case              |
-| :------------- | :---------- | :-------------------- |
-| `Ok()`         | 200         | Successful GET/PUT    |
-| `Created()`    | 201         | Successful POST       |
-| `NoContent()`  | 204         | Successful DELETE/PUT |
-| `BadRequest()` | 400         | Validation failure    |
-| `NotFound()`   | 404         | Resource not found    |
-| `Conflict()`   | 409         | Duplicate/conflict    |
+---
 
-## Async Actions
+## Section 3: Async Actions and Best Practices
+
+### Async Actions
 
 For I/O-bound operations, use async:
 
@@ -106,6 +132,59 @@ public async Task<ActionResult<Product>> GetByIdAsync(int id)
     var product = await _service.GetByIdAsync(id);
     return product is null ? NotFound() : Ok(product);
 }
+
+[HttpGet]
+public async Task<ActionResult<List<Product>>> GetAllAsync(
+    CancellationToken cancellationToken)
+{
+    var products = await _service.GetAllAsync(cancellationToken);
+    return Ok(products);
+}
 ```
 
-<ProgressCheckpoint section="controllers-actions-intermediate" xpReward={40} />
+### Route Parameters
+
+```csharp
+[ApiController]
+[Route("api/[controller]")]
+public class ProductsController : ControllerBase
+{
+    // GET /api/products/5
+    [HttpGet("{id}")]
+    public ActionResult<Product> GetById(int id) { }
+
+    // GET /api/products/5/reviews
+    [HttpGet("{id}/reviews")]
+    public ActionResult<List<Review>> GetReviews(int id) { }
+
+    // GET /api/products/category/electronics
+    [HttpGet("category/{categoryName}")]
+    public ActionResult<List<Product>> GetByCategory(string categoryName) { }
+}
+```
+
+### Query Parameters
+
+```csharp
+// GET /api/products?page=1&pageSize=10&search=laptop
+[HttpGet]
+public ActionResult<PagedResult<Product>> GetAll(
+    [FromQuery] int page = 1,
+    [FromQuery] int pageSize = 10,
+    [FromQuery] string? search = null)
+{
+    var result = _service.GetPaged(page, pageSize, search);
+    return Ok(result);
+}
+```
+
+### Best Practices Summary
+
+1. **Use `ActionResult<T>`** for type safety with flexibility
+2. **Inject dependencies** via constructor
+3. **Use async** for I/O operations
+4. **Support cancellation** with `CancellationToken`
+5. **Return appropriate status codes** for each scenario
+6. **Keep controllers thin** - delegate to services
+
+<ProgressCheckpoint section="controllers-actions-advanced" xpReward={14} />

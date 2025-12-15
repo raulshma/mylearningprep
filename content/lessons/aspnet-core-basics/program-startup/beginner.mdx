@@ -2,7 +2,11 @@
 
 Every journey has a starting point, and for your ASP.NET Core app, that's `Program.cs`! Let's learn how your app wakes up and gets ready to work.
 
-## The Main Entrance 🚪
+---
+
+## Section 1: Program Basics
+
+### The Main Entrance 🚪
 
 Think of `Program.cs` like the **front door and reception desk** of a building:
 
@@ -25,52 +29,139 @@ app.Run();`}
   title="A Simple Program.cs"
 />
 
-## Breaking It Down Simply
+### Breaking It Down Simply
 
-### Step 1: Create the Builder 🔨
-
+**Step 1: Create the Builder** 🔨
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
 ```
+This is like hiring a contractor to build your app.
 
-This is like hiring a contractor to build your app. The `builder` prepares everything you need.
-
-### Step 2: Add Services 🧰
-
+**Step 2: Add Services** 🧰
 ```csharp
 builder.Services.AddControllers();
 ```
+Services are like hiring staff for your building.
 
-Services are like **hiring staff** for your building:
-- `AddControllers()` = Hire API handlers
-- `AddDbContext()` = Hire a database manager
-- `AddAuthentication()` = Hire security guards
+**Step 3: Build & Run** 🚀
+```csharp
+var app = builder.Build();
+app.Run();
+```
+Construction done - open for business!
 
-### Step 3: Build the App 🏗️
+<ProgressCheckpoint section="program-basics" xpReward={10} />
+
+---
+
+## Section 2: Services and Middleware
+
+### What Are Services?
+
+Services are helpers your app uses. Think of them as **employees** you hire:
+
+| Service | What It Does | Analogy |
+|:--------|:-------------|:--------|
+| `AddControllers()` | Handle API requests | Waiters |
+| `AddDbContext()` | Talk to database | Accountant |
+| `AddAuthentication()` | Check who users are | Security guard |
+
+### Adding Services
 
 ```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+// Hire your team!
+builder.Services.AddControllers();        // API handlers
+builder.Services.AddSwaggerGen();         // Documentation
+builder.Services.AddMemoryCache();        // Fast storage
+
 var app = builder.Build();
 ```
 
-Construction is done! Now you have your app ready to run.
+### What Is Middleware?
 
-### Step 4: Set Up the Pipeline 🔄
-
-```csharp
-app.MapControllers();
-```
-
-This tells requests where to go - like signs in a building pointing to different offices.
-
-### Step 5: Run! 🚀
+Middleware is like a **security checkpoint** - every request passes through it:
 
 ```csharp
+var app = builder.Build();
+
+// Each request goes through these in order:
+app.UseHttpsRedirection();  // 1. Force HTTPS
+app.UseAuthentication();    // 2. Check who you are
+app.UseAuthorization();     // 3. Check what you can do
+app.MapControllers();       // 4. Handle the request
+
 app.Run();
 ```
 
-Open for business! Your app starts listening for visitors (requests).
+### The Pipeline Analogy
 
-## Real-World Analogy
+> **Think of middleware like an airport:**
+> 
+> 1. Check-in (UseRouting)
+> 2. Security screening (UseAuthentication)
+> 3. Passport control (UseAuthorization)
+> 4. Board the plane (MapControllers)
+
+<ProgressCheckpoint section="program-intermediate" xpReward={10} />
+
+---
+
+## Section 3: Putting It All Together
+
+### A Complete Example
+
+Here's a real Program.cs you might use:
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+// === SERVICES ===
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+var app = builder.Build();
+
+// === MIDDLEWARE ===
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseHttpsRedirection();
+app.UseAuthorization();
+app.MapControllers();
+
+app.Run();
+```
+
+### Development vs Production
+
+Notice this part:
+```csharp
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+```
+
+This means Swagger (API documentation) only shows in development - not in production!
+
+### Key Takeaways
+
+<InfoBox type="tip">
+**Remember:**
+- `Program.cs` is where your app starts
+- **Services** = Things your app needs (like employees)
+- **Middleware** = Steps every request goes through
+- Order matters! Middleware runs in the order you add it
+</InfoBox>
+
+### Real-World Analogy
 
 > **Program.cs is like opening a restaurant:**
 > 
@@ -79,4 +170,4 @@ Open for business! Your app starts listening for visitors (requests).
 > 3. Set up the dining flow (configure pipeline)
 > 4. Open the doors to customers (run)
 
-<ProgressCheckpoint section="program-basics" xpReward={25} />
+<ProgressCheckpoint section="program-advanced" xpReward={5} />

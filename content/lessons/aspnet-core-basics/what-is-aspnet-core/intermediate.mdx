@@ -1,59 +1,95 @@
-# ASP.NET Core Overview
+# What is ASP.NET Core?
 
 ASP.NET Core is a **cross-platform, high-performance, open-source framework** for building modern, cloud-ready, internet-connected applications. It's a complete rewrite of ASP.NET Framework, designed for today's development needs.
 
-## What Can You Build?
+---
 
-ASP.NET Core is versatile. You can create:
+## Section 1: Introduction to ASP.NET Core
 
-1. **Web APIs** - RESTful services that power mobile apps, SPAs, and microservices
-2. **MVC Web Applications** - Server-rendered websites with Razor views
-3. **Razor Pages** - Simplified page-focused web apps
-4. **Real-time Applications** - Using SignalR for WebSocket communication
-5. **gRPC Services** - High-performance RPC for service-to-service communication
-6. **Blazor Apps** - Interactive web UIs using C# instead of JavaScript
+### The Modern Web Framework
+
+ASP.NET Core represents Microsoft's vision for modern web development. Unlike its predecessor (ASP.NET Framework), it was built from the ground up with these principles:
+
+- **Cross-platform**: Runs on Windows, Linux, and macOS
+- **Modular**: Only include what you need via NuGet packages
+- **Cloud-ready**: Designed for containerization and cloud deployment
+- **High-performance**: Consistently ranks among the fastest web frameworks
+
+### Key Differentiators
+
+| Feature | ASP.NET Framework | ASP.NET Core |
+|:--------|:------------------|:-------------|
+| Platform | Windows only | Cross-platform |
+| Hosting | IIS only | Kestrel, IIS, Docker, etc. |
+| Dependencies | System.Web (monolithic) | Modular NuGet packages |
+| Performance | Good | Excellent (10x faster) |
+| Development | Closed | Open source on GitHub |
+
+### When to Use ASP.NET Core
+
+**Choose ASP.NET Core when you need:**
+- Cross-platform deployment (Linux servers, Docker)
+- Microservices architecture
+- High-performance APIs
+- Modern development practices (DI, async/await)
+- Cloud-native applications
 
 <AspNetCoreIntroVisualizer mode="intermediate" />
 
-## Framework vs Core: What Changed?
+<ProgressCheckpoint section="intro-aspnet-core" xpReward={15} />
 
-| ASP.NET Framework | ASP.NET Core |
-|:------------------|:-------------|
-| Windows only | Cross-platform (Windows, Linux, macOS) |
-| System.Web dependency | Modular with NuGet packages |
-| IIS hosting only | Multiple hosting options (Kestrel, IIS, Docker) |
-| Large memory footprint | Lightweight and fast |
-| Closed development | Open source on GitHub |
+---
 
-## Architecture Highlights
+## Section 2: ASP.NET Core Overview
 
-### Request Pipeline
+### Application Types
 
-ASP.NET Core uses a **middleware pipeline** architecture. Each middleware component can:
-- Handle the request and short-circuit the pipeline
-- Pass the request to the next middleware
-- Perform work before and after the next middleware
+ASP.NET Core is versatile. You can create:
+
+| Type | Description | Use Case |
+|:-----|:------------|:---------|
+| **Web APIs** | RESTful services | Mobile backends, SPAs, microservices |
+| **MVC Apps** | Server-rendered HTML | Traditional websites |
+| **Razor Pages** | Page-focused model | Simple CRUD apps |
+| **Blazor** | C# in the browser | Interactive SPAs without JavaScript |
+| **SignalR** | Real-time communication | Chat, live dashboards |
+| **gRPC** | High-performance RPC | Service-to-service communication |
+
+### The Request Pipeline
+
+ASP.NET Core uses a **middleware pipeline** architecture:
 
 ```csharp
-// Each middleware processes requests in order
-app.UseHttpsRedirection();
-app.UseStaticFiles();
-app.UseRouting();
-app.UseAuthentication();
-app.UseAuthorization();
-app.MapControllers();
+var builder = WebApplication.CreateBuilder(args);
+var app = builder.Build();
+
+// Middleware executes in order
+app.UseHttpsRedirection();    // 1. Redirect HTTP to HTTPS
+app.UseStaticFiles();         // 2. Serve static files
+app.UseRouting();             // 3. Match routes
+app.UseAuthentication();      // 4. Authenticate user
+app.UseAuthorization();       // 5. Check permissions
+app.MapControllers();         // 6. Execute controller
+
+app.Run();
 ```
+
+Each middleware can:
+- Handle the request and short-circuit
+- Pass to the next middleware
+- Perform work before AND after the next middleware
 
 ### Built-in Dependency Injection
 
-Unlike its predecessor, ASP.NET Core has a **first-class DI container** built into the framework:
+ASP.NET Core has a **first-class DI container**:
 
 ```csharp
-// Register services
+// Register services in Program.cs
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddDbContext<AppDbContext>();
+builder.Services.AddHttpClient<IWeatherClient, WeatherClient>();
 
-// Inject anywhere
+// Inject via constructor
 public class UserController : ControllerBase
 {
     private readonly IUserService _userService;
@@ -62,16 +98,115 @@ public class UserController : ControllerBase
     {
         _userService = userService;
     }
+    
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetUser(int id)
+    {
+        var user = await _userService.GetByIdAsync(id);
+        return Ok(user);
+    }
 }
 ```
 
-## Performance Matters
+### Service Lifetimes
 
-ASP.NET Core consistently ranks among the **top-performing web frameworks** in industry benchmarks like TechEmpower. Key performance features:
+| Lifetime | Description | Use Case |
+|:---------|:------------|:---------|
+| **Singleton** | One instance for app lifetime | Caching, configuration |
+| **Scoped** | One instance per request | Database contexts, user services |
+| **Transient** | New instance every time | Lightweight, stateless services |
 
-- **Kestrel**: A blazing-fast, cross-platform web server
-- **Async everywhere**: Built on async/await patterns
-- **Memory efficiency**: Reduced allocations and smart pooling
-- **Span<T> and Memory<T>**: Low-allocation APIs for high throughput
+<ProgressCheckpoint section="aspnet-core-overview" xpReward={15} />
 
-<ProgressCheckpoint section="aspnet-core-overview" xpReward={40} />
+---
+
+## Section 3: ASP.NET Core Architecture
+
+### The Hosting Model
+
+ASP.NET Core uses the **Generic Host** pattern:
+
+```csharp
+var builder = WebApplication.CreateBuilder(args);
+
+// Configure services
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+var app = builder.Build();
+
+// Configure middleware pipeline
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseHttpsRedirection();
+app.UseAuthorization();
+app.MapControllers();
+
+app.Run();
+```
+
+### Kestrel Web Server
+
+Kestrel is ASP.NET Core's built-in, cross-platform web server:
+
+```csharp
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxConcurrentConnections = 100;
+    options.Limits.MaxRequestBodySize = 10 * 1024 * 1024; // 10MB
+    options.ListenAnyIP(5000); // HTTP
+    options.ListenAnyIP(5001, listenOptions =>
+    {
+        listenOptions.UseHttps();
+    });
+});
+```
+
+**Kestrel Features:**
+- Cross-platform (Windows, Linux, macOS)
+- High performance (millions of requests/second)
+- HTTP/1.1, HTTP/2, and HTTP/3 support
+- TLS/HTTPS support
+
+### Configuration System
+
+ASP.NET Core loads configuration from multiple sources:
+
+```csharp
+// Configuration is loaded in this order (later overrides earlier):
+// 1. appsettings.json
+// 2. appsettings.{Environment}.json
+// 3. User secrets (Development only)
+// 4. Environment variables
+// 5. Command-line arguments
+
+var connectionString = builder.Configuration.GetConnectionString("Default");
+var apiKey = builder.Configuration["ExternalApi:Key"];
+
+// Strongly-typed configuration
+builder.Services.Configure<EmailSettings>(
+    builder.Configuration.GetSection("Email"));
+```
+
+### Performance Highlights
+
+ASP.NET Core consistently ranks among the **top-performing frameworks**:
+
+| Metric | Performance |
+|:-------|:------------|
+| Plaintext | 7+ million req/sec |
+| JSON serialization | 1+ million req/sec |
+| Database queries | 500K+ req/sec |
+
+**Why so fast?**
+- Kestrel is highly optimized
+- Async/await throughout
+- Span<T> and Memory<T> reduce allocations
+- Object pooling for common objects
+
+<ProgressCheckpoint section="aspnet-core-internals" xpReward={10} />

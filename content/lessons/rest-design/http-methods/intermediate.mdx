@@ -1,43 +1,32 @@
 # HTTP Methods & Status Codes: Best Practices for .NET APIs
 
-Using the correct HTTP methods and status codes is crucial for building predictable, maintainable APIs. Let's dive into professional practices and real-world patterns.
+Using the correct HTTP methods and status codes is crucial for building predictable, maintainable APIs.
 
-## The Complete HTTP Method Arsenal 🛠️
+## Section 1: HTTP Methods Deep Dive 🛠️
 
 ### The Big 5 Methods
 
-| Method | Use Case | Idempotent? | Safe? | Example |
-|:-------|:---------|:------------|:------|:--------|
-| **GET** | Retrieve data | ✅ Yes | ✅ Yes | `GET /api/users/1` |
-| **POST** | Create new resource | ❌ No | ❌ No | `POST /api/users` |
-| **PUT** | Replace entire resource | ✅ Yes | ❌ No | `PUT /api/users/1` |
-| **PATCH** | Partially update resource | ❌ No* | ❌ No | `PATCH /api/users/1` |
-| **DELETE** | Remove resource | ✅ Yes | ❌ No | `DELETE /api/users/1` |
+| Method | Use Case | Idempotent? | Safe? |
+|:-------|:---------|:------------|:------|
+| **GET** | Retrieve data | ✅ Yes | ✅ Yes |
+| **POST** | Create new resource | ❌ No | ❌ No |
+| **PUT** | Replace entire resource | ✅ Yes | ❌ No |
+| **PATCH** | Partially update resource | ⚠️ Depends | ❌ No |
+| **DELETE** | Remove resource | ✅ Yes | ❌ No |
 
 <InfoBox type="info">
   **Key Terms:**
   - **Safe:** Doesn't modify data (read-only)
   - **Idempotent:** Calling it multiple times has the same effect as calling it once
-  - *PATCH can be idempotent depending on implementation
 </InfoBox>
-
-<ProgressCheckpoint section="methods-overview" xpReward={5} />
 
 ### GET - Retrieve Resources 📖
 
-**Characteristics:**
-- Read-only operation
-- No request body
-- Cacheable
-- Can be bookmarked
-- Safe to retry
-
-**ASP.NET Core Implementation:**
 ```csharp
 [HttpGet("{id}")]
 [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(UserDto))]
 [ProducesResponseType(StatusCodes.Status404NotFound)]
-[ResponseCache(Duration = 60)] // Cache for 60 seconds
+[ResponseCache(Duration = 60)]
 public IActionResult GetUser(int id)
 {
     var user = _repository.GetById(id);
@@ -47,263 +36,97 @@ public IActionResult GetUser(int id)
     
     return Ok(user);
 }
-
-// Get collection with filtering
-[HttpGet]
-[ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IEnumerable<UserDto>))]
-public IActionResult GetUsers(
-    [FromQuery] string? search = null,
-    [FromQuery] int page = 1,
-    [FromQuery] int pageSize = 20)
-{
-    var users = _repository.GetAll(search, page, pageSize);
-    return Ok(users);
-}
 ```
 
 **Best Practices:**
 - Always return 404 if resource doesn't exist
 - Use query parameters for filtering, sorting, pagination
 - Implement caching for frequently accessed data
-- Never modify data in a GET request
 
-<ProgressCheckpoint section="get-method" xpReward={5} />
+<ProgressCheckpoint section="get-method" xpReward={3} />
 
 ### POST - Create New Resources ➕
 
-**Characteristics:**
-- Creates new resources
-- NOT idempotent (calling twice creates two resources)
-- Includes request body
-- Returns 201 Created with Location header
-
-**ASP.NET Core Implementation:**
 ```csharp
 [HttpPost]
-[ProducesResponseType(StatusCodes.Status201Created, Type = typeof(UserDto))]
+[ProducesResponseType(StatusCodes.Status201Created)]
 [ProducesResponseType(StatusCodes.Status400BadRequest)]
-[ProducesResponseType(StatusCodes.Status409Conflict)]
 public IActionResult CreateUser([FromBody] CreateUserDto dto)
 {
-    // Validate input
     if (!ModelState.IsValid)
         return BadRequest(ModelState);
     
-    // Check for duplicates
     if (_repository.EmailExists(dto.Email))
         return Conflict(new { error = "Email already exists" });
     
-    // Create the resource
     var user = _repository.Create(dto);
     
-    // Return 201 with Location header pointing to the new resource
-    return CreatedAtAction(
-        nameof(GetUser),
-        new { id = user.Id },
-        user
-    );
-}
-```
-
-**Response Example:**
-```http
-HTTP/1.1 201 Created
-Location: /api/users/123
-Content-Type: application/json
-
-{
-  "id": 123,
-  "name": "John Doe",
-  "email": "john@example.com",
-  "createdAt": "2025-12-15T10:30:00Z"
+    return CreatedAtAction(nameof(GetUser), new { id = user.Id }, user);
 }
 ```
 
 **Best Practices:**
-- Always validate input and return 400 for invalid data
 - Return 201 Created (not 200 OK)
 - Include Location header with URL to the new resource
-- Return the created resource in the response body
 - Use 409 Conflict for duplicate resources
 
-<ProgressCheckpoint section="post-method" xpReward={5} />
+<ProgressCheckpoint section="post-method" xpReward={3} />
 
-### PUT - Replace Entire Resource 🔄
 
-**Characteristics:**
-- Replaces the ENTIRE resource
-- Idempotent (calling multiple times has same effect)
-- Requires complete resource representation
-- Missing fields are set to null/default
-
-**ASP.NET Core Implementation:**
-```csharp
-[HttpPut("{id}")]
-[ProducesResponseType(StatusCodes.Status204NoContent)]
-[ProducesResponseType(StatusCodes.Status404NotFound)]
-[ProducesResponseType(StatusCodes.Status400BadRequest)]
-public IActionResult UpdateUser(int id, [FromBody] UpdateUserDto dto)
-{
-    // Validate input
-    if (!ModelState.IsValid)
-        return BadRequest(ModelState);
-    
-    // Check if resource exists
-    if (!_repository.Exists(id))
-        return NotFound();
-    
-    // Replace the entire resource
-    _repository.Update(id, dto);
-    
-    // Return 204 No Content (success with no body)
-    return NoContent();
-}
-```
-
-**Important:** PUT requires the COMPLETE object:
-```csharp
-// DTO must include ALL fields
-public class UpdateUserDto
-{
-    [Required]
-    public string Name { get; set; }
-    
-    [Required]
-    [EmailAddress]
-    public string Email { get; set; }
-    
-    public string? PhoneNumber { get; set; }
-    
-    public string? Bio { get; set; }
-}
-```
-
-**Best Practices:**
-- Return 204 No Content on success (or 200 with updated resource)
-- Return 404 if resource doesn't exist
-- Validate that all required fields are present
-- Consider using PATCH for partial updates instead
-
-<ProgressCheckpoint section="put-method" xpReward={5} />
-
-### PATCH - Partial Update 🔧
-
-**Characteristics:**
-- Updates only specified fields
-- More flexible than PUT
-- Can use JSON Patch format
-- Safer for concurrent updates
+### PUT vs PATCH - The Critical Difference 🔄
 
 <InfoBox type="warning">
-  **PUT vs PATCH - Critical Difference:**
+  **PUT vs PATCH:**
   - **PUT:** "Replace everything with this" - Missing fields get deleted
   - **PATCH:** "Update only these fields" - Other fields stay unchanged
 </InfoBox>
 
-**ASP.NET Core Implementation (Simple):**
+**PUT - Replace Entire Resource:**
+```csharp
+[HttpPut("{id}")]
+public IActionResult UpdateUser(int id, [FromBody] UpdateUserDto dto)
+{
+    if (!_repository.Exists(id))
+        return NotFound();
+    
+    _repository.Update(id, dto); // Replaces ALL fields
+    return NoContent();
+}
+```
+
+**PATCH - Partial Update:**
 ```csharp
 [HttpPatch("{id}")]
-[ProducesResponseType(StatusCodes.Status204NoContent)]
-[ProducesResponseType(StatusCodes.Status404NotFound)]
-[ProducesResponseType(StatusCodes.Status400BadRequest)]
 public IActionResult PatchUser(int id, [FromBody] PatchUserDto dto)
 {
     var user = _repository.GetById(id);
-    
     if (user == null)
         return NotFound();
     
     // Update only provided fields
-    if (dto.Name != null)
-        user.Name = dto.Name;
-    
-    if (dto.Email != null)
-        user.Email = dto.Email;
-    
-    if (dto.PhoneNumber != null)
-        user.PhoneNumber = dto.PhoneNumber;
+    if (dto.Name != null) user.Name = dto.Name;
+    if (dto.Email != null) user.Email = dto.Email;
     
     _repository.Save(user);
-    
-    return NoContent();
-}
-
-// DTO with nullable fields
-public class PatchUserDto
-{
-    public string? Name { get; set; }
-    
-    [EmailAddress]
-    public string? Email { get; set; }
-    
-    public string? PhoneNumber { get; set; }
-}
-```
-
-**JSON Patch Format (Advanced):**
-```csharp
-// Install: Microsoft.AspNetCore.JsonPatch
-[HttpPatch("{id}")]
-public IActionResult PatchUser(int id, [FromBody] JsonPatchDocument<UserDto> patchDoc)
-{
-    var user = _repository.GetById(id);
-    
-    if (user == null)
-        return NotFound();
-    
-    var userDto = _mapper.Map<UserDto>(user);
-    
-    // Apply the patch
-    patchDoc.ApplyTo(userDto, ModelState);
-    
-    if (!ModelState.IsValid)
-        return BadRequest(ModelState);
-    
-    _mapper.Map(userDto, user);
-    _repository.Save(user);
-    
     return NoContent();
 }
 ```
 
-**JSON Patch Request:**
-```json
-PATCH /api/users/123
-[
-  { "op": "replace", "path": "/email", "value": "newemail@example.com" },
-  { "op": "replace", "path": "/phoneNumber", "value": "+1234567890" }
-]
-```
+<ProgressCheckpoint section="put-method" xpReward={3} />
 
-<ProgressCheckpoint section="patch-method" xpReward={5} />
+<ProgressCheckpoint section="patch-method" xpReward={3} />
 
 ### DELETE - Remove Resource 🗑️
 
-**Characteristics:**
-- Removes a resource
-- Idempotent (deleting twice has same effect as once)
-- Usually returns 204 No Content
-- May return 404 if already deleted
-
-**ASP.NET Core Implementation:**
 ```csharp
 [HttpDelete("{id}")]
-[ProducesResponseType(StatusCodes.Status204NoContent)]
-[ProducesResponseType(StatusCodes.Status404NotFound)]
-[ProducesResponseType(StatusCodes.Status403Forbidden)]
+[Authorize(Roles = "Admin")]
 public IActionResult DeleteUser(int id)
 {
-    var user = _repository.GetById(id);
-    
-    if (user == null)
+    if (!_repository.Exists(id))
         return NotFound();
     
-    // Check permissions
-    if (!User.IsInRole("Admin") && User.GetUserId() != id)
-        return Forbid();
-    
     _repository.Delete(id);
-    
     return NoContent();
 }
 ```
@@ -314,7 +137,6 @@ public IActionResult DeleteUser(int id)
 public IActionResult DeleteUser(int id)
 {
     var user = _repository.GetById(id);
-    
     if (user == null)
         return NotFound();
     
@@ -327,16 +149,11 @@ public IActionResult DeleteUser(int id)
 }
 ```
 
-**Best Practices:**
-- Return 204 No Content on success
-- Return 404 if resource doesn't exist (or 204 if idempotent)
-- Consider soft deletes for important data
-- Check permissions before deleting
-- Consider cascading deletes for related resources
+<ProgressCheckpoint section="delete-method" xpReward={3} />
 
-<ProgressCheckpoint section="delete-method" xpReward={5} />
+---
 
-## Status Codes in ASP.NET Core 🎯
+## Section 2: Status Codes in ASP.NET Core 🎯
 
 ### Success Responses (2xx)
 
@@ -359,7 +176,6 @@ return NoContent();
 ```csharp
 // 400 Bad Request - Validation failed
 return BadRequest(ModelState);
-return BadRequest(new { error = "Invalid email format" });
 
 // 401 Unauthorized - Not authenticated
 return Unauthorized();
@@ -369,7 +185,6 @@ return Forbid();
 
 // 404 Not Found - Resource doesn't exist
 return NotFound();
-return NotFound(new { error = "User not found" });
 
 // 409 Conflict - Resource conflict (e.g., duplicate)
 return Conflict(new { error = "Email already exists" });
@@ -381,16 +196,18 @@ return UnprocessableEntity(new { error = "Cannot delete user with active orders"
 ### Server Error Responses (5xx)
 
 ```csharp
-// 500 Internal Server Error - Unhandled exception
+// 500 Internal Server Error
 return StatusCode(500, new { error = "An error occurred" });
 
-// 503 Service Unavailable - Temporary unavailability
+// 503 Service Unavailable
 return StatusCode(503, new { error = "Service temporarily unavailable" });
 ```
 
-<ProgressCheckpoint section="status-codes-dotnet" xpReward={10} />
+<ProgressCheckpoint section="status-codes-dotnet" xpReward={5} />
 
-## Complete CRUD Example 📝
+---
+
+## Section 3: Complete CRUD Example 📝
 
 Here's a complete controller implementing all methods correctly:
 
@@ -401,44 +218,28 @@ Here's a complete controller implementing all methods correctly:
 public class UsersController : ControllerBase
 {
     private readonly IUserRepository _repository;
-    private readonly ILogger<UsersController> _logger;
-
-    public UsersController(IUserRepository repository, ILogger<UsersController> logger)
-    {
-        _repository = repository;
-        _logger = logger;
-    }
 
     // GET: api/users
     [HttpGet]
-    [ProducesResponseType(StatusCodes.Status200OK)]
     [ResponseCache(Duration = 30)]
-    public IActionResult GetAll([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+    public IActionResult GetAll([FromQuery] int page = 1)
     {
-        var users = _repository.GetAll(page, pageSize);
+        var users = _repository.GetAll(page, pageSize: 20);
         return Ok(users);
     }
 
     // GET: api/users/5
     [HttpGet("{id}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ResponseCache(Duration = 60)]
     public IActionResult Get(int id)
     {
         var user = _repository.GetById(id);
-        
         if (user == null)
-            return NotFound(new { error = $"User {id} not found" });
-        
+            return NotFound();
         return Ok(user);
     }
 
     // POST: api/users
     [HttpPost]
-    [ProducesResponseType(StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public IActionResult Create([FromBody] CreateUserDto dto)
     {
         if (!ModelState.IsValid)
@@ -448,80 +249,35 @@ public class UsersController : ControllerBase
             return Conflict(new { error = "Email already exists" });
         
         var user = _repository.Create(dto);
-        
-        _logger.LogInformation("User {UserId} created", user.Id);
-        
         return CreatedAtAction(nameof(Get), new { id = user.Id }, user);
     }
 
     // PUT: api/users/5
     [HttpPut("{id}")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public IActionResult Update(int id, [FromBody] UpdateUserDto dto)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
         
         if (!_repository.Exists(id))
-            return NotFound(new { error = $"User {id} not found" });
+            return NotFound();
         
         _repository.Update(id, dto);
-        
-        _logger.LogInformation("User {UserId} updated", id);
-        
-        return NoContent();
-    }
-
-    // PATCH: api/users/5
-    [HttpPatch("{id}")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public IActionResult Patch(int id, [FromBody] PatchUserDto dto)
-    {
-        var user = _repository.GetById(id);
-        
-        if (user == null)
-            return NotFound(new { error = $"User {id} not found" });
-        
-        if (dto.Name != null)
-            user.Name = dto.Name;
-        
-        if (dto.Email != null)
-        {
-            if (_repository.EmailExists(dto.Email, excludeUserId: id))
-                return Conflict(new { error = "Email already exists" });
-            
-            user.Email = dto.Email;
-        }
-        
-        _repository.Save(user);
-        
-        _logger.LogInformation("User {UserId} patched", id);
-        
         return NoContent();
     }
 
     // DELETE: api/users/5
     [HttpDelete("{id}")]
     [Authorize(Roles = "Admin")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public IActionResult Delete(int id)
     {
         if (!_repository.Exists(id))
-            return NotFound(new { error = $"User {id} not found" });
+            return NotFound();
         
         _repository.Delete(id);
-        
-        _logger.LogInformation("User {UserId} deleted", id);
-        
         return NoContent();
     }
 }
 ```
 
-<ProgressCheckpoint section="status-codes" xpReward={30} />
+<ProgressCheckpoint section="status-codes" xpReward={10} />

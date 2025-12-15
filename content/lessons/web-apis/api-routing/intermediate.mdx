@@ -2,61 +2,54 @@
 
 ASP.NET Core uses **attribute routing** for Web APIs, where routes are defined using attributes directly on controllers and actions. This provides explicit, maintainable route definitions.
 
-## Route Template Syntax
+## Section 1: Route Template Syntax
 
 <RoutingAttributeExplorer mode="intermediate" />
 
-## Route Tokens
+### Route Tokens
 
 Special tokens get replaced at runtime:
 
-| Token          | Replacement                               |
-| :------------- | :---------------------------------------- |
+| Token | Replacement |
+| :---- | :---------- |
 | `[controller]` | Controller name minus "Controller" suffix |
-| `[action]`     | Action method name                        |
-| `[area]`       | Area name (if using areas)                |
+| `[action]` | Action method name |
+| `[area]` | Area name (if using areas) |
 
 ```csharp
 [Route("api/[controller]")]
 public class ProductsController : ControllerBase
 {
     // Route becomes: api/products
+    
+    [HttpGet("[action]")]  // GET /api/products/featured
+    public ActionResult<List<Product>> Featured() { }
 }
 ```
 
-## Route Parameters
-
-### Required Parameters
+### Route Parameters
 
 ```csharp
+// Required parameter
 [HttpGet("{id}")]
-public ActionResult<Product> GetById(int id)
-    => Ok(_service.GetById(id));
-```
+public ActionResult<Product> GetById(int id) { }
 
-### Optional Parameters
-
-```csharp
+// Optional parameter
 [HttpGet("{id?}")]
-public ActionResult GetById(int? id)
-{
-    if (id.HasValue)
-        return Ok(_service.GetById(id.Value));
-    return Ok(_service.GetAll());
-}
-```
+public ActionResult GetById(int? id) { }
 
-### Default Values
-
-```csharp
+// Default value
 [HttpGet("{page=1}")]
-public ActionResult<List<Product>> GetAll(int page)
-    => Ok(_service.GetAll(page));
+public ActionResult<List<Product>> GetAll(int page) { }
 ```
 
-## Route Constraints
+<ProgressCheckpoint section="routing-intro" xpReward={13} />
 
-Constrain parameter types and formats:
+---
+
+## Section 2: Route Constraints
+
+### Constraining Parameter Types
 
 ```csharp
 // Only matches integer IDs
@@ -71,6 +64,7 @@ public ActionResult<Product> GetByGuid(Guid id) { }
 [HttpGet("{id:int:min(1)}")]
 public ActionResult<Product> GetById(int id) { }
 
+
 // Regex constraint
 [HttpGet("{slug:regex(^[a-z0-9-]+$)}")]
 public ActionResult<Product> GetBySlug(string slug) { }
@@ -78,17 +72,23 @@ public ActionResult<Product> GetBySlug(string slug) { }
 
 ### Common Constraints
 
-| Constraint  | Description     | Example            |
-| :---------- | :-------------- | :----------------- |
-| `int`       | Integer         | `{id:int}`         |
-| `guid`      | GUID format     | `{id:guid}`        |
-| `min(n)`    | Minimum value   | `{id:min(1)}`      |
-| `max(n)`    | Maximum value   | `{id:max(100)}`    |
-| `length(n)` | Exact length    | `{code:length(6)}` |
-| `alpha`     | Letters only    | `{name:alpha}`     |
-| `required`  | Must have value | `{name:required}`  |
+| Constraint | Description | Example |
+| :--------- | :---------- | :------ |
+| `int` | Integer | `{id:int}` |
+| `guid` | GUID format | `{id:guid}` |
+| `min(n)` | Minimum value | `{id:min(1)}` |
+| `max(n)` | Maximum value | `{id:max(100)}` |
+| `length(n)` | Exact length | `{code:length(6)}` |
+| `alpha` | Letters only | `{name:alpha}` |
+| `required` | Must have value | `{name:required}` |
 
-## Query String Parameters
+<ProgressCheckpoint section="routing-intermediate" xpReward={13} />
+
+---
+
+## Section 3: Query Parameters and Multiple Routes
+
+### Query String Parameters
 
 Parameters not in the route come from query string:
 
@@ -106,16 +106,37 @@ public ActionResult<List<Product>> Search(
 }
 ```
 
-## Multiple Routes
+### Multiple Routes for One Action
 
 Actions can have multiple routes:
 
 ```csharp
 [HttpGet]
-[Route("")] // /api/products
-[Route("all")] // /api/products/all
-[Route("~/products")] // /products (absolute)
+[Route("")]           // /api/products
+[Route("all")]        // /api/products/all
+[Route("~/products")] // /products (absolute, ignores controller route)
 public ActionResult<List<Product>> GetAll() { }
 ```
 
-<ProgressCheckpoint section="routing-intermediate" xpReward={40} />
+### Combining Route and Query Parameters
+
+```csharp
+// GET /api/products/category/electronics?page=2&sort=price
+[HttpGet("category/{categoryName}")]
+public ActionResult<PagedResult<Product>> GetByCategory(
+    string categoryName,
+    int page = 1,
+    string sort = "name")
+{
+    return Ok(_service.GetByCategory(categoryName, page, sort));
+}
+```
+
+### Best Practices
+
+1. **Use constraints** to validate route parameters early
+2. **Prefer route parameters** for required identifiers
+3. **Use query parameters** for optional filters and pagination
+4. **Keep routes RESTful** and predictable
+
+<ProgressCheckpoint section="routing-advanced" xpReward={14} />

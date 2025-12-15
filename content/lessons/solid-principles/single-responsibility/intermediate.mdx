@@ -2,7 +2,9 @@
 
 The Single Responsibility Principle states that **a class should have only one reason to change**. But what exactly does "reason to change" mean?
 
-## Understanding "Reason to Change"
+---
+
+## Section 1: Understanding "Reason to Change"
 
 A "reason to change" comes from a **stakeholder** or **actor** in your system:
 
@@ -15,7 +17,7 @@ A "reason to change" comes from a **stakeholder** or **actor** in your system:
 **Key Insight:** SRP is about **organizing code by actor**, not just by functionality. Each class should serve ONE stakeholder or business domain.
 </InfoBox>
 
-## The Problem with Mixed Responsibilities
+### The Problem with Mixed Responsibilities
 
 Consider this common anti-pattern in .NET applications:
 
@@ -85,7 +87,11 @@ Each of these four responsibilities has **different stakeholders** who might req
 
 **Every change request requires modifying the same class!**
 
-## The Solution: Separation of Concerns
+<ProgressCheckpoint section="srp-introduction" xpReward={13} />
+
+---
+
+## Section 2: The Solution - Separation of Concerns
 
 <DotnetCodePreview
   title="Applying SRP: Separated Services"
@@ -151,7 +157,7 @@ public class WelcomeEmailHandler : IHandle<UserCreatedEvent>
   ]}
 />
 
-## Cohesion: The Measure of SRP
+### Cohesion: The Measure of SRP
 
 **Cohesion** measures how well the elements of a class belong together.
 
@@ -164,7 +170,13 @@ public class WelcomeEmailHandler : IHandle<UserCreatedEvent>
 **Cohesion Test:** Can you describe what your class does in ONE sentence without using "AND" or "OR"?
 </InfoBox>
 
-## Signs You're Violating SRP
+<ProgressCheckpoint section="srp-understanding" xpReward={14} />
+
+---
+
+## Section 3: Signs and Refactoring
+
+### Signs You're Violating SRP
 
 Watch for these code smells:
 
@@ -173,7 +185,7 @@ Watch for these code smells:
 3. **Manager Classes** - "UserManager" that does everything user-related
 4. **Multiple Imports** - Importing unrelated namespaces (email + database + file system)
 
-## Refactoring Strategy
+### Refactoring Strategy
 
 When you find a class with multiple responsibilities:
 
@@ -185,22 +197,16 @@ When you find a class with multiple responsibilities:
 
 <SolidPrincipleDemo principle="S" mode="intermediate" />
 
-## Common Mistakes
+### Common Mistakes
 
-### ❌ Going Too Far
-
-Don't create a class for every single method:
-
+**❌ Going Too Far**
 ```csharp
 // Too granular - this is overkill!
 public class UserEmailGetter { string Get(User u) => u.Email; }
 public class UserEmailSetter { void Set(User u, string e) => u.Email = e; }
 ```
 
-### ✅ Finding the Balance
-
-Classes should be **cohesive units** that change together:
-
+**✅ Finding the Balance**
 ```csharp
 // Just right - cohesive and focused
 public class EmailService
@@ -211,11 +217,13 @@ public class EmailService
 }
 ```
 
-## Key Takeaways
+### Key Takeaways
 
+<InfoBox type="tip" title="Remember">
 - 🎯 **One actor, one class** - Organize by who requests changes
 - 📏 **High cohesion** - Methods and data should belong together
 - 🔌 **Use interfaces** - Decouple responsibilities with abstractions
 - ⚖️ **Balance is key** - Don't over-engineer with micro-classes
+</InfoBox>
 
-<ProgressCheckpoint section="srp-understanding" xpReward={40} />
+<ProgressCheckpoint section="srp-application" xpReward={13} />

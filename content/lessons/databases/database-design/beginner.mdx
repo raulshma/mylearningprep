@@ -169,6 +169,186 @@ Constraints are rules that keep your data clean:
 | **UNIQUE** | No duplicates | `Email VARCHAR UNIQUE` |
 | **DEFAULT** | Auto-fill value | `CreatedAt DEFAULT NOW()` |
 
+<ProgressCheckpoint section="intro-design" xpReward={7} />
+
+---
+
+## Section 2: Relationships
+
+### Understanding Relationships
+
+Relationships connect tables together. Let's explore each type:
+
+#### One-to-One (1:1)
+
+```sql
+-- Each user has exactly one profile
+CREATE TABLE Users (
+    Id INT PRIMARY KEY,
+    Email VARCHAR(255) UNIQUE NOT NULL
+);
+
+CREATE TABLE UserProfiles (
+    UserId INT PRIMARY KEY,  -- Also the foreign key!
+    Bio TEXT,
+    Avatar VARCHAR(500),
+    FOREIGN KEY (UserId) REFERENCES Users(Id)
+);
+```
+
+#### One-to-Many (1:N)
+
+```sql
+-- One customer can have many orders
+CREATE TABLE Customers (
+    Id INT PRIMARY KEY,
+    Name VARCHAR(100)
+);
+
+CREATE TABLE Orders (
+    Id INT PRIMARY KEY,
+    CustomerId INT NOT NULL,  -- Many orders point to one customer
+    OrderDate DATE,
+    FOREIGN KEY (CustomerId) REFERENCES Customers(Id)
+);
+```
+
+#### Many-to-Many (N:N)
+
+```sql
+-- Students can take many courses, courses have many students
+CREATE TABLE Students (
+    Id INT PRIMARY KEY,
+    Name VARCHAR(100)
+);
+
+CREATE TABLE Courses (
+    Id INT PRIMARY KEY,
+    Title VARCHAR(200)
+);
+
+-- Junction table connects them
+CREATE TABLE StudentCourses (
+    StudentId INT,
+    CourseId INT,
+    EnrollDate DATE,
+    PRIMARY KEY (StudentId, CourseId),
+    FOREIGN KEY (StudentId) REFERENCES Students(Id),
+    FOREIGN KEY (CourseId) REFERENCES Courses(Id)
+);
+```
+
+<ProgressCheckpoint section="relationships" xpReward={8} />
+
+---
+
+## Section 3: Normalization
+
+### What is Normalization?
+
+Normalization means organizing data to avoid duplication:
+
+#### Before Normalization (Bad!)
+
+| OrderId | CustomerName | CustomerEmail | Product | Price |
+|:--------|:-------------|:--------------|:--------|:------|
+| 1 | John | john@email.com | Laptop | 999 |
+| 2 | John | john@email.com | Mouse | 25 |
+
+**Problems:**
+- John's info is duplicated
+- If John changes his email, we must update multiple rows
+- Wasted storage space
+
+#### After Normalization (Good!)
+
+**Customers Table:**
+| Id | Name | Email |
+|:---|:-----|:------|
+| 1 | John | john@email.com |
+
+**Orders Table:**
+| Id | CustomerId | Product | Price |
+|:---|:-----------|:--------|:------|
+| 1 | 1 | Laptop | 999 |
+| 2 | 1 | Mouse | 25 |
+
+**Benefits:**
+- John's info stored once
+- Easy to update
+- Less storage
+
+### The Three Rules
+
+1. **First Normal Form (1NF)**: Each cell has ONE value
+2. **Second Normal Form (2NF)**: No partial dependencies
+3. **Third Normal Form (3NF)**: No transitive dependencies
+
+<InfoBox type="tip">
+  **Simple Rule:** If you find yourself copying the same data in multiple rows, you probably need to normalize!
+</InfoBox>
+
+<ProgressCheckpoint section="normalization" xpReward={8} />
+
+---
+
+## Section 4: Constraints
+
+### Types of Constraints
+
+Constraints are rules that protect your data:
+
+#### NOT NULL
+
+```sql
+CREATE TABLE Products (
+    Id INT PRIMARY KEY,
+    Name VARCHAR(100) NOT NULL,  -- Must have a name!
+    Price DECIMAL(10,2) NOT NULL  -- Must have a price!
+);
+```
+
+#### UNIQUE
+
+```sql
+CREATE TABLE Users (
+    Id INT PRIMARY KEY,
+    Email VARCHAR(255) UNIQUE,  -- No duplicate emails
+    Username VARCHAR(50) UNIQUE  -- No duplicate usernames
+);
+```
+
+#### CHECK
+
+```sql
+CREATE TABLE Products (
+    Id INT PRIMARY KEY,
+    Price DECIMAL(10,2) CHECK (Price >= 0),  -- Price can't be negative
+    Stock INT CHECK (Stock >= 0),  -- Stock can't be negative
+    Rating INT CHECK (Rating BETWEEN 1 AND 5)  -- Rating must be 1-5
+);
+```
+
+#### DEFAULT
+
+```sql
+CREATE TABLE Orders (
+    Id INT PRIMARY KEY,
+    OrderDate DATE DEFAULT GETDATE(),  -- Auto-fill today's date
+    Status VARCHAR(20) DEFAULT 'Pending',  -- Default status
+    IsActive BIT DEFAULT 1  -- Default to active
+);
+```
+
+### Why Use Constraints?
+
+| Benefit | Example |
+|:--------|:--------|
+| **Prevent bad data** | Can't insert negative prices |
+| **Enforce business rules** | Email must be unique |
+| **Auto-fill values** | CreatedAt defaults to NOW() |
+| **Maintain relationships** | Can't delete a customer with orders |
+
 ## Summary
 
 | Concept | Purpose |
@@ -176,6 +356,8 @@ Constraints are rules that keep your data clean:
 | Tables | Group related data |
 | Primary Keys | Uniquely identify rows |
 | Foreign Keys | Connect related tables |
+| Relationships | 1:1, 1:N, N:N patterns |
+| Normalization | Eliminate duplication |
 | Constraints | Enforce data rules |
 
-<ProgressCheckpoint section="intro-design" xpReward={30} />
+<ProgressCheckpoint section="constraints" xpReward={7} />

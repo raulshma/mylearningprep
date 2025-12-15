@@ -2,7 +2,9 @@
 
 At the advanced level, we explore SRP in the context of **enterprise architecture**, **microservices**, and **domain-driven design**. Understanding the nuances helps you make architectural decisions that scale.
 
-## The True Definition
+---
+
+## Section 1: The True Definition
 
 Robert C. Martin refines SRP as:
 
@@ -10,7 +12,7 @@ Robert C. Martin refines SRP as:
 
 An **actor** is a group of stakeholders who request the same types of changes. This shifts focus from "doing one thing" to "serving one stakeholder."
 
-## SRP at Different Scales
+### SRP at Different Scales
 
 SRP applies at multiple architectural levels:
 
@@ -25,7 +27,11 @@ SRP applies at multiple architectural levels:
 **Architectural Insight:** In microservices architecture, each service should own ONE bounded context. SRP at the service level prevents distributed monoliths.
 </InfoBox>
 
-## Case Study: E-Commerce Order Service
+<ProgressCheckpoint section="srp-introduction" xpReward={20} />
+
+---
+
+## Section 2: Case Study - E-Commerce Order Service
 
 ### The Problem: Distributed Monolith
 
@@ -59,9 +65,6 @@ Consider an `OrderService` in a microservices architecture that violates SRP:
         await _emailClient.SendOrderConfirmation(request.CustomerId);
         await _smsClient.SendOrderSMS(request.CustomerPhone);
         
-        // 7. Analytics (Reporting domain)
-        await _analyticsClient.TrackOrder(request);
-        
         return new Order { /* ... */ };
     }
 }`}
@@ -85,11 +88,6 @@ Consider an `OrderService` in a microservices architecture that violates SRP:
       lineNumbers: [19, 20, 21],
       highlight: "Shipping Responsibility",
       explanation: "Owned by Logistics Team - changes with carriers"
-    },
-    {
-      lineNumbers: [23, 24, 25],
-      highlight: "Communications Responsibility",
-      explanation: "Owned by Customer Experience Team - changes independently"
     }
   ]}
 />
@@ -122,9 +120,7 @@ public class OrderService
         {
             OrderId = order.Id,
             Items = request.Items,
-            CustomerId = request.CustomerId,
-            ShippingAddress = request.ShippingAddress,
-            Timestamp = DateTime.UtcNow
+            CustomerId = request.CustomerId
         });
         
         return order;
@@ -143,37 +139,26 @@ public class InventoryEventHandler
         else
             await _eventBus.Publish(new InventoryFailedEvent(e.OrderId));
     }
-}
-
-// Notification Service: Reacts to OrderConfirmed
-public class NotificationEventHandler
-{
-    public async Task Handle(OrderConfirmedEvent e)
-    {
-        await _email.SendConfirmation(e.CustomerId, e.OrderId);
-        // If SMS fails, order still valid!
-    }
 }`}
   steps={[
     {
-      lineNumbers: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23],
+      lineNumbers: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22],
       highlight: "Order Service",
       explanation: "Now ONLY manages order state. Publishes events for others to react."
     },
     {
-      lineNumbers: [26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37],
+      lineNumbers: [25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35],
       highlight: "Inventory Handler",
       explanation: "Separate service. Change inventory logic without touching orders."
-    },
-    {
-      lineNumbers: [40, 41, 42, 43, 44, 45, 46],
-      highlight: "Notification Handler",
-      explanation: "Separate service. SMS failure doesn't block orders!"
     }
   ]}
 />
 
-## SRP and Domain-Driven Design
+<ProgressCheckpoint section="srp-understanding" xpReward={20} />
+
+---
+
+## Section 3: SRP and Domain-Driven Design
 
 In DDD, SRP aligns with **Bounded Contexts**:
 
@@ -197,29 +182,7 @@ Each bounded context:
 
 <SolidPrincipleDemo principle="S" mode="advanced" />
 
-## Trade-offs and When to Violate SRP
-
-### When Strict SRP Might Be Overkill
-
-| Scenario | Consider Relaxing SRP |
-|:---------|:---------------------|
-| **Prototypes** | Speed over structure |
-| **Small apps** | < 5 developers, stable requirements |
-| **CRUD-only** | Simple data in/out |
-| **Performance-critical** | Avoiding indirection overhead |
-
-### When Strict SRP Is Essential
-
-| Scenario | Enforce SRP Rigorously |
-|:---------|:----------------------|
-| **Large teams** | Multiple teams on same codebase |
-| **High change rate** | Requirements shift frequently |
-| **Mission-critical** | Financial, healthcare systems |
-| **Microservices** | Service boundaries must be clear |
-
-## Measuring SRP Compliance
-
-### Quantitative Metrics
+### Measuring SRP Compliance
 
 | Metric | Good Value | Tool |
 |:-------|:-----------|:-----|
@@ -228,64 +191,40 @@ Each bounded context:
 | **Dependencies** | < 5 | JetBrains dotCover |
 | **Cyclomatic complexity** | < 10 | SonarQube |
 
-### Qualitative Tests
+### Best Practices for Enterprise SRP
 
-1. **The Newspaper Headline Test**
-   - Can you write a one-sentence headline for your class?
-   - "UserService: Manages user registration and authentication" ✅
-   - "UserManager: Does user stuff, emails, reports, and logging" ❌
-
-2. **The 5-Second Test**  
-   - Can a new developer understand the class purpose in 5 seconds?
-
-3. **The Single Commit Test**
-   - Does a feature require changes across unrelated classes?
-
-## Best Practices for Enterprise SRP
-
-### 1. Use Mediator Pattern for Orchestration
-
+**1. Use Mediator Pattern for Orchestration**
 ```csharp
 public class PlaceOrderHandler : IRequestHandler<PlaceOrderCommand, Order>
 {
     public async Task<Order> Handle(PlaceOrderCommand cmd, CancellationToken ct)
     {
-        var order = await _orderService.Create(cmd);  // SRP: just order
-        await _mediator.Publish(new OrderCreated(order.Id)); // Notify others
+        var order = await _orderService.Create(cmd);
+        await _mediator.Publish(new OrderCreated(order.Id));
         return order;
     }
 }
 ```
 
-### 2. Separate Read and Write Models (CQRS)
-
-```csharp
-// Write Model: Business logic
-public class OrderCommandService { /* validates, creates, updates */ }
-
-// Read Model: Reporting/Display
-public class OrderQueryService { /* optimized reads, denormalized */ }
-```
-
-### 3. Apply at Package Level
-
+**2. Apply at Package Level**
 ```
 src/
 ├── Orders/
 │   ├── Commands/       # Write operations
 │   ├── Queries/        # Read operations
-│   ├── Events/         # Domain events
 │   └── Domain/         # Core business logic
 ├── Inventory/          # Separate bounded context
 └── Shipping/           # Separate bounded context
 ```
 
-## Key Takeaways
+### Key Takeaways
 
+<InfoBox type="tip" title="Remember">
 - 🏢 **SRP scales** from methods to microservices
 - 🎭 **Actor-focused** - Organize by who requests changes
 - 📡 **Event-driven** - Use events to decouple responsibilities
 - 🎯 **Bounded contexts** - DDD aligns naturally with SRP
 - ⚖️ **Context matters** - Balance purity with pragmatism
+</InfoBox>
 
-<ProgressCheckpoint section="srp-application" xpReward={60} />
+<ProgressCheckpoint section="srp-application" xpReward={20} />

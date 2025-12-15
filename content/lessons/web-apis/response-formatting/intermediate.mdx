@@ -2,20 +2,18 @@
 
 ASP.NET Core uses **content negotiation** to determine response format based on the client's `Accept` header. Understanding formatters and action results gives you full control over API responses.
 
-## Content Negotiation
+## Section 1: Content Negotiation
 
 <ResponseFormattingDemo mode="intermediate" />
 
-The process:
+### The Process
 
 1. Client sends `Accept: application/json` header
 2. Server checks available output formatters
 3. Server selects matching formatter
 4. Data is serialized in requested format
 
-## Configuring JSON Serialization
-
-Customize JSON output globally:
+### Configuring JSON Serialization
 
 ```csharp
 builder.Services.AddControllers()
@@ -38,9 +36,13 @@ builder.Services.AddControllers()
     });
 ```
 
-## Action Result Types
+<ProgressCheckpoint section="response-formatting-intro" xpReward={13} />
 
-Choose the right result for each scenario:
+---
+
+## Section 2: Action Results and Problem Details
+
+### Choosing the Right Result
 
 ```csharp
 // Return data with 200 OK
@@ -71,13 +73,12 @@ public ActionResult Update(int id, Product product)
 }
 ```
 
-## Problem Details (RFC 7807)
+
+### Problem Details (RFC 7807)
 
 Standardized error response format:
 
 ```csharp
-// Automatic with [ApiController]
-// Or manually:
 [HttpGet("{id}")]
 public ActionResult GetById(int id)
 {
@@ -106,9 +107,13 @@ Response:
 }
 ```
 
-## Adding XML Support
+<ProgressCheckpoint section="response-formatting-intermediate" xpReward={13} />
 
-Enable XML responses:
+---
+
+## Section 3: XML Support and Custom Headers
+
+### Adding XML Support
 
 ```csharp
 builder.Services.AddControllers()
@@ -127,21 +132,28 @@ public ActionResult<List<Product>> GetAllXml() { }
 public ActionResult<List<Product>> GetAll() { }
 ```
 
-## Custom Response Headers
-
-Add custom headers to responses:
+### Custom Response Headers
 
 ```csharp
 [HttpGet]
-public ActionResult<List<Product>> GetAll()
+public ActionResult<List<Product>> GetAll(int page = 1, int pageSize = 10)
 {
-    var products = _service.GetAll();
+    var result = _service.GetPaged(page, pageSize);
 
-    Response.Headers.Add("X-Total-Count", products.Count.ToString());
-    Response.Headers.Add("X-Page-Size", "10");
+    Response.Headers.Add("X-Total-Count", result.TotalCount.ToString());
+    Response.Headers.Add("X-Page", page.ToString());
+    Response.Headers.Add("X-Page-Size", pageSize.ToString());
 
-    return Ok(products);
+    return Ok(result.Items);
 }
 ```
 
-<ProgressCheckpoint section="response-formatting-intermediate" xpReward={40} />
+### Best Practices
+
+1. **Use consistent status codes** across your API
+2. **Return Problem Details** for errors
+3. **Include pagination headers** for list endpoints
+4. **Configure JSON serialization** globally
+5. **Support content negotiation** when needed
+
+<ProgressCheckpoint section="response-formatting-advanced" xpReward={14} />

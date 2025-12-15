@@ -7,7 +7,9 @@ B) Just plug it into a wall outlet? 🔌✨
 
 Obviously B! That's the **Dependency Inversion Principle** in action.
 
-## The Wall Outlet Analogy 🔌
+---
+
+## Section 1: The Wall Outlet Analogy 🔌
 
 | **Direct Wiring** ⚡ | **Using an Outlet** 🔌 |
 |:---------------------|:----------------------|
@@ -22,13 +24,17 @@ Wall outlets are **standardized interfaces**. Any device with a standard plug ca
 **The DIP Says:** Don't connect your code directly to specific implementations. Use "outlets" (interfaces) so you can easily swap things out!
 </InfoBox>
 
-## The Problem: Tight Coupling
+<ProgressCheckpoint section="dip-introduction" xpReward={8} />
+
+---
+
+## Section 2: The Problem - Tight Coupling
 
 When your code directly creates and uses specific classes, it's "hardwired":
 
 <SolidPrincipleDemo principle="D" mode="beginner" />
 
-## Direct Connection = Problems
+### Direct Connection = Problems
 
 ```
      ┌─────────────────────────────────────────────┐
@@ -47,18 +53,20 @@ When your code directly creates and uses specific classes, it's "hardwired":
      • OrderService "knows too much" about database details
 ```
 
-## The Solution: Program to an Interface
+<ProgressCheckpoint section="dip-understanding" xpReward={9} />
+
+---
+
+## Section 3: The Solution - Program to an Interface
 
 ```
      ┌─────────────────────────────────────────────┐
      │          OrderService (High-Level)          │
-     │          depends on: IDatabase ◄───┐        │
-     └───────────────────┬─────────────────│───────┘
-                         │                 │
-                         │                 │ "I just need something
-                         │                 │  that saves and loads"
-                         ▼                 │
-     ┌─────────────────────────────────────┴───────┐
+     │          depends on: IDatabase              │
+     └───────────────────┬─────────────────────────┘
+                         │
+                         ▼
+     ┌─────────────────────────────────────────────┐
      │               IDatabase (Interface)          │
      │               "The Wall Outlet"              │
      └───────────────────┬─────────────────────────┘
@@ -73,38 +81,18 @@ When your code directly creates and uses specific classes, it's "hardwired":
      Now you can swap databases without touching OrderService!
 ```
 
-## Real-World Analogies
-
-| Before (Hardwired) | After (Pluggable) |
-|:-------------------|:------------------|
-| 🔌 Lamp wired into wall | 🔌 Lamp with a plug |
-| 🎮 Games built into console | 🎮 Swappable game cartridges |
-| 📱 Apps built into phone | 📱 Downloadable apps |
-| 🚗 Permanently attached tires | 🚗 Changeable wheels |
-
-## The Simple Rule
+### The Simple Rule
 
 > **"High-level modules should not depend on low-level modules. Both should depend on abstractions."**
 > — Robert C. Martin
 
-Ask yourself:
-- Does my code directly create the things it uses (like `new SqlDatabase()`)?
-- If I wanted to swap one piece, would I need to change many other pieces?
+### Key Takeaways
 
-## Why Does This Matter?
-
-| **Without DIP** 😰 | **With DIP** 😊 |
-|:------------------|:----------------|
-| Can't test without real database | Use fake database for tests |
-| Changing database = big rewrite | Just add new implementation |
-| Components tied together | Components are independent |
-| Rigid, hard to change | Flexible, easy to modify |
-
-## Key Takeaways
-
+<InfoBox type="tip" title="Remember">
 - 🔌 **Use "outlets" (interfaces)** - Don't hardwire your code
 - 📦 **Depend on abstractions** - Not specific implementations
 - 🔄 **Swappable parts** - Like changing a tire without redesigning the car
 - 🧪 **Enables testing** - Use fake implementations in tests
+</InfoBox>
 
-<ProgressCheckpoint section="dip-introduction" xpReward={25} />
+<ProgressCheckpoint section="dip-application" xpReward={8} />

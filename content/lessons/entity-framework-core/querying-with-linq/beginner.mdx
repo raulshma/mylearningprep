@@ -2,7 +2,11 @@
 
 Imagine you have a huge library with thousands of books. LINQ is like having a super-smart librarian who can find exactly what you need instantly! Instead of saying "find books," you can say "find all mystery books written after 2020 with more than 300 pages" - and LINQ gets them for you!
 
-## What is LINQ?
+---
+
+## Section 1: Introduction to LINQ
+
+### What is LINQ?
 
 **LINQ** (Language Integrated Query) lets you ask questions about your data using C# code. EF Core then translates your questions into SQL that the database understands.
 
@@ -110,6 +114,126 @@ explanation: "Like First, but throws an error if there are multiple matches"
 ]}
 />
 
+<ProgressCheckpoint section="intro-linq" xpReward={8} />
+
+---
+
+## Section 2: Projections
+
+### Selecting Specific Data
+
+Instead of getting entire objects, you can select just what you need:
+
+<DotnetCodePreview
+  title="Basic Projections"
+  code={`// Get only titles (not entire Blog objects)
+var titles = context.Blogs
+    .Select(b => b.Title)
+    .ToList();
+
+// Get multiple fields
+var blogInfo = context.Blogs
+    .Select(b => new { b.Title, b.Url })
+    .ToList();
+
+// Use the results
+foreach (var info in blogInfo)
+{
+    Console.WriteLine($"{info.Title}: {info.Url}");
+}`}
+  steps={[
+    {
+      lineNumbers: [2, 3, 4],
+      highlight: "Select one field",
+      explanation: "Only the Title column is fetched from the database"
+    },
+    {
+      lineNumbers: [7, 8, 9],
+      highlight: "Anonymous type",
+      explanation: "Create objects with just the fields you need"
+    }
+  ]}
+/>
+
+### Why Use Projections?
+
+| Without Projection | With Projection |
+|:-------------------|:----------------|
+| Fetches ALL columns | Fetches only needed columns |
+| More data transfer | Less data transfer |
+| Slower queries | Faster queries |
+| More memory used | Less memory used |
+
+<ProgressCheckpoint section="projections" xpReward={9} />
+
+---
+
+## Section 3: Eager Loading
+
+### Loading Related Data
+
+When you have related data (like a Blog with Posts), you need to tell EF Core to load it:
+
+<DotnetCodePreview
+  title="Include Related Data"
+  code={`// Without Include - Posts will be null!
+var blog = context.Blogs.FirstOrDefault();
+Console.WriteLine(blog.Posts.Count);  // Error or 0!
+
+// With Include - Posts are loaded
+var blogWithPosts = context.Blogs
+    .Include(b => b.Posts)
+    .FirstOrDefault();
+Console.WriteLine(blogWithPosts.Posts.Count);  // Works!`}
+  steps={[
+    {
+      lineNumbers: [2, 3],
+      highlight: "Without Include",
+      explanation: "Related data is NOT loaded automatically"
+    },
+    {
+      lineNumbers: [6, 7, 8, 9],
+      highlight: "With Include",
+      explanation: "Include() tells EF Core to load the Posts collection"
+    }
+  ]}
+/>
+
+### Multiple Includes
+
+```csharp
+// Include multiple related collections
+var fullBlog = context.Blogs
+    .Include(b => b.Posts)
+    .Include(b => b.Author)
+    .FirstOrDefault();
+
+// Now both Posts and Author are loaded!
+Console.WriteLine($"Author: {fullBlog.Author.Name}");
+Console.WriteLine($"Posts: {fullBlog.Posts.Count}");
+```
+
+### Nested Includes
+
+```csharp
+// Include Posts, and for each Post, include Comments
+var blogWithComments = context.Blogs
+    .Include(b => b.Posts)
+        .ThenInclude(p => p.Comments)
+    .FirstOrDefault();
+
+// Access nested data
+foreach (var post in blogWithComments.Posts)
+{
+    Console.WriteLine($"Post: {post.Title}");
+    Console.WriteLine($"  Comments: {post.Comments.Count}");
+}
+```
+
+<InfoBox type="tip">
+  **Pro Tip:** Only Include what you need! Loading too much related data can slow down your queries.
+</InfoBox>
+
 ## Quick Summary
 
 - **LINQ** = Asking questions about data in C#
@@ -117,5 +241,7 @@ explanation: "Like First, but throws an error if there are multiple matches"
 - **OrderBy()** = Sort results
 - **ToList()** = Execute query and get results
 - **FirstOrDefault()** = Get one item (or null)
+- **Select()** = Choose specific fields (projection)
+- **Include()** = Load related data (eager loading)
 
-<ProgressCheckpoint section="intro-linq" xpReward={25} />
+<ProgressCheckpoint section="eager-loading" xpReward={8} />

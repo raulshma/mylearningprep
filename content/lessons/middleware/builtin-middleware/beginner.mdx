@@ -4,97 +4,110 @@ Imagine you want to build a house. Would you forge your own nails? Craft your ow
 
 ASP.NET Core comes with a **toolbox full of middleware** for common tasks. Let's explore what's available!
 
-## The Toolbox Analogy
+## Section 1: Built-in Overview
 
-| **Tool**                     | **What It Does**                    |
-| :--------------------------- | :---------------------------------- |
-| 🔴 Exception Handler         | Catches errors and shows nice pages |
-| 🔒 HTTPS Redirection         | Forces secure connections           |
-| 📁 Static Files              | Serves CSS, JS, images              |
-| 🛤️ Routing                   | Finds the right endpoint            |
-| 👤 Authentication            | Checks who you are                  |
-| 🔑 Authorization             | Checks what you can do              |
+### The Toolbox Analogy
+
+| **Tool** | **What It Does** |
+| :------- | :--------------- |
+| 🔴 Exception Handler | Catches errors and shows nice pages |
+| 🔒 HTTPS Redirection | Forces secure connections |
+| 📁 Static Files | Serves CSS, JS, images |
+| 🛤️ Routing | Finds the right endpoint |
+| 👤 Authentication | Checks who you are |
+| 🔑 Authorization | Checks what you can do |
 
 <InfoBox type="tip">
-  **Don't reinvent the wheel!** ASP.NET Core has middleware for most common tasks. Use them instead of writing your own.
+  **Don't reinvent the wheel!** ASP.NET Core has middleware for most common tasks.
 </InfoBox>
-
-## Explore the Built-in Middleware
-
-Click on each middleware to learn what it does:
 
 <BuiltInMiddlewareExplorer mode="beginner" />
 
-## The Essential Five
+<ProgressCheckpoint section="builtin-overview" xpReward={10} />
 
-Every ASP.NET Core app typically uses these five:
+---
 
-### 1. 🔴 Exception Handler
-**Catches errors so users see a friendly page, not scary code:**
+## Section 2: Security Middleware
 
-```csharp
-app.UseExceptionHandler("/Error");
-```
+### HTTPS Redirection
 
-### 2. 🔒 HTTPS Redirection
 **Automatically upgrades HTTP to HTTPS:**
 
 ```csharp
 app.UseHttpsRedirection();
 ```
 
-### 3. 📁 Static Files
-**Serves your CSS, JavaScript, and images from wwwroot:**
+When someone visits `http://yoursite.com`, they're automatically redirected to `https://yoursite.com`.
 
-```csharp
-app.UseStaticFiles();
-```
-
-### 4. 🛤️ Routing
-**Figures out which endpoint to call based on the URL:**
-
-```csharp
-app.UseRouting();
-```
-
-### 5. 👤🔑 Authentication & Authorization
-**Checks who you are and what you can do:**
+### Authentication & Authorization
 
 ```csharp
 app.UseAuthentication();  // Who are you?
 app.UseAuthorization();   // What can you do?
 ```
 
-## A Simple Setup
+| Middleware | Question | Example |
+| :--------- | :------- | :------ |
+| Authentication | "Who are you?" | Login with username/password |
+| Authorization | "Can you do this?" | Check if user is admin |
 
-Here's what a basic app looks like:
+### Exception Handler
+
+**Catches errors so users see a friendly page:**
+
+```csharp
+app.UseExceptionHandler("/Error");
+```
+
+<ProgressCheckpoint section="security-middleware" xpReward={10} />
+
+---
+
+## Section 3: Performance Middleware
+
+### Static Files
+
+**Serves your CSS, JavaScript, and images from wwwroot:**
+
+```csharp
+app.UseStaticFiles();
+```
+
+Files in `wwwroot/` folder are served directly without going through your code.
+
+### Response Caching
+
+**Caches responses to speed up repeated requests:**
+
+```csharp
+app.UseResponseCaching();
+```
+
+### A Complete Setup
 
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
 var app = builder.Build();
 
-// Use the built-in middleware!
 app.UseExceptionHandler("/Error");
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
+app.UseAuthentication();
 app.UseAuthorization();
 
-// Your endpoint
 app.MapGet("/", () => "Hello World!");
 
 app.Run();
 ```
 
-<InfoBox type="info">
-  **Notice:** Each middleware is just ONE line! ASP.NET Core does all the hard work for you.
-</InfoBox>
+### Key Takeaways
 
-## Key Takeaways
+| Concept | Description |
+| :------ | :---------- |
+| 🧰 **Use built-in** | Don't write your own error handler |
+| 🔒 **Always HTTPS** | Security is non-negotiable |
+| 📋 **Order matters** | Exception Handler first |
+| 🎯 **One line, one job** | Each `app.Use*()` adds one capability |
 
-- 🧰 **Use what's built-in** — Don't write your own error handler or static file server
-- 🔒 **Always use HTTPS** — It's 2024, security is non-negotiable
-- 📋 **Order matters** — Exception Handler first, Authorization before your endpoints
-- 🎯 **One line, one job** — Each `app.Use*()` adds one capability
-
-<ProgressCheckpoint section="builtin-overview" xpReward={30} />
+<ProgressCheckpoint section="performance-middleware" xpReward={10} />

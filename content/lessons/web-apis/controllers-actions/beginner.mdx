@@ -2,40 +2,39 @@
 
 Imagine walking into a restaurant. You don't go straight to the kitchen, right? Instead, a **waiter** greets you, takes your order, and brings back your food. In ASP.NET Core Web APIs, **controllers** are like those waiters, and **actions** are what they do for you!
 
-## What is a Controller? 🎯
+## Section 1: Introduction to Controllers & Actions
+
+### What is a Controller? 🎯
 
 A **controller** is a special class that handles incoming HTTP requests. Think of it as the traffic director of your API - it receives requests from the outside world and decides what to do with them.
 
 <WebApiControllerVisualizer mode="beginner" />
 
-## Understanding Actions 🎬
+### Understanding Actions 🎬
 
 **Actions** are methods inside your controller. Each action handles a specific type of request:
 
-| Action      | Real-World Comparison                            |
-| :---------- | :----------------------------------------------- |
-| **GetAll**  | "Show me the menu" - Gets all items              |
+| Action | Real-World Comparison |
+| :----- | :-------------------- |
+| **GetAll** | "Show me the menu" - Gets all items |
 | **GetById** | "Tell me about dish #5" - Gets one specific item |
-| **Create**  | "I'd like to order this" - Creates something new |
-| **Update**  | "Actually, make it spicy" - Changes something    |
-| **Delete**  | "Cancel that order" - Removes something          |
+| **Create** | "I'd like to order this" - Creates something new |
+| **Update** | "Actually, make it spicy" - Changes something |
+| **Delete** | "Cancel that order" - Removes something |
 
-## The Restaurant Analogy 🍽️
+### The Restaurant Analogy 🍽️
 
 > **Controllers are waiters. Actions are what they do.**
 >
 > When you ask for the menu (GET request), the waiter (controller) performs the action of bringing you the menu. When you place an order (POST request), they perform the action of sending it to the kitchen.
 
-## Key Takeaways
+<ProgressCheckpoint section="controllers-actions-intro" xpReward={8} />
 
-| Concept         | What It Is                                   |
-| :-------------- | :------------------------------------------- |
-| **Controller**  | A class that handles related requests        |
-| **Action**      | A method inside the controller               |
-| **Route**       | The URL path that triggers an action         |
-| **HTTP Method** | GET, POST, PUT, DELETE - what type of action |
+---
 
-## Your First Controller
+## Section 2: Building Your First Controller
+
+### Your First Controller
 
 ```csharp
 // ProductsController.cs
@@ -54,4 +53,106 @@ public class ProductsController : ControllerBase
 
 **That's it!** With just a few lines, you've created an API endpoint that responds to requests.
 
-<ProgressCheckpoint section="controllers-actions-intro" xpReward={25} />
+### Breaking It Down
+
+| Part | What It Does |
+| :--- | :----------- |
+| `[ApiController]` | Tells ASP.NET this is an API controller |
+| `[Route("api/products")]` | Sets the URL path for this controller |
+| `ControllerBase` | Base class with helpful methods |
+| `[HttpGet]` | This action responds to GET requests |
+
+### Adding More Actions
+
+```csharp
+[ApiController]
+[Route("api/products")]
+public class ProductsController : ControllerBase
+{
+    // GET /api/products
+    [HttpGet]
+    public string GetAll()
+    {
+        return "All products";
+    }
+
+    // GET /api/products/5
+    [HttpGet("{id}")]
+    public string GetById(int id)
+    {
+        return $"Product #{id}";
+    }
+
+    // POST /api/products
+    [HttpPost]
+    public string Create()
+    {
+        return "Product created!";
+    }
+}
+```
+
+<ProgressCheckpoint section="controllers-actions-intermediate" xpReward={8} />
+
+---
+
+## Section 3: HTTP Methods and Responses
+
+### HTTP Methods Explained
+
+| Method | Attribute | Purpose | Example |
+| :----- | :-------- | :------ | :------ |
+| GET | `[HttpGet]` | Read data | Get all products |
+| POST | `[HttpPost]` | Create new | Add a product |
+| PUT | `[HttpPut]` | Update all | Replace a product |
+| PATCH | `[HttpPatch]` | Update part | Change product name |
+| DELETE | `[HttpDelete]` | Remove | Delete a product |
+
+### Returning Different Responses
+
+```csharp
+[ApiController]
+[Route("api/products")]
+public class ProductsController : ControllerBase
+{
+    private static List<string> _products = new() { "Apple", "Banana", "Cherry" };
+
+    // Return a list
+    [HttpGet]
+    public List<string> GetAll()
+    {
+        return _products;
+    }
+
+    // Return one item or "not found"
+    [HttpGet("{id}")]
+    public ActionResult<string> GetById(int id)
+    {
+        if (id < 0 || id >= _products.Count)
+        {
+            return NotFound();  // Returns 404
+        }
+        return _products[id];  // Returns 200 with the product
+    }
+}
+```
+
+### Common Response Methods
+
+| Method | Status Code | When to Use |
+| :----- | :---------- | :---------- |
+| `Ok()` | 200 | Success! Here's your data |
+| `NotFound()` | 404 | Couldn't find what you asked for |
+| `BadRequest()` | 400 | Your request has errors |
+| `Created()` | 201 | Successfully created something new |
+
+### Key Takeaways
+
+| Concept | What It Is |
+| :------ | :--------- |
+| **Controller** | A class that handles related requests |
+| **Action** | A method inside the controller |
+| **Route** | The URL path that triggers an action |
+| **HTTP Method** | GET, POST, PUT, DELETE - what type of action |
+
+<ProgressCheckpoint section="controllers-actions-advanced" xpReward={9} />

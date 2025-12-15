@@ -2,7 +2,9 @@
 
 Imagine you're building a LEGO house. Instead of each LEGO piece coming with its own glue built inside 🏗️, you snap pieces together from the outside. **That's exactly what Dependency Injection does for code!**
 
-## The Restaurant Kitchen Analogy 🍳
+---
+
+## Section 1: What is Dependency Injection?
 
 Think about how a restaurant works:
 
@@ -18,7 +20,7 @@ Think about how a restaurant works:
   what it needs from the outside.
 </InfoBox>
 
-## What's the Problem DI Solves?
+### What's the Problem DI Solves?
 
 Look at this "bad" code - the `UserService` creates its own helpers:
 
@@ -30,11 +32,9 @@ public class UserService
     {
         // Creates its own database connection
         var database = new SqlDatabase("connection...");
-
         // Creates its own email sender
         var emailSender = new SmtpEmailSender();
-
-        // Now it can work...
+        
         database.Save(new User { Email = email });
         emailSender.Send(email, "Welcome!");
     }
@@ -42,12 +42,14 @@ public class UserService
 ```
 
 **Problems:**
-
 - 🔒 Cannot change the database without editing this file
 - 🧪 Cannot test without a real database and email server
-- 🔗 Everything is tightly connected (coupled)
 
-## The DI Solution
+<ProgressCheckpoint section="di-what-is" xpReward={8} />
+
+---
+
+## Section 2: Why Does DI Matter?
 
 <DIPatternShowcase pattern="constructor-injection" mode="beginner" />
 
@@ -76,12 +78,15 @@ public class UserService
 ```
 
 **Benefits:**
-
 - ✅ Can swap to any database (SQL, MongoDB, etc.)
 - ✅ Can use fake versions for testing
 - ✅ Each piece works independently
 
-## The Simple Rule
+<ProgressCheckpoint section="di-why-matters" xpReward={9} />
+
+---
+
+## Section 3: The Simple Rule
 
 > **"Don't call us, we'll call you"** — Hollywood Principle
 
@@ -91,11 +96,13 @@ Your class shouldn't go hunting for what it needs. Instead:
 2. 🎁 **Receive what you need** (from DI container)
 3. ✨ **Use what you got** (do your job)
 
-## Key Takeaways
+### Key Takeaways
 
+<InfoBox type="tip" title="Remember">
 - 📦 **DI = Receiving instead of creating** dependencies
 - 🍳 Think of it like a **chef receiving ingredients** instead of buying them
 - 🧪 Makes code **easy to test** with fake versions
 - 🔌 Makes code **easy to change** without breaking things
+</InfoBox>
 
-<ProgressCheckpoint section="di-what-is" xpReward={25} />
+<ProgressCheckpoint section="di-how-works" xpReward={8} />

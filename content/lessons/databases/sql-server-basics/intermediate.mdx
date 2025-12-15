@@ -2,7 +2,81 @@
 
 Level up your SQL Server skills with stored procedures, indexes, and transactions!
 
-## 📦 Stored Procedures
+---
+
+## Section 1: Introduction to SQL Server
+
+### SQL Server Architecture
+
+Understanding how SQL Server works internally:
+
+- **Database Engine** - Core service that stores and processes data
+- **SQL Server Agent** - Job scheduling and automation
+- **Integration Services (SSIS)** - ETL (Extract, Transform, Load)
+- **Reporting Services (SSRS)** - Report generation
+- **Analysis Services (SSAS)** - OLAP cubes and data mining
+
+### System Databases
+
+| Database | Purpose |
+|:---------|:--------|
+| **master** | Server configuration and login info |
+| **model** | Template for new databases |
+| **msdb** | SQL Agent jobs and backup history |
+| **tempdb** | Temporary objects and intermediate results |
+
+```sql
+-- View system database info
+SELECT name, database_id, create_date
+FROM sys.databases
+WHERE database_id <= 4;
+```
+
+<ProgressCheckpoint section="intro-sql-server" xpReward={12} />
+
+---
+
+## Section 2: SQL Server Management Studio (SSMS)
+
+### Advanced SSMS Features
+
+#### Query Shortcuts
+
+```sql
+-- sp_who2: See active connections
+EXEC sp_who2;
+
+-- sp_help: Get table info
+EXEC sp_help 'Users';
+
+-- sp_helptext: View stored procedure code
+EXEC sp_helptext 'GetUserOrders';
+```
+
+#### Keyboard Shortcuts
+
+| Shortcut | Action |
+|:---------|:-------|
+| `F5` or `Ctrl+E` | Execute query |
+| `Ctrl+R` | Toggle results pane |
+| `Ctrl+L` | Display execution plan |
+| `Ctrl+Shift+V` | Cycle clipboard ring |
+| `Ctrl+U` | Change database |
+
+### Database Diagrams
+
+Create visual representations of table relationships in SSMS:
+1. Right-click "Database Diagrams" → New Database Diagram
+2. Add tables
+3. SSMS shows foreign key relationships automatically
+
+<ProgressCheckpoint section="ssms-basics" xpReward={13} />
+
+---
+
+## Section 3: T-SQL Features
+
+### 📦 Stored Procedures
 
 Stored procedures are saved SQL programs that live in the database:
 
@@ -248,4 +322,142 @@ END;`}
 | View | Virtual table | `CREATE VIEW` |
 | Trigger | Auto-react to changes | `CREATE TRIGGER` |
 
-<ProgressCheckpoint section="ssms-basics" xpReward={50} />
+<ProgressCheckpoint section="tsql-features" xpReward={12} />
+
+---
+
+## Section 4: .NET Integration
+
+### Using ADO.NET with SQL Server
+
+```csharp
+using Microsoft.Data.SqlClient;
+
+public class UserRepository
+{
+    private readonly string _connectionString;
+
+    public UserRepository(IConfiguration config)
+    {
+        _connectionString = config.GetConnectionString("DefaultConnection");
+    }
+
+    public async Task<User?> GetByIdAsync(int id)
+    {
+        using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        using var command = new SqlCommand(
+            "SELECT Id, Name, Email FROM Users WHERE Id = @Id",
+            connection);
+        
+        command.Parameters.AddWithValue("@Id", id);
+
+        using var reader = await command.ExecuteReaderAsync();
+        
+        if (await reader.ReadAsync())
+        {
+            return new User
+            {
+                Id = reader.GetInt32(0),
+                Name = reader.GetString(1),
+                Email = reader.GetString(2)
+            };
+        }
+
+        return null;
+    }
+
+    public async Task<int> CreateAsync(User user)
+    {
+        using var connection = new SqlConnection(_connectionString);
+        await connection.OpenAsync();
+
+        using var command = new SqlCommand(
+            @"INSERT INTO Users (Name, Email) 
+              OUTPUT INSERTED.Id
+              VALUES (@Name, @Email)",
+            connection);
+        
+        command.Parameters.AddWithValue("@Name", user.Name);
+        command.Parameters.AddWithValue("@Email", user.Email);
+
+        return (int)await command.ExecuteScalarAsync();
+    }
+}
+```
+
+### Calling Stored Procedures from C#
+
+```csharp
+public async Task<List<Order>> GetUserOrdersAsync(int userId, decimal minTotal)
+{
+    using var connection = new SqlConnection(_connectionString);
+    await connection.OpenAsync();
+
+    using var command = new SqlCommand("GetUserOrders", connection);
+    command.CommandType = CommandType.StoredProcedure;
+    
+    command.Parameters.AddWithValue("@UserId", userId);
+    command.Parameters.AddWithValue("@MinTotal", minTotal);
+
+    var orders = new List<Order>();
+    using var reader = await command.ExecuteReaderAsync();
+    
+    while (await reader.ReadAsync())
+    {
+        orders.Add(new Order
+        {
+            Id = reader.GetInt32(0),
+            OrderDate = reader.GetDateTime(1),
+            Total = reader.GetDecimal(2)
+        });
+    }
+
+    return orders;
+}
+```
+
+### Transaction Management in C#
+
+```csharp
+public async Task TransferFundsAsync(int fromUserId, int toUserId, decimal amount)
+{
+    using var connection = new SqlConnection(_connectionString);
+    await connection.OpenAsync();
+
+    using var transaction = connection.BeginTransaction();
+    
+    try
+    {
+        // Deduct from sender
+        using (var cmd = new SqlCommand(
+            "UPDATE Accounts SET Balance = Balance - @Amount WHERE UserId = @UserId",
+            connection, transaction))
+        {
+            cmd.Parameters.AddWithValue("@Amount", amount);
+            cmd.Parameters.AddWithValue("@UserId", fromUserId);
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        // Add to receiver
+        using (var cmd = new SqlCommand(
+            "UPDATE Accounts SET Balance = Balance + @Amount WHERE UserId = @UserId",
+            connection, transaction))
+        {
+            cmd.Parameters.AddWithValue("@Amount", amount);
+            cmd.Parameters.AddWithValue("@UserId", toUserId);
+            await cmd.ExecuteNonQueryAsync();
+        }
+
+        await transaction.CommitAsync();
+    }
+    catch
+    {
+        await transaction.RollbackAsync();
+        throw;
+    }
+}
+```
+
+<ProgressCheckpoint section="dotnet-integration" xpReward={13} />

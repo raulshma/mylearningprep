@@ -2,45 +2,44 @@
 
 At the advanced level, we explore DIP through **Clean Architecture**, **composition roots**, **advanced DI patterns**, and the relationship between DIP and other architectural principles.
 
-## Clean Architecture and DIP
+---
+
+## Section 1: Clean Architecture and DIP
 
 Clean Architecture (Robert C. Martin) is built entirely on DIP:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        Framework & Drivers                        │
-│  (Web, UI, DB, External APIs)                                    │
 │  ┌─────────────────────────────────────────────────────────────┐ │
 │  │                     Interface Adapters                       │ │
-│  │   (Controllers, Presenters, Gateways)                        │ │
 │  │  ┌───────────────────────────────────────────────────────┐  │ │
 │  │  │                  Application Layer                     │  │ │
-│  │  │   (Use Cases, Application Services)                    │  │ │
 │  │  │  ┌─────────────────────────────────────────────────┐  │  │ │
 │  │  │  │               Domain/Entities                   │  │  │ │
-│  │  │  │   (Business Logic, Enterprise Rules)            │  │  │ │
-│  │  │  │                                                 │  │  │ │
 │  │  │  │        ★ NOTHING DEPENDS INWARD ★              │  │  │ │
 │  │  │  └─────────────────────────────────────────────────┘  │  │ │
 │  │  └───────────────────────────────────────────────────────┘  │ │
 │  └─────────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────┘
 
-Dependencies flow INWARD. Outer layers depend on inner layers.
-Inner layers NEVER know about outer layers.
+Dependencies flow INWARD. Inner layers NEVER know about outer layers.
 ```
 
 <InfoBox type="important">
 **Core Insight:** The domain (innermost layer) defines interfaces. Infrastructure implements them. The domain doesn't know about SQL, HTTP, or any framework.
 </InfoBox>
 
-## Composition Root Pattern
+<ProgressCheckpoint section="dip-introduction" xpReward={20} />
+
+---
+
+## Section 2: Composition Root Pattern
 
 All dependency wiring should happen at the **composition root** - the application entry point:
 
-<DotnetCodePreview
-  title="Composition Root: Wiring Dependencies"
-  code={`// Program.cs - The Composition Root
+```csharp
+// Program.cs - The Composition Root
 var builder = WebApplication.CreateBuilder(args);
 
 // Infrastructure registrations
@@ -50,7 +49,6 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // Repository registrations
 builder.Services.AddScoped<IOrderRepository, EfOrderRepository>();
 builder.Services.AddScoped<ICustomerRepository, EfCustomerRepository>();
-builder.Services.AddScoped<IProductRepository, EfProductRepository>();
 
 // External service registrations
 builder.Services.AddScoped<IEmailService, SendGridEmailService>();
@@ -58,62 +56,29 @@ builder.Services.AddScoped<IPaymentGateway, StripePaymentGateway>();
 
 // Application service registrations
 builder.Services.AddScoped<IOrderService, OrderService>();
-builder.Services.AddScoped<IInventoryService, InventoryService>();
-
-// Cross-cutting concerns
-builder.Services.AddScoped<IAuditLogger, DatabaseAuditLogger>();
-builder.Services.AddSingleton<ICacheService, RedisCacheService>();
-
-var app = builder.Build();
 
 // Beyond this point, NO direct instantiation of implementations!
-// Everything resolved through DI container.`}
-  steps={[
-    {
-      lineNumbers: [2],
-      highlight: "Entry Point",
-      explanation: "Composition root - where ALL dependencies are configured"
-    },
-    {
-      lineNumbers: [5, 6],
-      highlight: "Infrastructure",
-      explanation: "Database context with concrete connection string"
-    },
-    {
-      lineNumbers: [8, 9, 10, 11],
-      highlight: "Repositories",
-      explanation: "Data access abstractions bound to EF implementations"
-    },
-    {
-      lineNumbers: [13, 14, 15],
-      highlight: "External Services",
-      explanation: "Third-party integrations behind abstractions"
-    }
-  ]}
-/>
+```
 
-## Advanced DI Patterns
+<SolidPrincipleDemo principle="D" mode="advanced" />
+
+<ProgressCheckpoint section="dip-understanding" xpReward={20} />
+
+---
+
+## Section 3: Advanced DI Patterns
 
 ### Factory Pattern for Runtime Decisions
 
-When you need to create dependencies at runtime:
-
 ```csharp
-// Factory interface
 public interface IPaymentProcessorFactory
 {
     IPaymentProcessor CreateProcessor(PaymentMethod method);
 }
 
-// Factory implementation knows all concrete types
 public class PaymentProcessorFactory : IPaymentProcessorFactory
 {
     private readonly IServiceProvider _provider;
-    
-    public PaymentProcessorFactory(IServiceProvider provider)
-    {
-        _provider = provider;
-    }
     
     public IPaymentProcessor CreateProcessor(PaymentMethod method)
     {
@@ -121,47 +86,23 @@ public class PaymentProcessorFactory : IPaymentProcessorFactory
         {
             PaymentMethod.CreditCard => _provider.GetRequiredService<CreditCardProcessor>(),
             PaymentMethod.PayPal => _provider.GetRequiredService<PayPalProcessor>(),
-            PaymentMethod.Crypto => _provider.GetRequiredService<CryptoProcessor>(),
             _ => throw new ArgumentOutOfRangeException(nameof(method))
         };
-    }
-}
-
-// Consumer doesn't know about concrete processors
-public class CheckoutService
-{
-    private readonly IPaymentProcessorFactory _factory;
-    
-    public async Task<PaymentResult> ProcessPayment(Order order, PaymentMethod method)
-    {
-        var processor = _factory.CreateProcessor(method);
-        return await processor.ProcessAsync(order.Total);
     }
 }
 ```
 
 ### Decorator Pattern with DI
 
-Add cross-cutting concerns without modifying original:
-
 ```csharp
 // Base implementation
-public class OrderRepository : IOrderRepository
-{
-    public Order GetById(int id) => /* database call */;
-}
+public class OrderRepository : IOrderRepository { /* ... */ }
 
 // Caching decorator
 public class CachingOrderRepository : IOrderRepository
 {
     private readonly IOrderRepository _inner;
     private readonly ICacheService _cache;
-    
-    public CachingOrderRepository(IOrderRepository inner, ICacheService cache)
-    {
-        _inner = inner;
-        _cache = cache;
-    }
     
     public Order GetById(int id)
     {
@@ -170,215 +111,16 @@ public class CachingOrderRepository : IOrderRepository
             TimeSpan.FromMinutes(5));
     }
 }
-
-// Logging decorator
-public class LoggingOrderRepository : IOrderRepository
-{
-    private readonly IOrderRepository _inner;
-    private readonly ILogger<LoggingOrderRepository> _logger;
-    
-    public Order GetById(int id)
-    {
-        _logger.LogInformation("Getting order {OrderId}", id);
-        var order = _inner.GetById(id);
-        _logger.LogInformation("Found order {OrderId}: {Status}", id, order?.Status);
-        return order;
-    }
-}
-
-// Registration: Stack decorators
-services.AddScoped<OrderRepository>();  // Base
-services.AddScoped<IOrderRepository>(sp =>
-{
-    var baseRepo = sp.GetRequiredService<OrderRepository>();
-    var cache = sp.GetRequiredService<ICacheService>();
-    var logger = sp.GetRequiredService<ILogger<LoggingOrderRepository>>();
-    
-    // Logging wraps Caching wraps Base
-    return new LoggingOrderRepository(
-        new CachingOrderRepository(baseRepo, cache),
-        logger);
-});
 ```
 
-<SolidPrincipleDemo principle="D" mode="advanced" />
+### Key Takeaways
 
-## Ports and Adapters (Hexagonal Architecture)
-
-DIP enables hexagonal architecture:
-
-```csharp
-// Port: Interface defined in Domain layer
-namespace Domain.Ports;
-
-public interface IOrderRepository
-{
-    Task<Order> GetByIdAsync(Guid id);
-    Task SaveAsync(Order order);
-}
-
-public interface IPaymentGateway
-{
-    Task<PaymentResult> ChargeAsync(decimal amount, PaymentDetails details);
-}
-
-// Adapter: Implementation in Infrastructure layer
-namespace Infrastructure.Adapters;
-
-public class SqlOrderRepository : IOrderRepository
-{
-    private readonly AppDbContext _db;
-    
-    public async Task<Order> GetByIdAsync(Guid id)
-        => await _db.Orders.FindAsync(id);
-        
-    public async Task SaveAsync(Order order)
-    {
-        _db.Orders.Update(order);
-        await _db.SaveChangesAsync();
-    }
-}
-
-public class StripePaymentGateway : IPaymentGateway
-{
-    private readonly StripeClient _stripe;
-    
-    public async Task<PaymentResult> ChargeAsync(decimal amount, PaymentDetails details)
-    {
-        var charge = await _stripe.Charges.CreateAsync(new ChargeCreateOptions
-        {
-            Amount = (long)(amount * 100),
-            Currency = "usd",
-            Source = details.Token
-        });
-        
-        return new PaymentResult(charge.Id, charge.Status == "succeeded");
-    }
-}
-```
-
-## Multi-Tenant DI
-
-DIP enables tenant-specific implementations:
-
-```csharp
-// Tenant-aware factory
-public interface ITenantService
-{
-    string GetCurrentTenantId();
-}
-
-public class TenantAwareOrderRepository : IOrderRepository
-{
-    private readonly ITenantService _tenantService;
-    private readonly Dictionary<string, IOrderRepository> _repositories;
-    
-    public Order GetById(int id)
-    {
-        var tenantId = _tenantService.GetCurrentTenantId();
-        var repository = _repositories[tenantId];
-        return repository.GetById(id);
-    }
-}
-
-// Or use keyed services (C# 12+)
-services.AddKeyedScoped<IOrderRepository, SqlOrderRepository>("sql");
-services.AddKeyedScoped<IOrderRepository, CosmosOrderRepository>("cosmos");
-
-public class OrderService
-{
-    public OrderService([FromKeyedServices("sql")] IOrderRepository sqlRepo,
-                        [FromKeyedServices("cosmos")] IOrderRepository cosmosRepo)
-    {
-        // Use appropriate repo based on tenant configuration
-    }
-}
-```
-
-## Anti-Patterns to Avoid
-
-### Captive Dependencies
-
-```csharp
-// ❌ Singleton depends on Scoped - memory leak!
-public class SingletonCache : ICacheService
-{
-    private readonly IOrderRepository _repo;  // Scoped - BAD!
-    
-    public SingletonCache(IOrderRepository repo)
-    {
-        _repo = repo;  // Holds reference forever!
-    }
-}
-```
-
-### Temporal Coupling
-
-```csharp
-// ❌ Must call Initialize before Use - hidden dependency
-public class OrderService
-{
-    private IOrderRepository _repo;
-    
-    public void Initialize(IOrderRepository repo) => _repo = repo;
-    
-    public void PlaceOrder() => _repo.Save(/* ... */);  // Crashes if not initialized!
-}
-
-// ✅ Constructor injection - always valid
-public class OrderService
-{
-    private readonly IOrderRepository _repo;
-    
-    public OrderService(IOrderRepository repo) => _repo = repo;
-}
-```
-
-## Testing Strategies
-
-### Integration Tests with DI
-
-```csharp
-public class OrderServiceIntegrationTests
-{
-    [Fact]
-    public async Task PlaceOrder_IntegrationTest()
-    {
-        // Arrange - Use real DI with test implementations
-        var services = new ServiceCollection();
-        services.AddScoped<IOrderRepository, InMemoryOrderRepository>();
-        services.AddScoped<IEmailService, FakeEmailService>();
-        services.AddScoped<OrderService>();
-        
-        var provider = services.BuildServiceProvider();
-        var service = provider.GetRequiredService<OrderService>();
-        
-        // Act
-        await service.PlaceOrderAsync(new OrderRequest());
-        
-        // Assert
-        var emailService = provider.GetRequiredService<IEmailService>() as FakeEmailService;
-        Assert.Single(emailService.SentEmails);
-    }
-}
-```
-
-## Metrics and Monitoring
-
-| Metric | Indicates |
-|:-------|:----------|
-| **Constructor parameter count** | > 5 suggests too many dependencies |
-| **Circular dependencies** | Architectural problem |
-| **Lifetime mismatches** | Potential memory leaks |
-| **Composition root size** | May need modularization |
-
-## Key Takeaways
-
+<InfoBox type="tip" title="Remember">
 - 🏛️ **Clean Architecture** is built on DIP
 - 🎯 **Composition Root** is the single wiring location
 - 🏭 **Factory Pattern** for runtime dependency creation
 - 🎀 **Decorator Pattern** for cross-cutting concerns
-- 🔷 **Hexagonal ports** defined in domain layer
 - ⚠️ **Avoid captive dependencies** and temporal coupling
+</InfoBox>
 
-<ProgressCheckpoint section="dip-application" xpReward={60} />
+<ProgressCheckpoint section="dip-application" xpReward={20} />

@@ -2,7 +2,134 @@
 
 Learn normalization - the science of organizing data to eliminate redundancy and improve integrity.
 
-## 📐 What is Normalization?
+---
+
+## Section 1: Introduction to Design
+
+### Database Design Process
+
+A systematic approach to designing databases:
+
+1. **Requirements Analysis** - What data do we need?
+2. **Conceptual Design** - ER diagrams, entities, relationships
+3. **Logical Design** - Convert to tables, normalize
+4. **Physical Design** - Indexes, partitions, optimization
+
+### Entity-Relationship (ER) Diagrams
+
+Visual representation of database structure:
+
+- **Entities** - Things we store (Users, Orders, Products)
+- **Attributes** - Properties of entities (Name, Email, Price)
+- **Relationships** - How entities connect (User places Order)
+
+```
+[Customer] --< places >-- [Order] --< contains >-- [Product]
+   1                         N          N              1
+```
+
+### Naming Conventions
+
+| Style | Example | Used By |
+|:------|:--------|:--------|
+| **snake_case** | `user_profiles`, `order_items` | PostgreSQL, MySQL |
+| **PascalCase** | `UserProfiles`, `OrderItems` | SQL Server, C# |
+| **camelCase** | `userProfiles`, `orderItems` | JavaScript |
+
+**Pick one and be consistent!**
+
+<ProgressCheckpoint section="intro-design" xpReward={12} />
+
+---
+
+## Section 2: Relationships
+
+### Implementing One-to-One
+
+```sql
+-- User has one profile (optional)
+CREATE TABLE Users (
+    Id INT PRIMARY KEY,
+    Email VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE UserProfiles (
+    UserId INT PRIMARY KEY,
+    Bio TEXT,
+    Avatar VARCHAR(500),
+    FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE
+);
+```
+
+**When to use:** Separate frequently-accessed data from rarely-accessed data.
+
+### Implementing One-to-Many
+
+```sql
+-- Blog has many posts
+CREATE TABLE Blogs (
+    Id INT PRIMARY KEY,
+    Title VARCHAR(200) NOT NULL
+);
+
+CREATE TABLE Posts (
+    Id INT PRIMARY KEY,
+    BlogId INT NOT NULL,
+    Title VARCHAR(200) NOT NULL,
+    Content TEXT,
+    FOREIGN KEY (BlogId) REFERENCES Blogs(Id)
+);
+
+-- Query: Get all posts for a blog
+SELECT * FROM Posts WHERE BlogId = 1;
+```
+
+### Implementing Many-to-Many
+
+```sql
+-- Authors write books, books have authors
+CREATE TABLE Authors (
+    Id INT PRIMARY KEY,
+    Name VARCHAR(100) NOT NULL
+);
+
+CREATE TABLE Books (
+    Id INT PRIMARY KEY,
+    Title VARCHAR(200) NOT NULL,
+    ISBN VARCHAR(20) UNIQUE
+);
+
+-- Junction table
+CREATE TABLE BookAuthors (
+    BookId INT,
+    AuthorId INT,
+    AuthorOrder INT,  -- First author, second author, etc.
+    PRIMARY KEY (BookId, AuthorId),
+    FOREIGN KEY (BookId) REFERENCES Books(Id),
+    FOREIGN KEY (AuthorId) REFERENCES Authors(Id)
+);
+```
+
+### Cascade Options
+
+```sql
+-- ON DELETE CASCADE: Delete child rows when parent is deleted
+FOREIGN KEY (CustomerId) REFERENCES Customers(Id) ON DELETE CASCADE
+
+-- ON DELETE SET NULL: Set foreign key to NULL
+FOREIGN KEY (CustomerId) REFERENCES Customers(Id) ON DELETE SET NULL
+
+-- ON DELETE RESTRICT: Prevent deletion if children exist (default)
+FOREIGN KEY (CustomerId) REFERENCES Customers(Id) ON DELETE RESTRICT
+```
+
+<ProgressCheckpoint section="relationships" xpReward={13} />
+
+---
+
+## Section 3: Normalization
+
+### 📐 What is Normalization?
 
 Normalization is the process of organizing your data to:
 - **Eliminate redundancy** (don't store the same data twice)
@@ -233,4 +360,103 @@ CREATE TABLE Reviews (
 | Junction Table | Enables many-to-many |
 | CHECK | Validates data values |
 
-<ProgressCheckpoint section="relationships" xpReward={50} />
+<ProgressCheckpoint section="normalization" xpReward={12} />
+
+---
+
+## Section 4: Constraints
+
+### Advanced Constraint Patterns
+
+#### Composite Unique Constraints
+
+```sql
+-- User can review each product only once
+CREATE TABLE Reviews (
+    Id INT PRIMARY KEY,
+    UserId INT NOT NULL,
+    ProductId INT NOT NULL,
+    Rating INT CHECK (Rating BETWEEN 1 AND 5),
+    Comment TEXT,
+    UNIQUE (UserId, ProductId)  -- Composite unique
+);
+```
+
+#### CHECK with Multiple Conditions
+
+```sql
+CREATE TABLE Employees (
+    Id INT PRIMARY KEY,
+    Name VARCHAR(100) NOT NULL,
+    Salary DECIMAL(10,2),
+    Department VARCHAR(50),
+    
+    -- Complex check
+    CHECK (
+        (Department = 'Sales' AND Salary >= 30000) OR
+        (Department = 'Engineering' AND Salary >= 50000) OR
+        (Department NOT IN ('Sales', 'Engineering'))
+    )
+);
+```
+
+#### Conditional Constraints
+
+```sql
+-- Email required only for active users
+CREATE TABLE Users (
+    Id INT PRIMARY KEY,
+    Email VARCHAR(255),
+    IsActive BIT DEFAULT 1,
+    
+    CHECK (IsActive = 0 OR Email IS NOT NULL)
+);
+```
+
+### Deferred Constraints
+
+```sql
+-- PostgreSQL: Check constraint at end of transaction
+CREATE TABLE Orders (
+    Id INT PRIMARY KEY,
+    Total DECIMAL(10,2),
+    PaidAmount DECIMAL(10,2) DEFAULT 0,
+    
+    CONSTRAINT chk_payment_complete 
+    CHECK (PaidAmount >= Total) DEFERRABLE INITIALLY DEFERRED
+);
+
+-- Can temporarily violate during transaction
+BEGIN;
+    INSERT INTO Orders (Id, Total) VALUES (1, 100);  -- PaidAmount = 0, violates check
+    UPDATE Orders SET PaidAmount = 100 WHERE Id = 1;  -- Now satisfied
+COMMIT;  -- Check happens here
+```
+
+### Triggers as Constraints
+
+```sql
+-- Enforce business rule: Can't delete customer with unpaid orders
+CREATE TRIGGER trg_prevent_customer_delete
+ON Customers
+INSTEAD OF DELETE
+AS
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM Orders o
+        INNER JOIN deleted d ON o.CustomerId = d.Id
+        WHERE o.Status = 'Unpaid'
+    )
+    BEGIN
+        RAISERROR('Cannot delete customer with unpaid orders', 16, 1);
+        ROLLBACK;
+    END
+    ELSE
+    BEGIN
+        DELETE FROM Customers 
+        WHERE Id IN (SELECT Id FROM deleted);
+    END
+END;
+```
+
+<ProgressCheckpoint section="constraints" xpReward={13} />

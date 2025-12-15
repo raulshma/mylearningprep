@@ -2,18 +2,18 @@
 
 Understanding C#'s type system at a deep level is essential for building high-performance .NET applications. Let's explore the memory layout, boxing/unboxing implications, and advanced type patterns.
 
-## Memory Layout: Stack vs Heap
+---
+
+## Section 1: Memory Layout - Stack vs Heap
 
 The CLR manages memory in two regions:
 
 **Stack**:
-
 - Fast allocation/deallocation (LIFO)
 - Stores value types and reference pointers
 - Per-thread, limited size (~1MB default)
 
 **Heap**:
-
 - Dynamic allocation, garbage collected
 - Stores reference type instances
 - Shared across threads, larger
@@ -34,11 +34,14 @@ public void MemoryDemo()
 ```
 
 **Key takeaways:**
-
 - Value types (`int`, `struct`) live on the stack when local - extremely fast allocation
 - Reference types allocate on the heap - the variable holds only a pointer
 
-## Boxing and Unboxing
+<ProgressCheckpoint section="intro-variables" xpReward={15} />
+
+---
+
+## Section 2: Boxing and Unboxing
 
 Boxing wraps value types in object references - a performance concern:
 
@@ -62,13 +65,16 @@ List<int> genericList = new();  // No boxing!
 ```
 
 **Performance implications:**
-
 - Boxing allocates heap memory, copies value, stores type info - ~20x slower!
 - Unboxing requires runtime type check, then copies value back to stack
 - Non-generic collections cause boxing - 1M allocations = GC pressure!
 - `List<int>` stores ints directly, no boxing overhead
 
-## Span&lt;T&gt; and Memory&lt;T&gt;
+<ProgressCheckpoint section="common-types" xpReward={15} />
+
+---
+
+## Section 3: Span&lt;T&gt; and Memory&lt;T&gt;
 
 Modern C# offers stack-only buffers for high-performance scenarios:
 
@@ -90,13 +96,7 @@ ReadOnlySpan<char> chars = "Hello World".AsSpan();
 ReadOnlySpan<char> word = chars.Slice(0, 5);  // "Hello"
 ```
 
-**Key concepts:**
-
-- `Span<T>` is a ref struct - lives only on stack, points to existing memory
-- Slice creates a view, not a copy - modifications affect original!
-- `stackalloc` allocates on stack instead of heap - great for temp buffers
-
-## ref, in, and out Parameters
+### ref, in, and out Parameters
 
 Parameter modifiers for performance-critical code:
 
@@ -127,14 +127,13 @@ bool TryGetValue(out int result)
 }
 ```
 
-**When to use each:**
+<ProgressCheckpoint section="type-conversion" xpReward={15} />
 
-- **Value Parameter**: Copies all bytes on every call - expensive for large structs!
-- **ref Parameter**: Passes pointer (8 bytes) - caller sees modifications
-- **in Parameter**: Readonly reference - best for large readonly structs
-- **out Parameter**: Must be assigned before method returns - used for multi-value returns
+---
 
-## Records and Value Equality
+## Section 4: Records and Advanced Patterns
+
+### Records and Value Equality
 
 C# 9+ records provide value-based equality semantics:
 
@@ -157,25 +156,7 @@ var p3 = p1 with { Age = 31 };
 var (name, age) = p1;
 ```
 
-**Record features:**
-
-- **Record Class**: Reference type with value-based equality and immutability
-- **Record Struct**: Value type with generated equality - great for small data
-- **Value Equality**: Records compare by value, not reference - perfect for DTOs
-- **Non-Destructive Mutation**: `with` creates a copy with specified changes
-
-## Performance Considerations
-
-| Pattern         | When to Use                       | Avoid When                       |
-| :-------------- | :-------------------------------- | :------------------------------- |
-| `struct`        | Small (&lt;16 bytes), short-lived | Frequent copying needed          |
-| `class`         | Complex, shared, long-lived       | Simple data containers           |
-| `record class`  | Immutable reference data          | Needs traditional class features |
-| `record struct` | Small immutable value data        | Large data structures            |
-| `Span<T>`       | High-perf buffer operations       | Need to store on heap            |
-| `ref returns`   | Return large data efficiently     | Simple value returns             |
-
-## Advanced: Custom Conversions
+### Custom Conversions
 
 Define implicit and explicit conversions for custom types:
 
@@ -199,9 +180,24 @@ Celsius temp = 100;           // Implicit conversion
 double fahrenheit = (double)temp;  // Explicit: 212
 ```
 
-**Conversion guidelines:**
+### Performance Considerations
 
-- **Implicit Conversion**: No cast required - use for safe, lossless conversions
-- **Explicit Conversion**: Requires cast - use when conversion might lose information
+| Pattern         | When to Use                       | Avoid When                       |
+| :-------------- | :-------------------------------- | :------------------------------- |
+| `struct`        | Small (&lt;16 bytes), short-lived | Frequent copying needed          |
+| `class`         | Complex, shared, long-lived       | Simple data containers           |
+| `record class`  | Immutable reference data          | Needs traditional class features |
+| `record struct` | Small immutable value data        | Large data structures            |
+| `Span<T>`       | High-perf buffer operations       | Need to store on heap            |
+| `ref returns`   | Return large data efficiently     | Simple value returns             |
 
-<ProgressCheckpoint section="intro-variables" xpReward={60} />
+<InfoBox type="tip" title="Key Takeaways">
+- Stack allocation is fast; heap allocation triggers GC
+- Boxing is expensive - use generic collections
+- `Span<T>` enables zero-allocation slicing
+- Use `in` for large readonly structs
+- Records provide value equality with minimal code
+- Choose struct vs class based on size and usage patterns
+</InfoBox>
+
+<ProgressCheckpoint section="advanced-types" xpReward={15} />

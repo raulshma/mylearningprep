@@ -2,7 +2,11 @@
 
 ASP.NET Core has first-class support for running your application in different environments - Development, Staging, and Production being the most common. The environment affects configuration, error handling, and feature availability.
 
-## Setting the Environment
+---
+
+## Section 1: Environment Basics
+
+### Setting the Environment
 
 The environment is determined by the `ASPNETCORE_ENVIRONMENT` environment variable:
 
@@ -39,9 +43,7 @@ docker run -e ASPNETCORE_ENVIRONMENT=Production myapp
 **Azure App Service**
 - Configuration → Application settings → Add `ASPNETCORE_ENVIRONMENT`
 
-## Built-in Environment Names
-
-ASP.NET Core recognizes three environments by default:
+### Built-in Environment Names
 
 | Environment | Use Case |
 |:------------|:---------|
@@ -51,9 +53,13 @@ ASP.NET Core recognizes three environments by default:
 
 You can also create custom environments (e.g., `Testing`, `QA`, `UAT`).
 
-## Checking the Environment
+<ProgressCheckpoint section="env-basics" xpReward={12} />
 
-### In Program.cs
+---
+
+## Section 2: Using Environments in Code
+
+### Checking the Environment in Program.cs
 
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
@@ -108,7 +114,42 @@ public class MyService
 }
 ```
 
-## Environment-Specific Configuration
+### Common Environment Patterns
+
+**Error Handling**
+```csharp
+if (app.Environment.IsDevelopment())
+{
+    // Shows detailed exception page with stack trace
+    app.UseDeveloperExceptionPage();
+}
+else
+{
+    // User-friendly error page
+    app.UseExceptionHandler("/Error");
+    // HTTP Strict Transport Security
+    app.UseHsts();
+}
+```
+
+**Database Seeding**
+```csharp
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.EnsureCreated();
+    DbSeeder.SeedTestData(db);
+}
+```
+
+<ProgressCheckpoint section="env-intermediate" xpReward={12} />
+
+---
+
+## Section 3: Environment-Specific Configuration
+
+### Config File Loading Order
 
 ASP.NET Core automatically loads environment-specific configuration files:
 
@@ -144,35 +185,35 @@ appsettings.Production.json       # Loaded when ASPNETCORE_ENVIRONMENT=Productio
 }
 ```
 
-## Common Environment Patterns
+### Example: Different Connection Strings
 
-### Error Handling
-
-```csharp
-if (app.Environment.IsDevelopment())
+**appsettings.json**
+```json
 {
-    // Shows detailed exception page with stack trace
-    app.UseDeveloperExceptionPage();
-}
-else
-{
-    // User-friendly error page
-    app.UseExceptionHandler("/Error");
-    // HTTP Strict Transport Security
-    app.UseHsts();
+  "ConnectionStrings": {
+    "Default": "Server=prod-server;Database=MyApp;..."
+  }
 }
 ```
 
-### Database Seeding
-
-```csharp
-if (app.Environment.IsDevelopment())
+**appsettings.Development.json**
+```json
 {
-    using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.EnsureCreated();
-    DbSeeder.SeedTestData(db);
+  "ConnectionStrings": {
+    "Default": "Server=localhost;Database=MyApp_Dev;..."
+  }
 }
 ```
 
-<ProgressCheckpoint section="env-intermediate" xpReward={35} />
+### Key Takeaways
+
+<InfoBox type="tip">
+**Remember:**
+- Set environment via `ASPNETCORE_ENVIRONMENT` variable
+- Use `IsDevelopment()`, `IsStaging()`, `IsProduction()` to check
+- Inject `IWebHostEnvironment` to check environment in services
+- Config files are automatically loaded based on environment name
+- Custom environments work with `IsEnvironment("CustomName")`
+</InfoBox>
+
+<ProgressCheckpoint section="env-advanced" xpReward={11} />

@@ -1,10 +1,12 @@
 # The ASP.NET Core Request Pipeline
 
-The request pipeline is the heart of ASP.NET Core. It's a sequence of **request delegates** that process HTTP requests and generate responses. Understanding this pipeline is crucial for building efficient web applications.
+The request pipeline is the heart of ASP.NET Core. It's a sequence of **request delegates** that process HTTP requests and generate responses.
 
-## How the Pipeline Works
+## Section 1: Pipeline Overview
 
-When an HTTP request arrives, it travels through a series of middleware components. Each middleware has chances to:
+### How the Pipeline Works
+
+When an HTTP request arrives, it travels through a series of middleware components. Each middleware can:
 
 1. **Inspect or modify** the incoming request
 2. **Call the next** middleware in the pipeline
@@ -13,73 +15,57 @@ When an HTTP request arrives, it travels through a series of middleware componen
 
 <MiddlewarePipelineSimulator mode="intermediate" />
 
-## The Three Middleware Methods
+### The Three Middleware Methods
 
-ASP.NET Core provides three ways to configure middleware:
-
-### 1. `Use()` — Pass-Through Middleware
-
-Both processes the request AND calls the next middleware:
+#### 1. `Use()` — Pass-Through Middleware
 
 ```csharp
 app.Use(async (context, next) =>
 {
-    // 1. Before: Runs on the way IN
+    // Before: Runs on the way IN
     Console.WriteLine($"Request: {context.Request.Path}");
     
     await next();  // Call the next middleware
     
-    // 2. After: Runs on the way OUT
+    // After: Runs on the way OUT
     Console.WriteLine($"Response: {context.Response.StatusCode}");
 });
 ```
 
-### 2. `Run()` — Terminal Middleware
-
-**Does NOT call next** — the request stops here:
+#### 2. `Run()` — Terminal Middleware
 
 ```csharp
 app.Run(async context =>
 {
-    // This is a terminal middleware - request ends here
+    // Terminal - request ends here
     await context.Response.WriteAsync("Hello World!");
-    // No next() call - this is the end of the line
+    // No next() call
 });
 ```
 
-<InfoBox type="important">
-  `Run()` is always terminal. Any middleware added after `Run()` will never execute!
-</InfoBox>
-
-### 3. `Map()` — Branch the Pipeline
-
-Creates a **branch** in the pipeline based on the request path:
+#### 3. `Map()` — Branch the Pipeline
 
 ```csharp
 app.Map("/api", apiApp =>
 {
-    // This branch only handles /api/* requests
     apiApp.UseAuthentication();
-    apiApp.UseAuthorization();
     apiApp.MapControllers();
-});
-
-app.Map("/health", healthApp =>
-{
-    // This branch handles /health requests
-    healthApp.Run(async ctx => 
-        await ctx.Response.WriteAsync("OK"));
 });
 ```
 
-## Short-Circuiting the Pipeline
+<ProgressCheckpoint section="pipeline-overview" xpReward={13} />
 
-Sometimes you want to **stop the request early** without calling the next middleware:
+---
+
+## Section 2: Pipeline Flow and Short-Circuiting
+
+### Short-Circuiting the Pipeline
+
+Sometimes you want to **stop the request early**:
 
 ```csharp
 app.Use(async (context, next) =>
 {
-    // Short-circuit: Block certain paths
     if (context.Request.Path.StartsWithSegments("/blocked"))
     {
         context.Response.StatusCode = 403;
@@ -93,21 +79,40 @@ app.Use(async (context, next) =>
 
 **Common short-circuit scenarios:**
 - 🔒 Authentication failures
-- 📁 Serving static files (no need to continue)
+- 📁 Serving static files
 - ⚡ Returning cached responses
 - 🚫 Blocking unauthorized requests
 
-## The Recommended Middleware Order
+### Branching with MapWhen
 
-Microsoft recommends this order for typical apps:
+```csharp
+app.MapWhen(
+    context => context.Request.Query.ContainsKey("debug"),
+    debugApp =>
+    {
+        debugApp.Run(async ctx =>
+            await ctx.Response.WriteAsync("Debug mode!"));
+    }
+);
+```
+
+<ProgressCheckpoint section="pipeline-flow" xpReward={13} />
+
+---
+
+## Section 3: Pipeline Order
+
+### The Recommended Middleware Order
+
+Microsoft recommends this order:
 
 ```csharp
 var app = builder.Build();
 
-// 1. Exception/error handling (catch everything)
+// 1. Exception handling (catch everything)
 app.UseExceptionHandler("/Error");
 
-// 2. HSTS (only in production)
+// 2. HSTS (production only)
 app.UseHsts();
 
 // 3. HTTPS Redirection
@@ -128,7 +133,7 @@ app.UseAuthentication();
 // 8. Authorization (what can you do?)
 app.UseAuthorization();
 
-// 9. Custom middleware goes here
+// 9. Custom middleware
 
 // 10. Endpoint execution
 app.MapControllers();
@@ -138,12 +143,13 @@ app.MapControllers();
   **Pro Tip:** Exception Handler should be first so it can catch errors from ALL subsequent middleware!
 </InfoBox>
 
-## Key Takeaways
+### Key Takeaways
 
-- 🔄 **Use()** processes and passes to next middleware
-- 🛑 **Run()** is terminal — ends the pipeline
-- 🌿 **Map()** creates branches based on paths
-- ⚡ **Short-circuiting** stops request processing early
-- 📋 **Order matters** — follow Microsoft's recommended order
+| Method | Behavior |
+| :----- | :------- |
+| `Use()` | Processes and passes to next |
+| `Run()` | Terminal — ends the pipeline |
+| `Map()` | Creates branches based on paths |
+| `MapWhen()` | Branches based on any condition |
 
-<ProgressCheckpoint section="pipeline-flow" xpReward={40} />
+<ProgressCheckpoint section="pipeline-order" xpReward={14} />

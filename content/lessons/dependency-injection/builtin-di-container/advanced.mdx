@@ -2,7 +2,9 @@
 
 Let's explore advanced container features including open generics, decorators, custom providers, and the internals of service resolution.
 
-## Open Generics
+---
+
+## Section 1: Open Generics
 
 Register a generic type definition to handle all closed generic types:
 
@@ -25,45 +27,27 @@ public interface IRepository<T> where T : class
 {
     Task<T?> GetByIdAsync(int id);
     Task<IList<T>> GetAllAsync();
-    Task AddAsync(T entity);
 }
 
 public class Repository<T> : IRepository<T> where T : class
 {
     private readonly AppDbContext _context;
 
-    public Repository(AppDbContext context)
-    {
-        _context = context;
-    }
+    public Repository(AppDbContext context) => _context = context;
 
     public async Task<T?> GetByIdAsync(int id) =>
         await _context.Set<T>().FindAsync(id);
 
     public async Task<IList<T>> GetAllAsync() =>
         await _context.Set<T>().ToListAsync();
-
-    public async Task AddAsync(T entity) =>
-        await _context.Set<T>().AddAsync(entity);
 }
 ```
 
-### Constrained Open Generics
+<ProgressCheckpoint section="container-basics" xpReward={20} />
 
-Add generic constraints for specialized implementations:
+---
 
-```csharp
-// Base interface
-public interface IValidator<T> { bool Validate(T item); }
-
-// Open generic registration
-builder.Services.AddScoped(typeof(IValidator<>), typeof(DefaultValidator<>));
-
-// Specialized for entities with base class
-builder.Services.AddScoped(typeof(IValidator<>), typeof(EntityValidator<>));
-```
-
-## Decorator Pattern
+## Section 2: Decorator Pattern
 
 Decorators wrap existing implementations to add cross-cutting concerns.
 
@@ -78,24 +62,8 @@ builder.Services.AddScoped<IUserRepository>(provider =>
 {
     var inner = provider.GetRequiredService<UserRepository>();
     var cache = provider.GetRequiredService<IMemoryCache>();
-    var logger = provider.GetRequiredService<ILogger<CachedUserRepository>>();
-
-    return new CachedUserRepository(inner, cache, logger);
+    return new CachedUserRepository(inner, cache);
 });
-```
-
-### With Scrutor Library
-
-For complex decoration chains, use the Scrutor library:
-
-```csharp
-// Install: dotnet add package Scrutor
-
-builder.Services.AddScoped<IUserRepository, UserRepository>();
-builder.Services.Decorate<IUserRepository, CachedUserRepository>();
-builder.Services.Decorate<IUserRepository, LoggingUserRepository>();
-
-// Resolution order: LoggingUserRepository → CachedUserRepository → UserRepository
 ```
 
 ### Decorator Implementation Example
@@ -106,9 +74,7 @@ public class CachedUserRepository : IUserRepository
     private readonly IUserRepository _inner;
     private readonly IMemoryCache _cache;
 
-    public CachedUserRepository(
-        IUserRepository inner,
-        IMemoryCache cache)
+    public CachedUserRepository(IUserRepository inner, IMemoryCache cache)
     {
         _inner = inner;
         _cache = cache;
@@ -127,15 +93,12 @@ public class CachedUserRepository : IUserRepository
 }
 ```
 
-## Keyed Services (.NET 8+)
-
-Register multiple implementations with different keys:
+### Keyed Services (.NET 8+)
 
 ```csharp
 // Registration with keys
 builder.Services.AddKeyedSingleton<IStorage, LocalStorage>("local");
 builder.Services.AddKeyedSingleton<IStorage, S3Storage>("s3");
-builder.Services.AddKeyedScoped<IStorage, AzureStorage>("azure");
 
 // Injection via attribute
 public class FileController
@@ -145,91 +108,13 @@ public class FileController
         [FromKeyedServices("local")] IStorage fallbackStorage)
     { }
 }
-
-// Runtime resolution
-public class DynamicStorageService
-{
-    private readonly IServiceProvider _provider;
-
-    public async Task<IStorage> GetStorage(string key) =>
-        _provider.GetRequiredKeyedService<IStorage>(key);
-}
 ```
 
-## IServiceProviderIsService
+<ProgressCheckpoint section="registration-methods" xpReward={20} />
 
-Check if a service is registered at runtime:
+---
 
-```csharp
-public class DynamicResolver
-{
-    private readonly IServiceProviderIsService _checker;
-    private readonly IServiceProvider _provider;
-
-    public DynamicResolver(
-        IServiceProviderIsService checker,
-        IServiceProvider provider)
-    {
-        _checker = checker;
-        _provider = provider;
-    }
-
-    public T? TryResolve<T>() where T : class
-    {
-        if (_checker.IsService(typeof(T)))
-        {
-            return _provider.GetService<T>();
-        }
-        return null;
-    }
-}
-```
-
-## Custom Service Provider
-
-Replace or wrap the default service provider:
-
-```csharp
-// Custom service provider wrapper
-public class LoggingServiceProvider : IServiceProvider
-{
-    private readonly IServiceProvider _inner;
-    private readonly ILogger _logger;
-
-    public LoggingServiceProvider(IServiceProvider inner, ILogger logger)
-    {
-        _inner = inner;
-        _logger = logger;
-    }
-
-    public object? GetService(Type serviceType)
-    {
-        _logger.LogDebug("Resolving {ServiceType}", serviceType.Name);
-        var instance = _inner.GetService(serviceType);
-        _logger.LogDebug("Resolved {ServiceType} → {Instance}",
-            serviceType.Name, instance?.GetType().Name ?? "null");
-        return instance;
-    }
-}
-```
-
-### Using Third-Party Containers
-
-For advanced scenarios, replace with Autofac, DryIoc, etc.:
-
-```csharp
-// Using Autofac
-builder.Host.UseServiceProviderFactory(
-    new AutofacServiceProviderFactory());
-
-builder.Host.ConfigureContainer<ContainerBuilder>(containerBuilder =>
-{
-    // Autofac-specific registrations
-    containerBuilder.RegisterModule<MyAppModule>();
-});
-```
-
-## Validation and Debugging
+## Section 3: Validation and Debugging
 
 ### Enable Build-Time Validation
 
@@ -248,23 +133,8 @@ builder.Host.UseDefaultServiceProvider(options =>
 | "No service registered for type X"               | Missing registration | Add `builder.Services.Add*<X>()` |
 | "Cannot consume scoped from singleton"           | Captive dependency   | Use `IServiceScopeFactory`       |
 | "Multiple constructors accepting all parameters" | Ambiguous ctor       | Use single constructor           |
-| "Circular dependency detected"                   | A→B→A                | Refactor design                  |
 
-### Debugging Service Registration
-
-```csharp
-// List all registrations
-foreach (var descriptor in builder.Services)
-{
-    Console.WriteLine($"{descriptor.ServiceType.Name} → " +
-                      $"{descriptor.ImplementationType?.Name} " +
-                      $"[{descriptor.Lifetime}]");
-}
-```
-
-## Performance Considerations
-
-### Avoid Service Locator in Hot Paths
+### Performance Considerations
 
 ```csharp
 // ❌ Slow: Resolves on every call
@@ -292,11 +162,6 @@ public class MyService
 {
     private readonly Lazy<IExpensiveService> _expensive;
 
-    public MyService(Lazy<IExpensiveService> expensive)
-    {
-        _expensive = expensive;  // Not created yet!
-    }
-
     public void DoExpensiveWork()
     {
         _expensive.Value.Process();  // Created on first access
@@ -304,57 +169,14 @@ public class MyService
 }
 ```
 
-## Advanced Registration Techniques
+### Key Takeaways
 
-### Service Collection Manipulation
-
-```csharp
-// Conditional registration
-if (builder.Environment.IsDevelopment())
-{
-    builder.Services.AddScoped<IEmailService, FakeEmailService>();
-}
-else
-{
-    builder.Services.AddScoped<IEmailService, SmtpEmailService>();
-}
-
-// Post-configure all options
-builder.Services.PostConfigureAll<LoggingOptions>(options =>
-{
-    options.IncludeTimestamp = true;
-});
-```
-
-### Named Options Pattern
-
-```csharp
-builder.Services.Configure<ApiOptions>("GitHub", config =>
-{
-    config.BaseUrl = "https://api.github.com";
-});
-
-builder.Services.Configure<ApiOptions>("Twitter", config =>
-{
-    config.BaseUrl = "https://api.twitter.com";
-});
-
-public class ApiClient
-{
-    public ApiClient(IOptionsSnapshot<ApiOptions> optionsSnapshot)
-    {
-        var githubOptions = optionsSnapshot.Get("GitHub");
-        var twitterOptions = optionsSnapshot.Get("Twitter");
-    }
-}
-```
-
-## Key Takeaways
-
+<InfoBox type="tip" title="Remember">
 - 🔓 **Open generics** - `typeof(IRepository<>)` handles all `IRepository<T>`
 - 🎭 **Decorators** - Wrap implementations for caching, logging, etc.
 - 🔑 **Keyed services** - .NET 8+ feature for named implementations
 - ✅ **ValidateOnBuild** - Catch errors at startup, not runtime
 - 🐢 **Lazy<T>** - Defer expensive service creation until needed
+</InfoBox>
 
-<ProgressCheckpoint section="advanced-registration" xpReward={60} />
+<ProgressCheckpoint section="advanced-registration" xpReward={20} />

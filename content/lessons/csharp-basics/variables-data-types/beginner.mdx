@@ -2,7 +2,7 @@
 
 Imagine you're organizing a toy box. Each toy needs a labeled container - a box for blocks, a box for cars, and a box for dolls. In C#, **variables** are like those labeled containers, and **data types** tell us what kind of toy (data) can go inside!
 
-## What is a Variable?
+## Section 1: What is a Variable?
 
 A variable is simply a container with a name that holds some information. Just like you might label a jar "cookies" to remember what's inside, we name our variables to remember what data they store.
 
@@ -38,18 +38,7 @@ bool isHappy = true;`}
   ]}
 />
 
-## The Most Common Data Types
-
-Here are the data types you'll use most often, explained with simple analogies:
-
-| Type | What it Holds | Example | Analogy |
-|:-----|:--------------|:--------|:--------|
-| `int` | Whole numbers | `42`, `-7` | Counting apples |
-| `string` | Text/words | `"Hello"` | A sentence in a book |
-| `bool` | True or false | `true`, `false` | A light switch (on/off) |
-| `double` | Decimal numbers | `3.14`, `99.99` | Measuring ingredients |
-
-## Naming Your Variables
+### Naming Your Variables
 
 Just like naming a pet, there are some rules for naming variables:
 
@@ -59,7 +48,20 @@ Just like naming a pet, there are some rules for naming variables:
 - ❌ No spaces allowed (`player name` is wrong)
 - ❌ Can't start with a number (`1stPlace` is wrong)
 
-## Let's Practice!
+<ProgressCheckpoint section="intro-variables" xpReward={7} />
+
+---
+
+## Section 2: The Most Common Data Types
+
+Here are the data types you'll use most often, explained with simple analogies:
+
+| Type | What it Holds | Example | Analogy |
+|:-----|:--------------|:--------|:--------|
+| `int` | Whole numbers | `42`, `-7` | Counting apples |
+| `string` | Text/words | `"Hello"` | A sentence in a book |
+| `bool` | True or false | `true`, `false` | A light switch (on/off) |
+| `double` | Decimal numbers | `3.14`, `99.99` | Measuring ingredients |
 
 <DotnetCodePreview
   title="Variable Playground"
@@ -88,13 +90,86 @@ Console.WriteLine("Score: " + score);`}
   ]}
 />
 
-## Quick Summary
+### When to Use Each Type
 
+- **int**: Counting things (scores, ages, quantities)
+- **string**: Names, messages, any text
+- **bool**: Yes/no questions (is the game over? is the user logged in?)
+- **double**: Measurements, prices, anything with decimals
+
+<ProgressCheckpoint section="common-types" xpReward={7} />
+
+---
+
+## Section 3: Changing Variable Values
+
+Variables can change! That's why they're called "variables" - their values can vary.
+
+<DotnetCodePreview
+  title="Changing Values"
+  code={`int score = 0;
+Console.WriteLine(score);  // 0
+
+score = 10;
+Console.WriteLine(score);  // 10
+
+score = score + 5;
+Console.WriteLine(score);  // 15`}
+  steps={[
+    {
+      lineNumbers: [1, 2],
+      highlight: "Starting value",
+      explanation: "We start with a score of 0",
+      variables: { score: "0" }
+    },
+    {
+      lineNumbers: [4, 5],
+      highlight: "New value",
+      explanation: "We change the score to 10",
+      variables: { score: "10" }
+    },
+    {
+      lineNumbers: [7, 8],
+      highlight: "Adding to existing value",
+      explanation: "We add 5 to the current score (10 + 5 = 15)",
+      variables: { score: "15" }
+    }
+  ]}
+/>
+
+### Combining Text (String Concatenation)
+
+```csharp
+string firstName = "John";
+string lastName = "Doe";
+string fullName = firstName + " " + lastName;  // "John Doe"
+
+// Or use string interpolation (easier!)
+string greeting = $"Hello, {firstName}!";  // "Hello, John!"
+```
+
+<ProgressCheckpoint section="type-conversion" xpReward={6} />
+
+---
+
+## Section 4: Quick Summary
+
+<InfoBox type="tip" title="Key Takeaways">
 - **Variables** = labeled containers for storing data
 - **Data types** = rules about what kind of data can go in the container
 - **int** = whole numbers
 - **string** = text
 - **bool** = true/false
 - **double** = decimal numbers
+- Use meaningful names like `playerScore` not `x`
+</InfoBox>
 
-<ProgressCheckpoint section="intro-variables" xpReward={25} />
+### Common Mistakes to Avoid
+
+| Mistake | Problem | Fix |
+|:--------|:--------|:----|
+| `int age = "25";` | Can't put text in an int | `int age = 25;` |
+| `string 1name = "Jo";` | Can't start with number | `string name1 = "Jo";` |
+| `bool isReady = "true";` | "true" is text, not bool | `bool isReady = true;` |
+
+<ProgressCheckpoint section="advanced-types" xpReward={5} />

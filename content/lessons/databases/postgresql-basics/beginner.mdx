@@ -2,7 +2,11 @@
 
 Welcome to PostgreSQL (often called "Postgres") - the world's most advanced open-source database!
 
-## 🐘 What is PostgreSQL?
+---
+
+## Section 1: Introduction to PostgreSQL
+
+### 🐘 What is PostgreSQL?
 
 Think of PostgreSQL as a **Swiss Army knife for databases**:
 - It's completely **free and open-source**
@@ -15,41 +19,7 @@ Think of PostgreSQL as a **Swiss Army knife for databases**:
 
 <PostgresqlExplorer mode="beginner" />
 
-## 🖥️ psql - The Command Line Tool
-
-psql is PostgreSQL's command-line interface - powerful and always available:
-
-<DotnetCodePreview
-  title="Getting Started with psql"
-  code={`-- Connect to a database
-psql -U postgres -d myapp
-
--- Once connected, try these commands:
-\\l          -- List all databases
-\\c myapp    -- Connect to 'myapp' database
-\\dt         -- List all tables
-\\d users    -- Describe the 'users' table
-\\q          -- Quit psql`}
-  steps={[
-    {
-      lineNumbers: [2],
-      highlight: "Connection",
-      explanation: "-U is username, -d is database name"
-    },
-    {
-      lineNumbers: [5, 6],
-      highlight: "List and connect",
-      explanation: "Backslash commands are psql shortcuts"
-    },
-    {
-      lineNumbers: [7, 8],
-      highlight: "Explore structure",
-      explanation: "\\dt shows tables, \\d describes a specific table"
-    }
-  ]}
-/>
-
-## 📊 PostgreSQL Data Types
+### 📊 PostgreSQL Data Types
 
 PostgreSQL has all the standard types PLUS some unique ones:
 
@@ -101,36 +71,7 @@ PostgreSQL has all the standard types PLUS some unique ones:
   ]}
 />
 
-## 🔌 Connecting from .NET
-
-Use **Npgsql** - the official .NET driver for PostgreSQL:
-
-```bash
-# Install the package
-dotnet add package Npgsql.EntityFrameworkCore.PostgreSQL
-```
-
-### Connection String
-
-```json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Port=5432;Database=myapp;Username=postgres;Password=secret"
-  }
-}
-```
-
-### Connection String Parts
-
-| Part | Meaning |
-|:-----|:--------|
-| `Host=localhost` | Where PostgreSQL is running |
-| `Port=5432` | Default PostgreSQL port |
-| `Database=myapp` | Which database to use |
-| `Username=postgres` | Login username |
-| `Password=secret` | Login password |
-
-## 🎯 PostgreSQL vs SQL Server
+### 🎯 PostgreSQL vs SQL Server
 
 | Feature | PostgreSQL | SQL Server |
 |:--------|:-----------|:-----------|
@@ -141,7 +82,7 @@ dotnet add package Npgsql.EntityFrameworkCore.PostgreSQL
 | **Extensions** | 100+ available | Limited |
 | **Case** | lowercase preferred | PascalCase typical |
 
-## 🏃 Quick Start Steps
+### 🏃 Quick Start Steps
 
 1. **Install PostgreSQL** - Download from postgresql.org
 2. **Start the server** - Usually automatic
@@ -158,6 +99,179 @@ dotnet add package Npgsql.EntityFrameworkCore.PostgreSQL
    \c myapp
    ```
 
+<ProgressCheckpoint section="intro-postgres" xpReward={7} />
+
+---
+
+## Section 2: psql Basics
+
+### More psql Commands
+
+```sql
+-- Help commands
+\?          -- List all psql commands
+\h SELECT   -- Help on SQL command
+
+-- Timing queries
+\timing on
+SELECT COUNT(*) FROM users;
+
+-- Execute SQL from file
+\i /path/to/script.sql
+
+-- Output to file
+\o output.txt
+SELECT * FROM users;
+\o  -- Stop outputting to file
+
+-- Format output
+\x  -- Toggle expanded display (vertical)
+```
+
+### Basic SQL Operations
+
+```sql
+-- Create a simple table
+CREATE TABLE tasks (
+    id SERIAL PRIMARY KEY,
+    title TEXT NOT NULL,
+    completed BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Insert data
+INSERT INTO tasks (title) VALUES ('Learn PostgreSQL');
+INSERT INTO tasks (title, completed) VALUES ('Practice SQL', true);
+
+-- Query data
+SELECT * FROM tasks;
+SELECT * FROM tasks WHERE completed = false;
+
+-- Update
+UPDATE tasks SET completed = true WHERE id = 1;
+
+-- Delete
+DELETE FROM tasks WHERE completed = true;
+```
+
+<ProgressCheckpoint section="psql-basics" xpReward={8} />
+
+---
+
+## Section 3: Unique Features
+
+### PostgreSQL's Special Powers
+
+#### 1. Real Boolean Type
+
+```sql
+-- PostgreSQL has true booleans
+SELECT * FROM users WHERE is_active = true;  -- Not 1 or 0!
+
+-- Boolean operators
+SELECT * FROM users WHERE is_active AND NOT is_deleted;
+```
+
+#### 2. Case Sensitivity
+
+```sql
+-- PostgreSQL is case-insensitive for unquoted names
+CREATE TABLE Users (Id INT);  -- Creates table "users" with column "id"
+
+-- Use quotes for exact case
+CREATE TABLE "Users" ("Id" INT);  -- Creates "Users" with "Id"
+
+-- Best practice: use lowercase with underscores
+CREATE TABLE user_profiles (user_id INT);
+```
+
+#### 3. String Concatenation
+
+```sql
+-- Use || operator
+SELECT first_name || ' ' || last_name AS full_name FROM users;
+
+-- CONCAT function also works
+SELECT CONCAT(first_name, ' ', last_name) AS full_name FROM users;
+```
+
+#### 4. RETURNING Clause
+
+```sql
+-- Get inserted ID immediately
+INSERT INTO users (name, email)
+VALUES ('Alice', 'alice@email.com')
+RETURNING id, created_at;
+
+-- See what was updated
+UPDATE users SET balance = balance + 100
+WHERE id = 5
+RETURNING id, balance;
+```
+
+<ProgressCheckpoint section="unique-features" xpReward={8} />
+
+---
+
+## Section 4: .NET with Npgsql
+
+### Setting Up Npgsql
+
+```bash
+# Install packages
+dotnet add package Npgsql
+dotnet add package Npgsql.EntityFrameworkCore.PostgreSQL
+```
+
+### Basic Connection
+
+```csharp
+using Npgsql;
+
+var connectionString = "Host=localhost;Port=5432;Database=myapp;Username=postgres;Password=secret";
+
+using var connection = new NpgsqlConnection(connectionString);
+await connection.OpenAsync();
+
+// Execute query
+using var cmd = new NpgsqlCommand("SELECT name, email FROM users WHERE id = @id", connection);
+cmd.Parameters.AddWithValue("id", 5);
+
+using var reader = await cmd.ExecuteReaderAsync();
+while (await reader.ReadAsync())
+{
+    var name = reader.GetString(0);
+    var email = reader.GetString(1);
+    Console.WriteLine($"{name}: {email}");
+}
+```
+
+### Entity Framework Core Setup
+
+```csharp
+// Program.cs
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// DbContext
+public class AppDbContext : DbContext
+{
+    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+    
+    public DbSet<User> Users { get; set; }
+}
+
+// Entity
+public class User
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    public string Email { get; set; } = "";
+    public bool IsActive { get; set; } = true;
+    public DateTime CreatedAt { get; set; }
+}
+```
+
 ## Summary
 
 | Component | What It Does |
@@ -166,5 +280,7 @@ dotnet add package Npgsql.EntityFrameworkCore.PostgreSQL
 | psql | Command-line interface |
 | pgAdmin | GUI tool (like SSMS for Postgres) |
 | Npgsql | .NET driver |
+| SERIAL | Auto-incrementing IDs |
+| TIMESTAMPTZ | Timezone-aware timestamps |
 
-<ProgressCheckpoint section="intro-postgres" xpReward={30} />
+<ProgressCheckpoint section="dotnet-npgsql" xpReward={7} />

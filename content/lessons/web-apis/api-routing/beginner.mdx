@@ -2,23 +2,25 @@
 
 Think of your API like a city map. When someone wants to visit a specific shop (endpoint), they need the right address (route). In ASP.NET Core, **routing** tells your app which controller and action should handle each request!
 
-## What is Routing? 🗺️
+## Section 1: Introduction to Routing
+
+### What is Routing? 🗺️
 
 **Routing** is how ASP.NET Core matches incoming URLs to your controller actions. It's like a GPS system for your API!
 
 <RoutingAttributeExplorer mode="beginner" />
 
-## The GPS Analogy 🚗
+### The GPS Analogy 🚗
 
 > **Routes are like addresses. When someone requests `/api/products/42`, the routing system finds the right controller and says "Hey, someone wants product #42!"**
 
-| URL Part    | What It Means                    |
-| :---------- | :------------------------------- |
-| `/api`      | The neighborhood (API area)      |
-| `/products` | The street (controller)          |
-| `/42`       | The house number (specific item) |
+| URL Part | What It Means |
+| :------- | :------------ |
+| `/api` | The neighborhood (API area) |
+| `/products` | The street (controller) |
+| `/42` | The house number (specific item) |
 
-## Route Attributes 🏷️
+### Route Attributes 🏷️
 
 You put attributes on your controller and actions to define routes:
 
@@ -38,18 +40,25 @@ public class ProductsController : ControllerBase
 }
 ```
 
-## HTTP Methods = Types of Visits 🚪
+<ProgressCheckpoint section="routing-intro" xpReward={8} />
 
-| Method     | Meaning      | Example               |
-| :--------- | :----------- | :-------------------- |
-| **GET**    | "Show me"    | View a product        |
-| **POST**   | "Create new" | Add a product         |
-| **PUT**    | "Replace"    | Update entire product |
-| **DELETE** | "Remove"     | Delete a product      |
+---
 
-## Route Parameters
+## Section 2: HTTP Methods and Route Parameters
+
+### HTTP Methods = Types of Visits 🚪
+
+| Method | Meaning | Example |
+| :----- | :------ | :------ |
+| **GET** | "Show me" | View a product |
+| **POST** | "Create new" | Add a product |
+| **PUT** | "Replace" | Update entire product |
+| **DELETE** | "Remove" | Delete a product |
+
+### Route Parameters
 
 The `{id}` in `[HttpGet("{id}")]` is a **route parameter**. It captures part of the URL:
+
 
 ```csharp
 // URL: /api/products/42
@@ -60,13 +69,61 @@ public string GetById(int id)  // id will be 42!
 }
 ```
 
-## Key Takeaways
+### Multiple Parameters
 
-| Concept          | Description                        |
-| :--------------- | :--------------------------------- |
-| **[Route]**      | Defines the URL pattern            |
-| **[HttpGet]**    | Handles GET requests               |
-| **{parameter}**  | Captures URL values                |
+```csharp
+// URL: /api/orders/42/items/5
+[HttpGet("{orderId}/items/{itemId}")]
+public string GetOrderItem(int orderId, int itemId)
+{
+    return $"Order {orderId}, Item {itemId}";
+}
+```
+
+<ProgressCheckpoint section="routing-intermediate" xpReward={8} />
+
+---
+
+## Section 3: Route Tokens and Best Practices
+
+### Route Tokens
+
+Special tokens get replaced automatically:
+
+| Token | Replacement |
+| :---- | :---------- |
+| `[controller]` | Controller name minus "Controller" suffix |
+| `[action]` | Action method name |
+
+```csharp
+[Route("api/[controller]")]
+public class ProductsController : ControllerBase
+{
+    // Route becomes: api/products
+}
+```
+
+### Query String Parameters
+
+Parameters not in the route come from the query string:
+
+```csharp
+// GET /api/products?category=electronics&page=2
+[HttpGet]
+public string Search(string category, int page = 1)
+{
+    return $"Searching {category}, page {page}";
+}
+```
+
+### Key Takeaways
+
+| Concept | Description |
+| :------ | :---------- |
+| **[Route]** | Defines the URL pattern |
+| **[HttpGet]** | Handles GET requests |
+| **{parameter}** | Captures URL values |
 | **[controller]** | Auto-replaces with controller name |
+| **Query params** | Values after `?` in URL |
 
-<ProgressCheckpoint section="routing-intro" xpReward={25} />
+<ProgressCheckpoint section="routing-advanced" xpReward={9} />

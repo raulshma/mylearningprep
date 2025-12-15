@@ -4,7 +4,9 @@ Imagine you have a power strip at home. When you buy a new lamp, do you need to 
 
 **That's the magic of the Open/Closed Principle!**
 
-## The Power Strip Analogy 🔌
+---
+
+## Section 1: The Power Strip Analogy 🔌
 
 | **Rewiring the House** 🏠❌ | **Using a Power Strip** 🔌✅ |
 |:---------------------------|:----------------------------|
@@ -19,7 +21,7 @@ The **Open/Closed Principle** says your code should work like a power strip: you
 **The OCP Says:** Software should be **open for extension** (add new features) but **closed for modification** (don't change existing code).
 </InfoBox>
 
-## The Game Console Analogy 🎮
+### The Game Console Analogy 🎮
 
 Think about a video game console:
 
@@ -27,13 +29,17 @@ Think about a video game console:
 - The console is **closed** - you don't open it up and change the hardware
 - Games are **extensions** - plug them in and they work!
 
-## Let's See the Problem
+<ProgressCheckpoint section="ocp-introduction" xpReward={8} />
+
+---
+
+## Section 2: Let's See the Problem
 
 Here's code that forces you to "rewire the house" every time:
 
 <SolidPrincipleDemo principle="O" mode="beginner" />
 
-## Why Is Modification Bad?
+### Why Is Modification Bad?
 
 Every time you **modify** existing code:
 
@@ -44,7 +50,7 @@ Every time you **modify** existing code:
 | ⏰ **Slow Development** | Changes take longer and longer |
 | 😰 **Fear of Change** | Developers avoid improving code |
 
-## The Magic of Extension
+### The Magic of Extension
 
 Instead of modifying, we **extend**:
 
@@ -62,7 +68,11 @@ Instead of modifying, we **extend**:
                                         (Just add new ones!)
 ```
 
-## Real-World Examples
+<ProgressCheckpoint section="ocp-understanding" xpReward={9} />
+
+---
+
+## Section 3: Real-World Examples
 
 | Closed for Modification | Open for Extension |
 |:------------------------|:-------------------|
@@ -71,7 +81,7 @@ Instead of modifying, we **extend**:
 | Phone app store | New apps |
 | LEGO base plate | New LEGO pieces |
 
-## The Simple Rule
+### The Simple Rule
 
 > **"Add new features by writing NEW code, not by changing OLD code."**
 
@@ -79,11 +89,13 @@ Ask yourself:
 - Do I need to modify existing code to add this feature?
 - Can I instead create something NEW that plugs in?
 
-## Key Takeaways
+### Key Takeaways
 
+<InfoBox type="tip" title="Remember">
 - 🔌 **Think like a power strip** - Let new things plug in
 - ❌ **Don't modify** - Changing old code is risky
 - ✅ **Do extend** - Add new code instead
 - 🎮 **Like games on a console** - New games, same console
+</InfoBox>
 
-<ProgressCheckpoint section="ocp-introduction" xpReward={25} />
+<ProgressCheckpoint section="ocp-application" xpReward={8} />

@@ -2,7 +2,11 @@
 
 Microsoft SQL Server is one of the most popular enterprise databases in the world. If you're building .NET applications, SQL Server is your natural partner!
 
-## 🏢 What is SQL Server?
+---
+
+## Section 1: Introduction to SQL Server
+
+### 🏢 What is SQL Server?
 
 Think of SQL Server as a **professional filing cabinet company**:
 - It's installed on a computer (the "server")
@@ -12,15 +16,30 @@ Think of SQL Server as a **professional filing cabinet company**:
 
 > **Fun Fact:** SQL Server powers everything from small business apps to Fortune 500 enterprise systems!
 
-## Explore SQL Server
+### SQL Server Editions
+
+| Edition | Best For | Cost |
+|:--------|:---------|:-----|
+| **Express** | Learning, small apps | Free! |
+| **Developer** | Development & testing | Free! |
+| **Standard** | Small to medium business | Paid |
+| **Enterprise** | Large enterprise apps | Paid (expensive) |
+
+### Explore SQL Server
 
 <SqlServerExplorer mode="beginner" />
 
-## 🖥️ SQL Server Management Studio (SSMS)
+<ProgressCheckpoint section="intro-sql-server" xpReward={7} />
+
+---
+
+## Section 2: SQL Server Management Studio (SSMS)
+
+### 🖥️ SQL Server Management Studio (SSMS)
 
 SSMS is your visual tool for working with SQL Server - like a control panel for your database!
 
-### Key Areas in SSMS:
+#### Key Areas in SSMS:
 - **Object Explorer** - Browse databases, tables, views
 - **Query Editor** - Write and run SQL commands
 - **Results Pane** - See your query results
@@ -57,7 +76,24 @@ WHERE TABLE_TYPE = 'BASE TABLE';`}
   ]}
 />
 
-## 📊 SQL Server Data Types
+### 🏃 Quick Start Steps
+
+1. **Install SQL Server Express** (free!) or use LocalDB
+2. **Install SSMS** (SQL Server Management Studio)
+3. **Connect** using `localhost\SQLEXPRESS`
+4. **Create a database** using the UI or:
+
+```sql
+CREATE DATABASE MyAppDb;
+```
+
+<ProgressCheckpoint section="ssms-basics" xpReward={8} />
+
+---
+
+## Section 3: T-SQL Features
+
+### 📊 SQL Server Data Types
 
 SQL Server has specific data types optimized for different kinds of data:
 
@@ -102,7 +138,36 @@ SQL Server has specific data types optimized for different kinds of data:
   ]}
 />
 
-## 🔌 Connecting from .NET
+### T-SQL Special Features
+
+```sql
+-- Variables
+DECLARE @UserCount INT;
+SET @UserCount = (SELECT COUNT(*) FROM Users);
+PRINT @UserCount;
+
+-- IF/ELSE
+IF @UserCount > 100
+    PRINT 'Lots of users!';
+ELSE
+    PRINT 'Growing user base';
+
+-- WHILE loop
+DECLARE @Counter INT = 1;
+WHILE @Counter <= 5
+BEGIN
+    PRINT 'Count: ' + CAST(@Counter AS VARCHAR);
+    SET @Counter = @Counter + 1;
+END;
+```
+
+<ProgressCheckpoint section="tsql-features" xpReward={8} />
+
+---
+
+## Section 4: .NET Integration
+
+### 🔌 Connecting from .NET
 
 You'll need a **connection string** to connect your .NET app to SQL Server:
 
@@ -115,7 +180,7 @@ You'll need a **connection string** to connect your .NET app to SQL Server:
 }
 ```
 
-### Connection String Parts Explained:
+#### Connection String Parts Explained:
 
 | Part | Meaning |
 |:-----|:--------|
@@ -124,15 +189,28 @@ You'll need a **connection string** to connect your .NET app to SQL Server:
 | `Trusted_Connection=True` | Use Windows authentication |
 | `TrustServerCertificate=True` | Trust the server's certificate |
 
-## 🏃 Quick Start Steps
+### Using in C# Code
 
-1. **Install SQL Server Express** (free!) or use LocalDB
-2. **Install SSMS** (SQL Server Management Studio)
-3. **Connect** using `localhost\SQLEXPRESS`
-4. **Create a database** using the UI or:
+```csharp
+using Microsoft.Data.SqlClient;
 
-```sql
-CREATE DATABASE MyAppDb;
+// Read connection string
+var connectionString = builder.Configuration
+    .GetConnectionString("DefaultConnection");
+
+// Open connection
+using var connection = new SqlConnection(connectionString);
+await connection.OpenAsync();
+
+// Execute query
+using var command = new SqlCommand("SELECT * FROM Users", connection);
+using var reader = await command.ExecuteReaderAsync();
+
+while (await reader.ReadAsync())
+{
+    var name = reader.GetString(reader.GetOrdinal("Name"));
+    Console.WriteLine(name);
+}
 ```
 
 ## Summary
@@ -143,5 +221,6 @@ CREATE DATABASE MyAppDb;
 | SSMS | Visual management tool |
 | T-SQL | Microsoft's SQL dialect |
 | Connection String | How .NET finds the database |
+| IDENTITY | Auto-incrementing IDs |
 
-<ProgressCheckpoint section="intro-sql-server" xpReward={30} />
+<ProgressCheckpoint section="dotnet-integration" xpReward={7} />

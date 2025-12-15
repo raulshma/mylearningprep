@@ -2,11 +2,11 @@
 
 Minimal APIs provide a lightweight approach to building HTTP APIs in ASP.NET Core. They leverage C# features like lambda expressions and local functions for concise endpoint definitions.
 
-## Route Groups
+## Section 1: Route Groups and Organization
 
 <MinimalApiBuilder mode="intermediate" />
 
-Organize related endpoints:
+### Organizing with Route Groups
 
 ```csharp
 var app = builder.Build();
@@ -29,9 +29,25 @@ static IResult GetProductById(int id, IProductService service)
         : Results.NotFound();
 ```
 
-## Parameter Binding
+### Nested Groups
 
-Minimal APIs infer binding sources:
+```csharp
+var api = app.MapGroup("/api");
+
+var products = api.MapGroup("/products");
+products.MapGet("/", GetAllProducts);
+
+var orders = api.MapGroup("/orders");
+orders.MapGet("/", GetAllOrders);
+```
+
+<ProgressCheckpoint section="minimal-apis-intro" xpReward={13} />
+
+---
+
+## Section 2: Parameter Binding and Results
+
+### Parameter Binding Sources
 
 ```csharp
 // Route parameter
@@ -53,21 +69,14 @@ app.MapPut("/products/{id}", (
 // Services from DI
 app.MapGet("/products", (IProductService service) =>
     service.GetAll());
-
-// HttpContext when needed
-app.MapGet("/info", (HttpContext context) =>
-    new { Path = context.Request.Path });
 ```
 
-## Results Class
-
-Return typed results:
+### Results Class
 
 ```csharp
 app.MapGet("/products/{id}", (int id, IProductService service) =>
 {
     var product = service.GetById(id);
-
     return product is not null
         ? Results.Ok(product)
         : Results.NotFound(new { message = "Product not found" });
@@ -78,20 +87,15 @@ app.MapPost("/products", (Product product, IProductService service) =>
     service.Add(product);
     return Results.Created($"/products/{product.Id}", product);
 });
-
-app.MapDelete("/products/{id}", (int id, IProductService service) =>
-{
-    if (!service.Exists(id))
-        return Results.NotFound();
-
-    service.Delete(id);
-    return Results.NoContent();
-});
 ```
 
-## Endpoint Filters
+<ProgressCheckpoint section="minimal-apis-intermediate" xpReward={13} />
 
-Add cross-cutting concerns:
+---
+
+## Section 3: Endpoint Filters and Validation
+
+### Adding Endpoint Filters
 
 ```csharp
 app.MapGet("/products/{id}", GetProductById)
@@ -103,8 +107,11 @@ app.MapGet("/products/{id}", GetProductById)
 
         return await next(context);
     });
+```
 
-// Reusable filter
+### Reusable Filter Class
+
+```csharp
 public class ValidationFilter<T> : IEndpointFilter
 {
     public async ValueTask<object?> InvokeAsync(
@@ -112,9 +119,7 @@ public class ValidationFilter<T> : IEndpointFilter
         EndpointFilterDelegate next)
     {
         var model = context.Arguments.OfType<T>().FirstOrDefault();
-
         // Validate model...
-
         return await next(context);
     }
 }
@@ -123,7 +128,7 @@ app.MapPost("/products", CreateProduct)
     .AddEndpointFilter<ValidationFilter<Product>>();
 ```
 
-## Validation with FluentValidation
+### FluentValidation Integration
 
 ```csharp
 app.MapPost("/products", async (
@@ -140,4 +145,4 @@ app.MapPost("/products", async (
 });
 ```
 
-<ProgressCheckpoint section="minimal-apis-intermediate" xpReward={40} />
+<ProgressCheckpoint section="minimal-apis-advanced" xpReward={14} />

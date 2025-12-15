@@ -2,7 +2,11 @@
 
 Think about your family and friends. You have **one** mom, your mom can have **many** children, and students can be in **many** classes while classes have **many** students. These are **relationships** - and EF Core helps you model them in your database!
 
-## What Are Relationships?
+---
+
+## Section 1: Introduction to Relationships
+
+### What Are Relationships?
 
 Relationships define how different pieces of data connect to each other. In EF Core, there are three main types:
 
@@ -146,6 +150,153 @@ explanation: "A course can have many students"
 ]}
 />
 
+<ProgressCheckpoint section="intro-relationships" xpReward={8} />
+
+---
+
+## Section 2: One-to-Many Relationships
+
+### The Most Common Relationship
+
+One-to-many is the most frequently used relationship. Let's see it in action:
+
+<DotnetCodePreview
+  title="Complete One-to-Many Example"
+  code={`// One blog has MANY posts
+public class Blog
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = "";
+    
+    // Navigation property - the "many" side
+    public ICollection<Post> Posts { get; set; } = new List<Post>();
+}
+
+public class Post
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = "";
+    public string Content { get; set; } = "";
+    
+    // Foreign key - connects to Blog
+    public int BlogId { get; set; }
+    
+    // Navigation property - the "one" side
+    public Blog Blog { get; set; } = null!;
+}`}
+  steps={[
+    {
+      lineNumbers: [8],
+      highlight: "Collection navigation",
+      explanation: "ICollection<Post> means this blog can have many posts"
+    },
+    {
+      lineNumbers: [18],
+      highlight: "Foreign key",
+      explanation: "BlogId stores which blog this post belongs to"
+    },
+    {
+      lineNumbers: [21],
+      highlight: "Reference navigation",
+      explanation: "Blog property lets you access the parent blog"
+    }
+  ]}
+/>
+
+### Using One-to-Many
+
+```csharp
+// Create a blog with posts
+var blog = new Blog { Title = "My Tech Blog" };
+blog.Posts.Add(new Post { Title = "First Post", Content = "Hello!" });
+blog.Posts.Add(new Post { Title = "Second Post", Content = "More content" });
+
+context.Blogs.Add(blog);
+await context.SaveChangesAsync();
+
+// Query with related data
+var blogWithPosts = await context.Blogs
+    .Include(b => b.Posts)
+    .FirstOrDefaultAsync(b => b.Id == 1);
+
+Console.WriteLine($"Blog: {blogWithPosts.Title}");
+foreach (var post in blogWithPosts.Posts)
+{
+    Console.WriteLine($"  - {post.Title}");
+}
+```
+
+<ProgressCheckpoint section="one-to-many" xpReward={9} />
+
+---
+
+## Section 3: Many-to-Many Relationships
+
+### When Both Sides Have Many
+
+Many-to-many relationships are used when items on both sides can connect to multiple items on the other side.
+
+<DotnetCodePreview
+  title="Simple Many-to-Many (EF Core 5+)"
+  code={`// Students can enroll in many courses
+// Courses can have many students
+public class Student
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = "";
+    
+    public ICollection<Course> Courses { get; set; } = new List<Course>();
+}
+
+public class Course
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = "";
+    
+    public ICollection<Student> Students { get; set; } = new List<Student>();
+}`}
+  steps={[
+    {
+      lineNumbers: [8],
+      highlight: "Student's courses",
+      explanation: "A student can be enrolled in many courses"
+    },
+    {
+      lineNumbers: [16],
+      highlight: "Course's students",
+      explanation: "A course can have many students enrolled"
+    }
+  ]}
+/>
+
+### Using Many-to-Many
+
+```csharp
+// Create students and courses
+var student = new Student { Name = "Alice" };
+var course1 = new Course { Title = "Math 101" };
+var course2 = new Course { Title = "Science 101" };
+
+// Enroll student in courses
+student.Courses.Add(course1);
+student.Courses.Add(course2);
+
+context.Students.Add(student);
+await context.SaveChangesAsync();
+
+// Query many-to-many
+var studentWithCourses = await context.Students
+    .Include(s => s.Courses)
+    .FirstOrDefaultAsync(s => s.Name == "Alice");
+
+Console.WriteLine($"Student: {studentWithCourses.Name}");
+Console.WriteLine($"Enrolled in: {string.Join(", ", studentWithCourses.Courses.Select(c => c.Title))}");
+```
+
+<InfoBox type="tip">
+  **EF Core 5+ Magic:** EF Core automatically creates a join table behind the scenes! You don't need to create it yourself.
+</InfoBox>
+
 ## Quick Summary
 
 | Relationship | One Side      | Other Side    | Example            |
@@ -154,4 +305,4 @@ explanation: "A course can have many students"
 | **1:N**      | Single entity | Collection    | Blog → Posts       |
 | **N:N**      | Collection    | Collection    | Students ↔ Courses |
 
-<ProgressCheckpoint section="intro-relationships" xpReward={25} />
+<ProgressCheckpoint section="many-to-many" xpReward={8} />

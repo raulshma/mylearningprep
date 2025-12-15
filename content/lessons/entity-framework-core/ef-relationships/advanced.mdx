@@ -2,7 +2,66 @@
 
 Master advanced relationship patterns including inheritance, owned entities, and complex configurations.
 
+---
+
+## Section 1: Introduction to Relationships
+
+### Advanced Relationship Concepts
+
 <RelationshipDiagram mode="advanced" initialType="many-to-many" />
+
+### Relationship Fixup
+
+EF Core automatically "fixes up" relationships when entities are tracked:
+
+```csharp
+// Add blog to context
+var blog = new Blog { Id = 1, Title = "Tech Blog" };
+context.Blogs.Add(blog);
+
+// Add post with matching BlogId
+var post = new Post { Id = 1, Title = "First Post", BlogId = 1 };
+context.Posts.Add(post);
+
+// EF Core automatically sets:
+// - post.Blog = blog
+// - blog.Posts contains post
+
+Console.WriteLine(post.Blog.Title);  // "Tech Blog"
+Console.WriteLine(blog.Posts.Count);  // 1
+```
+
+### Disconnected Scenarios
+
+When entities come from outside the context (e.g., API requests):
+
+```csharp
+// Post comes from API - not tracked
+var postDto = new PostDto { Id = 1, Title = "Updated", BlogId = 2 };
+
+// Option 1: Attach and mark modified
+var post = new Post { Id = postDto.Id };
+context.Posts.Attach(post);
+post.Title = postDto.Title;
+post.BlogId = postDto.BlogId;
+
+// Option 2: Use Update (marks all as modified)
+var post2 = new Post 
+{ 
+    Id = postDto.Id, 
+    Title = postDto.Title, 
+    BlogId = postDto.BlogId 
+};
+context.Posts.Update(post2);
+
+await context.SaveChangesAsync();
+```
+
+<ProgressCheckpoint section="intro-relationships" xpReward={20} />
+
+---
+
+## Section 2: One-to-Many Advanced
 
 ## Inheritance Strategies
 
@@ -214,6 +273,110 @@ modelBuilder.Entity<Order>().ToTable("Orders");
 modelBuilder.Entity<OrderDetail>().ToTable("Orders"); // Same table!`}
 />
 
+<ProgressCheckpoint section="one-to-many" xpReward={20} />
+
+---
+
+## Section 3: Many-to-Many Advanced
+
+### Configuring Skip Navigations
+
+```csharp
+modelBuilder.Entity<Student>()
+    .HasMany(s => s.Courses)
+    .WithMany(c => c.Students)
+    .UsingEntity<Dictionary<string, object>>(
+        "StudentCourse",
+        j => j.HasOne<Course>().WithMany().HasForeignKey("CourseId"),
+        j => j.HasOne<Student>().WithMany().HasForeignKey("StudentId"),
+        j =>
+        {
+            j.HasKey("StudentId", "CourseId");
+            j.ToTable("StudentCourses");
+            j.HasIndex("CourseId");
+        });
+```
+
+### Many-to-Many with Composite Keys
+
+```csharp
+public class ProductCategory
+{
+    public int ProductId { get; set; }
+    public Product Product { get; set; } = null!;
+    
+    public int CategoryId { get; set; }
+    public Category Category { get; set; } = null!;
+    
+    public int DisplayOrder { get; set; }
+    public bool IsPrimary { get; set; }
+}
+
+modelBuilder.Entity<ProductCategory>()
+    .HasKey(pc => new { pc.ProductId, pc.CategoryId });
+
+modelBuilder.Entity<ProductCategory>()
+    .HasOne(pc => pc.Product)
+    .WithMany(p => p.ProductCategories)
+    .HasForeignKey(pc => pc.ProductId);
+
+modelBuilder.Entity<ProductCategory>()
+    .HasOne(pc => pc.Category)
+    .WithMany(c => c.ProductCategories)
+    .HasForeignKey(pc => pc.CategoryId);
+```
+
+### Querying Complex Many-to-Many
+
+```csharp
+// Get products with their primary category
+var productsWithPrimaryCategory = await context.Products
+    .Select(p => new
+    {
+        Product = p,
+        PrimaryCategory = p.ProductCategories
+            .Where(pc => pc.IsPrimary)
+            .Select(pc => pc.Category)
+            .FirstOrDefault()
+    })
+    .ToListAsync();
+
+// Get categories with product count
+var categoriesWithCount = await context.Categories
+    .Select(c => new
+    {
+        Category = c,
+        ProductCount = c.ProductCategories.Count,
+        Products = c.ProductCategories
+            .OrderBy(pc => pc.DisplayOrder)
+            .Select(pc => pc.Product)
+            .ToList()
+    })
+    .ToListAsync();
+```
+
+### Temporal Relationships
+
+Track relationship history with temporal tables:
+
+```csharp
+modelBuilder.Entity<Enrollment>(entity =>
+{
+    entity.ToTable("Enrollments", tb => tb.IsTemporal(ttb =>
+    {
+        ttb.HasPeriodStart("ValidFrom");
+        ttb.HasPeriodEnd("ValidTo");
+        ttb.UseHistoryTable("EnrollmentsHistory");
+    }));
+});
+
+// Query historical enrollments
+var historicalEnrollments = await context.Enrollments
+    .TemporalAsOf(DateTime.UtcNow.AddYears(-1))
+    .Where(e => e.StudentId == 1)
+    .ToListAsync();
+```
+
 ## Key Takeaways
 
 - **TPH** is default and most performant for simple hierarchies
@@ -222,5 +385,8 @@ modelBuilder.Entity<OrderDetail>().ToTable("Orders"); // Same table!`}
 - **Self-referencing** for hierarchical/tree structures
 - **Shadow properties** when you don't need FK in the model
 - **Table splitting** for loading subsets of wide tables
+- **Relationship fixup** happens automatically for tracked entities
+- **Disconnected scenarios** require explicit Attach/Update
+- **Temporal tables** can track relationship history
 
-<ProgressCheckpoint section="many-to-many" xpReward={60} />
+<ProgressCheckpoint section="many-to-many" xpReward={20} />
