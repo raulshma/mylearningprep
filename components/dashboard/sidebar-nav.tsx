@@ -1,6 +1,7 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 import {
   LayoutDashboard,
   Plus,
@@ -12,9 +13,10 @@ import {
   Activity,
   MessageSquare,
   Map,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ViewTransitionLink } from "@/components/transitions/view-transition-link";
+import Link from "next/link";
 
 const navItems = [
   {
@@ -90,6 +92,9 @@ export function SidebarNav({
   isCollapsed = false,
 }: SidebarNavProps & { isCollapsed?: boolean }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [loadingHref, setLoadingHref] = useState<string | null>(null);
 
   let items = [...navItems];
   // AI Chat is available for all users (with different limits per plan)
@@ -119,15 +124,33 @@ export function SidebarNav({
     return pathname === href || pathname.startsWith(href + "/");
   };
 
+  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    e.preventDefault();
+    
+    // Don't navigate if already on this route
+    if (isActiveRoute(href)) return;
+    
+    setLoadingHref(href);
+    
+    startTransition(() => {
+      router.push(href);
+    });
+  };
+
+  // Reset loading state when navigation completes
+  const isLoading = (href: string) => isPending && loadingHref === href;
+
   return (
     <nav className="space-y-1">
       {items.map((item) => {
         const active = isActiveRoute(item.href);
+        const loading = isLoading(item.href);
 
         return (
           <div key={item.href}>
-            <ViewTransitionLink
+            <Link
               href={item.href}
+              onClick={(e) => handleClick(e, item.href)}
               className={cn(
                 "group relative flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-2xl transition-all duration-300",
                 active
@@ -137,20 +160,34 @@ export function SidebarNav({
               )}
               title={isCollapsed ? item.label : undefined}
             >
-              <item.icon
-                className={cn(
-                  "w-5 h-5 transition-transform duration-300 group-hover:scale-110",
-                  active
-                    ? "text-primary-foreground"
-                    : "text-muted-foreground group-hover:text-foreground"
-                )}
-              />
+              <div className="relative w-5 h-5 flex items-center justify-center">
+                {/* Spinner - shown when loading */}
+                <Loader2
+                  className={cn(
+                    "w-5 h-5 absolute animate-spin transition-opacity duration-200",
+                    loading ? "opacity-100" : "opacity-0",
+                    active
+                      ? "text-primary-foreground"
+                      : "text-muted-foreground"
+                  )}
+                />
+                {/* Icon - hidden when loading */}
+                <item.icon
+                  className={cn(
+                    "w-5 h-5 absolute transition-all duration-200 group-hover:scale-110",
+                    loading ? "opacity-0 scale-75" : "opacity-100 scale-100",
+                    active
+                      ? "text-primary-foreground"
+                      : "text-muted-foreground group-hover:text-foreground"
+                  )}
+                />
+              </div>
               {!isCollapsed && <span>{item.label}</span>}
 
               {!isCollapsed && active && (
                 <ChevronRight className="w-4 h-4 ml-auto text-primary-foreground/50" />
               )}
-            </ViewTransitionLink>
+            </Link>
           </div>
         );
       })}

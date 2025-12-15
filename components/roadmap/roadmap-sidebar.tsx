@@ -485,20 +485,25 @@ export function RoadmapSidebar({
   // Listener for updates
   useEffect(() => {
     const handler = (e: Event) => {
-      const custom = e as CustomEvent<{ nodeId?: string }>;
-      const nodeId = custom.detail?.nodeId;
-      if (!nodeId) return;
-      if (!(nodeId in nodeObjectivesInfo)) return;
+      const custom = e as CustomEvent<{ roadmapSlug?: string; lessonId?: string }>;
+      const { roadmapSlug: eventRoadmapSlug } = custom.detail || {};
+      
+      // Only handle events for this roadmap
+      if (eventRoadmapSlug && eventRoadmapSlug !== roadmap.slug) return;
 
-      setObjectiveCompletionByNode(prev => ({
-          ...prev,
-          [nodeId]: computeObjectiveCompletionForNode(nodeId)
-      }));
+      // Recompute all nodes since we don't know which node the lesson belongs to
+      setObjectiveCompletionByNode(() => {
+        const updated: Record<string, { completed: number; total: number }> = {};
+        for (const nodeId of Object.keys(nodeObjectivesInfo)) {
+          updated[nodeId] = computeObjectiveCompletionForNode(nodeId);
+        }
+        return updated;
+      });
     };
 
     window.addEventListener('objective-progress-updated', handler);
     return () => window.removeEventListener('objective-progress-updated', handler);
-  }, [nodeObjectivesInfo, computeObjectiveCompletionForNode]);
+  }, [nodeObjectivesInfo, computeObjectiveCompletionForNode, roadmap.slug]);
 
   
   // Group nodes by type for organized display

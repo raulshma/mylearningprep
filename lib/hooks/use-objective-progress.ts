@@ -50,7 +50,9 @@ export function saveObjectiveProgress(
   // Notify same-tab listeners (storage event does not fire in the same document)
   try {
     window.dispatchEvent(
-      new CustomEvent('objective-progress-updated', { detail: { nodeId, lessonId } })
+      new CustomEvent('objective-progress-updated', { 
+        detail: { roadmapSlug: nodeId, lessonId } 
+      })
     );
   } catch {
     // Ignore if CustomEvent is not available
@@ -115,7 +117,7 @@ export function syncGamificationToLocalStorage(
       try {
         window.dispatchEvent(
           new CustomEvent('objective-progress-updated', {
-            detail: { nodeId: extractedNodeId, lessonId: lesson.lessonId },
+            detail: { roadmapSlug: extractedNodeId, lessonId: lesson.lessonId },
           })
         );
       } catch {
@@ -136,7 +138,9 @@ export function clearObjectiveProgress(nodeId: string, lessonId: string): void {
 
   try {
     window.dispatchEvent(
-      new CustomEvent('objective-progress-updated', { detail: { nodeId, lessonId } })
+      new CustomEvent('objective-progress-updated', { 
+        detail: { roadmapSlug: nodeId, lessonId } 
+      })
     );
   } catch {
     // Ignore
