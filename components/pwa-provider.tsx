@@ -59,6 +59,15 @@ export function PWAProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!deferredPrompt) return;
 
+    // Check if dismissed recently before showing toast
+    const dismissedAt = localStorage.getItem(PWA_INSTALL_DISMISSED_KEY);
+    if (dismissedAt) {
+      const dismissedDate = new Date(dismissedAt);
+      const daysSinceDismissed =
+        (Date.now() - dismissedDate.getTime()) / (1000 * 60 * 60 * 24);
+      if (daysSinceDismissed < DISMISS_DURATION_DAYS) return;
+    }
+
     // Small delay to not interrupt initial page load
     const timer = setTimeout(() => {
       toast.custom(
