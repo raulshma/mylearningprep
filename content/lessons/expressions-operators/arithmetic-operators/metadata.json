@@ -1,0 +1,18 @@
+{
+  "id": "arithmetic-operators",
+  "title": "Arithmetic Operators",
+  "description": "Master JavaScript arithmetic operators for mathematical calculations including addition, subtraction, multiplication, division, modulo, and exponentiation.",
+  "milestone": "expressions-operators",
+  "order": 3,
+  "sections": [
+    "basic-arithmetic",
+    "modulo-exponent",
+    "increment-decrement",
+    "operator-precedence"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 12,
+  "xpReward": 70,
+  "prerequisites": ["expressions-operators/assignment-operators"],
+  "tags": ["javascript", "operators", "arithmetic", "math", "calculations"]
+}

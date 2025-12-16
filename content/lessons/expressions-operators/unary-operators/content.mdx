@@ -1,0 +1,398 @@
+# Unary Operators
+
+Unary operators work on a single operand. From type checking with `typeof` to property deletion with `delete`, these operators perform essential operations that binary operators can't handle.
+
+---
+
+## Section 1: Unary Basics
+
+### The Single-Input Machine 🎰
+
+Unlike binary operators (which need two operands), unary operators work with just one:
+
+| Type | Example | Operands |
+|:-----|:--------|:---------|
+| Binary | `5 + 3` | Two (5 and 3) |
+| Unary | `-5` | One (5) |
+| Unary | `!true` | One (true) |
+
+<InfoBox type="info">
+**Unary operators** operate on a single value. They can appear before (prefix) or after (postfix) their operand. JavaScript has several unary operators: `+`, `-`, `!`, `~`, `typeof`, `void`, `delete`, `++`, `--`.
+</InfoBox>
+
+### Unary Plus (+) and Minus (-)
+
+```javascript
+// Unary minus: negates the value
+-5        // -5
+-(-5)     // 5
+-"3"      // -3 (converts string to number, then negates)
+
+// Unary plus: converts to number
++5        // 5 (no change)
++"3"      // 3 (string to number)
++true     // 1
++false    // 0
++null     // 0
++undefined // NaN
++"hello"  // NaN
++[]       // 0 (empty array → "" → 0)
++[5]      // 5 ([5] → "5" → 5)
++{}       // NaN
+```
+
+### Quick Number Conversion
+
+```javascript
+// Unary + is the shortest way to convert to number
+const input = "42";
+
+// These are equivalent:
+Number(input)    // 42
+parseInt(input)  // 42
++input           // 42 (shortest!)
+
+// Useful in expressions
+const sum = +a + +b;  // Ensures both are numbers
+
+// With dates
++new Date()  // Timestamp in milliseconds
+
+// Parsing user input
+const age = +prompt("Enter your age:");
+if (!isNaN(age)) {
+  console.log(`You are ${age} years old`);
+}
+```
+
+<OperatorVisualizer scenario="unary-basic" />
+
+<ProgressCheckpoint section="unary-basics" xpReward={15} />
+
+---
+
+## Section 2: The typeof Operator
+
+### Type Detection
+
+`typeof` returns a string indicating the type of the operand:
+
+```javascript
+// Primitive types
+typeof 42           // "number"
+typeof "hello"      // "string"
+typeof true         // "boolean"
+typeof undefined    // "undefined"
+typeof Symbol()     // "symbol"
+typeof 42n          // "bigint"
+
+// Objects and functions
+typeof {}           // "object"
+typeof []           // "object" (arrays are objects!)
+typeof null         // "object" (historical bug!)
+typeof function(){} // "function"
+
+// Special cases
+typeof NaN          // "number" (NaN is a number!)
+typeof Infinity     // "number"
+```
+
+### The null Gotcha
+
+```javascript
+// This is a famous JavaScript bug that can't be fixed
+typeof null  // "object" (should be "null")
+
+// How to properly check for null
+const value = null;
+
+// ❌ Wrong
+if (typeof value === "null") { }  // Never true!
+
+// ✅ Correct
+if (value === null) { }
+
+// Check for null OR undefined
+if (value == null) { }  // Catches both
+if (value === null || value === undefined) { }
+```
+
+### Practical typeof Patterns
+
+```javascript
+// Safe property access
+function getLength(value) {
+  if (typeof value === "string" || Array.isArray(value)) {
+    return value.length;
+  }
+  return 0;
+}
+
+// Feature detection
+if (typeof localStorage !== "undefined") {
+  // localStorage is available
+}
+
+// Check if function exists
+if (typeof callback === "function") {
+  callback();
+}
+
+// Type guards
+function processValue(value) {
+  switch (typeof value) {
+    case "string":
+      return value.toUpperCase();
+    case "number":
+      return value * 2;
+    case "boolean":
+      return !value;
+    default:
+      return value;
+  }
+}
+```
+
+<KeyConcept title="typeof Returns Strings">
+Remember: `typeof` always returns a **string**. Compare with `===` to string values like `"number"`, `"string"`, `"object"`, etc.
+</KeyConcept>
+
+<ProgressCheckpoint section="typeof-operator" xpReward={20} />
+
+---
+
+## Section 3: delete and void
+
+### The delete Operator
+
+`delete` removes a property from an object:
+
+```javascript
+// Deleting object properties
+const user = { name: "Alice", age: 25, role: "admin" };
+
+delete user.role;
+console.log(user);  // { name: "Alice", age: 25 }
+
+// Returns true if successful (or property didn't exist)
+delete user.name;      // true
+delete user.nonexistent; // true (already doesn't exist)
+
+// Cannot delete variables
+let x = 10;
+delete x;  // false (and x still exists)
+
+// Cannot delete non-configurable properties
+delete Math.PI;  // false
+delete [].length; // false
+```
+
+### delete Gotchas
+
+```javascript
+// Deleting array elements leaves holes!
+const arr = [1, 2, 3, 4, 5];
+delete arr[2];
+console.log(arr);        // [1, 2, empty, 4, 5]
+console.log(arr.length); // 5 (unchanged!)
+console.log(arr[2]);     // undefined
+
+// Better: use splice for arrays
+const arr2 = [1, 2, 3, 4, 5];
+arr2.splice(2, 1);       // Remove 1 element at index 2
+console.log(arr2);       // [1, 2, 4, 5]
+console.log(arr2.length); // 4
+
+// delete doesn't free memory directly
+// It just removes the reference; garbage collection handles memory
+```
+
+### The void Operator
+
+`void` evaluates an expression and returns `undefined`:
+
+```javascript
+// Always returns undefined
+void 0          // undefined
+void (1 + 2)    // undefined
+void "hello"    // undefined
+void function(){} // undefined
+
+// Why use void?
+// 1. Ensure undefined (can't be overwritten in old JS)
+void 0  // Guaranteed undefined
+
+// 2. Prevent navigation in links
+<a href="javascript:void(0)">Click me</a>
+
+// 3. Arrow functions that shouldn't return
+const logAndIgnore = x => void console.log(x);
+logAndIgnore("test");  // Logs "test", returns undefined
+
+// 4. IIFE without return value
+void function() {
+  // Setup code
+  console.log("Initialized");
+}();
+```
+
+<InfoBox type="tip">
+**Modern Alternative**: Instead of `void 0`, you can use `undefined` directly in modern JavaScript. The `void` operator is mainly seen in legacy code or specific patterns like `javascript:void(0)` links.
+</InfoBox>
+
+<ProgressCheckpoint section="delete-void" xpReward={20} />
+
+---
+
+## Section 4: Type Conversion with Unary Operators
+
+### The Conversion Toolkit
+
+```javascript
+// To Number: unary +
++"42"       // 42
++true       // 1
++false      // 0
++null       // 0
++undefined  // NaN
++""         // 0
++"  "       // 0 (whitespace only)
++"3.14"     // 3.14
+
+// To Boolean: double NOT (!!)
+!!"hello"   // true
+!!""        // false
+!!42        // true
+!!0         // false
+!!null      // false
+!!undefined // false
+!![]        // true (empty array is truthy!)
+!!{}        // true (empty object is truthy!)
+
+// To String: concatenate with ""
+"" + 42     // "42"
+"" + true   // "true"
+"" + null   // "null"
+"" + [1,2]  // "1,2"
+```
+
+### Comparison of Conversion Methods
+
+```javascript
+// Number conversion
+const str = "42";
+Number(str)      // 42 - explicit, clear
+parseInt(str)    // 42 - for integers, allows radix
+parseFloat(str)  // 42 - for decimals
++str             // 42 - shortest, but less readable
+
+// Boolean conversion
+const val = "hello";
+Boolean(val)     // true - explicit, clear
+!!val            // true - shorter, common pattern
+
+// String conversion
+const num = 42;
+String(num)      // "42" - explicit, clear
+num.toString()   // "42" - method call
+"" + num         // "42" - concatenation
+`${num}`         // "42" - template literal
+```
+
+### Practical Patterns
+
+```javascript
+// Ensure number in calculations
+function calculateTotal(price, quantity) {
+  return +price * +quantity;  // Handles string inputs
+}
+calculateTotal("10.99", "3");  // 32.97
+
+// Toggle boolean
+let isActive = true;
+isActive = !isActive;  // false
+isActive = !isActive;  // true
+
+// Check for "real" value
+function hasValue(val) {
+  return !!val;  // Converts to boolean
+}
+
+// Bitwise NOT for integer conversion (truncates)
+~~3.7     // 3
+~~-3.7    // -3
+~~"3.7"   // 3
+```
+
+<CodePlayground
+  initialCode={`// Unary operator experiments
+
+// typeof examples
+console.log("typeof 42:", typeof 42);
+console.log("typeof 'hello':", typeof "hello");
+console.log("typeof null:", typeof null);  // Bug!
+console.log("typeof []:", typeof []);
+console.log("typeof function(){}:", typeof function(){});
+
+// Unary + for conversion
+console.log("\\n+'42':", +"42");
+console.log("+true:", +true);
+console.log("+null:", +null);
+console.log("+'hello':", +"hello");
+
+// Double NOT for boolean
+console.log("\\n!!'hello':", !!"hello");
+console.log("!!0:", !!0);
+console.log("!![]:", !![]);
+
+// delete example
+const obj = { a: 1, b: 2, c: 3 };
+console.log("\\nBefore delete:", obj);
+delete obj.b;
+console.log("After delete obj.b:", obj);`}
+  title="Unary Operators Playground"
+/>
+
+### Quick Knowledge Check
+
+<Quiz id="typeof-null-quiz">
+  <Question>What does `typeof null` return?</Question>
+  <Answer>"null"</Answer>
+  <Answer>"undefined"</Answer>
+  <Answer correct>"object"</Answer>
+  <Answer>"nulltype"</Answer>
+</Quiz>
+
+<Quiz id="unary-plus-quiz">
+  <Question>What does `+"42"` evaluate to?</Question>
+  <Answer>"42"</Answer>
+  <Answer correct>42</Answer>
+  <Answer>NaN</Answer>
+  <Answer>undefined</Answer>
+</Quiz>
+
+<Quiz id="delete-array-quiz">
+  <Question>After `const arr = [1,2,3]; delete arr[1];`, what is `arr.length`?</Question>
+  <Answer>2</Answer>
+  <Answer correct>3</Answer>
+  <Answer>undefined</Answer>
+  <Answer>Error</Answer>
+</Quiz>
+
+### Summary
+
+| Operator | Purpose | Example |
+|:---------|:--------|:--------|
+| `+` | Convert to number | `+"42"` → `42` |
+| `-` | Negate | `-5` → `-5` |
+| `!` | Logical NOT | `!true` → `false` |
+| `!!` | Convert to boolean | `!!"hi"` → `true` |
+| `typeof` | Get type string | `typeof 42` → `"number"` |
+| `delete` | Remove property | `delete obj.prop` |
+| `void` | Return undefined | `void 0` → `undefined` |
+
+<KeyConcept title="What's Next?">
+You've mastered unary operators! Final topic: **Relational Operators** — learn about `in` and `instanceof` for property and type checking.
+</KeyConcept>
+
+<ProgressCheckpoint section="type-conversion" xpReward={15} />

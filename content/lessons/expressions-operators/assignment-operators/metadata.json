@@ -1,0 +1,18 @@
+{
+  "id": "assignment-operators",
+  "title": "Assignment Operators",
+  "description": "Master JavaScript assignment operators including basic assignment, compound operators, and destructuring assignment patterns.",
+  "milestone": "expressions-operators",
+  "order": 1,
+  "sections": [
+    "basic-assignment",
+    "compound-assignment",
+    "destructuring-assignment",
+    "best-practices"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 12,
+  "xpReward": 70,
+  "prerequisites": [],
+  "tags": ["javascript", "operators", "assignment", "destructuring", "fundamentals"]
+}

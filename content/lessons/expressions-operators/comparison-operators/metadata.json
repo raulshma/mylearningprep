@@ -1,0 +1,18 @@
+{
+  "id": "comparison-operators",
+  "title": "Comparison Operators",
+  "description": "Learn JavaScript comparison operators for equality and relational comparisons, including the crucial difference between == and ===.",
+  "milestone": "expressions-operators",
+  "order": 2,
+  "sections": [
+    "equality-operators",
+    "strict-vs-loose",
+    "relational-comparisons",
+    "comparison-gotchas"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 14,
+  "xpReward": 75,
+  "prerequisites": ["expressions-operators/assignment-operators"],
+  "tags": ["javascript", "operators", "comparison", "equality", "type-coercion"]
+}

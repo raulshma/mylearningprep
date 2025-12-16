@@ -1,0 +1,18 @@
+{
+  "id": "unary-operators",
+  "title": "Unary Operators",
+  "description": "Master JavaScript unary operators including typeof, delete, void, and the unary plus and minus operators.",
+  "milestone": "expressions-operators",
+  "order": 9,
+  "sections": [
+    "unary-basics",
+    "typeof-operator",
+    "delete-void",
+    "type-conversion"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 12,
+  "xpReward": 70,
+  "prerequisites": ["expressions-operators/arithmetic-operators"],
+  "tags": ["javascript", "operators", "unary", "typeof", "delete", "void"]
+}

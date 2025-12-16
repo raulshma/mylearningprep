@@ -1,0 +1,18 @@
+{
+  "id": "relational-operators",
+  "title": "Relational Operators",
+  "description": "Learn JavaScript relational operators including in, instanceof, and their use for property checking and type testing.",
+  "milestone": "expressions-operators",
+  "order": 10,
+  "sections": [
+    "in-operator",
+    "instanceof-operator",
+    "prototype-chain",
+    "practical-patterns"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 12,
+  "xpReward": 70,
+  "prerequisites": ["expressions-operators/comparison-operators"],
+  "tags": ["javascript", "operators", "relational", "in", "instanceof", "type-checking"]
+}

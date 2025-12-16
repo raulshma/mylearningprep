@@ -1,0 +1,326 @@
+# Arithmetic Operators
+
+Arithmetic operators are JavaScript's calculator — they perform mathematical operations on numbers. From basic addition to powerful exponentiation, these operators are essential for any computation.
+
+---
+
+## Section 1: Basic Arithmetic
+
+### The Calculator Analogy 🧮
+
+JavaScript's arithmetic operators work just like a calculator:
+
+| Operation | Operator | Example | Result |
+|:----------|:---------|:--------|:-------|
+| Addition | `+` | `5 + 3` | `8` |
+| Subtraction | `-` | `10 - 4` | `6` |
+| Multiplication | `*` | `6 * 7` | `42` |
+| Division | `/` | `20 / 4` | `5` |
+
+<InfoBox type="info">
+JavaScript uses **IEEE 754 double-precision floating-point** numbers. This means all numbers (integers and decimals) are stored the same way, which can lead to precision issues with decimals.
+</InfoBox>
+
+### Basic Operations
+
+```javascript
+// Addition
+5 + 3        // 8
+10.5 + 2.5   // 13
+-5 + 10      // 5
+
+// Subtraction
+10 - 3       // 7
+5 - 10       // -5
+0.3 - 0.1    // 0.19999999999999998 (floating point!)
+
+// Multiplication
+4 * 5        // 20
+-3 * 4       // -12
+0.1 * 0.2    // 0.020000000000000004 (precision issue)
+
+// Division
+20 / 4       // 5
+7 / 2        // 3.5 (not integer division!)
+5 / 0        // Infinity
+-5 / 0       // -Infinity
+0 / 0        // NaN
+```
+
+### The Floating Point Problem
+
+```javascript
+// This is a famous JavaScript "gotcha"
+0.1 + 0.2 === 0.3  // false!
+0.1 + 0.2          // 0.30000000000000004
+
+// Solutions:
+// 1. Round to fixed decimals
+(0.1 + 0.2).toFixed(2)  // "0.30" (string)
+Math.round((0.1 + 0.2) * 100) / 100  // 0.3
+
+// 2. Use integers (cents instead of dollars)
+const priceInCents = 199 + 299;  // 498 cents = $4.98
+
+// 3. Use a library for financial calculations
+// decimal.js, big.js, etc.
+```
+
+<KeyConcept title="Why Floating Point Errors?">
+Computers store numbers in binary. Just like 1/3 can't be exactly represented in decimal (0.333...), some decimal numbers can't be exactly represented in binary. 0.1 in binary is a repeating fraction!
+</KeyConcept>
+
+<OperatorVisualizer scenario="arithmetic-basic" />
+
+<ProgressCheckpoint section="basic-arithmetic" xpReward={15} />
+
+---
+
+## Section 2: Modulo and Exponentiation
+
+### The Remainder Operator (%)
+
+Modulo returns the **remainder** after division — incredibly useful for many programming patterns:
+
+```javascript
+// Basic modulo
+10 % 3    // 1 (10 ÷ 3 = 3 remainder 1)
+15 % 5    // 0 (15 ÷ 5 = 3 remainder 0)
+7 % 10    // 7 (7 ÷ 10 = 0 remainder 7)
+
+// Negative numbers (sign follows dividend)
+-10 % 3   // -1
+10 % -3   // 1
+-10 % -3  // -1
+
+// Common use cases:
+// Check if even or odd
+const isEven = num => num % 2 === 0;
+isEven(4)   // true
+isEven(7)   // false
+
+// Wrap around (circular arrays, clock math)
+const hours = 25 % 24;  // 1 (25 hours = 1 AM next day)
+
+// Cycle through values
+const colors = ["red", "green", "blue"];
+const index = 5 % colors.length;  // 2 (cycles back)
+```
+
+### The Exponentiation Operator (**)
+
+Introduced in ES2016, `**` raises a number to a power:
+
+```javascript
+// Basic exponentiation
+2 ** 3     // 8 (2³ = 2 × 2 × 2)
+10 ** 2    // 100 (10²)
+5 ** 0     // 1 (anything to the 0 is 1)
+
+// Fractional exponents (roots)
+9 ** 0.5   // 3 (square root of 9)
+8 ** (1/3) // 2 (cube root of 8)
+16 ** 0.25 // 2 (fourth root of 16)
+
+// Negative exponents
+2 ** -1    // 0.5 (1/2)
+10 ** -2   // 0.01 (1/100)
+
+// Right-associative!
+2 ** 3 ** 2  // 512 (2^(3^2) = 2^9, not (2^3)^2)
+
+// Before ES2016, use Math.pow()
+Math.pow(2, 3)  // 8
+```
+
+<InfoBox type="tip">
+**Pro Tip**: The `**` operator is right-associative, meaning `2 ** 3 ** 2` equals `2 ** 9` (512), not `8 ** 2` (64). Use parentheses to be explicit!
+</InfoBox>
+
+<OperatorVisualizer scenario="arithmetic-advanced" />
+
+<ProgressCheckpoint section="modulo-exponent" xpReward={20} />
+
+---
+
+## Section 3: Increment and Decrement
+
+### The ++ and -- Operators
+
+These unary operators add or subtract 1 from a variable:
+
+```javascript
+let count = 5;
+
+// Post-increment: return THEN add
+console.log(count++);  // 5 (returns old value)
+console.log(count);    // 6 (now incremented)
+
+// Pre-increment: add THEN return
+console.log(++count);  // 7 (increments first)
+console.log(count);    // 7
+
+// Same pattern for decrement
+let x = 10;
+console.log(x--);  // 10 (returns, then subtracts)
+console.log(--x);  // 8 (subtracts, then returns)
+```
+
+### Pre vs Post: When It Matters
+
+```javascript
+// In loops - usually doesn't matter
+for (let i = 0; i < 5; i++) { }   // Post
+for (let i = 0; i < 5; ++i) { }   // Pre (same result)
+
+// In expressions - order matters!
+let a = 5;
+let b = a++;  // b = 5, a = 6
+
+let c = 5;
+let d = ++c;  // d = 6, c = 6
+
+// Array indexing
+const arr = [10, 20, 30];
+let i = 0;
+console.log(arr[i++]);  // 10 (uses 0, then i becomes 1)
+console.log(arr[++i]);  // 30 (i becomes 2, then uses 2)
+```
+
+### Best Practices
+
+```javascript
+// ✅ Clear and readable
+count += 1;
+count -= 1;
+
+// ✅ OK in simple cases
+count++;
+--remaining;
+
+// ❌ Avoid in complex expressions
+result = arr[i++] + arr[++j];  // Confusing!
+
+// ✅ Break it up
+const first = arr[i];
+i++;
+j++;
+const second = arr[j];
+result = first + second;
+```
+
+<CodePlayground
+  initialCode={`// Experiment with increment/decrement
+let x = 5;
+
+console.log("Starting x:", x);
+console.log("x++:", x++);  // What prints? What's x now?
+console.log("After x++:", x);
+console.log("++x:", ++x);  // What prints? What's x now?
+console.log("After ++x:", x);
+
+// Modulo patterns
+console.log("\\nModulo examples:");
+console.log("17 % 5 =", 17 % 5);
+console.log("Is 42 even?", 42 % 2 === 0);
+
+// Clock math
+const hour = 22;
+const hoursToAdd = 5;
+const newHour = (hour + hoursToAdd) % 24;
+console.log("22:00 + 5 hours =", newHour + ":00");`}
+  title="Increment & Modulo Playground"
+/>
+
+<ProgressCheckpoint section="increment-decrement" xpReward={15} />
+
+---
+
+## Section 4: Operator Precedence
+
+### The Order of Operations
+
+Just like in math class (PEMDAS/BODMAS), JavaScript has operator precedence:
+
+```javascript
+// Without parentheses
+2 + 3 * 4      // 14 (multiplication first)
+10 - 4 / 2    // 8 (division first)
+2 ** 3 * 2    // 16 (exponent first)
+
+// With parentheses (override precedence)
+(2 + 3) * 4   // 20
+(10 - 4) / 2  // 3
+2 ** (3 * 2)  // 64
+```
+
+### Precedence Table (Arithmetic)
+
+| Precedence | Operator | Description |
+|:-----------|:---------|:------------|
+| Highest | `**` | Exponentiation |
+| | `++`, `--` | Increment/Decrement |
+| | `+`, `-` (unary) | Positive/Negative |
+| | `*`, `/`, `%` | Multiply, Divide, Modulo |
+| Lowest | `+`, `-` (binary) | Add, Subtract |
+
+### Complex Expressions
+
+```javascript
+// Step by step evaluation
+let result = 2 + 3 * 4 ** 2 / 8 - 1;
+// Step 1: 4 ** 2 = 16
+// Step 2: 3 * 16 = 48
+// Step 3: 48 / 8 = 6
+// Step 4: 2 + 6 = 8
+// Step 5: 8 - 1 = 7
+// result = 7
+
+// When in doubt, use parentheses!
+result = 2 + ((3 * (4 ** 2)) / 8) - 1;  // Same, but clearer
+```
+
+### Quick Knowledge Check
+
+<Quiz id="modulo-quiz">
+  <Question>What is `17 % 5`?</Question>
+  <Answer>3.4</Answer>
+  <Answer correct>2</Answer>
+  <Answer>3</Answer>
+  <Answer>5</Answer>
+</Quiz>
+
+<Quiz id="increment-quiz">
+  <Question>If `let x = 5`, what does `console.log(x++)` print?</Question>
+  <Answer>6</Answer>
+  <Answer correct>5</Answer>
+  <Answer>4</Answer>
+  <Answer>undefined</Answer>
+</Quiz>
+
+<Quiz id="precedence-quiz">
+  <Question>What is `2 + 3 * 4`?</Question>
+  <Answer>20</Answer>
+  <Answer correct>14</Answer>
+  <Answer>24</Answer>
+  <Answer>9</Answer>
+</Quiz>
+
+### Summary
+
+| Operator | Name | Example | Result |
+|:---------|:-----|:--------|:-------|
+| `+` | Addition | `5 + 3` | `8` |
+| `-` | Subtraction | `5 - 3` | `2` |
+| `*` | Multiplication | `5 * 3` | `15` |
+| `/` | Division | `6 / 3` | `2` |
+| `%` | Modulo | `7 % 3` | `1` |
+| `**` | Exponentiation | `2 ** 3` | `8` |
+| `++` | Increment | `x++` | `x + 1` |
+| `--` | Decrement | `x--` | `x - 1` |
+
+<KeyConcept title="What's Next?">
+You've mastered arithmetic! Next up: **Logical Operators** — the building blocks of complex conditions with AND, OR, NOT, and nullish coalescing.
+</KeyConcept>
+
+<ProgressCheckpoint section="operator-precedence" xpReward={20} />

@@ -1,0 +1,410 @@
+# String Operators
+
+String operators let you combine, compare, and manipulate text in JavaScript. From the humble `+` concatenation to powerful template literals, these operators are essential for working with text data.
+
+---
+
+## Section 1: Concatenation
+
+### The Train Cars Analogy 🚂
+
+Think of string concatenation like connecting train cars:
+
+| Operation | Result |
+|:----------|:-------|
+| `"Hello" + " " + "World"` | `"Hello World"` |
+| `"Train" + "Car" + "Car"` | `"TrainCarCar"` |
+
+<InfoBox type="info">
+The **concatenation operator** (`+`) joins strings together. When `+` is used with at least one string operand, JavaScript converts the other operand to a string and concatenates them.
+</InfoBox>
+
+### Basic Concatenation
+
+```javascript
+// Simple concatenation
+"Hello" + " " + "World"  // "Hello World"
+"Java" + "Script"        // "JavaScript"
+
+// With variables
+const firstName = "Alice";
+const lastName = "Smith";
+const fullName = firstName + " " + lastName;  // "Alice Smith"
+
+// Building strings
+let message = "";
+message += "Hello, ";
+message += firstName;
+message += "!";
+// message = "Hello, Alice!"
+```
+
+### Type Coercion with +
+
+When `+` encounters a string, it converts other types to strings:
+
+```javascript
+// Number + String = String
+"The answer is " + 42     // "The answer is 42"
+42 + " is the answer"     // "42 is the answer"
+
+// Careful with order!
+1 + 2 + " apples"         // "3 apples" (1+2 first, then concat)
+"apples: " + 1 + 2        // "apples: 12" (concat from left)
+"apples: " + (1 + 2)      // "apples: 3" (parentheses force addition)
+
+// Other types
+"Value: " + true          // "Value: true"
+"Value: " + null          // "Value: null"
+"Value: " + undefined     // "Value: undefined"
+"Array: " + [1, 2, 3]     // "Array: 1,2,3"
+"Object: " + {a: 1}       // "Object: [object Object]"
+```
+
+### The += Operator for Strings
+
+```javascript
+let html = "<ul>";
+html += "<li>Item 1</li>";
+html += "<li>Item 2</li>";
+html += "<li>Item 3</li>";
+html += "</ul>";
+
+// Result:
+// "<ul><li>Item 1</li><li>Item 2</li><li>Item 3</li></ul>"
+
+// Building a path
+let path = "/users";
+path += "/" + userId;
+path += "/profile";
+// "/users/123/profile"
+```
+
+<KeyConcept title="String Immutability">
+Strings in JavaScript are **immutable** — they can't be changed after creation. When you "modify" a string, you're actually creating a new string. This is why building long strings with `+=` in a loop can be slow.
+</KeyConcept>
+
+<ProgressCheckpoint section="concatenation" xpReward={15} />
+
+---
+
+## Section 2: Template Literals
+
+### The Modern Way
+
+Template literals (backticks) are the modern, powerful way to work with strings:
+
+```javascript
+// Basic template literal
+const name = "Alice";
+const greeting = `Hello, ${name}!`;  // "Hello, Alice!"
+
+// Multi-line strings (no \n needed!)
+const poem = `
+  Roses are red,
+  Violets are blue,
+  Template literals,
+  Are awesome too!
+`;
+
+// Expressions inside ${}
+const a = 5, b = 3;
+console.log(`${a} + ${b} = ${a + b}`);  // "5 + 3 = 8"
+
+// Function calls
+const upper = str => str.toUpperCase();
+console.log(`Hello, ${upper(name)}!`);  // "Hello, ALICE!"
+```
+
+### Template Literals vs Concatenation
+
+```javascript
+// Old way (concatenation)
+const oldWay = "Hello, " + name + "! You have " + count + " messages.";
+
+// New way (template literal)
+const newWay = `Hello, ${name}! You have ${count} messages.`;
+
+// Complex example - building HTML
+// Old way 😫
+const oldHtml = '<div class="user">' +
+  '<h2>' + user.name + '</h2>' +
+  '<p>Email: ' + user.email + '</p>' +
+  '<p>Age: ' + user.age + '</p>' +
+'</div>';
+
+// New way 😊
+const newHtml = `
+  <div class="user">
+    <h2>${user.name}</h2>
+    <p>Email: ${user.email}</p>
+    <p>Age: ${user.age}</p>
+  </div>
+`;
+```
+
+### Nested Template Literals
+
+```javascript
+// You can nest template literals!
+const items = ["apple", "banana", "cherry"];
+
+const list = `
+  <ul>
+    ${items.map(item => `<li>${item}</li>`).join('\n    ')}
+  </ul>
+`;
+
+// Result:
+// <ul>
+//     <li>apple</li>
+//     <li>banana</li>
+//     <li>cherry</li>
+// </ul>
+
+// Conditional content
+const user = { name: "Alice", isAdmin: true };
+const badge = `${user.name} ${user.isAdmin ? '👑' : ''}`;
+// "Alice 👑"
+```
+
+### Tagged Templates
+
+Advanced feature: process template literals with a function:
+
+```javascript
+// Tag function receives strings and values separately
+function highlight(strings, ...values) {
+  return strings.reduce((result, str, i) => {
+    const value = values[i] !== undefined ? `<mark>${values[i]}</mark>` : '';
+    return result + str + value;
+  }, '');
+}
+
+const name = "Alice";
+const age = 25;
+const result = highlight`Name: ${name}, Age: ${age}`;
+// "Name: <mark>Alice</mark>, Age: <mark>25</mark>"
+
+// Built-in: String.raw (no escape processing)
+String.raw`Hello\nWorld`  // "Hello\\nWorld" (literal backslash-n)
+`Hello\nWorld`            // "Hello
+                          // World" (actual newline)
+```
+
+<InfoBox type="tip">
+**Pro Tip**: Template literals are not just syntactic sugar — they're more readable, support multi-line strings naturally, and enable powerful patterns with tagged templates.
+</InfoBox>
+
+<ProgressCheckpoint section="template-literals" xpReward={20} />
+
+---
+
+## Section 3: String Comparison
+
+### Lexicographic Ordering
+
+Strings are compared character by character using Unicode values:
+
+```javascript
+// Alphabetical comparison
+"apple" < "banana"    // true (a < b)
+"apple" < "apricot"   // true (comparing 'p' vs 'r' at position 2)
+"Apple" < "apple"     // true (uppercase before lowercase!)
+
+// Character codes
+"A".charCodeAt(0)     // 65
+"a".charCodeAt(0)     // 97
+"Z".charCodeAt(0)     // 90
+"z".charCodeAt(0)     // 122
+
+// Numbers as strings (careful!)
+"10" < "9"            // true! ("1" < "9")
+"10" < "2"            // true! ("1" < "2")
+
+// Fix: convert to numbers
+Number("10") < Number("9")  // false (10 < 9 is false)
+```
+
+### Equality Comparison
+
+```javascript
+// Strict equality (recommended)
+"hello" === "hello"   // true
+"hello" === "Hello"   // false (case-sensitive)
+"hello" === "hello "  // false (trailing space)
+
+// Loose equality (avoid)
+"5" == 5              // true (type coercion)
+"5" === 5             // false (different types)
+
+// Case-insensitive comparison
+const str1 = "Hello";
+const str2 = "hello";
+str1.toLowerCase() === str2.toLowerCase()  // true
+```
+
+### Locale-Aware Comparison
+
+```javascript
+// localeCompare for proper sorting
+"ä".localeCompare("z", "de")  // -1 (ä before z in German)
+"ä".localeCompare("z", "sv")  // 1 (ä after z in Swedish)
+
+// Sorting an array of strings
+const fruits = ["banana", "Apple", "cherry"];
+
+// Default sort (case-sensitive)
+fruits.sort();  // ["Apple", "banana", "cherry"]
+
+// Locale-aware sort
+fruits.sort((a, b) => a.localeCompare(b));
+// ["Apple", "banana", "cherry"]
+
+// Case-insensitive sort
+fruits.sort((a, b) => 
+  a.toLowerCase().localeCompare(b.toLowerCase())
+);
+```
+
+<CodePlayground
+  initialCode={`// String operator experiments
+const name = "Alice";
+const age = 25;
+
+// Concatenation vs Template Literals
+console.log("Concatenation:", "Hello, " + name + "!");
+console.log("Template:", \`Hello, \${name}!\`);
+
+// Expression in template
+console.log(\`\${name} will be \${age + 5} in 5 years\`);
+
+// Multi-line template
+const card = \`
+  Name: \${name}
+  Age: \${age}
+  Status: \${age >= 18 ? "Adult" : "Minor"}
+\`;
+console.log(card);
+
+// String comparison
+console.log("\\nComparisons:");
+console.log("'apple' < 'banana':", "apple" < "banana");
+console.log("'10' < '9':", "10" < "9");
+console.log("10 < 9:", 10 < 9);`}
+  title="String Operators Playground"
+/>
+
+<ProgressCheckpoint section="string-comparison" xpReward={15} />
+
+---
+
+## Section 4: String Coercion
+
+### Implicit Coercion
+
+JavaScript automatically converts values to strings in certain contexts:
+
+```javascript
+// With + operator (if one operand is string)
+"Value: " + 42        // "Value: 42"
+"" + true             // "true"
+"" + null             // "null"
+"" + undefined        // "undefined"
+"" + [1, 2, 3]        // "1,2,3"
+"" + {a: 1}           // "[object Object]"
+
+// In template literals
+`Number: ${42}`       // "Number: 42"
+`Boolean: ${true}`    // "Boolean: true"
+`Array: ${[1, 2]}`    // "Array: 1,2"
+```
+
+### Explicit Coercion
+
+```javascript
+// String() constructor
+String(42)            // "42"
+String(true)          // "true"
+String(null)          // "null"
+String(undefined)     // "undefined"
+String([1, 2, 3])     // "1,2,3"
+String({a: 1})        // "[object Object]"
+
+// .toString() method
+(42).toString()       // "42"
+true.toString()       // "true"
+[1, 2, 3].toString()  // "1,2,3"
+
+// null and undefined don't have toString!
+// null.toString()    // TypeError!
+
+// Number to string with radix
+(255).toString(16)    // "ff" (hexadecimal)
+(255).toString(2)     // "11111111" (binary)
+(255).toString(8)     // "377" (octal)
+```
+
+### Custom toString
+
+```javascript
+// Objects can define custom string conversion
+const user = {
+  name: "Alice",
+  age: 25,
+  toString() {
+    return `${this.name} (${this.age})`;
+  }
+};
+
+console.log("User: " + user);  // "User: Alice (25)"
+console.log(`User: ${user}`);  // "User: Alice (25)"
+
+// Symbol.toStringTag for [object X] format
+const myObj = {
+  [Symbol.toStringTag]: "MyCustomObject"
+};
+Object.prototype.toString.call(myObj);  // "[object MyCustomObject]"
+```
+
+### Quick Knowledge Check
+
+<Quiz id="concat-order-quiz">
+  <Question>What is `1 + 2 + "3"`?</Question>
+  <Answer>"123"</Answer>
+  <Answer correct>"33"</Answer>
+  <Answer>6</Answer>
+  <Answer>"6"</Answer>
+</Quiz>
+
+<Quiz id="template-literal-quiz">
+  <Question>What does `` `${2 + 2}` `` evaluate to?</Question>
+  <Answer>"2 + 2"</Answer>
+  <Answer correct>"4"</Answer>
+  <Answer>4</Answer>
+  <Answer>"${2 + 2}"</Answer>
+</Quiz>
+
+<Quiz id="string-compare-quiz">
+  <Question>What is `"10" < "9"`?</Question>
+  <Answer correct>true</Answer>
+  <Answer>false</Answer>
+  <Answer>undefined</Answer>
+  <Answer>TypeError</Answer>
+</Quiz>
+
+### Summary
+
+| Operator/Feature | Example | Description |
+|:-----------------|:--------|:------------|
+| `+` | `"a" + "b"` | Concatenation |
+| `+=` | `str += "!"` | Append to string |
+| `` `${}` `` | `` `Hi ${name}` `` | Template literal |
+| `<`, `>` | `"a" < "b"` | Lexicographic comparison |
+| `===` | `"a" === "a"` | Strict equality |
+
+<KeyConcept title="What's Next?">
+You've mastered string operators! Next up: **Conditional (Ternary) Operator** — the compact way to write inline conditionals.
+</KeyConcept>
+
+<ProgressCheckpoint section="string-coercion" xpReward={15} />

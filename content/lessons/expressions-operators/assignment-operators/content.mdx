@@ -1,0 +1,357 @@
+# Assignment Operators
+
+Assignment operators are the workhorses of JavaScript — they store values in variables. But there's more to them than just the humble `=` sign. Let's explore the full toolkit.
+
+---
+
+## Section 1: Basic Assignment
+
+### The Mailbox Analogy 📬
+
+Think of a variable as a mailbox:
+
+| Real World | JavaScript |
+|:-----------|:-----------|
+| Mailbox | Variable name (`x`) |
+| Put mail in | Assignment (`=`) |
+| Mail inside | The value (`5`) |
+| Check mailbox | Read the variable |
+
+<InfoBox type="info">
+The **assignment operator** (`=`) stores the value on the right side into the variable on the left side. It's not a mathematical equality — it's a command to "put this value here."
+</InfoBox>
+
+### Basic Assignment Syntax
+
+```javascript
+// Declare and assign in one step
+let name = "Alice";
+const age = 25;
+var score = 100;
+
+// Assign to existing variable
+let x;        // Declaration (x is undefined)
+x = 10;       // Assignment (x is now 10)
+x = 20;       // Reassignment (x is now 20)
+
+// The right side is evaluated first
+let a = 5;
+let b = a + 3;  // b = 8 (5 + 3)
+let c = b * 2;  // c = 16 (8 * 2)
+```
+
+### Assignment Returns a Value
+
+Here's something many developers don't know — assignment is an **expression** that returns the assigned value:
+
+```javascript
+let x;
+console.log(x = 5);  // Logs: 5 (and x is now 5)
+
+// This enables chained assignment
+let a, b, c;
+a = b = c = 10;  // All three are now 10
+
+// How it works (right to left):
+// c = 10       → c is 10, returns 10
+// b = 10       → b is 10, returns 10  
+// a = 10       → a is 10, returns 10
+```
+
+<KeyConcept title="Right-to-Left Evaluation">
+Assignment operators are **right-associative** — they evaluate from right to left. In `a = b = c = 10`, first `c` gets 10, then `b`, then `a`.
+</KeyConcept>
+
+<OperatorVisualizer scenario="assignment-basic" />
+
+<ProgressCheckpoint section="basic-assignment" xpReward={15} />
+
+---
+
+## Section 2: Compound Assignment
+
+### The Shorthand Revolution
+
+Compound assignment operators combine an operation with assignment. They're not just shorter — they can be more efficient:
+
+```javascript
+let score = 100;
+
+// Instead of this...
+score = score + 50;
+
+// Write this!
+score += 50;  // score is now 150
+```
+
+### All Compound Assignment Operators
+
+| Operator | Example | Equivalent To |
+|:---------|:--------|:--------------|
+| `+=` | `x += 5` | `x = x + 5` |
+| `-=` | `x -= 5` | `x = x - 5` |
+| `*=` | `x *= 5` | `x = x * 5` |
+| `/=` | `x /= 5` | `x = x / 5` |
+| `%=` | `x %= 5` | `x = x % 5` |
+| `**=` | `x **= 2` | `x = x ** 2` |
+| `&&=` | `x &&= y` | `x && (x = y)` |
+| `\|\|=` | `x \|\|= y` | `x \|\| (x = y)` |
+| `??=` | `x ??= y` | `x ?? (x = y)` |
+
+### Arithmetic Compound Operators
+
+```javascript
+let num = 10;
+
+num += 5;   // 15 (add)
+num -= 3;   // 12 (subtract)
+num *= 2;   // 24 (multiply)
+num /= 4;   // 6  (divide)
+num %= 4;   // 2  (remainder)
+num **= 3;  // 8  (exponent: 2³)
+
+// Works with strings too!
+let greeting = "Hello";
+greeting += " World";  // "Hello World"
+```
+
+### Logical Assignment Operators (ES2021)
+
+These are game-changers for default values and conditional assignment:
+
+```javascript
+// OR assignment (||=) - assign if falsy
+let name = "";
+name ||= "Anonymous";  // "Anonymous" (empty string is falsy)
+
+// AND assignment (&&=) - assign if truthy
+let user = { name: "Alice" };
+user &&= { ...user, verified: true };  // Adds verified if user exists
+
+// Nullish assignment (??=) - assign only if null/undefined
+let config = { timeout: 0 };
+config.timeout ??= 5000;  // Still 0! (0 is not nullish)
+config.retries ??= 3;     // 3 (undefined IS nullish)
+```
+
+<InfoBox type="tip">
+**Pro Tip**: Use `??=` for default values when `0`, `""`, or `false` are valid values. Use `||=` when any falsy value should trigger the default.
+</InfoBox>
+
+<OperatorVisualizer scenario="assignment-compound" />
+
+<ProgressCheckpoint section="compound-assignment" xpReward={20} />
+
+---
+
+## Section 3: Destructuring Assignment
+
+### Unpacking Made Easy
+
+Destructuring lets you extract values from arrays and objects into variables — it's like opening a package and putting each item in its place:
+
+```javascript
+// Array destructuring
+const colors = ["red", "green", "blue"];
+const [first, second, third] = colors;
+// first = "red", second = "green", third = "blue"
+
+// Object destructuring
+const person = { name: "Alice", age: 25, city: "NYC" };
+const { name, age } = person;
+// name = "Alice", age = 25
+```
+
+### Array Destructuring Patterns
+
+```javascript
+const numbers = [1, 2, 3, 4, 5];
+
+// Skip elements with empty slots
+const [a, , b] = numbers;  // a = 1, b = 3
+
+// Rest pattern - collect remaining
+const [first, ...rest] = numbers;  // first = 1, rest = [2, 3, 4, 5]
+
+// Default values
+const [x = 10, y = 20] = [5];  // x = 5, y = 20
+
+// Swap variables (no temp needed!)
+let m = 1, n = 2;
+[m, n] = [n, m];  // m = 2, n = 1 🎉
+```
+
+### Object Destructuring Patterns
+
+```javascript
+const user = {
+  id: 1,
+  profile: {
+    name: "Alice",
+    email: "alice@example.com"
+  }
+};
+
+// Rename variables
+const { id: oderId } = user;  // userId = 1
+
+// Nested destructuring
+const { profile: { name, email } } = user;
+// name = "Alice", email = "alice@example.com"
+
+// Default values
+const { role = "user" } = user;  // role = "user"
+
+// Combined: rename + default
+const { status: userStatus = "active" } = user;
+// userStatus = "active"
+```
+
+### Function Parameter Destructuring
+
+```javascript
+// Before: access properties manually
+function greetOld(user) {
+  console.log(`Hello, ${user.name}!`);
+}
+
+// After: destructure in parameters
+function greet({ name, age = 0 }) {
+  console.log(`Hello, ${name}! You are ${age}.`);
+}
+
+greet({ name: "Alice", age: 25 });
+// "Hello, Alice! You are 25."
+
+// With arrays
+function getFirstTwo([first, second]) {
+  return { first, second };
+}
+
+getFirstTwo([1, 2, 3]);  // { first: 1, second: 2 }
+```
+
+<CodePlayground
+  initialCode={`// Try destructuring!
+const data = {
+  user: {
+    name: "Alice",
+    scores: [95, 87, 92]
+  },
+  timestamp: Date.now()
+};
+
+// Extract name and first score
+const { 
+  user: { 
+    name, 
+    scores: [firstScore] 
+  } 
+} = data;
+
+console.log(name);        // "Alice"
+console.log(firstScore);  // 95
+
+// Swap these values using destructuring
+let a = "first";
+let b = "second";
+[a, b] = [b, a];
+console.log(a, b);  // "second" "first"`}
+  title="Destructuring Playground"
+/>
+
+<ProgressCheckpoint section="destructuring-assignment" xpReward={20} />
+
+---
+
+## Section 4: Best Practices
+
+### Use const by Default
+
+```javascript
+// ✅ Prefer const - prevents accidental reassignment
+const API_URL = "https://api.example.com";
+const user = { name: "Alice" };  // Object reference is constant
+
+// ✅ Use let only when reassignment is needed
+let count = 0;
+count += 1;
+
+// ❌ Avoid var - function-scoped, can cause bugs
+var x = 10;  // Hoisted, can be redeclared
+```
+
+### Meaningful Compound Operators
+
+```javascript
+// ✅ Clear intent
+totalPrice += itemPrice;
+remainingLives -= 1;
+score *= multiplier;
+
+// ❌ Confusing - what's happening?
+x = x + y + z;  // Use compound when possible
+x += y + z;     // Clearer!
+```
+
+### Destructuring Best Practices
+
+```javascript
+// ✅ Destructure at the top of functions
+function processUser(user) {
+  const { name, email, role = "user" } = user;
+  // Use name, email, role...
+}
+
+// ✅ Use meaningful names when renaming
+const { data: userData, error: fetchError } = response;
+
+// ❌ Don't over-destructure
+const { a: { b: { c: { d } } } } = obj;  // Too deep!
+
+// ✅ Break it up for readability
+const { a } = obj;
+const { b } = a;
+const { c } = b;
+```
+
+### Quick Knowledge Check
+
+<Quiz id="assignment-basic-quiz">
+  <Question>What does `let a = b = 5` do?</Question>
+  <Answer>Creates two local variables a and b</Answer>
+  <Answer correct>Sets b to 5 (global if not declared), then a to 5</Answer>
+  <Answer>Throws a syntax error</Answer>
+  <Answer>Sets a to "b = 5" as a string</Answer>
+</Quiz>
+
+<Quiz id="nullish-assignment-quiz">
+  <Question>What is `x` after: `let x = 0; x ??= 10;`?</Question>
+  <Answer>10</Answer>
+  <Answer correct>0</Answer>
+  <Answer>undefined</Answer>
+  <Answer>null</Answer>
+</Quiz>
+
+<Quiz id="destructuring-quiz">
+  <Question>What does `const [a, , b] = [1, 2, 3]` assign to b?</Question>
+  <Answer>2</Answer>
+  <Answer correct>3</Answer>
+  <Answer>undefined</Answer>
+  <Answer>[2, 3]</Answer>
+</Quiz>
+
+### Summary
+
+| Operator Type | Examples | Use Case |
+|:--------------|:---------|:---------|
+| Basic | `=` | Store values |
+| Compound | `+=`, `-=`, `*=` | Update values |
+| Logical | `\|\|=`, `&&=`, `??=` | Conditional defaults |
+| Destructuring | `[a, b] = arr` | Extract values |
+
+<KeyConcept title="What's Next?">
+Now that you understand assignment, you're ready to learn about **Comparison Operators** — how JavaScript compares values and the crucial difference between `==` and `===`.
+</KeyConcept>
+
+<ProgressCheckpoint section="best-practices" xpReward={15} />

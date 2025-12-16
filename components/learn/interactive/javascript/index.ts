@@ -90,6 +90,9 @@ import { FunctionVisualizer as FunctionVisualizerBase } from './FunctionVisualiz
 // Control Flow Visualizer component
 import { ControlFlowVisualizer as ControlFlowVisualizerBase } from './ControlFlowVisualizer';
 
+// Operator Visualizer component
+import { OperatorVisualizer as OperatorVisualizerBase } from './OperatorVisualizer';
+
 // Wrap all interactive components with error boundaries
 export const CodePlayground = withErrorBoundary(CodePlaygroundBase, 'CodePlayground');
 export const VariableVisualizer = withErrorBoundary(VariableVisualizerBase, 'VariableVisualizer');
@@ -154,6 +157,9 @@ export const FunctionVisualizer = withErrorBoundary(FunctionVisualizerBase, 'Fun
 
 // Control Flow Visualizer
 export const ControlFlowVisualizer = withErrorBoundary(ControlFlowVisualizerBase, 'ControlFlowVisualizer');
+
+// Operator Visualizer
+export const OperatorVisualizer = withErrorBoundary(OperatorVisualizerBase, 'OperatorVisualizer');
 
 // Re-export types
 export type {
@@ -378,6 +384,10 @@ export type {
   ControlFlowVisualizerProps,
 } from './ControlFlowVisualizer';
 
+export type {
+  OperatorVisualizerProps,
+} from './OperatorVisualizer';
+
 // Export base components for testing
 export { CodePlaygroundBase };
 export { VariableVisualizerBase };
@@ -435,3 +445,4 @@ export { ThisKeywordVisualizerBase };
 export { LoopVisualizerBase };
 export { FunctionVisualizerBase };
 export { ControlFlowVisualizerBase };
+export { OperatorVisualizerBase };

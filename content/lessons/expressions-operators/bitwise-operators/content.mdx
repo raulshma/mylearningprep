@@ -1,0 +1,432 @@
+# Bitwise Operators
+
+Bitwise operators work at the binary level, manipulating individual bits of numbers. While less common in everyday JavaScript, they're essential for performance-critical code, flags, permissions, and low-level operations.
+
+---
+
+## Section 1: Binary Basics
+
+### The Light Switch Analogy 💡
+
+Think of bits as light switches — each can be ON (1) or OFF (0):
+
+| Decimal | Binary | Switches |
+|:--------|:-------|:---------|
+| 0 | `0000` | ○○○○ |
+| 1 | `0001` | ○○○● |
+| 5 | `0101` | ○●○● |
+| 10 | `1010` | ●○●○ |
+| 15 | `1111` | ●●●● |
+
+<InfoBox type="info">
+JavaScript converts numbers to **32-bit signed integers** for bitwise operations, then converts back. This means bitwise operators work with integers from -2,147,483,648 to 2,147,483,647.
+</InfoBox>
+
+### Converting Between Binary and Decimal
+
+```javascript
+// Decimal to binary
+(5).toString(2)     // "101"
+(10).toString(2)    // "1010"
+(255).toString(2)   // "11111111"
+
+// Binary to decimal
+parseInt("101", 2)   // 5
+parseInt("1010", 2)  // 10
+0b1010               // 10 (binary literal)
+
+// Padding for readability
+const toBinary = n => n.toString(2).padStart(8, '0');
+toBinary(5)   // "00000101"
+toBinary(10)  // "00001010"
+```
+
+### How Bits Represent Numbers
+
+```javascript
+// Each position is a power of 2
+// Position:  7   6   5   4   3   2   1   0
+// Power:    128  64  32  16   8   4   2   1
+
+// Example: 13 in binary
+// 13 = 8 + 4 + 1 = 0b00001101
+//      0   0   0   0   1   1   0   1
+//      0 + 0 + 0 + 0 + 8 + 4 + 0 + 1 = 13
+```
+
+<KeyConcept title="Binary Place Values">
+Each bit position represents a power of 2. From right to left: 1, 2, 4, 8, 16, 32, 64, 128... To convert binary to decimal, add up the place values where there's a 1.
+</KeyConcept>
+
+<ProgressCheckpoint section="binary-basics" xpReward={20} />
+
+---
+
+## Section 2: Bitwise Logic Operators
+
+### AND (&) — Both Must Be 1
+
+```javascript
+// Bit-by-bit AND
+//   0101 (5)
+// & 0011 (3)
+// ------
+//   0001 (1)
+
+5 & 3   // 1
+
+// Truth table for each bit:
+// 1 & 1 = 1
+// 1 & 0 = 0
+// 0 & 1 = 0
+// 0 & 0 = 0
+
+// Practical: Check if a bit is set
+const hasPermission = (flags, permission) => (flags & permission) !== 0;
+
+const READ = 0b001;   // 1
+const WRITE = 0b010;  // 2
+const EXEC = 0b100;   // 4
+
+const userFlags = 0b101;  // READ + EXEC
+hasPermission(userFlags, READ);   // true
+hasPermission(userFlags, WRITE);  // false
+```
+
+### OR (|) — Either Can Be 1
+
+```javascript
+// Bit-by-bit OR
+//   0101 (5)
+// | 0011 (3)
+// ------
+//   0111 (7)
+
+5 | 3   // 7
+
+// Truth table:
+// 1 | 1 = 1
+// 1 | 0 = 1
+// 0 | 1 = 1
+// 0 | 0 = 0
+
+// Practical: Combine flags
+const READ = 0b001;
+const WRITE = 0b010;
+const EXEC = 0b100;
+
+const permissions = READ | WRITE;  // 0b011 (3)
+const allPerms = READ | WRITE | EXEC;  // 0b111 (7)
+```
+
+### XOR (^) — Exactly One Must Be 1
+
+```javascript
+// Bit-by-bit XOR (exclusive OR)
+//   0101 (5)
+// ^ 0011 (3)
+// ------
+//   0110 (6)
+
+5 ^ 3   // 6
+
+// Truth table:
+// 1 ^ 1 = 0
+// 1 ^ 0 = 1
+// 0 ^ 1 = 1
+// 0 ^ 0 = 0
+
+// Practical: Toggle a flag
+let flags = 0b101;
+flags ^= 0b001;  // 0b100 (toggled first bit off)
+flags ^= 0b001;  // 0b101 (toggled first bit on)
+
+// Practical: Swap without temp variable
+let a = 5, b = 3;
+a ^= b;  // a = 6
+b ^= a;  // b = 5
+a ^= b;  // a = 3
+// Now a = 3, b = 5 (swapped!)
+```
+
+### NOT (~) — Flip All Bits
+
+```javascript
+// Inverts every bit
+~5   // -6
+
+// Why -6? Two's complement!
+//  5 = 00000000000000000000000000000101
+// ~5 = 11111111111111111111111111111010 = -6
+
+// Quick formula: ~n = -(n + 1)
+~0    // -1
+~1    // -2
+~-1   // 0
+
+// Practical: Check if found in array (old trick)
+const arr = [1, 2, 3];
+if (~arr.indexOf(2)) {
+  console.log("Found!");  // indexOf returns 1, ~1 = -2 (truthy)
+}
+if (~arr.indexOf(5)) {
+  // indexOf returns -1, ~(-1) = 0 (falsy)
+  console.log("Not found");
+}
+// Modern: use arr.includes(2) instead!
+```
+
+<OperatorVisualizer scenario="bitwise-basic" />
+
+<ProgressCheckpoint section="bitwise-logic" xpReward={25} />
+
+---
+
+## Section 3: Shift Operators
+
+### Left Shift (<<)
+
+Shifts bits left, filling with zeros. Each shift doubles the number:
+
+```javascript
+// Shift left by 1 (multiply by 2)
+5 << 1   // 10
+//   0101 (5)
+// becomes
+//   1010 (10)
+
+// Shift left by 2 (multiply by 4)
+5 << 2   // 20
+//   0101 (5)
+// becomes
+// 010100 (20)
+
+// General formula: n << k = n * (2^k)
+3 << 4   // 48 (3 * 16)
+1 << 10  // 1024 (2^10)
+
+// Practical: Quick powers of 2
+const KB = 1 << 10;  // 1024
+const MB = 1 << 20;  // 1048576
+const GB = 1 << 30;  // 1073741824
+```
+
+### Right Shift (>>)
+
+Shifts bits right, preserving the sign. Each shift halves the number:
+
+```javascript
+// Shift right by 1 (divide by 2, floor)
+10 >> 1   // 5
+//   1010 (10)
+// becomes
+//   0101 (5)
+
+// Shift right by 2 (divide by 4, floor)
+20 >> 2   // 5
+// 010100 (20)
+// becomes
+//   0101 (5)
+
+// Preserves sign for negative numbers
+-10 >> 1  // -5
+
+// Practical: Fast integer division
+const half = n => n >> 1;
+half(100)  // 50
+half(101)  // 50 (floors the result)
+```
+
+### Unsigned Right Shift (>>>)
+
+Shifts right, filling with zeros (treats number as unsigned):
+
+```javascript
+// For positive numbers, same as >>
+10 >>> 1   // 5
+
+// For negative numbers, very different!
+-1 >> 1    // -1 (sign preserved)
+-1 >>> 1   // 2147483647 (huge positive!)
+
+// -1 in binary (32-bit):
+// 11111111111111111111111111111111
+// >>> 1 becomes:
+// 01111111111111111111111111111111 = 2147483647
+
+// Practical: Convert to unsigned 32-bit
+const toUint32 = n => n >>> 0;
+toUint32(-1)  // 4294967295
+toUint32(5)   // 5
+```
+
+<InfoBox type="tip">
+**Performance Tip**: Bitwise operations are extremely fast. `n << 1` is faster than `n * 2`, and `n >> 1` is faster than `Math.floor(n / 2)`. However, modern JavaScript engines optimize multiplication/division well, so only use bitwise for readability or when working with flags.
+</InfoBox>
+
+<ProgressCheckpoint section="shift-operators" xpReward={20} />
+
+---
+
+## Section 4: Practical Uses
+
+### Permission Flags System
+
+```javascript
+// Define permissions as powers of 2
+const Permissions = {
+  NONE:    0b0000,  // 0
+  READ:    0b0001,  // 1
+  WRITE:   0b0010,  // 2
+  DELETE:  0b0100,  // 4
+  ADMIN:   0b1000,  // 8
+  ALL:     0b1111   // 15
+};
+
+// Combine permissions
+const editorPerms = Permissions.READ | Permissions.WRITE;  // 3
+
+// Check permission
+const hasPermission = (userPerms, perm) => (userPerms & perm) === perm;
+hasPermission(editorPerms, Permissions.READ);   // true
+hasPermission(editorPerms, Permissions.DELETE); // false
+
+// Add permission
+const addPermission = (perms, perm) => perms | perm;
+const newPerms = addPermission(editorPerms, Permissions.DELETE);  // 7
+
+// Remove permission
+const removePermission = (perms, perm) => perms & ~perm;
+const restricted = removePermission(newPerms, Permissions.WRITE);  // 5
+
+// Toggle permission
+const togglePermission = (perms, perm) => perms ^ perm;
+```
+
+### Color Manipulation
+
+```javascript
+// RGB color as 24-bit number: 0xRRGGBB
+const color = 0xFF5733;  // Orange-red
+
+// Extract components
+const red = (color >> 16) & 0xFF;    // 255
+const green = (color >> 8) & 0xFF;   // 87
+const blue = color & 0xFF;           // 51
+
+// Combine components
+const makeColor = (r, g, b) => (r << 16) | (g << 8) | b;
+makeColor(255, 87, 51);  // 0xFF5733
+
+// Darken color (shift right = divide by 2)
+const darken = color => 
+  ((color >> 1) & 0x7F7F7F);  // Halve each component
+
+// Lighten (average with white)
+const lighten = color =>
+  ((color >> 1) + 0x7F7F7F) | 0x808080;
+```
+
+### Fast Math Operations
+
+```javascript
+// Check if even/odd
+const isEven = n => (n & 1) === 0;
+const isOdd = n => (n & 1) === 1;
+
+// Floor to integer (faster than Math.floor for positives)
+const floor = n => n | 0;
+floor(3.7)   // 3
+floor(-3.7)  // -3 (truncates, not floors!)
+
+// Round to integer
+const round = n => (n + 0.5) | 0;
+
+// Check if power of 2
+const isPowerOf2 = n => n > 0 && (n & (n - 1)) === 0;
+isPowerOf2(8)   // true (1000 & 0111 = 0)
+isPowerOf2(10)  // false
+
+// Get next power of 2
+function nextPowerOf2(n) {
+  n--;
+  n |= n >> 1;
+  n |= n >> 2;
+  n |= n >> 4;
+  n |= n >> 8;
+  n |= n >> 16;
+  return n + 1;
+}
+nextPowerOf2(5)   // 8
+nextPowerOf2(100) // 128
+```
+
+<CodePlayground
+  initialCode={`// Bitwise experiments
+const toBinary = n => (n >>> 0).toString(2).padStart(8, '0');
+
+// Basic operations
+console.log("5 & 3 =", 5 & 3, "binary:", toBinary(5 & 3));
+console.log("5 | 3 =", 5 | 3, "binary:", toBinary(5 | 3));
+console.log("5 ^ 3 =", 5 ^ 3, "binary:", toBinary(5 ^ 3));
+
+// Shift operations
+console.log("\\n5 << 1 =", 5 << 1, "(multiply by 2)");
+console.log("20 >> 2 =", 20 >> 2, "(divide by 4)");
+
+// Permission flags
+const READ = 1, WRITE = 2, DELETE = 4;
+let perms = READ | WRITE;  // 3
+console.log("\\nPermissions:", toBinary(perms));
+console.log("Has READ?", (perms & READ) !== 0);
+console.log("Has DELETE?", (perms & DELETE) !== 0);
+
+// Add DELETE permission
+perms |= DELETE;
+console.log("After adding DELETE:", toBinary(perms));`}
+  title="Bitwise Operations Playground"
+/>
+
+### Quick Knowledge Check
+
+<Quiz id="bitwise-and-quiz">
+  <Question>What is `5 & 3` in decimal?</Question>
+  <Answer>8</Answer>
+  <Answer correct>1</Answer>
+  <Answer>7</Answer>
+  <Answer>15</Answer>
+</Quiz>
+
+<Quiz id="bitwise-or-quiz">
+  <Question>What is `5 | 3` in decimal?</Question>
+  <Answer>8</Answer>
+  <Answer>1</Answer>
+  <Answer correct>7</Answer>
+  <Answer>15</Answer>
+</Quiz>
+
+<Quiz id="left-shift-quiz">
+  <Question>What is `3 << 2`?</Question>
+  <Answer>6</Answer>
+  <Answer correct>12</Answer>
+  <Answer>9</Answer>
+  <Answer>1</Answer>
+</Quiz>
+
+### Summary
+
+| Operator | Name | Description |
+|:---------|:-----|:------------|
+| `&` | AND | 1 if both bits are 1 |
+| `\|` | OR | 1 if either bit is 1 |
+| `^` | XOR | 1 if bits are different |
+| `~` | NOT | Inverts all bits |
+| `<<` | Left Shift | Multiply by 2^n |
+| `>>` | Right Shift | Divide by 2^n (signed) |
+| `>>>` | Unsigned Right Shift | Divide by 2^n (unsigned) |
+
+<KeyConcept title="What's Next?">
+You've conquered bitwise operators! Next up: **String Operators** — learn about concatenation, template literals, and string comparison.
+</KeyConcept>
+
+<ProgressCheckpoint section="practical-uses" xpReward={20} />

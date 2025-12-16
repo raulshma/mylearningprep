@@ -1,0 +1,18 @@
+{
+  "id": "conditional-operator",
+  "title": "Conditional (Ternary) Operator",
+  "description": "Learn the JavaScript ternary operator for concise conditional expressions and when to use it over if-else statements.",
+  "milestone": "expressions-operators",
+  "order": 7,
+  "sections": [
+    "ternary-basics",
+    "nested-ternary",
+    "ternary-vs-if",
+    "best-practices"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 10,
+  "xpReward": 65,
+  "prerequisites": ["expressions-operators/logical-operators"],
+  "tags": ["javascript", "operators", "ternary", "conditional", "expressions"]
+}

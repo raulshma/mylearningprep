@@ -101,6 +101,7 @@ import { TypeCastingVisualizer } from '@/components/learn/interactive/javascript
 import { EqualityComparisonVisualizer } from '@/components/learn/interactive/javascript/EqualityComparisonVisualizer';
 import { IteratorGeneratorVisualizer, YieldVisualizer, IterableBuilder } from '@/components/learn/interactive/javascript/IteratorGeneratorVisualizer';
 import { ControlFlowVisualizer as JsControlFlowVisualizer } from '@/components/learn/interactive/javascript/ControlFlowVisualizer';
+import { OperatorVisualizer } from '@/components/learn/interactive/javascript/OperatorVisualizer';
 
 // React Lesson Components
 import {
@@ -360,6 +361,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     IteratorGeneratorVisualizer,
     YieldVisualizer,
     IterableBuilder,
+    OperatorVisualizer,
 
     // React Lesson Components
     ReactPlayground,

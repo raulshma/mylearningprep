@@ -1,0 +1,18 @@
+{
+  "id": "string-operators",
+  "title": "String Operators",
+  "description": "Master JavaScript string operators including concatenation, template literals, and string comparison techniques.",
+  "milestone": "expressions-operators",
+  "order": 6,
+  "sections": [
+    "concatenation",
+    "template-literals",
+    "string-comparison",
+    "string-coercion"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 10,
+  "xpReward": 65,
+  "prerequisites": ["expressions-operators/comparison-operators"],
+  "tags": ["javascript", "operators", "strings", "concatenation", "template-literals"]
+}

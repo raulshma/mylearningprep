@@ -1,0 +1,18 @@
+{
+  "id": "comma-operator",
+  "title": "Comma Operator",
+  "description": "Understand the JavaScript comma operator for evaluating multiple expressions and its practical use cases.",
+  "milestone": "expressions-operators",
+  "order": 8,
+  "sections": [
+    "comma-basics",
+    "evaluation-order",
+    "practical-uses",
+    "common-mistakes"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 8,
+  "xpReward": 55,
+  "prerequisites": ["expressions-operators/assignment-operators"],
+  "tags": ["javascript", "operators", "comma", "expressions", "advanced"]
+}

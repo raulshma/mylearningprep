@@ -1,0 +1,398 @@
+# Conditional (Ternary) Operator
+
+The ternary operator is JavaScript's only operator that takes three operands. It's a compact way to write simple conditional expressions, perfect for inline decisions and concise code.
+
+---
+
+## Section 1: Ternary Basics
+
+### The Fork in the Road 🔀
+
+Think of the ternary operator as a fork in the road:
+
+| Part | Meaning |
+|:-----|:--------|
+| `condition` | Which way to go? |
+| `?` | The fork |
+| `valueIfTrue` | Left path |
+| `:` | The divider |
+| `valueIfFalse` | Right path |
+
+<InfoBox type="info">
+The **ternary operator** (`? :`) evaluates a condition and returns one of two values. It's called "ternary" because it takes three operands: the condition, the true value, and the false value.
+</InfoBox>
+
+### Basic Syntax
+
+```javascript
+// Syntax: condition ? valueIfTrue : valueIfFalse
+
+const age = 20;
+const status = age >= 18 ? "adult" : "minor";
+// status = "adult"
+
+// Equivalent if-else:
+let status2;
+if (age >= 18) {
+  status2 = "adult";
+} else {
+  status2 = "minor";
+}
+```
+
+### Common Use Cases
+
+```javascript
+// Assigning based on condition
+const greeting = isLoggedIn ? `Welcome, ${username}!` : "Please log in";
+
+// Choosing between values
+const theme = darkMode ? "dark" : "light";
+
+// Pluralization
+const message = count === 1 ? "1 item" : `${count} items`;
+
+// Default values (when null/undefined)
+const displayName = user.nickname ? user.nickname : user.name;
+
+// Conditional function calls
+const result = isValid ? processData(data) : handleError();
+
+// Inline in template literals
+console.log(`Status: ${isActive ? "Active" : "Inactive"}`);
+```
+
+### The Ternary Returns a Value
+
+Unlike `if-else`, the ternary is an **expression** that returns a value:
+
+```javascript
+// Can be used anywhere an expression is expected
+console.log(x > 0 ? "positive" : "non-positive");
+
+// In array literals
+const items = [
+  "always included",
+  condition ? "maybe included" : null
+].filter(Boolean);
+
+// In object literals
+const config = {
+  mode: isDev ? "development" : "production",
+  debug: isDev ? true : false
+};
+
+// In function arguments
+fetchData(useCache ? cachedUrl : liveUrl);
+
+// In return statements
+function getDiscount(isMember) {
+  return isMember ? 0.2 : 0;
+}
+```
+
+<OperatorVisualizer scenario="ternary-basic" />
+
+<ProgressCheckpoint section="ternary-basics" xpReward={15} />
+
+---
+
+## Section 2: Nested Ternary
+
+### Chaining Conditions
+
+You can nest ternary operators for multiple conditions:
+
+```javascript
+// Multiple conditions
+const score = 85;
+const grade = score >= 90 ? "A"
+            : score >= 80 ? "B"
+            : score >= 70 ? "C"
+            : score >= 60 ? "D"
+            : "F";
+// grade = "B"
+
+// Equivalent if-else chain:
+let grade2;
+if (score >= 90) grade2 = "A";
+else if (score >= 80) grade2 = "B";
+else if (score >= 70) grade2 = "C";
+else if (score >= 60) grade2 = "D";
+else grade2 = "F";
+```
+
+### Formatting Nested Ternaries
+
+```javascript
+// ❌ Hard to read (all on one line)
+const result = a ? b : c ? d : e ? f : g;
+
+// ✅ Better: align on ? and :
+const result = a ? b
+             : c ? d
+             : e ? f
+             : g;
+
+// ✅ Also good: indent each level
+const result = a 
+  ? b 
+  : c 
+    ? d 
+    : e 
+      ? f 
+      : g;
+
+// ✅ Best for complex logic: use if-else or switch
+```
+
+### When Nesting Gets Ugly
+
+```javascript
+// ❌ Too complex - hard to understand
+const message = user 
+  ? user.isAdmin 
+    ? user.isSuperAdmin 
+      ? "Super Admin" 
+      : "Admin" 
+    : user.isVerified 
+      ? "Verified User" 
+      : "User"
+  : "Guest";
+
+// ✅ Better: extract to a function
+function getUserRole(user) {
+  if (!user) return "Guest";
+  if (user.isSuperAdmin) return "Super Admin";
+  if (user.isAdmin) return "Admin";
+  if (user.isVerified) return "Verified User";
+  return "User";
+}
+const message = getUserRole(user);
+```
+
+<InfoBox type="warning">
+**Readability Warning**: Nested ternaries can quickly become unreadable. If you need more than 2-3 levels, consider using `if-else`, `switch`, or extracting the logic to a function.
+</InfoBox>
+
+<ProgressCheckpoint section="nested-ternary" xpReward={15} />
+
+---
+
+## Section 3: Ternary vs If-Else
+
+### When to Use Ternary
+
+```javascript
+// ✅ Simple value assignment
+const status = isActive ? "active" : "inactive";
+
+// ✅ Inline in JSX/templates
+<div className={isError ? "error" : "success"}>
+
+// ✅ Short, clear conditions
+const fee = isMember ? 0 : 25;
+
+// ✅ Default values
+const name = inputName ? inputName : "Anonymous";
+// Even better: inputName || "Anonymous"
+// Or: inputName ?? "Anonymous"
+```
+
+### When to Use If-Else
+
+```javascript
+// ✅ Multiple statements needed
+if (isValid) {
+  saveData();
+  showSuccess();
+  redirectToHome();
+} else {
+  logError();
+  showErrorMessage();
+}
+
+// ✅ Complex conditions
+if (user && user.isActive && user.hasPermission('edit')) {
+  enableEditing();
+} else {
+  showReadOnly();
+}
+
+// ✅ Side effects (not returning a value)
+if (shouldLog) {
+  console.log("Debug info:", data);
+}
+
+// ✅ Early returns / guard clauses
+function process(data) {
+  if (!data) return null;
+  if (!data.isValid) return { error: "Invalid" };
+  return transform(data);
+}
+```
+
+### The Readability Test
+
+```javascript
+// Ask yourself: "Can I understand this in 2 seconds?"
+
+// ✅ Yes - use ternary
+const icon = isLoading ? "spinner" : "checkmark";
+
+// ❌ No - use if-else
+const result = data && data.items && data.items.length > 0 
+  ? data.items.filter(i => i.active).map(i => i.name).join(", ")
+  : "No items";
+
+// ✅ Refactored
+let result;
+if (data?.items?.length > 0) {
+  const activeNames = data.items
+    .filter(i => i.active)
+    .map(i => i.name);
+  result = activeNames.join(", ");
+} else {
+  result = "No items";
+}
+```
+
+<CodePlayground
+  initialCode={`// Ternary operator experiments
+const age = 25;
+const score = 85;
+const isLoggedIn = true;
+const username = "Alice";
+
+// Basic ternary
+const canVote = age >= 18 ? "Yes" : "No";
+console.log("Can vote:", canVote);
+
+// Nested ternary for grades
+const grade = score >= 90 ? "A"
+            : score >= 80 ? "B"
+            : score >= 70 ? "C"
+            : "F";
+console.log("Grade:", grade);
+
+// In template literal
+console.log(\`Hello, \${isLoggedIn ? username : "Guest"}!\`);
+
+// Ternary with function calls
+const getMessage = () => "Welcome back!";
+const getLoginPrompt = () => "Please log in";
+console.log(isLoggedIn ? getMessage() : getLoginPrompt());
+
+// Try changing the values above!`}
+  title="Ternary Operator Playground"
+/>
+
+<ProgressCheckpoint section="ternary-vs-if" xpReward={15} />
+
+---
+
+## Section 4: Best Practices
+
+### Keep It Simple
+
+```javascript
+// ✅ Good: clear and concise
+const buttonText = isSubmitting ? "Saving..." : "Save";
+
+// ❌ Bad: too complex
+const buttonText = isSubmitting 
+  ? isFirstSubmit 
+    ? "Creating..." 
+    : "Updating..." 
+  : hasChanges 
+    ? "Save Changes" 
+    : "No Changes";
+
+// ✅ Better: use a function
+function getButtonText(state) {
+  if (state.isSubmitting) {
+    return state.isFirstSubmit ? "Creating..." : "Updating...";
+  }
+  return state.hasChanges ? "Save Changes" : "No Changes";
+}
+```
+
+### Avoid Side Effects
+
+```javascript
+// ❌ Bad: side effects in ternary
+const result = condition 
+  ? (sideEffect1(), value1) 
+  : (sideEffect2(), value2);
+
+// ✅ Good: use if-else for side effects
+if (condition) {
+  sideEffect1();
+  result = value1;
+} else {
+  sideEffect2();
+  result = value2;
+}
+```
+
+### Parentheses for Clarity
+
+```javascript
+// Ternary has low precedence - use parentheses!
+
+// ❌ Confusing
+const result = a + condition ? b : c;
+// Parsed as: (a + condition) ? b : c
+
+// ✅ Clear
+const result = a + (condition ? b : c);
+
+// ❌ Confusing in JSX
+<div className="base" + isActive ? "active" : "inactive">
+
+// ✅ Clear
+<div className={"base " + (isActive ? "active" : "inactive")}>
+// Or better:
+<div className={`base ${isActive ? "active" : "inactive"}`}>
+```
+
+### Quick Knowledge Check
+
+<Quiz id="ternary-basic-quiz">
+  <Question>What does `true ? "yes" : "no"` return?</Question>
+  <Answer correct>"yes"</Answer>
+  <Answer>"no"</Answer>
+  <Answer>true</Answer>
+  <Answer>undefined</Answer>
+</Quiz>
+
+<Quiz id="ternary-nested-quiz">
+  <Question>What does `false ? "a" : true ? "b" : "c"` return?</Question>
+  <Answer>"a"</Answer>
+  <Answer correct>"b"</Answer>
+  <Answer>"c"</Answer>
+  <Answer>Error</Answer>
+</Quiz>
+
+<Quiz id="ternary-use-quiz">
+  <Question>When should you avoid using the ternary operator?</Question>
+  <Answer>For simple value assignments</Answer>
+  <Answer>In template literals</Answer>
+  <Answer correct>When you need multiple statements or complex logic</Answer>
+  <Answer>For boolean conditions</Answer>
+</Quiz>
+
+### Summary
+
+| Aspect | Ternary | If-Else |
+|:-------|:--------|:--------|
+| Returns value | Yes (expression) | No (statement) |
+| Multiple statements | No | Yes |
+| Readability | Best for simple | Best for complex |
+| Nesting | Avoid deep nesting | Handles well |
+
+<KeyConcept title="What's Next?">
+You've mastered the ternary operator! Next up: **Comma Operator** — the rarely-used but occasionally useful operator for evaluating multiple expressions.
+</KeyConcept>
+
+<ProgressCheckpoint section="best-practices" xpReward={20} />

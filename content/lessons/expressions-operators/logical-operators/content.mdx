@@ -1,0 +1,400 @@
+# Logical Operators
+
+Logical operators are the decision-making powerhouses of JavaScript. They combine conditions, enable short-circuit evaluation, and provide elegant patterns for default values. Master these, and you'll write cleaner, more expressive code.
+
+---
+
+## Section 1: AND, OR, and NOT
+
+### The Logic Gate Analogy 🚦
+
+Think of logical operators as gates that control the flow of electricity:
+
+| Gate | Operator | Behavior |
+|:-----|:---------|:---------|
+| AND | `&&` | Both inputs must be ON |
+| OR | `\|\|` | At least one input must be ON |
+| NOT | `!` | Flips the input |
+
+<InfoBox type="info">
+JavaScript's logical operators don't just return `true` or `false` — they return one of their **operand values**. This enables powerful patterns beyond simple boolean logic.
+</InfoBox>
+
+### The AND Operator (&&)
+
+Returns the first falsy value, or the last value if all are truthy:
+
+```javascript
+// Boolean logic
+true && true    // true
+true && false   // false
+false && true   // false
+false && false  // false
+
+// With values (returns operands, not booleans!)
+"hello" && "world"  // "world" (both truthy, returns last)
+"hello" && 0        // 0 (first falsy value)
+null && "hello"     // null (first falsy value)
+0 && undefined      // 0 (first falsy value)
+
+// Practical: conditional execution
+const user = { name: "Alice", isAdmin: true };
+user.isAdmin && console.log("Admin access granted");
+// Only logs if isAdmin is truthy
+
+// Practical: safe property access (before optional chaining)
+const name = user && user.profile && user.profile.name;
+```
+
+### The OR Operator (||)
+
+Returns the first truthy value, or the last value if all are falsy:
+
+```javascript
+// Boolean logic
+true || true    // true
+true || false   // true
+false || true   // true
+false || false  // false
+
+// With values
+"hello" || "world"  // "hello" (first truthy)
+"" || "default"     // "default" (empty string is falsy)
+0 || 42             // 42 (0 is falsy)
+null || undefined   // undefined (both falsy, returns last)
+
+// Practical: default values
+const username = inputName || "Anonymous";
+const port = config.port || 3000;
+const theme = userPreference || systemDefault || "light";
+```
+
+### The NOT Operator (!)
+
+Converts to boolean and inverts:
+
+```javascript
+// Basic negation
+!true   // false
+!false  // true
+
+// Converts to boolean first
+!0          // true (0 is falsy)
+!"hello"    // false (non-empty string is truthy)
+!null       // true
+!undefined  // true
+![]         // false (empty array is truthy!)
+!{}         // false (empty object is truthy!)
+
+// Double NOT (!!) - convert to boolean
+!!"hello"   // true
+!!0         // false
+!!null      // false
+!![]        // true
+
+// Equivalent to Boolean()
+Boolean("hello")  // true
+Boolean(0)        // false
+```
+
+<KeyConcept title="Truthy and Falsy Values">
+**Falsy values** (convert to false): `false`, `0`, `-0`, `0n`, `""`, `null`, `undefined`, `NaN`
+
+**Everything else is truthy**, including: `[]`, `{}`, `"0"`, `"false"`, `new Date()`, `-1`
+</KeyConcept>
+
+<OperatorVisualizer scenario="logical-and-or" />
+
+<ProgressCheckpoint section="and-or-not" xpReward={20} />
+
+---
+
+## Section 2: Short-Circuit Evaluation
+
+### The Lazy Evaluator
+
+JavaScript is lazy — it stops evaluating as soon as it knows the result:
+
+```javascript
+// AND short-circuits on first falsy
+false && expensiveOperation()  // false (function never called!)
+null && anything               // null (stops immediately)
+
+// OR short-circuits on first truthy
+true || expensiveOperation()   // true (function never called!)
+"value" || anything            // "value" (stops immediately)
+```
+
+### Practical Short-Circuit Patterns
+
+```javascript
+// Conditional function execution
+const isLoggedIn = true;
+isLoggedIn && loadUserData();  // Only loads if logged in
+
+// Default values
+const name = userName || "Guest";
+
+// Guard clauses
+function processUser(user) {
+  user || throw new Error("User required");
+  // or: if (!user) throw new Error("User required");
+  
+  // Continue processing...
+}
+
+// Conditional property access
+const street = user && user.address && user.address.street;
+// Modern: user?.address?.street (optional chaining)
+
+// Conditional rendering (React pattern)
+{isLoading && <Spinner />}
+{error && <ErrorMessage error={error} />}
+{data && <DataDisplay data={data} />}
+```
+
+### The Evaluation Order
+
+```javascript
+// Left to right, stops when result is determined
+let sideEffect = 0;
+
+const result = false && (sideEffect = 1);
+console.log(sideEffect);  // 0 (assignment never happened!)
+
+const result2 = true || (sideEffect = 2);
+console.log(sideEffect);  // 0 (still! OR short-circuited)
+
+const result3 = false || (sideEffect = 3);
+console.log(sideEffect);  // 3 (OR needed to check second operand)
+```
+
+<InfoBox type="warning">
+**Caution**: Don't rely on side effects in short-circuit expressions. It makes code harder to understand and debug. Use explicit `if` statements for clarity when side effects are involved.
+</InfoBox>
+
+<ProgressCheckpoint section="short-circuit" xpReward={20} />
+
+---
+
+## Section 3: Nullish Coalescing (??)
+
+### The Problem with OR
+
+The `||` operator treats ALL falsy values the same, which can be problematic:
+
+```javascript
+// Problem: 0 and "" are valid values!
+const count = userCount || 10;
+// If userCount is 0, we get 10 (wrong!)
+
+const name = userName || "Anonymous";
+// If userName is "", we get "Anonymous" (maybe wrong!)
+
+const enabled = featureFlag || true;
+// If featureFlag is false, we get true (definitely wrong!)
+```
+
+### Enter Nullish Coalescing (??)
+
+The `??` operator only falls back for `null` or `undefined`:
+
+```javascript
+// Only null/undefined trigger the fallback
+0 ?? 10           // 0 (0 is not nullish)
+"" ?? "default"   // "" (empty string is not nullish)
+false ?? true     // false (false is not nullish)
+null ?? "fallback"     // "fallback"
+undefined ?? "fallback" // "fallback"
+
+// Perfect for optional config values
+const config = {
+  timeout: 0,      // Valid: no timeout
+  retries: null,   // Not set: use default
+  debug: false     // Valid: debugging off
+};
+
+const timeout = config.timeout ?? 5000;  // 0 (respects the 0)
+const retries = config.retries ?? 3;     // 3 (null triggers default)
+const debug = config.debug ?? true;      // false (respects false)
+```
+
+### Combining with Optional Chaining
+
+```javascript
+const user = {
+  profile: {
+    settings: {
+      theme: null
+    }
+  }
+};
+
+// Optional chaining + nullish coalescing = 💪
+const theme = user?.profile?.settings?.theme ?? "light";
+// "light" (theme is null)
+
+const fontSize = user?.profile?.settings?.fontSize ?? 16;
+// 16 (fontSize is undefined)
+
+// Compare with OR (would also replace "" or 0)
+const themeBad = user?.profile?.settings?.theme || "light";
+// Same here, but would fail if theme was ""
+```
+
+### Operator Precedence Warning
+
+```javascript
+// ?? has lower precedence than || and &&
+// You MUST use parentheses when mixing them!
+
+// ❌ SyntaxError!
+// const result = a || b ?? c;
+
+// ✅ Use parentheses
+const result1 = (a || b) ?? c;
+const result2 = a || (b ?? c);
+```
+
+<OperatorVisualizer scenario="logical-nullish" />
+
+<ProgressCheckpoint section="nullish-coalescing" xpReward={20} />
+
+---
+
+## Section 4: Practical Patterns
+
+### Default Values Pattern
+
+```javascript
+// Old way (problematic with falsy values)
+function greet(name) {
+  name = name || "World";
+  return `Hello, ${name}!`;
+}
+
+// Modern way (ES2020+)
+function greet(name) {
+  name = name ?? "World";
+  return `Hello, ${name}!`;
+}
+
+// Even better: default parameters
+function greet(name = "World") {
+  return `Hello, ${name}!`;
+}
+```
+
+### Conditional Assignment
+
+```javascript
+// Assign only if currently nullish
+let config = {};
+config.timeout ??= 5000;  // Sets to 5000
+config.timeout ??= 3000;  // Still 5000 (not nullish)
+
+// Assign only if currently truthy
+let user = { name: "Alice" };
+user &&= { ...user, lastSeen: Date.now() };
+// Updates user with lastSeen
+
+// Assign only if currently falsy
+let errorMessage = "";
+errorMessage ||= "An error occurred";
+// Sets to "An error occurred"
+```
+
+### Guard Patterns
+
+```javascript
+// Ensure required values
+function processOrder(order) {
+  // Guard with AND
+  order && order.items?.length && processItems(order.items);
+  
+  // Or explicit guards (clearer)
+  if (!order) return;
+  if (!order.items?.length) return;
+  processItems(order.items);
+}
+
+// Feature flags
+const features = {
+  darkMode: true,
+  betaFeatures: false
+};
+
+features.darkMode && enableDarkMode();
+features.betaFeatures && loadBetaUI();
+```
+
+<CodePlayground
+  initialCode={`// Logical operator experiments
+const user = {
+  name: "Alice",
+  age: 0,  // Valid age for a newborn!
+  nickname: "",  // No nickname set
+  role: null  // Role not assigned
+};
+
+// Compare || vs ??
+console.log("Age with ||:", user.age || 25);
+console.log("Age with ??:", user.age ?? 25);
+
+console.log("Nickname with ||:", user.nickname || "No nickname");
+console.log("Nickname with ??:", user.nickname ?? "No nickname");
+
+console.log("Role with ||:", user.role || "user");
+console.log("Role with ??:", user.role ?? "user");
+
+// Short-circuit demonstration
+let called = false;
+const result = true || (called = true);
+console.log("\\nWas function called?", called);
+
+// Chaining
+const theme = user.settings?.theme ?? user.defaultTheme ?? "light";
+console.log("Theme:", theme);`}
+  title="Logical Operators Playground"
+/>
+
+### Quick Knowledge Check
+
+<Quiz id="and-return-quiz">
+  <Question>What does `"hello" && "world"` return?</Question>
+  <Answer>true</Answer>
+  <Answer>"hello"</Answer>
+  <Answer correct>"world"</Answer>
+  <Answer>false</Answer>
+</Quiz>
+
+<Quiz id="or-return-quiz">
+  <Question>What does `0 || "" || null || "default"` return?</Question>
+  <Answer>0</Answer>
+  <Answer>""</Answer>
+  <Answer>null</Answer>
+  <Answer correct>"default"</Answer>
+</Quiz>
+
+<Quiz id="nullish-quiz">
+  <Question>What does `0 ?? 10` return?</Question>
+  <Answer correct>0</Answer>
+  <Answer>10</Answer>
+  <Answer>null</Answer>
+  <Answer>undefined</Answer>
+</Quiz>
+
+### Summary
+
+| Operator | Name | Returns |
+|:---------|:-----|:--------|
+| `&&` | AND | First falsy OR last value |
+| `\|\|` | OR | First truthy OR last value |
+| `!` | NOT | Inverted boolean |
+| `??` | Nullish Coalescing | Left if not null/undefined |
+
+<KeyConcept title="What's Next?">
+You've mastered logical operators! Next up: **Bitwise Operators** — dive into the binary world of low-level bit manipulation.
+</KeyConcept>
+
+<ProgressCheckpoint section="practical-patterns" xpReward={20} />

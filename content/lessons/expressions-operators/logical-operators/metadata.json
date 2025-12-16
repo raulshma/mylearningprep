@@ -1,0 +1,18 @@
+{
+  "id": "logical-operators",
+  "title": "Logical Operators",
+  "description": "Understand JavaScript logical operators AND, OR, NOT, and nullish coalescing for building complex conditions and short-circuit evaluation.",
+  "milestone": "expressions-operators",
+  "order": 4,
+  "sections": [
+    "and-or-not",
+    "short-circuit",
+    "nullish-coalescing",
+    "practical-patterns"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 14,
+  "xpReward": 80,
+  "prerequisites": ["expressions-operators/comparison-operators"],
+  "tags": ["javascript", "operators", "logical", "short-circuit", "nullish-coalescing"]
+}

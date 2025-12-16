@@ -1,0 +1,326 @@
+# Comparison Operators
+
+Comparison operators are the decision-makers of JavaScript. They compare values and return `true` or `false`, enabling your code to make choices. But beware — JavaScript's type coercion can lead to surprising results!
+
+---
+
+## Section 1: Equality Operators
+
+### The Twin Detectives 🔍
+
+Think of `==` and `===` as two detectives with different investigation styles:
+
+| Detective | Style | Question Asked |
+|:----------|:------|:---------------|
+| `==` (Loose) | Flexible | "Do these look similar?" |
+| `===` (Strict) | Precise | "Are these exactly identical?" |
+
+<InfoBox type="warning">
+The **loose equality** operator (`==`) performs type coercion before comparing. The **strict equality** operator (`===`) compares both value AND type without coercion. **Always prefer `===`** unless you have a specific reason to use `==`.
+</InfoBox>
+
+### Strict Equality (===)
+
+No surprises here — values must be the same type AND value:
+
+```javascript
+// Same type and value → true
+5 === 5           // true
+"hello" === "hello"  // true
+true === true     // true
+
+// Different types → always false
+5 === "5"         // false (number vs string)
+0 === false       // false (number vs boolean)
+null === undefined // false (different types)
+
+// Objects compare by reference
+const a = { x: 1 };
+const b = { x: 1 };
+const c = a;
+
+a === b  // false (different objects)
+a === c  // true (same reference)
+```
+
+### Loose Equality (==)
+
+JavaScript tries to convert values to the same type before comparing:
+
+```javascript
+// Type coercion happens!
+5 == "5"          // true (string "5" → number 5)
+0 == false        // true (false → 0)
+1 == true         // true (true → 1)
+"" == false       // true (both → 0)
+null == undefined // true (special case in spec)
+
+// The coercion rabbit hole
+"0" == false      // true ("0" → 0, false → 0)
+"0" == 0          // true ("0" → 0)
+false == 0        // true (false → 0)
+
+// But watch out!
+"0" == false      // true
+"0" == ""         // false (both strings, different values)
+```
+
+<KeyConcept title="The Coercion Rules">
+When using `==`, JavaScript follows these rules:
+1. **null == undefined** is true (and nothing else)
+2. **Number vs String**: String converts to Number
+3. **Boolean vs Anything**: Boolean converts to Number first
+4. **Object vs Primitive**: Object converts via `valueOf()` or `toString()`
+</KeyConcept>
+
+<OperatorVisualizer scenario="comparison-equality" />
+
+<ProgressCheckpoint section="equality-operators" xpReward={20} />
+
+---
+
+## Section 2: Strict vs Loose — When to Use Which
+
+### The Golden Rule
+
+```javascript
+// ✅ ALWAYS use strict equality
+if (value === null) { }
+if (count === 0) { }
+if (name === "") { }
+
+// ❌ AVOID loose equality
+if (value == null) { }  // Catches both null AND undefined
+```
+
+### The One Exception
+
+There's ONE case where `==` is actually useful:
+
+```javascript
+// Check for null OR undefined in one comparison
+function process(value) {
+  // Using ==
+  if (value == null) {
+    // Handles both null and undefined
+    return "No value provided";
+  }
+  
+  // Equivalent strict version (more verbose)
+  if (value === null || value === undefined) {
+    return "No value provided";
+  }
+}
+
+process(null);      // "No value provided"
+process(undefined); // "No value provided"
+process(0);         // continues (0 is a valid value)
+```
+
+### Inequality Operators
+
+```javascript
+// Strict inequality (!==)
+5 !== "5"    // true (different types)
+5 !== 5      // false
+
+// Loose inequality (!=)
+5 != "5"     // false (coerced to same value)
+5 != 6       // true
+```
+
+<InfoBox type="tip">
+**Pro Tip**: Configure ESLint with the `eqeqeq` rule to enforce `===` and `!==` in your codebase. This catches accidental `==` usage.
+</InfoBox>
+
+<ProgressCheckpoint section="strict-vs-loose" xpReward={15} />
+
+---
+
+## Section 3: Relational Comparisons
+
+### Greater Than and Less Than
+
+These operators compare values and work with numbers and strings:
+
+```javascript
+// Number comparisons
+10 > 5     // true
+10 >= 10   // true
+5 < 10     // true
+5 <= 5     // true
+
+// String comparisons (lexicographic/dictionary order)
+"apple" < "banana"   // true (a comes before b)
+"Apple" < "apple"    // true (uppercase before lowercase)
+"10" < "9"           // true (string comparison: "1" < "9")
+
+// Mixed types - numbers win
+"10" < 9             // false (string "10" → number 10)
+"abc" < 10           // false ("abc" → NaN, NaN comparisons are false)
+```
+
+### The NaN Gotcha
+
+`NaN` (Not a Number) is never equal to anything, including itself:
+
+```javascript
+NaN === NaN   // false (!)
+NaN == NaN    // false
+NaN > 0       // false
+NaN < 0       // false
+NaN >= NaN    // false
+
+// How to check for NaN
+Number.isNaN(NaN)     // true ✅
+Number.isNaN("hello") // false (doesn't coerce)
+isNaN("hello")        // true (coerces, then checks)
+```
+
+### Comparing Objects
+
+Objects are compared by reference, not by value:
+
+```javascript
+const obj1 = { value: 10 };
+const obj2 = { value: 10 };
+const obj3 = obj1;
+
+obj1 === obj2  // false (different references)
+obj1 === obj3  // true (same reference)
+
+// To compare object contents, use:
+JSON.stringify(obj1) === JSON.stringify(obj2)  // true (simple cases)
+
+// Or a deep equality function for complex objects
+```
+
+<CodePlayground
+  initialCode={`// Comparison experiments
+console.log("Strict vs Loose:");
+console.log(5 === "5");   // ?
+console.log(5 == "5");    // ?
+
+console.log("\\nNull and Undefined:");
+console.log(null === undefined);  // ?
+console.log(null == undefined);   // ?
+
+console.log("\\nString comparisons:");
+console.log("apple" < "banana");  // ?
+console.log("10" < "9");          // ?
+console.log("10" < 9);            // ?
+
+console.log("\\nNaN weirdness:");
+console.log(NaN === NaN);         // ?
+console.log(Number.isNaN(NaN));   // ?`}
+  title="Comparison Experiments"
+/>
+
+<ProgressCheckpoint section="relational-comparisons" xpReward={20} />
+
+---
+
+## Section 4: Comparison Gotchas
+
+### The Infamous Equality Table
+
+Some comparisons that might surprise you:
+
+```javascript
+// All of these are true with ==
+[] == false      // true ([] → "" → 0, false → 0)
+[] == ![]        // true ([] is truthy, ![] is false, [] == false)
+"" == false      // true
+" " == false     // false (whitespace → NaN? No, → 0!)
+"0" == false     // true
+
+// These are false with ===
+[] === false     // false
+"" === false     // false
+0 === false      // false
+```
+
+### Object Coercion Surprises
+
+```javascript
+// Objects convert via valueOf() or toString()
+const obj = {
+  valueOf() { return 42; }
+};
+
+obj == 42   // true (valueOf returns 42)
+obj === 42  // false (different types)
+
+// Arrays convert to strings
+[1, 2, 3] == "1,2,3"  // true
+[1] == 1              // true ([1] → "1" → 1)
+```
+
+### Safe Comparison Patterns
+
+```javascript
+// ✅ Explicit type checking
+function isValidAge(age) {
+  return typeof age === "number" && age >= 0 && age <= 150;
+}
+
+// ✅ Nullish check pattern
+function getValue(input) {
+  if (input == null) {  // Catches null and undefined
+    return "default";
+  }
+  return input;
+}
+
+// ✅ Array/Object comparison
+function arraysEqual(a, b) {
+  if (a.length !== b.length) return false;
+  return a.every((val, i) => val === b[i]);
+}
+
+// ✅ Use Object.is for edge cases
+Object.is(NaN, NaN)   // true (!)
+Object.is(0, -0)      // false (distinguishes signed zeros)
+```
+
+### Quick Knowledge Check
+
+<Quiz id="strict-equality-quiz">
+  <Question>What does `"5" === 5` return?</Question>
+  <Answer>true</Answer>
+  <Answer correct>false</Answer>
+  <Answer>undefined</Answer>
+  <Answer>TypeError</Answer>
+</Quiz>
+
+<Quiz id="nan-comparison-quiz">
+  <Question>How do you correctly check if a value is NaN?</Question>
+  <Answer>`value === NaN`</Answer>
+  <Answer>`value == NaN`</Answer>
+  <Answer correct>`Number.isNaN(value)`</Answer>
+  <Answer>`typeof value === "NaN"`</Answer>
+</Quiz>
+
+<Quiz id="null-undefined-quiz">
+  <Question>Which comparison returns true?</Question>
+  <Answer>`null === undefined`</Answer>
+  <Answer correct>`null == undefined`</Answer>
+  <Answer>`null === false`</Answer>
+  <Answer>`undefined === false`</Answer>
+</Quiz>
+
+### Summary
+
+| Operator | Name | Type Coercion |
+|:---------|:-----|:--------------|
+| `===` | Strict Equality | No |
+| `!==` | Strict Inequality | No |
+| `==` | Loose Equality | Yes |
+| `!=` | Loose Inequality | Yes |
+| `>`, `<`, `>=`, `<=` | Relational | Yes |
+
+<KeyConcept title="What's Next?">
+You've mastered comparisons! Next up: **Arithmetic Operators** — the mathematical building blocks of JavaScript calculations.
+</KeyConcept>
+
+<ProgressCheckpoint section="comparison-gotchas" xpReward={15} />

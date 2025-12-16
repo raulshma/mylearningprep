@@ -1,0 +1,18 @@
+{
+  "id": "bitwise-operators",
+  "title": "Bitwise Operators",
+  "description": "Learn JavaScript bitwise operators for low-level binary manipulation including AND, OR, XOR, NOT, and shift operators.",
+  "milestone": "expressions-operators",
+  "order": 5,
+  "sections": [
+    "binary-basics",
+    "bitwise-logic",
+    "shift-operators",
+    "practical-uses"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 16,
+  "xpReward": 85,
+  "prerequisites": ["expressions-operators/logical-operators"],
+  "tags": ["javascript", "operators", "bitwise", "binary", "low-level"]
+}
