@@ -56,14 +56,52 @@ export interface LayoutResult {
   height: number;
 }
 
+// Helper to create fallback layout from original positions
+function createFallbackLayout(
+  nodes: RoadmapNode[],
+  edges: RoadmapEdge[]
+): LayoutResult {
+  return {
+    nodes: nodes.map((node) => ({
+      id: node.id,
+      x: node.position.x,
+      y: node.position.y,
+      ...NODE_DIMENSIONS[node.type],
+    })),
+    edges: edges.map((edge) => ({ id: edge.id })),
+    width: 800,
+    height: 600,
+  };
+}
+
+// Timeout wrapper for promises
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => {
+      setTimeout(() => {
+        console.warn(`ELK layout timed out after ${ms}ms, using fallback`);
+        resolve(fallback);
+      }, ms);
+    }),
+  ]);
+}
+
 export async function computeElkLayout(
   nodes: RoadmapNode[],
   edges: RoadmapEdge[],
   layoutType: ElkLayoutType = 'layered'
 ): Promise<LayoutResult> {
+  // Handle empty nodes case
+  if (nodes.length === 0) {
+    return { nodes: [], edges: [], width: 800, height: 600 };
+  }
+
+  const fallback = createFallbackLayout(nodes, edges);
+
   // Build ELK graph
   const elkNodes: ElkNode[] = nodes.map((node) => {
-    const dims = NODE_DIMENSIONS[node.type];
+    const dims = NODE_DIMENSIONS[node.type] || { width: 160, height: 60 };
     return {
       id: node.id,
       width: dims.width,
@@ -95,7 +133,12 @@ export async function computeElkLayout(
   };
 
   try {
-    const layoutedGraph = await elk.layout(graph);
+    // Add 5 second timeout to prevent hanging
+    const layoutedGraph = await withTimeout(elk.layout(graph), 5000, null);
+    
+    if (!layoutedGraph) {
+      return fallback;
+    }
     
     const layoutedNodes = (layoutedGraph.children || []).map((node) => ({
       id: node.id,
@@ -119,17 +162,6 @@ export async function computeElkLayout(
     };
   } catch (error) {
     console.error('ELK layout failed:', error);
-    // Fallback to original positions
-    return {
-      nodes: nodes.map((node) => ({
-        id: node.id,
-        x: node.position.x,
-        y: node.position.y,
-        ...NODE_DIMENSIONS[node.type],
-      })),
-      edges: edges.map((edge) => ({ id: edge.id })),
-      width: 800,
-      height: 600,
-    };
+    return fallback;
   }
 }

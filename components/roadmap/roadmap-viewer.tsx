@@ -332,7 +332,7 @@ export function RoadmapViewer({ subRoadmapProgressMap = {}, ...props }: RoadmapV
     let cancelled = false;
     
     async function runLayout() {
-      // 1. Check cache first
+      // 1. Check cache first (before setting loading state)
       const cacheKey = `roadmap-layout-${props.roadmap.slug}-${layoutType}`;
       const versionHash = `${props.roadmap.nodes.length}-${props.roadmap.edges.length}`; // Simple versioning
       
@@ -342,7 +342,9 @@ export function RoadmapViewer({ subRoadmapProgressMap = {}, ...props }: RoadmapV
           const parsed = JSON.parse(cached);
           // Check if cache matches current roadmap version
           if (parsed.version === versionHash) {
-            setLayoutResult(parsed.result);
+            if (!cancelled) {
+              setLayoutResult(parsed.result);
+            }
             return;
           }
         }
@@ -350,7 +352,11 @@ export function RoadmapViewer({ subRoadmapProgressMap = {}, ...props }: RoadmapV
         // Ignore cache errors
       }
 
-      setIsLayouting(true);
+      // Only show loading state when actually computing
+      if (!cancelled) {
+        setIsLayouting(true);
+      }
+      
       try {
         const result = await computeElkLayout(
           props.roadmap.nodes,
