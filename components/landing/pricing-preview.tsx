@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Check, Sparkles, Zap, Crown, ArrowRight } from "lucide-react";
+import { Check, Sparkles, Zap, Crown, ArrowRight, AlertCircle } from "lucide-react";
 import { PRICING_TIERS, formatPrice } from "@/lib/pricing-data";
 
 const tierIcons = {
@@ -28,6 +28,22 @@ export function PricingPreview() {
   return (
     <section className="py-24 md:py-32 px-6 bg-background">
       <div className="max-w-6xl mx-auto">
+        {/* Test Environment Indicator */}
+        <motion.div
+          className="mb-8 py-3 px-4 bg-amber-50/50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-2xl"
+          initial={{ opacity: 0, y: -10 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.4 }}
+        >
+          <div className="flex items-center justify-center gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+            <p className="text-sm font-medium text-amber-700 dark:text-amber-300 text-center">
+              This is a test environment. No real money will be deducted. Test card payments are accepted.
+            </p>
+          </div>
+        </motion.div>
+
         {/* Header */}
         <motion.div
           className="text-center mb-16 md:mb-20"
