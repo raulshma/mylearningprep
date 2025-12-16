@@ -66,7 +66,7 @@ export function SidebarUi({ data }: SidebarUiProps) {
       </div>
 
       {/* Bottom Section */}
-      <div className={cn("relative p-4 space-y-4", isCollapsed && "px-2")}>
+      <div className={cn("relative p-4 space-y-2", isCollapsed && "px-2")}>
         {/* Usage Stats - Hide when collapsed */}
         {!isCollapsed && (
           <div className="px-2">
