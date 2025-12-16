@@ -1,0 +1,18 @@
+{
+  "id": "generator-functions",
+  "title": "Generator Functions",
+  "description": "Master generator functions with function* syntax - create pausable functions that produce sequences of values on demand.",
+  "milestone": "iterators-generators",
+  "order": 3,
+  "sections": [
+    "what-are-generators",
+    "generator-syntax",
+    "generator-methods",
+    "practical-generators"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 14,
+  "xpReward": 85,
+  "prerequisites": ["iterators-generators/iterator-protocol", "iterators-generators/iterable-protocol"],
+  "tags": ["javascript", "generators", "function*", "iterable-iterator", "lazy-evaluation"]
+}

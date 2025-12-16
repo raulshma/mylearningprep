@@ -1,0 +1,18 @@
+{
+  "id": "dynamic-imports",
+  "title": "Dynamic Imports",
+  "description": "Learn to load JavaScript modules on-demand for better performance and code splitting.",
+  "milestone": "modules",
+  "order": 3,
+  "sections": [
+    "dynamic-import-basics",
+    "conditional-loading",
+    "performance-patterns",
+    "error-handling"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 14,
+  "xpReward": 75,
+  "prerequisites": ["modules/es-modules"],
+  "tags": ["javascript", "modules", "dynamic-import", "code-splitting", "performance"]
+}

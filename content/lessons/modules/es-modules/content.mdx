@@ -1,0 +1,401 @@
+# ES Modules (import/export)
+
+Welcome to the modern way of organizing JavaScript code! ES Modules are the official standard for sharing code between files, and they're supported in all modern browsers and Node.js.
+
+---
+
+## Section 1: What Are Modules?
+
+### The LEGO Analogy 🧱
+
+Imagine building with LEGO bricks. Instead of having one massive, tangled pile of bricks, you organize them into separate containers:
+
+- **Red bricks** in one box
+- **Wheels** in another
+- **Windows** in a third
+
+When you need wheels, you grab just that box. You don't dump everything on the floor!
+
+**JavaScript modules work the same way:**
+
+| LEGO | JavaScript |
+|:-----|:-----------|
+| Box of bricks | Module file |
+| Taking bricks out | `export` |
+| Using bricks from another box | `import` |
+| Your creation | Your application |
+
+<InfoBox type="info">
+**ES Modules** (ESM) were introduced in ES6 (2015) and are now the standard way to share code between JavaScript files. They work in browsers with `type="module"` and in Node.js!
+</InfoBox>
+
+### Why Modules Matter
+
+Without modules, all your code lives in the **global scope** — like dumping all LEGO bricks on the floor:
+
+```javascript
+// ❌ Without modules - everything is global!
+// file1.js
+var userName = "Alice";
+function greet() { console.log("Hello!"); }
+
+// file2.js  
+var userName = "Bob"; // 💥 Overwrites Alice!
+function greet() { console.log("Hi!"); } // 💥 Overwrites previous greet!
+```
+
+With modules, each file has its **own scope**:
+
+```javascript
+// ✅ With modules - isolated and safe!
+// user.js
+export const userName = "Alice";
+export function greet() { console.log("Hello!"); }
+
+// admin.js
+export const userName = "Bob"; // No conflict!
+export function greet() { console.log("Hi Admin!"); } // No conflict!
+```
+
+<KeyConcept title="Module Scope">
+Each module has its own scope. Variables and functions are **private by default** — you must explicitly `export` them to share with other files.
+</KeyConcept>
+
+<ModuleDependencyVisualizer />
+
+<ProgressCheckpoint section="module-basics" xpReward={20} />
+
+---
+
+## Section 2: Exporting from Modules
+
+### Named Exports
+
+The most common way to share code. You can export multiple things from one file:
+
+```javascript
+// math.js - Named exports
+export const PI = 3.14159;
+
+export function add(a, b) {
+  return a + b;
+}
+
+export function multiply(a, b) {
+  return a * b;
+}
+
+export class Calculator {
+  constructor() {
+    this.result = 0;
+  }
+}
+```
+
+You can also export at the end of the file:
+
+```javascript
+// utils.js - Export list at the bottom
+const API_URL = "https://api.example.com";
+
+function formatDate(date) {
+  return date.toLocaleDateString();
+}
+
+function formatCurrency(amount) {
+  return `$${amount.toFixed(2)}`;
+}
+
+// Export everything at once
+export { API_URL, formatDate, formatCurrency };
+```
+
+### Default Exports
+
+When a module has one main thing to share, use `export default`:
+
+```javascript
+// Button.js - Default export
+export default function Button({ label, onClick }) {
+  return <button onClick={onClick}>{label}</button>;
+}
+
+// Or with a class
+export default class UserService {
+  async getUser(id) {
+    // fetch user...
+  }
+}
+```
+
+<InfoBox type="warning">
+**Rule:** Each module can have only **ONE** default export, but **unlimited** named exports!
+</InfoBox>
+
+### Mixing Named and Default Exports
+
+You can combine both in one file:
+
+```javascript
+// api.js - Both types together
+// Default export - the main thing
+export default class ApiClient {
+  constructor(baseUrl) {
+    this.baseUrl = baseUrl;
+  }
+  
+  async get(endpoint) {
+    const response = await fetch(`${this.baseUrl}${endpoint}`);
+    return response.json();
+  }
+}
+
+// Named exports - utilities and constants
+export const API_VERSION = "v2";
+export const DEFAULT_TIMEOUT = 5000;
+
+export function createHeaders(token) {
+  return {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  };
+}
+```
+
+<Comparison
+  title="Named vs Default Exports"
+  items={[
+    {
+      label: "Named Exports",
+      description: "Multiple exports per file, must use exact names when importing, great for utility libraries",
+      isCorrect: true
+    },
+    {
+      label: "Default Export",
+      description: "One per file, can use any name when importing, great for components or main classes",
+      isCorrect: true
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="export-patterns" xpReward={20} />
+
+---
+
+## Section 3: Importing Modules
+
+### Importing Named Exports
+
+Use curly braces `{}` to import specific named exports:
+
+```javascript
+// Import specific items
+import { add, multiply } from './math.js';
+
+console.log(add(2, 3));      // 5
+console.log(multiply(4, 5)); // 20
+```
+
+### Renaming Imports
+
+Use `as` to rename imports and avoid conflicts:
+
+```javascript
+// Rename to avoid conflicts
+import { formatDate as formatDateUS } from './us-utils.js';
+import { formatDate as formatDateEU } from './eu-utils.js';
+
+console.log(formatDateUS(new Date())); // 12/17/2024
+console.log(formatDateEU(new Date())); // 17/12/2024
+```
+
+### Importing Default Exports
+
+No curly braces needed — and you can name it anything:
+
+```javascript
+// Default imports - no braces, any name works!
+import Button from './Button.js';
+import MyButton from './Button.js';  // Same thing, different name
+import Btn from './Button.js';       // Still the same!
+
+// They all import the default export
+```
+
+### Importing Everything
+
+Use `* as` to import all exports as an object:
+
+```javascript
+// Import everything as a namespace
+import * as MathUtils from './math.js';
+
+console.log(MathUtils.PI);           // 3.14159
+console.log(MathUtils.add(1, 2));    // 3
+console.log(MathUtils.multiply(3, 4)); // 12
+```
+
+### Combined Imports
+
+Import default and named exports together:
+
+```javascript
+// Import default AND named exports
+import ApiClient, { API_VERSION, createHeaders } from './api.js';
+
+const client = new ApiClient('https://api.example.com');
+console.log(`Using API ${API_VERSION}`);
+```
+
+<CodePlayground
+  initialCode={`// Try different import/export patterns!
+// This simulates how modules work
+
+// Imagine this is math.js
+const mathModule = {
+  PI: 3.14159,
+  add: (a, b) => a + b,
+  multiply: (a, b) => a * b
+};
+
+// Destructuring is similar to named imports
+const { PI, add } = mathModule;
+
+console.log("PI:", PI);
+console.log("2 + 3 =", add(2, 3));
+console.log("All exports:", mathModule);`}
+  title="Module Import Patterns"
+/>
+
+<ProgressCheckpoint section="import-patterns" xpReward={20} />
+
+---
+
+## Section 4: Module Features & Best Practices
+
+### Modules Are Evaluated Once
+
+No matter how many times you import a module, its code runs only **once**:
+
+```javascript
+// counter.js
+console.log("Counter module loaded!"); // Only logs ONCE
+let count = 0;
+
+export function increment() {
+  return ++count;
+}
+
+// app.js
+import { increment } from './counter.js'; // "Counter module loaded!"
+import { increment as inc } from './counter.js'; // No log - already loaded!
+
+console.log(increment()); // 1
+console.log(inc());       // 2 - same counter!
+```
+
+### Live Bindings
+
+Exports are **live connections**, not copies:
+
+```javascript
+// state.js
+export let currentUser = null;
+
+export function login(user) {
+  currentUser = user;
+}
+
+// app.js
+import { currentUser, login } from './state.js';
+
+console.log(currentUser); // null
+login({ name: "Alice" });
+console.log(currentUser); // { name: "Alice" } - Updated!
+```
+
+<InfoBox type="tip">
+**Live bindings** mean when the exporting module changes a value, all importers see the new value immediately. This is different from CommonJS where you get a copy!
+</InfoBox>
+
+### Using Modules in the Browser
+
+Add `type="module"` to your script tag:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <title>ES Modules Demo</title>
+</head>
+<body>
+  <!-- Regular script - global scope -->
+  <script src="old-way.js"></script>
+  
+  <!-- ES Module - module scope -->
+  <script type="module" src="app.js"></script>
+  
+  <!-- Inline module -->
+  <script type="module">
+    import { greet } from './utils.js';
+    greet("World");
+  </script>
+</body>
+</html>
+```
+
+### Module Best Practices
+
+| Practice | Why |
+|:---------|:----|
+| One component/class per file | Easier to find and maintain |
+| Use named exports for utilities | Clear what you're importing |
+| Use default export for main item | Cleaner import syntax |
+| Keep modules focused | Single responsibility |
+| Avoid circular dependencies | Can cause bugs |
+
+### Quick Knowledge Check
+
+<Quiz id="export-types-quiz">
+  <Question>How many default exports can a module have?</Question>
+  <Answer>Unlimited</Answer>
+  <Answer correct>One</Answer>
+  <Answer>Two</Answer>
+  <Answer>None</Answer>
+</Quiz>
+
+<Quiz id="import-syntax-quiz">
+  <Question>Which syntax imports a default export?</Question>
+  <Answer>`import { Button } from './Button.js'`</Answer>
+  <Answer correct>`import Button from './Button.js'`</Answer>
+  <Answer>`import * as Button from './Button.js'`</Answer>
+  <Answer>`import default Button from './Button.js'`</Answer>
+</Quiz>
+
+<Quiz id="module-scope-quiz">
+  <Question>What happens when you import the same module twice?</Question>
+  <Answer>The module code runs twice</Answer>
+  <Answer>You get an error</Answer>
+  <Answer correct>The module code runs once, both imports share the same instance</Answer>
+  <Answer>Each import gets a separate copy</Answer>
+</Quiz>
+
+### Summary
+
+| Concept | Syntax | Use Case |
+|:--------|:-------|:---------|
+| Named Export | `export { name }` | Multiple exports, utilities |
+| Default Export | `export default` | Main component/class |
+| Named Import | `import { name }` | Specific items |
+| Default Import | `import Name` | Main export |
+| Namespace Import | `import * as Lib` | All exports as object |
+| Rename | `import { a as b }` | Avoid conflicts |
+
+<KeyConcept title="What's Next?">
+Now that you understand ES Modules, you're ready to learn about:
+- **CommonJS Modules** - The Node.js module system
+- **Dynamic Imports** - Load modules on-demand
+- **Module Patterns** - Advanced organization techniques
+</KeyConcept>
+
+<ProgressCheckpoint section="module-features" xpReward={15} />

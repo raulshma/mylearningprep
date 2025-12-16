@@ -1,0 +1,18 @@
+{
+  "id": "es-modules",
+  "title": "ES Modules (import/export)",
+  "description": "Master the modern JavaScript module system with import and export statements for organizing and sharing code.",
+  "milestone": "modules",
+  "order": 1,
+  "sections": [
+    "module-basics",
+    "export-patterns",
+    "import-patterns",
+    "module-features"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 15,
+  "xpReward": 75,
+  "prerequisites": [],
+  "tags": ["javascript", "modules", "es6", "import", "export"]
+}

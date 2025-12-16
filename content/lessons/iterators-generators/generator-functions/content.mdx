@@ -1,0 +1,436 @@
+# Generator Functions
+
+Writing iterators manually is tedious. What if you could write a function that automatically pauses and resumes? That's exactly what **Generator Functions** do — they're functions with superpowers!
+
+---
+
+## Section 1: What Are Generators?
+
+### The Bookmark Analogy 📖
+
+Imagine reading a book with a magical bookmark:
+
+| Reading a Book | Generator Function |
+|:---------------|:-------------------|
+| Read until bookmark | Execute until `yield` |
+| Put book down | Function pauses |
+| Pick up book later | Call `next()` |
+| Continue from bookmark | Resume execution |
+| Finish the book | Function returns |
+
+Normal functions run to completion. Generators can **pause** mid-execution and **resume** later, remembering exactly where they left off.
+
+<InfoBox type="info">
+**Generator functions** were introduced in ES6 (2015). They're declared with `function*` and use `yield` to pause execution. When called, they return a **Generator object** that is both an iterator AND an iterable.
+</InfoBox>
+
+### Generator vs Regular Function
+
+```javascript
+// Regular function - runs to completion
+function regular() {
+  console.log('Start');
+  console.log('Middle');
+  console.log('End');
+  return 'done';
+}
+regular(); // Logs all three, returns 'done'
+
+// Generator function - can pause
+function* generator() {
+  console.log('Start');
+  yield 1;           // Pause here
+  console.log('Middle');
+  yield 2;           // Pause here
+  console.log('End');
+  return 'done';
+}
+
+const gen = generator(); // Nothing logged yet!
+gen.next(); // Logs 'Start', returns { value: 1, done: false }
+gen.next(); // Logs 'Middle', returns { value: 2, done: false }
+gen.next(); // Logs 'End', returns { value: 'done', done: true }
+```
+
+<KeyConcept title="Key Insight">
+Calling a generator function doesn't execute its body — it returns a **Generator object**. The body only executes when you call `next()` on that object.
+</KeyConcept>
+
+<IteratorGeneratorVisualizer 
+  title="Generator Function Execution"
+  mode="generator"
+/>
+
+<ProgressCheckpoint section="what-are-generators" xpReward={20} />
+
+---
+
+## Section 2: Generator Syntax
+
+### The function* Declaration
+
+Generators are declared with an asterisk `*` after `function`:
+
+```javascript
+// Function declaration
+function* myGenerator() {
+  yield 1;
+  yield 2;
+}
+
+// Function expression
+const myGenerator = function* () {
+  yield 1;
+  yield 2;
+};
+
+// Method in object
+const obj = {
+  *generator() {
+    yield 1;
+    yield 2;
+  }
+};
+
+// Method in class
+class MyClass {
+  *generator() {
+    yield 1;
+    yield 2;
+  }
+}
+```
+
+<InfoBox type="tip">
+The `*` can be placed anywhere between `function` and the name: `function*`, `function *`, or `function * `. Convention is `function*` with no space.
+</InfoBox>
+
+### No Arrow Function Generators
+
+Arrow functions cannot be generators:
+
+```javascript
+// ❌ This is a syntax error!
+const gen = *() => { yield 1; };
+
+// ❌ This too!
+const gen = () *=> { yield 1; };
+
+// ✅ Use function expression instead
+const gen = function* () { yield 1; };
+```
+
+### Generator Objects Are Iterable Iterators
+
+When you call a generator function, you get an object that implements BOTH protocols:
+
+```javascript
+function* numbers() {
+  yield 1;
+  yield 2;
+  yield 3;
+}
+
+const gen = numbers();
+
+// It's an iterator (has next())
+console.log(gen.next()); // { value: 1, done: false }
+
+// It's also iterable (has Symbol.iterator)
+console.log(gen[Symbol.iterator]() === gen); // true!
+
+// So you can use for...of
+for (const n of numbers()) {
+  console.log(n); // 1, 2, 3
+}
+
+// And spread
+console.log([...numbers()]); // [1, 2, 3]
+```
+
+### Generators Are Single-Use
+
+Each generator object can only be iterated once:
+
+```javascript
+function* countdown() {
+  yield 3;
+  yield 2;
+  yield 1;
+}
+
+const gen = countdown();
+
+console.log([...gen]); // [3, 2, 1]
+console.log([...gen]); // [] - already exhausted!
+
+// Create a new generator for fresh iteration
+console.log([...countdown()]); // [3, 2, 1]
+```
+
+<ProgressCheckpoint section="generator-syntax" xpReward={20} />
+
+---
+
+## Section 3: Generator Methods
+
+### The next() Method
+
+`next()` resumes execution until the next `yield`:
+
+```javascript
+function* greet() {
+  console.log('Hello');
+  yield 'first';
+  console.log('World');
+  yield 'second';
+  console.log('!');
+  return 'done';
+}
+
+const g = greet();
+
+g.next(); // Logs 'Hello', returns { value: 'first', done: false }
+g.next(); // Logs 'World', returns { value: 'second', done: false }
+g.next(); // Logs '!', returns { value: 'done', done: true }
+g.next(); // Returns { value: undefined, done: true }
+```
+
+### The return() Method
+
+`return()` terminates the generator early:
+
+```javascript
+function* infinite() {
+  let i = 0;
+  while (true) {
+    yield i++;
+  }
+}
+
+const gen = infinite();
+
+console.log(gen.next()); // { value: 0, done: false }
+console.log(gen.next()); // { value: 1, done: false }
+console.log(gen.return('stopped')); // { value: 'stopped', done: true }
+console.log(gen.next()); // { value: undefined, done: true }
+```
+
+### The throw() Method
+
+`throw()` throws an error inside the generator:
+
+```javascript
+function* errorHandler() {
+  try {
+    yield 1;
+    yield 2;
+  } catch (e) {
+    console.log('Caught:', e);
+    yield 'recovered';
+  }
+}
+
+const gen = errorHandler();
+
+console.log(gen.next());        // { value: 1, done: false }
+console.log(gen.throw('Oops!')); // Logs 'Caught: Oops!', returns { value: 'recovered', done: false }
+console.log(gen.next());        // { value: undefined, done: true }
+```
+
+<Comparison
+  title="Generator Methods"
+  items={[
+    {
+      label: "next(value)",
+      description: "Resumes execution, optionally passing a value to the paused yield",
+      isCorrect: true
+    },
+    {
+      label: "return(value)",
+      description: "Terminates the generator, returns { value, done: true }",
+      isCorrect: true
+    },
+    {
+      label: "throw(error)",
+      description: "Throws an error at the paused yield, can be caught with try/catch",
+      isCorrect: true
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="generator-methods" xpReward={20} />
+
+---
+
+## Section 4: Practical Generator Patterns
+
+### Infinite Sequences
+
+Generators excel at infinite sequences because they're lazy:
+
+```javascript
+function* naturalNumbers() {
+  let n = 1;
+  while (true) {
+    yield n++;
+  }
+}
+
+function* fibonacci() {
+  let [prev, curr] = [0, 1];
+  while (true) {
+    yield prev;
+    [prev, curr] = [curr, prev + curr];
+  }
+}
+
+// Take only what you need
+function take(generator, count) {
+  const result = [];
+  for (const value of generator) {
+    result.push(value);
+    if (result.length >= count) break;
+  }
+  return result;
+}
+
+console.log(take(naturalNumbers(), 5)); // [1, 2, 3, 4, 5]
+console.log(take(fibonacci(), 8));      // [0, 1, 1, 2, 3, 5, 8, 13]
+```
+
+### Delegating with yield*
+
+Use `yield*` to delegate to another iterable:
+
+```javascript
+function* inner() {
+  yield 'a';
+  yield 'b';
+}
+
+function* outer() {
+  yield 1;
+  yield* inner();  // Delegate to inner generator
+  yield 2;
+}
+
+console.log([...outer()]); // [1, 'a', 'b', 2]
+
+// Works with any iterable
+function* withArray() {
+  yield* [1, 2, 3];
+  yield* 'abc';
+}
+
+console.log([...withArray()]); // [1, 2, 3, 'a', 'b', 'c']
+```
+
+### ID Generator
+
+A practical use case — generating unique IDs:
+
+```javascript
+function* idGenerator(prefix = 'id') {
+  let id = 1;
+  while (true) {
+    yield `${prefix}_${id++}`;
+  }
+}
+
+const userIds = idGenerator('user');
+const orderIds = idGenerator('order');
+
+console.log(userIds.next().value);  // 'user_1'
+console.log(userIds.next().value);  // 'user_2'
+console.log(orderIds.next().value); // 'order_1'
+console.log(userIds.next().value);  // 'user_3'
+```
+
+### Tree Traversal
+
+Generators make recursive iteration elegant:
+
+```javascript
+function* traverseTree(node) {
+  yield node.value;
+  
+  for (const child of node.children || []) {
+    yield* traverseTree(child);
+  }
+}
+
+const tree = {
+  value: 'root',
+  children: [
+    { value: 'a', children: [{ value: 'a1' }, { value: 'a2' }] },
+    { value: 'b', children: [{ value: 'b1' }] }
+  ]
+};
+
+console.log([...traverseTree(tree)]); 
+// ['root', 'a', 'a1', 'a2', 'b', 'b1']
+```
+
+<CodePlayground
+  initialCode={`// Create a paginated data generator
+function* paginate(items, pageSize) {
+  for (let i = 0; i < items.length; i += pageSize) {
+    yield items.slice(i, i + pageSize);
+  }
+}
+
+const data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+const pages = paginate(data, 3);
+
+console.log('Page 1:', pages.next().value);
+console.log('Page 2:', pages.next().value);
+console.log('Page 3:', pages.next().value);
+console.log('Page 4:', pages.next().value);
+console.log('Done:', pages.next().done);`}
+  title="Pagination Generator"
+/>
+
+### Quick Knowledge Check
+
+<Quiz id="generator-declaration-quiz">
+  <Question>How do you declare a generator function?</Question>
+  <Answer>function generator() {}</Answer>
+  <Answer correct>function* generator() {}</Answer>
+  <Answer>generator function() {}</Answer>
+  <Answer>async function generator() {}</Answer>
+</Quiz>
+
+<Quiz id="generator-call-quiz">
+  <Question>What happens when you call a generator function?</Question>
+  <Answer>It runs to completion</Answer>
+  <Answer>It throws an error</Answer>
+  <Answer correct>It returns a Generator object without executing the body</Answer>
+  <Answer>It returns the first yielded value</Answer>
+</Quiz>
+
+<Quiz id="yield-star-quiz">
+  <Question>What does yield* do?</Question>
+  <Answer>Yields all values at once as an array</Answer>
+  <Answer correct>Delegates to another iterable, yielding each value</Answer>
+  <Answer>Multiplies the yielded value</Answer>
+  <Answer>Marks the yield as important</Answer>
+</Quiz>
+
+### Summary
+
+| Concept | Description |
+|:--------|:------------|
+| `function*` | Declares a generator function |
+| Generator object | Both iterator and iterable |
+| `next()` | Resumes execution until next yield |
+| `return()` | Terminates generator early |
+| `throw()` | Throws error at paused yield |
+| `yield*` | Delegates to another iterable |
+| Lazy evaluation | Values computed on demand |
+
+<KeyConcept title="What's Next?">
+You've mastered generator functions! Now dive deeper into the **yield keyword** — learn about two-way communication, passing values into generators, and advanced patterns.
+</KeyConcept>
+
+<ProgressCheckpoint section="practical-generators" xpReward={25} />

@@ -1,0 +1,18 @@
+{
+  "id": "type-conversion-coercion",
+  "title": "Type Conversion vs Coercion",
+  "description": "Understand the fundamental difference between explicit type conversion and implicit type coercion in JavaScript.",
+  "milestone": "type-casting",
+  "order": 1,
+  "sections": [
+    "intro-type-casting",
+    "conversion-explained",
+    "coercion-explained",
+    "key-differences"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 12,
+  "xpReward": 60,
+  "prerequisites": ["data-types"],
+  "tags": ["javascript", "type-casting", "coercion", "conversion", "fundamentals"]
+}

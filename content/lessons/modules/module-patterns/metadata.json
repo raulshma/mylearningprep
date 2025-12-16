@@ -1,0 +1,18 @@
+{
+  "id": "module-patterns",
+  "title": "Module Patterns",
+  "description": "Explore classic and modern module patterns for encapsulation and code organization in JavaScript.",
+  "milestone": "modules",
+  "order": 4,
+  "sections": [
+    "revealing-module",
+    "singleton-pattern",
+    "factory-pattern",
+    "barrel-exports"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 15,
+  "xpReward": 80,
+  "prerequisites": ["modules/es-modules", "modules/commonjs-modules"],
+  "tags": ["javascript", "modules", "patterns", "encapsulation", "architecture"]
+}

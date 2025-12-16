@@ -1,0 +1,18 @@
+{
+  "id": "iterable-protocol",
+  "title": "Iterable Protocol",
+  "description": "Learn how objects become iterable using Symbol.iterator, enabling for...of loops, spread operators, and destructuring.",
+  "milestone": "iterators-generators",
+  "order": 2,
+  "sections": [
+    "what-is-iterable",
+    "symbol-iterator",
+    "built-in-iterables",
+    "custom-iterable"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 12,
+  "xpReward": 80,
+  "prerequisites": ["iterators-generators/iterator-protocol"],
+  "tags": ["javascript", "iterable", "Symbol.iterator", "for-of", "spread"]
+}

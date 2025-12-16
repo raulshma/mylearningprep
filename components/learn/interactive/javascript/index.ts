@@ -64,6 +64,12 @@ import { TypeVisualizer as TypeVisualizerBase } from './TypeVisualizer';
 import { TypeofExplorer as TypeofExplorerBase } from './TypeofExplorer';
 import { BuiltInObjectExplorer as BuiltInObjectExplorerBase } from './BuiltInObjectExplorer';
 
+// Type Casting components
+import { TypeCastingVisualizer as TypeCastingVisualizerBase } from './TypeCastingVisualizer';
+
+// Equality Comparison components
+import { EqualityComparisonVisualizer as EqualityComparisonVisualizerBase } from './EqualityComparisonVisualizer';
+
 // Variable Naming Validator component
 import { VariableNamingValidator as VariableNamingValidatorBase } from './VariableNamingValidator';
 
@@ -80,6 +86,9 @@ import { LoopVisualizer as LoopVisualizerBase } from './LoopVisualizer';
 
 // Function Visualizer component
 import { FunctionVisualizer as FunctionVisualizerBase } from './FunctionVisualizer';
+
+// Control Flow Visualizer component
+import { ControlFlowVisualizer as ControlFlowVisualizerBase } from './ControlFlowVisualizer';
 
 // Wrap all interactive components with error boundaries
 export const CodePlayground = withErrorBoundary(CodePlaygroundBase, 'CodePlayground');
@@ -120,6 +129,12 @@ export const TypeVisualizer = withErrorBoundary(TypeVisualizerBase, 'TypeVisuali
 export const TypeofExplorer = withErrorBoundary(TypeofExplorerBase, 'TypeofExplorer');
 export const BuiltInObjectExplorer = withErrorBoundary(BuiltInObjectExplorerBase, 'BuiltInObjectExplorer');
 
+// Type Casting components
+export const TypeCastingVisualizer = withErrorBoundary(TypeCastingVisualizerBase, 'TypeCastingVisualizer');
+
+// Equality Comparison components
+export const EqualityComparisonVisualizer = withErrorBoundary(EqualityComparisonVisualizerBase, 'EqualityComparisonVisualizer');
+
 // Variable Naming Validator
 export const VariableNamingValidator = withErrorBoundary(VariableNamingValidatorBase, 'VariableNamingValidator');
 
@@ -136,6 +151,9 @@ export const LoopVisualizer = withErrorBoundary(LoopVisualizerBase, 'LoopVisuali
 
 // Function Visualizer
 export const FunctionVisualizer = withErrorBoundary(FunctionVisualizerBase, 'FunctionVisualizer');
+
+// Control Flow Visualizer
+export const ControlFlowVisualizer = withErrorBoundary(ControlFlowVisualizerBase, 'ControlFlowVisualizer');
 
 // Re-export types
 export type {
@@ -356,6 +374,10 @@ export type {
   FunctionExample,
 } from './FunctionVisualizer';
 
+export type {
+  ControlFlowVisualizerProps,
+} from './ControlFlowVisualizer';
+
 // Export base components for testing
 export { CodePlaygroundBase };
 export { VariableVisualizerBase };
@@ -392,6 +414,19 @@ export { EcmaScriptVersionExplorerBase };
 export { TypeVisualizerBase };
 export { TypeofExplorerBase };
 export { BuiltInObjectExplorerBase };
+export { TypeCastingVisualizerBase };
+
+// Type Casting types
+export type {
+  TypeCastingVisualizerProps,
+} from './TypeCastingVisualizer';
+
+// Equality Comparison types
+export type {
+  EqualityComparisonVisualizerProps,
+} from './EqualityComparisonVisualizer';
+export { EqualityComparisonVisualizerBase };
+
 export { VariableNamingValidatorBase };
 export { IndexedCollectionVisualizerBase };
 export { KeyedCollectionExplorerBase };
@@ -399,3 +434,4 @@ export { JsonPlaygroundBase };
 export { ThisKeywordVisualizerBase };
 export { LoopVisualizerBase };
 export { FunctionVisualizerBase };
+export { ControlFlowVisualizerBase };

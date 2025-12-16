@@ -1,0 +1,434 @@
+# Dynamic Imports
+
+Static imports load everything upfront. But what if you only need a module sometimes? **Dynamic imports** let you load code on-demand, making your app faster and smarter!
+
+---
+
+## Section 1: Dynamic Import Basics
+
+### The Food Delivery Analogy 🍕
+
+Think about ordering food:
+
+- **Static imports** = Buying all groceries for the week upfront (even if you might not cook)
+- **Dynamic imports** = Ordering delivery only when you're hungry
+
+| Approach | Pros | Cons |
+|:---------|:-----|:-----|
+| Buy all groceries | Everything ready | Waste if unused, heavy bags |
+| Order on-demand | Pay only for what you eat | Small wait time |
+
+<InfoBox type="info">
+**Dynamic imports** use the `import()` function (not the `import` statement). It returns a **Promise** that resolves to the module, allowing you to load code only when needed!
+</InfoBox>
+
+### The import() Function
+
+Unlike static `import` statements, `import()` is a function that returns a Promise:
+
+```javascript
+// Static import - loads immediately when file runs
+import { heavyFunction } from './heavyModule.js';
+
+// Dynamic import - loads only when this code executes
+const module = await import('./heavyModule.js');
+module.heavyFunction();
+```
+
+### Basic Syntax
+
+```javascript
+// Using async/await (recommended)
+async function loadModule() {
+  const module = await import('./myModule.js');
+  module.doSomething();
+}
+
+// Using .then()
+import('./myModule.js').then((module) => {
+  module.doSomething();
+});
+
+// Accessing default export
+const module = await import('./Button.js');
+const Button = module.default; // Get the default export
+```
+
+<KeyConcept title="import() Returns a Promise">
+The `import()` function always returns a Promise that resolves to a **module namespace object** containing all the module's exports. Access default exports via `.default`!
+</KeyConcept>
+
+<AsyncTimeline />
+
+<ProgressCheckpoint section="dynamic-import-basics" xpReward={20} />
+
+---
+
+## Section 2: Conditional Loading
+
+### Load Based on Conditions
+
+The real power of dynamic imports — load code only when needed:
+
+```javascript
+// Load based on user action
+document.getElementById('exportBtn').addEventListener('click', async () => {
+  // Only load the PDF library when user clicks export
+  const { generatePDF } = await import('./pdfGenerator.js');
+  generatePDF(document.body);
+});
+
+// Load based on feature flags
+async function initApp() {
+  if (user.isPremium) {
+    const { PremiumFeatures } = await import('./premium.js');
+    PremiumFeatures.init();
+  }
+}
+
+// Load based on environment
+const logger = process.env.NODE_ENV === 'development'
+  ? await import('./devLogger.js')
+  : await import('./prodLogger.js');
+```
+
+### Route-Based Code Splitting
+
+Perfect for single-page applications:
+
+```javascript
+// router.js - Load page components on-demand
+const routes = {
+  '/': () => import('./pages/Home.js'),
+  '/about': () => import('./pages/About.js'),
+  '/dashboard': () => import('./pages/Dashboard.js'),
+  '/settings': () => import('./pages/Settings.js'),
+};
+
+async function navigate(path) {
+  const loadPage = routes[path];
+  
+  if (loadPage) {
+    const pageModule = await loadPage();
+    const Page = pageModule.default;
+    renderPage(Page);
+  }
+}
+
+// User visits /dashboard - only then does Dashboard.js load!
+navigate('/dashboard');
+```
+
+### Feature Detection Loading
+
+Load polyfills only when needed:
+
+```javascript
+// Only load polyfill if browser doesn't support feature
+async function ensureIntersectionObserver() {
+  if (!('IntersectionObserver' in window)) {
+    await import('intersection-observer-polyfill');
+    console.log('Polyfill loaded!');
+  }
+  // Now safe to use IntersectionObserver
+}
+
+// Load heavy library only for specific file types
+async function processFile(file) {
+  if (file.type === 'application/pdf') {
+    const pdfLib = await import('pdf-lib');
+    return pdfLib.PDFDocument.load(file);
+  }
+  
+  if (file.type.startsWith('image/')) {
+    const sharp = await import('sharp');
+    return sharp(file);
+  }
+}
+```
+
+<CodePlayground
+  initialCode={`// Simulating dynamic imports with Promises
+function simulateImport(moduleName) {
+  console.log(\`Loading \${moduleName}...\`);
+  
+  return new Promise((resolve) => {
+    // Simulate network delay
+    setTimeout(() => {
+      console.log(\`\${moduleName} loaded!\`);
+      resolve({
+        default: \`Default export from \${moduleName}\`,
+        helper: () => \`Helper from \${moduleName}\`
+      });
+    }, 1000);
+  });
+}
+
+// Usage
+async function main() {
+  console.log('App starting...');
+  
+  // This would be: const mod = await import('./myModule.js');
+  const mod = await simulateImport('./myModule.js');
+  
+  console.log('Default:', mod.default);
+  console.log('Helper:', mod.helper());
+}
+
+main();`}
+  title="Dynamic Import Simulation"
+/>
+
+<ProgressCheckpoint section="conditional-loading" xpReward={20} />
+
+---
+
+## Section 3: Performance Patterns
+
+### Code Splitting Benefits
+
+Dynamic imports enable **code splitting** — breaking your app into smaller chunks:
+
+```
+Without code splitting:
+┌─────────────────────────────────────┐
+│           bundle.js (2MB)           │  ← User downloads everything
+└─────────────────────────────────────┘
+
+With code splitting:
+┌──────────┐ ┌──────────┐ ┌──────────┐
+│ main.js  │ │ about.js │ │ admin.js │
+│  (200KB) │ │  (150KB) │ │  (500KB) │
+└──────────┘ └──────────┘ └──────────┘
+     ↑            ↑            ↑
+   Always    On demand    Admin only
+```
+
+### Preloading Modules
+
+Load modules in advance for instant access later:
+
+```javascript
+// Preload on hover (anticipate user action)
+document.getElementById('settingsLink').addEventListener('mouseenter', () => {
+  // Start loading before click
+  import('./pages/Settings.js');
+});
+
+// Preload during idle time
+if ('requestIdleCallback' in window) {
+  requestIdleCallback(() => {
+    // Load non-critical modules when browser is idle
+    import('./analytics.js');
+    import('./recommendations.js');
+  });
+}
+
+// Preload with link tag (browser hint)
+// <link rel="modulepreload" href="./heavyModule.js">
+```
+
+### Parallel Loading
+
+Load multiple modules simultaneously:
+
+```javascript
+// ❌ Sequential - slow!
+const moduleA = await import('./moduleA.js');
+const moduleB = await import('./moduleB.js');
+const moduleC = await import('./moduleC.js');
+
+// ✅ Parallel - fast!
+const [moduleA, moduleB, moduleC] = await Promise.all([
+  import('./moduleA.js'),
+  import('./moduleB.js'),
+  import('./moduleC.js')
+]);
+
+// Use the modules
+moduleA.init();
+moduleB.init();
+moduleC.init();
+```
+
+### Lazy Loading Components (React Example)
+
+```javascript
+// React.lazy uses dynamic imports under the hood
+import { lazy, Suspense } from 'react';
+
+// These components load on-demand
+const Dashboard = lazy(() => import('./Dashboard'));
+const Settings = lazy(() => import('./Settings'));
+const Analytics = lazy(() => import('./Analytics'));
+
+function App() {
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <Routes>
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/analytics" element={<Analytics />} />
+      </Routes>
+    </Suspense>
+  );
+}
+```
+
+<InfoBox type="tip">
+**Build Tool Magic:** Bundlers like Webpack, Vite, and Rollup automatically create separate chunks for dynamic imports. Each `import()` becomes a separate file that loads on-demand!
+</InfoBox>
+
+<EventLoopVisualizer />
+
+<ProgressCheckpoint section="performance-patterns" xpReward={20} />
+
+---
+
+## Section 4: Error Handling
+
+### Handling Import Failures
+
+Network issues, missing files, or syntax errors can cause imports to fail:
+
+```javascript
+// Basic error handling
+async function loadFeature() {
+  try {
+    const module = await import('./feature.js');
+    module.init();
+  } catch (error) {
+    console.error('Failed to load feature:', error);
+    // Show fallback UI or retry
+    showErrorMessage('Feature unavailable. Please refresh.');
+  }
+}
+
+// With retry logic
+async function loadWithRetry(modulePath, maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await import(modulePath);
+    } catch (error) {
+      console.warn(`Attempt ${attempt} failed:`, error.message);
+      
+      if (attempt === maxRetries) {
+        throw new Error(`Failed to load ${modulePath} after ${maxRetries} attempts`);
+      }
+      
+      // Wait before retry (exponential backoff)
+      await new Promise(r => setTimeout(r, 1000 * attempt));
+    }
+  }
+}
+```
+
+### Fallback Modules
+
+Provide alternatives when primary module fails:
+
+```javascript
+// Try primary, fall back to alternative
+async function loadChartLibrary() {
+  try {
+    // Try loading the fancy chart library
+    return await import('fancy-charts');
+  } catch {
+    console.warn('Fancy charts unavailable, using basic charts');
+    // Fall back to simpler alternative
+    return await import('./basic-charts.js');
+  }
+}
+
+// Feature detection with fallback
+async function loadImageProcessor() {
+  try {
+    // Try WebAssembly version (faster)
+    const wasmModule = await import('./image-processor.wasm.js');
+    if (wasmModule.isSupported()) {
+      return wasmModule;
+    }
+  } catch {
+    // WASM not supported
+  }
+  
+  // Fall back to JavaScript version
+  return import('./image-processor.js');
+}
+```
+
+### Loading States
+
+Show feedback while modules load:
+
+```javascript
+// With loading indicator
+async function loadHeavyFeature() {
+  const loadingEl = document.getElementById('loading');
+  loadingEl.style.display = 'block';
+  
+  try {
+    const module = await import('./heavyFeature.js');
+    module.render(document.getElementById('app'));
+  } catch (error) {
+    showError('Failed to load feature');
+  } finally {
+    loadingEl.style.display = 'none';
+  }
+}
+
+// Progress tracking (if supported by bundler)
+async function loadWithProgress() {
+  const module = await import(
+    /* webpackChunkName: "analytics" */
+    /* webpackPreload: true */
+    './analytics.js'
+  );
+  return module;
+}
+```
+
+### Quick Knowledge Check
+
+<Quiz id="dynamic-import-return-quiz">
+  <Question>What does import() return?</Question>
+  <Answer>The module directly</Answer>
+  <Answer>An object with exports</Answer>
+  <Answer correct>A Promise that resolves to the module namespace object</Answer>
+  <Answer>undefined</Answer>
+</Quiz>
+
+<Quiz id="default-export-access-quiz">
+  <Question>How do you access a default export from a dynamic import?</Question>
+  <Answer>`const mod = await import('./mod.js')`</Answer>
+  <Answer correct>`const { default: MyComponent } = await import('./mod.js')`</Answer>
+  <Answer>`const mod = await import.default('./mod.js')`</Answer>
+  <Answer>`const mod = await require('./mod.js')`</Answer>
+</Quiz>
+
+<Quiz id="parallel-loading-quiz">
+  <Question>What's the best way to load multiple modules in parallel?</Question>
+  <Answer>Use multiple await statements in sequence</Answer>
+  <Answer correct>Use Promise.all() with multiple import() calls</Answer>
+  <Answer>Use a for loop with await</Answer>
+  <Answer>Dynamic imports are always parallel</Answer>
+</Quiz>
+
+### Summary
+
+| Pattern | Use Case |
+|:--------|:---------|
+| `await import()` | Load module when needed |
+| Conditional loading | Feature flags, user roles |
+| Route-based splitting | SPA page components |
+| `Promise.all()` | Parallel module loading |
+| Preloading | Anticipate user actions |
+| Error handling | Graceful degradation |
+
+<KeyConcept title="What's Next?">
+You've mastered dynamic imports! The final lesson covers:
+- **Module Patterns** - Classic patterns for code organization
+- **Barrel Exports** - Simplify your import statements
+</KeyConcept>
+
+<ProgressCheckpoint section="error-handling" xpReward={15} />

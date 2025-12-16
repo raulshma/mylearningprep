@@ -120,8 +120,8 @@ export const javascriptRoadmap: CreateRoadmap = {
       id: 'type-casting',
       title: 'Type Casting',
       description:
-        'Learn explicit and implicit type conversions in JavaScript.',
-      type: 'topic',
+        'Learn explicit and implicit type conversions in JavaScript — master Number(), String(), Boolean() and understand coercion rules.',
+      type: 'milestone',
       position: { x: 400, y: 360 },
       learningObjectives: [
         { title: 'Type Conversion vs Coercion', lessonId: 'type-conversion-coercion' },
@@ -134,11 +134,16 @@ export const javascriptRoadmap: CreateRoadmap = {
           type: 'article',
           description: 'JavaScript.info type conversions',
         },
+        {
+          title: 'MDN Type Coercion',
+          type: 'documentation',
+          description: 'Mozilla Developer Network guide on type coercion',
+        },
       ],
-      estimatedMinutes: 60,
+      estimatedMinutes: 42,
       difficulty: 3,
       skillCluster: 'frontend',
-      tags: ['javascript', 'type-casting', 'coercion'],
+      tags: ['javascript', 'type-casting', 'coercion', 'conversion'],
     },
 
     // === ROW 4: DATA STRUCTURES ===

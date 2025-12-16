@@ -1,0 +1,485 @@
+# Exception Handling (try/catch/finally)
+
+Things go wrong. Networks fail, users enter invalid data, files don't exist. Exception handling is how JavaScript lets you prepare for the unexpected and respond gracefully instead of crashing.
+
+---
+
+## Section 1: Why Exceptions Matter
+
+### The Safety Net Analogy 🎪
+
+Imagine a trapeze artist performing without a safety net. One slip and it's disaster. Now imagine the same artist with a net below — they can take risks, knowing they'll be caught if they fall.
+
+**Exception handling is your code's safety net:**
+
+| Trapeze | JavaScript |
+|:--------|:-----------|
+| Risky move | Code that might fail |
+| Falling | An error being thrown |
+| Safety net | `try...catch` block |
+| Getting back up | Error recovery code |
+
+<InfoBox type="info">
+**Exceptions** are runtime errors that disrupt normal program flow. Without handling, they crash your program. With `try...catch`, you can intercept them and respond appropriately.
+</InfoBox>
+
+### What Happens Without Error Handling
+
+```javascript
+// ❌ No error handling - program crashes!
+const user = null;
+console.log(user.name); // TypeError: Cannot read property 'name' of null
+console.log("This never runs"); // Never reached!
+
+// ❌ API call without handling
+const data = JSON.parse("invalid json"); // SyntaxError!
+processData(data); // Never reached
+```
+
+### With Error Handling
+
+```javascript
+// ✅ Graceful error handling
+const user = null;
+
+try {
+  console.log(user.name);
+} catch (error) {
+  console.log("User not found, showing default");
+}
+
+console.log("Program continues normally! ✓");
+```
+
+<KeyConcept title="Fail Gracefully">
+Good error handling doesn't prevent errors — it ensures your application can recover from them, provide useful feedback, and continue running when possible.
+</KeyConcept>
+
+<JsControlFlowVisualizer scenario="try-catch-basic" />
+
+<ProgressCheckpoint section="intro-exceptions" xpReward={15} />
+
+---
+
+## Section 2: try...catch Basics
+
+### The Basic Structure
+
+```javascript
+try {
+  // Code that might throw an error
+  riskyOperation();
+} catch (error) {
+  // Code that runs if an error occurs
+  handleError(error);
+}
+```
+
+### How It Works
+
+1. JavaScript executes code in the `try` block
+2. If no error occurs, `catch` is skipped
+3. If an error is thrown, execution jumps to `catch`
+4. The `error` object contains information about what went wrong
+
+```javascript
+// Example: Parsing JSON
+function parseUserData(jsonString) {
+  try {
+    const data = JSON.parse(jsonString);
+    console.log("Parsed successfully:", data);
+    return data;
+  } catch (error) {
+    console.log("Failed to parse JSON:", error.message);
+    return null;
+  }
+}
+
+parseUserData('{"name": "Alice"}'); // Works!
+// Output: Parsed successfully: { name: "Alice" }
+
+parseUserData('invalid json'); // Fails gracefully
+// Output: Failed to parse JSON: Unexpected token 'i'
+```
+
+### The Error Object
+
+When an error is caught, you get an Error object with useful properties:
+
+```javascript
+try {
+  throw new Error("Something went wrong!");
+} catch (error) {
+  console.log(error.name);    // "Error"
+  console.log(error.message); // "Something went wrong!"
+  console.log(error.stack);   // Stack trace (where it happened)
+}
+```
+
+### Built-in Error Types
+
+```javascript
+// Different error types for different situations
+try {
+  // SyntaxError - invalid code structure
+  eval("if if if");
+} catch (e) {
+  console.log(e.name); // "SyntaxError"
+}
+
+try {
+  // ReferenceError - accessing undefined variable
+  console.log(undefinedVariable);
+} catch (e) {
+  console.log(e.name); // "ReferenceError"
+}
+
+try {
+  // TypeError - wrong type operation
+  null.toString();
+} catch (e) {
+  console.log(e.name); // "TypeError"
+}
+
+try {
+  // RangeError - value out of range
+  const arr = new Array(-1);
+} catch (e) {
+  console.log(e.name); // "RangeError"
+}
+```
+
+<CodePlayground
+  initialCode={`// Try different inputs!
+function safeDivide(a, b) {
+  try {
+    if (b === 0) {
+      throw new Error("Cannot divide by zero!");
+    }
+    const result = a / b;
+    console.log(\`\${a} / \${b} = \${result}\`);
+    return result;
+  } catch (error) {
+    console.log("Error:", error.message);
+    return null;
+  }
+}
+
+safeDivide(10, 2);  // Works: 5
+safeDivide(10, 0);  // Error handled gracefully
+
+// Try parsing JSON
+function parseJSON(str) {
+  try {
+    return JSON.parse(str);
+  } catch (e) {
+    console.log("Invalid JSON:", e.message);
+    return {};
+  }
+}
+
+console.log(parseJSON('{"valid": true}'));
+console.log(parseJSON('not json'));`}
+  title="Error Handling Playground"
+/>
+
+<ProgressCheckpoint section="try-catch-basics" xpReward={20} />
+
+---
+
+## Section 3: The finally Block
+
+### Always Runs, No Matter What
+
+The `finally` block executes whether an error occurred or not — perfect for cleanup:
+
+```javascript
+try {
+  // Risky code
+  riskyOperation();
+} catch (error) {
+  // Handle error
+  console.log("Error:", error.message);
+} finally {
+  // Always runs - cleanup code
+  console.log("Cleanup complete");
+}
+```
+
+### The Resource Cleanup Pattern
+
+```javascript
+function readFile(filename) {
+  let file = null;
+  
+  try {
+    file = openFile(filename);
+    const content = file.read();
+    return content;
+  } catch (error) {
+    console.log("Failed to read file:", error.message);
+    return null;
+  } finally {
+    // Always close the file, even if an error occurred
+    if (file) {
+      file.close();
+      console.log("File closed");
+    }
+  }
+}
+```
+
+### finally with return Statements
+
+<InfoBox type="warning">
+**Careful!** A `return` in `finally` overrides returns from `try` or `catch`. This can lead to unexpected behavior!
+</InfoBox>
+
+```javascript
+function tricky() {
+  try {
+    return "from try";
+  } finally {
+    return "from finally"; // This wins!
+  }
+}
+
+console.log(tricky()); // "from finally" — not "from try"!
+
+// Another gotcha:
+function anotherTricky() {
+  try {
+    throw new Error("Oops!");
+  } catch (e) {
+    return "from catch";
+  } finally {
+    return "from finally"; // Overrides catch return!
+  }
+}
+
+console.log(anotherTricky()); // "from finally"
+```
+
+### Real-World Example: Database Connection
+
+```javascript
+async function queryDatabase(sql) {
+  let connection = null;
+  
+  try {
+    connection = await database.connect();
+    const results = await connection.query(sql);
+    return results;
+  } catch (error) {
+    console.error("Database error:", error.message);
+    throw error; // Re-throw for caller to handle
+  } finally {
+    // Always release the connection back to the pool
+    if (connection) {
+      await connection.release();
+      console.log("Connection released");
+    }
+  }
+}
+```
+
+### try...finally (Without catch)
+
+You can use `finally` without `catch` — the error still propagates:
+
+```javascript
+function mustCleanup() {
+  try {
+    doSomethingRisky();
+    // If this throws, error propagates up
+  } finally {
+    // But cleanup still happens first!
+    cleanup();
+  }
+}
+```
+
+<JsControlFlowVisualizer scenario="try-catch-finally" />
+
+<ProgressCheckpoint section="finally-block" xpReward={20} />
+
+---
+
+## Section 4: Throwing Custom Errors
+
+### The throw Statement
+
+You can throw your own errors to signal problems:
+
+```javascript
+function validateAge(age) {
+  if (typeof age !== "number") {
+    throw new TypeError("Age must be a number");
+  }
+  if (age < 0) {
+    throw new RangeError("Age cannot be negative");
+  }
+  if (age > 150) {
+    throw new RangeError("Age seems unrealistic");
+  }
+  return true;
+}
+
+try {
+  validateAge("twenty"); // TypeError
+} catch (error) {
+  console.log(`${error.name}: ${error.message}`);
+  // "TypeError: Age must be a number"
+}
+```
+
+### Creating Custom Error Classes
+
+```javascript
+// Custom error for validation
+class ValidationError extends Error {
+  constructor(field, message) {
+    super(message);
+    this.name = "ValidationError";
+    this.field = field;
+  }
+}
+
+// Custom error for API issues
+class ApiError extends Error {
+  constructor(statusCode, message) {
+    super(message);
+    this.name = "ApiError";
+    this.statusCode = statusCode;
+  }
+}
+
+// Using custom errors
+function validateUser(user) {
+  if (!user.email) {
+    throw new ValidationError("email", "Email is required");
+  }
+  if (!user.email.includes("@")) {
+    throw new ValidationError("email", "Invalid email format");
+  }
+}
+
+try {
+  validateUser({ name: "Alice" });
+} catch (error) {
+  if (error instanceof ValidationError) {
+    console.log(`Field "${error.field}": ${error.message}`);
+    // Field "email": Email is required
+  }
+}
+```
+
+### Re-throwing Errors
+
+Sometimes you want to catch, log, and re-throw:
+
+```javascript
+async function fetchUserData(userId) {
+  try {
+    const response = await fetch(`/api/users/${userId}`);
+    
+    if (!response.ok) {
+      throw new ApiError(response.status, "Failed to fetch user");
+    }
+    
+    return await response.json();
+  } catch (error) {
+    // Log for debugging
+    console.error("fetchUserData failed:", error);
+    
+    // Re-throw for caller to handle
+    throw error;
+  }
+}
+```
+
+### Conditional Catching
+
+Handle different error types differently:
+
+```javascript
+async function processPayment(amount) {
+  try {
+    await chargeCard(amount);
+  } catch (error) {
+    if (error instanceof NetworkError) {
+      // Retry for network issues
+      console.log("Network issue, retrying...");
+      return processPayment(amount);
+    }
+    
+    if (error instanceof InsufficientFundsError) {
+      // User-friendly message
+      showNotification("Insufficient funds. Please try a different card.");
+      return;
+    }
+    
+    if (error instanceof CardDeclinedError) {
+      showNotification("Card declined. Please contact your bank.");
+      return;
+    }
+    
+    // Unknown error - re-throw
+    throw error;
+  }
+}
+```
+
+### Quick Knowledge Check
+
+<Quiz id="finally-runs-quiz">
+  <Question>When does the `finally` block execute?</Question>
+  <Answer>Only when an error occurs</Answer>
+  <Answer>Only when no error occurs</Answer>
+  <Answer correct>Always, regardless of errors</Answer>
+  <Answer>Only if there's a catch block</Answer>
+</Quiz>
+
+<Quiz id="throw-quiz">
+  <Question>What does the `throw` statement do?</Question>
+  <Answer>Logs an error to the console</Answer>
+  <Answer correct>Creates and throws an exception</Answer>
+  <Answer>Catches an error</Answer>
+  <Answer>Ignores an error</Answer>
+</Quiz>
+
+<Quiz id="error-object-quiz">
+  <Question>Which property contains the error description?</Question>
+  <Answer>`error.name`</Answer>
+  <Answer correct>`error.message`</Answer>
+  <Answer>`error.type`</Answer>
+  <Answer>`error.description`</Answer>
+</Quiz>
+
+### Best Practices Summary
+
+| Practice | Description |
+|:---------|:------------|
+| Be specific | Catch specific error types when possible |
+| Don't swallow errors | Always log or handle meaningfully |
+| Use finally for cleanup | Release resources, close connections |
+| Create custom errors | For domain-specific error handling |
+| Fail fast | Throw early when preconditions aren't met |
+| Provide context | Include helpful error messages |
+
+### Summary
+
+| Concept | Description |
+|:--------|:------------|
+| `try` | Wraps code that might throw |
+| `catch` | Handles thrown errors |
+| `finally` | Always executes (cleanup) |
+| `throw` | Creates and throws an error |
+| Error types | TypeError, RangeError, SyntaxError, etc. |
+| Custom errors | Extend Error for domain-specific handling |
+
+<KeyConcept title="Congratulations!">
+You've completed the Control Flow section! You now understand how to make decisions with `if...else`, handle multiple cases with `switch`, write concise conditionals with the ternary operator, and handle errors gracefully with `try...catch...finally`.
+</KeyConcept>
+
+<ProgressCheckpoint section="throwing-errors" xpReward={25} />

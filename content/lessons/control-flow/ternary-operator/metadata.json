@@ -1,0 +1,18 @@
+{
+  "id": "ternary-operator",
+  "title": "Ternary Operator",
+  "description": "Master the conditional (ternary) operator for concise inline conditional expressions in JavaScript.",
+  "milestone": "control-flow",
+  "order": 3,
+  "sections": [
+    "intro-ternary",
+    "ternary-syntax",
+    "nested-ternary",
+    "when-to-use"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 10,
+  "xpReward": 55,
+  "prerequisites": ["if-else-statements"],
+  "tags": ["javascript", "control-flow", "ternary", "operators", "conditionals"]
+}

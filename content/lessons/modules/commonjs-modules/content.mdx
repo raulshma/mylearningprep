@@ -1,0 +1,442 @@
+# CommonJS Modules
+
+Before ES Modules became the standard, Node.js needed a way to organize code. Enter **CommonJS** — the module system that powered Node.js from the beginning and is still widely used today.
+
+---
+
+## Section 1: CommonJS Basics
+
+### The Shipping Container Analogy 📦
+
+Think of CommonJS like shipping containers at a port:
+
+- **`module.exports`** = Packing items into a container to ship out
+- **`require()`** = Receiving and unpacking a container
+
+| Shipping | CommonJS |
+|:---------|:---------|
+| Pack items in container | `module.exports = { ... }` |
+| Ship container | Save the file |
+| Receive container | `require('./file')` |
+| Unpack items | Use the imported values |
+
+<InfoBox type="info">
+**CommonJS** was created in 2009 for server-side JavaScript. It's synchronous (loads files one at a time) and was designed before browsers supported modules natively.
+</InfoBox>
+
+### Your First CommonJS Module
+
+```javascript
+// greetings.js - Exporting with CommonJS
+const greeting = "Hello";
+
+function sayHello(name) {
+  return `${greeting}, ${name}!`;
+}
+
+function sayGoodbye(name) {
+  return `Goodbye, ${name}!`;
+}
+
+// Export multiple items
+module.exports = {
+  sayHello,
+  sayGoodbye
+};
+```
+
+```javascript
+// app.js - Importing with require()
+const greetings = require('./greetings');
+
+console.log(greetings.sayHello('Alice'));   // "Hello, Alice!"
+console.log(greetings.sayGoodbye('Bob'));   // "Goodbye, Bob!"
+
+// Or destructure immediately
+const { sayHello, sayGoodbye } = require('./greetings');
+console.log(sayHello('Charlie')); // "Hello, Charlie!"
+```
+
+<KeyConcept title="The require() Function">
+`require()` is synchronous — it blocks execution until the module is loaded. This is fine for server-side code but not ideal for browsers (which is why ES Modules use async loading).
+</KeyConcept>
+
+<ScopeChainVisualizer />
+
+<ProgressCheckpoint section="commonjs-basics" xpReward={20} />
+
+---
+
+## Section 2: Export Patterns
+
+### Pattern 1: Export an Object
+
+The most common pattern — export multiple named items:
+
+```javascript
+// utils.js
+function formatDate(date) {
+  return date.toISOString().split('T')[0];
+}
+
+function formatCurrency(amount) {
+  return `$${amount.toFixed(2)}`;
+}
+
+const TAX_RATE = 0.08;
+
+// Export as an object
+module.exports = {
+  formatDate,
+  formatCurrency,
+  TAX_RATE
+};
+```
+
+### Pattern 2: Export a Single Function
+
+When your module does one thing:
+
+```javascript
+// logger.js
+function log(message, level = 'info') {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] [${level.toUpperCase()}] ${message}`);
+}
+
+// Export the function directly
+module.exports = log;
+```
+
+```javascript
+// Usage
+const log = require('./logger');
+log('Server started');           // [2024-12-17T...] [INFO] Server started
+log('Database error', 'error');  // [2024-12-17T...] [ERROR] Database error
+```
+
+### Pattern 3: Export a Class
+
+Perfect for services and models:
+
+```javascript
+// UserService.js
+class UserService {
+  constructor(database) {
+    this.db = database;
+  }
+
+  async findById(id) {
+    return this.db.query('SELECT * FROM users WHERE id = ?', [id]);
+  }
+
+  async create(userData) {
+    return this.db.insert('users', userData);
+  }
+}
+
+module.exports = UserService;
+```
+
+```javascript
+// Usage
+const UserService = require('./UserService');
+const userService = new UserService(database);
+const user = await userService.findById(123);
+```
+
+### Pattern 4: Export a Factory Function
+
+When you need configuration:
+
+```javascript
+// createApp.js
+function createApp(config) {
+  const app = {
+    name: config.name,
+    port: config.port || 3000,
+    
+    start() {
+      console.log(`${this.name} running on port ${this.port}`);
+    }
+  };
+  
+  return app;
+}
+
+module.exports = createApp;
+```
+
+```javascript
+// Usage
+const createApp = require('./createApp');
+const app = createApp({ name: 'MyAPI', port: 8080 });
+app.start(); // "MyAPI running on port 8080"
+```
+
+### exports vs module.exports
+
+<InfoBox type="warning">
+**Gotcha Alert!** `exports` is just a shortcut to `module.exports`. But if you reassign `exports`, you break the reference!
+</InfoBox>
+
+```javascript
+// ✅ This works - adding to exports
+exports.add = (a, b) => a + b;
+exports.subtract = (a, b) => a - b;
+
+// ✅ This works - reassigning module.exports
+module.exports = { add, subtract };
+
+// ❌ This BREAKS - reassigning exports
+exports = { add, subtract }; // Doesn't export anything!
+```
+
+<Comparison
+  title="exports vs module.exports"
+  items={[
+    {
+      label: "exports.name = value",
+      description: "Add properties to the exports object. Works for multiple named exports.",
+      isCorrect: true
+    },
+    {
+      label: "module.exports = value",
+      description: "Replace the entire export. Use for single exports or complete objects.",
+      isCorrect: true
+    },
+    {
+      label: "exports = value",
+      description: "Breaks the reference! Your exports won't work.",
+      isCorrect: false
+    }
+  ]}
+/>
+
+<ProgressCheckpoint section="exports-patterns" xpReward={20} />
+
+---
+
+## Section 3: How require() Works
+
+### The Module Resolution Algorithm
+
+When you call `require()`, Node.js follows these steps:
+
+```javascript
+// Different require paths
+require('./utils');           // 1. Relative path - look in same directory
+require('../lib/helpers');    // 2. Relative path - go up, then into lib
+require('lodash');            // 3. Package name - look in node_modules
+require('/absolute/path');    // 4. Absolute path - exact location
+```
+
+<InfoBox type="tip">
+**File Extensions:** Node.js tries these extensions in order: `.js`, `.json`, `.node`. You can omit `.js` in require statements!
+</InfoBox>
+
+### Module Caching
+
+Modules are cached after first load — `require()` returns the **same instance**:
+
+```javascript
+// counter.js
+let count = 0;
+
+module.exports = {
+  increment() { return ++count; },
+  getCount() { return count; }
+};
+```
+
+```javascript
+// app.js
+const counter1 = require('./counter');
+const counter2 = require('./counter'); // Same instance!
+
+console.log(counter1.increment()); // 1
+console.log(counter2.increment()); // 2 (not 1!)
+console.log(counter1.getCount()); // 2
+
+console.log(counter1 === counter2); // true - same object!
+```
+
+### The require.cache
+
+You can inspect and even clear the cache:
+
+```javascript
+// See what's cached
+console.log(require.cache);
+
+// Clear a specific module from cache (for hot reloading)
+delete require.cache[require.resolve('./myModule')];
+
+// Now require will reload the file
+const freshModule = require('./myModule');
+```
+
+### Circular Dependencies
+
+CommonJS handles circular dependencies, but be careful:
+
+```javascript
+// a.js
+console.log('a.js starting');
+exports.done = false;
+const b = require('./b'); // b.js runs here
+console.log('in a.js, b.done =', b.done);
+exports.done = true;
+console.log('a.js done');
+
+// b.js
+console.log('b.js starting');
+exports.done = false;
+const a = require('./a'); // Gets PARTIAL exports from a.js!
+console.log('in b.js, a.done =', a.done); // false (not true!)
+exports.done = true;
+console.log('b.js done');
+```
+
+<CodePlayground
+  initialCode={`// Simulating CommonJS module caching
+const moduleCache = {};
+
+function require(moduleName) {
+  // Check cache first
+  if (moduleCache[moduleName]) {
+    console.log(\`Cache hit for \${moduleName}\`);
+    return moduleCache[moduleName].exports;
+  }
+  
+  // Create new module
+  console.log(\`Loading \${moduleName} for first time\`);
+  const module = { exports: {} };
+  moduleCache[moduleName] = module;
+  
+  // Simulate module code
+  module.exports = { value: Math.random() };
+  
+  return module.exports;
+}
+
+// First require - loads module
+const mod1 = require('myModule');
+console.log('mod1.value:', mod1.value);
+
+// Second require - uses cache
+const mod2 = require('myModule');
+console.log('mod2.value:', mod2.value);
+
+console.log('Same instance?', mod1 === mod2);`}
+  title="Module Caching Demo"
+/>
+
+<ProgressCheckpoint section="require-mechanics" xpReward={15} />
+
+---
+
+## Section 4: CommonJS vs ES Modules
+
+### Key Differences
+
+| Feature | CommonJS | ES Modules |
+|:--------|:---------|:-----------|
+| Syntax | `require()` / `module.exports` | `import` / `export` |
+| Loading | Synchronous | Asynchronous |
+| Evaluation | Runtime | Compile time (static) |
+| Exports | Copy of value | Live binding |
+| Top-level await | ❌ Not supported | ✅ Supported |
+| Tree shaking | ❌ Difficult | ✅ Built-in |
+| Browser support | ❌ Needs bundler | ✅ Native |
+
+### Syntax Comparison
+
+```javascript
+// CommonJS
+const { readFile } = require('fs');
+const lodash = require('lodash');
+const myModule = require('./myModule');
+
+module.exports = { myFunction };
+module.exports = MyClass;
+
+// ES Modules
+import { readFile } from 'fs';
+import lodash from 'lodash';
+import myModule from './myModule.js';
+
+export { myFunction };
+export default MyClass;
+```
+
+### When to Use Which?
+
+<InfoBox type="tip">
+**Use ES Modules when:**
+- Writing new code
+- Building for browsers
+- You need tree shaking
+- Using top-level await
+
+**Use CommonJS when:**
+- Working with legacy Node.js code
+- Dynamic requires are needed
+- Older Node.js versions (< 12)
+</InfoBox>
+
+### Interoperability
+
+Modern Node.js supports both! You can mix them:
+
+```javascript
+// In an ES Module file (.mjs or "type": "module" in package.json)
+import cjsModule from './legacy.cjs'; // Import CommonJS
+
+// In a CommonJS file
+const esmModule = await import('./modern.mjs'); // Dynamic import ESM
+```
+
+### Quick Knowledge Check
+
+<Quiz id="commonjs-syntax-quiz">
+  <Question>What's the correct way to export multiple items in CommonJS?</Question>
+  <Answer>`export { item1, item2 }`</Answer>
+  <Answer correct>`module.exports = { item1, item2 }`</Answer>
+  <Answer>`exports = { item1, item2 }`</Answer>
+  <Answer>`require.exports = { item1, item2 }`</Answer>
+</Quiz>
+
+<Quiz id="require-cache-quiz">
+  <Question>What happens when you require the same module twice?</Question>
+  <Answer>The module code runs twice</Answer>
+  <Answer>You get an error</Answer>
+  <Answer correct>You get the cached instance from the first require</Answer>
+  <Answer>Node.js creates two separate instances</Answer>
+</Quiz>
+
+<Quiz id="cjs-vs-esm-quiz">
+  <Question>Which is a key advantage of ES Modules over CommonJS?</Question>
+  <Answer>Synchronous loading</Answer>
+  <Answer correct>Tree shaking for smaller bundles</Answer>
+  <Answer>Works in older Node.js versions</Answer>
+  <Answer>Simpler syntax</Answer>
+</Quiz>
+
+### Summary
+
+| Concept | Key Point |
+|:--------|:----------|
+| `module.exports` | The object that gets returned by `require()` |
+| `exports` | Shortcut to `module.exports` (don't reassign!) |
+| `require()` | Synchronous, cached module loading |
+| Caching | Same module = same instance everywhere |
+| vs ESM | CommonJS is sync, ESM is async with live bindings |
+
+<KeyConcept title="What's Next?">
+You now understand both major module systems! Next up:
+- **Dynamic Imports** - Load modules on-demand with `import()`
+- **Module Patterns** - Advanced organization techniques
+</KeyConcept>
+
+<ProgressCheckpoint section="commonjs-vs-esm" xpReward={15} />

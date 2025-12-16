@@ -1,0 +1,18 @@
+{
+  "id": "iterator-protocol",
+  "title": "Iterator Protocol",
+  "description": "Master the iterator protocol - the standard way to produce a sequence of values in JavaScript with next(), value, and done.",
+  "milestone": "iterators-generators",
+  "order": 1,
+  "sections": [
+    "what-is-iterator",
+    "next-method",
+    "iterator-result",
+    "custom-iterator"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 12,
+  "xpReward": 80,
+  "prerequisites": [],
+  "tags": ["javascript", "iterators", "protocol", "next", "done"]
+}

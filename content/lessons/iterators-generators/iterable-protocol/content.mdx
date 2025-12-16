@@ -1,0 +1,393 @@
+# Iterable Protocol
+
+You've learned how iterators work with `next()`. But how does JavaScript know an object *can* be iterated? That's where the **Iterable Protocol** comes in — it's the handshake that says "Hey, I can give you an iterator!"
+
+---
+
+## Section 1: What Makes Something Iterable?
+
+### The Library Card Analogy 📚
+
+Think of the Iterable Protocol like a library system:
+
+| Library | JavaScript |
+|:--------|:-----------|
+| Library card | `[Symbol.iterator]` method |
+| Borrowing books | Getting an iterator |
+| Reading one book at a time | Calling `next()` |
+| Any library with a card system | Any iterable object |
+
+Without a library card (Symbol.iterator), you can't borrow books (iterate). The card doesn't give you books directly — it gives you *access* to the borrowing system.
+
+<InfoBox type="info">
+The **Iterable Protocol** defines that an object must have a `[Symbol.iterator]` method that returns an iterator. This is what enables `for...of` loops, spread syntax, and destructuring.
+</InfoBox>
+
+### Iterator vs Iterable
+
+These two are often confused, but they're different:
+
+| Iterable | Iterator |
+|:---------|:---------|
+| Has `[Symbol.iterator]()` method | Has `next()` method |
+| *Produces* an iterator | *Is* the thing that iterates |
+| Can be used with `for...of` | Returns `{ value, done }` |
+| Example: Array, String, Map | Example: What `[Symbol.iterator]()` returns |
+
+```javascript
+const array = [1, 2, 3];           // Iterable (has Symbol.iterator)
+const iterator = array[Symbol.iterator](); // Iterator (has next())
+
+// The iterable produces the iterator
+typeof array[Symbol.iterator];     // 'function'
+typeof iterator.next;              // 'function'
+```
+
+<KeyConcept title="The Relationship">
+An **iterable** is a factory that creates **iterators**. When you use `for...of`, JavaScript calls `[Symbol.iterator]()` to get an iterator, then repeatedly calls `next()` until `done` is `true`.
+</KeyConcept>
+
+<IterableBuilder />
+
+<ProgressCheckpoint section="what-is-iterable" xpReward={20} />
+
+---
+
+## Section 2: Symbol.iterator Explained
+
+### What is Symbol.iterator?
+
+`Symbol.iterator` is a built-in symbol that serves as a special key:
+
+```javascript
+// Symbol.iterator is a unique, built-in symbol
+console.log(Symbol.iterator); // Symbol(Symbol.iterator)
+
+// It's used as a method name
+const iterable = {
+  [Symbol.iterator]() {
+    // Return an iterator
+    return {
+      next() {
+        return { done: true };
+      }
+    };
+  }
+};
+```
+
+### Why Use a Symbol?
+
+Symbols prevent naming collisions:
+
+```javascript
+// ❌ If we used a string property name
+const obj = {
+  iterator() { /* ... */ }  // Could conflict with user's "iterator" property
+};
+
+// ✅ Symbols are unique and won't conflict
+const obj = {
+  [Symbol.iterator]() { /* ... */ }  // Safe, unique key
+};
+```
+
+<InfoBox type="tip">
+Using `Symbol.iterator` instead of a string like `"iterator"` ensures the protocol works even if an object already has a property named "iterator" for other purposes.
+</InfoBox>
+
+### How for...of Uses Symbol.iterator
+
+Here's what happens behind the scenes:
+
+```javascript
+const fruits = ['🍎', '🍌', '🍒'];
+
+// When you write:
+for (const fruit of fruits) {
+  console.log(fruit);
+}
+
+// JavaScript does this internally:
+const iterator = fruits[Symbol.iterator]();
+let result = iterator.next();
+
+while (!result.done) {
+  const fruit = result.value;
+  console.log(fruit);
+  result = iterator.next();
+}
+```
+
+<ProgressCheckpoint section="symbol-iterator" xpReward={20} />
+
+---
+
+## Section 3: Built-in Iterables
+
+### What's Iterable Out of the Box?
+
+JavaScript provides many built-in iterables:
+
+| Type | Example | Iterates Over |
+|:-----|:--------|:--------------|
+| Array | `[1, 2, 3]` | Elements |
+| String | `'hello'` | Characters |
+| Map | `new Map()` | [key, value] pairs |
+| Set | `new Set()` | Values |
+| TypedArray | `new Uint8Array()` | Elements |
+| arguments | `function args` | Arguments |
+| NodeList | `document.querySelectorAll()` | DOM nodes |
+
+```javascript
+// String iteration
+for (const char of 'Hi! 👋') {
+  console.log(char); // 'H', 'i', '!', ' ', '👋'
+}
+
+// Map iteration
+const map = new Map([['a', 1], ['b', 2]]);
+for (const [key, value] of map) {
+  console.log(`${key}: ${value}`); // 'a: 1', 'b: 2'
+}
+
+// Set iteration
+const set = new Set([1, 2, 2, 3]);
+for (const num of set) {
+  console.log(num); // 1, 2, 3 (no duplicates)
+}
+```
+
+### What's NOT Iterable?
+
+Plain objects are **not** iterable by default:
+
+```javascript
+const person = { name: 'Alice', age: 30 };
+
+// ❌ This throws an error!
+for (const value of person) {
+  console.log(value);
+}
+// TypeError: person is not iterable
+
+// ✅ Use Object.keys(), Object.values(), or Object.entries()
+for (const [key, value] of Object.entries(person)) {
+  console.log(`${key}: ${value}`);
+}
+```
+
+<InfoBox type="warning">
+Plain objects `{}` don't have `[Symbol.iterator]` by default. Use `Object.keys()`, `Object.values()`, or `Object.entries()` to iterate over them, or implement the protocol yourself.
+</InfoBox>
+
+### Syntaxes That Consume Iterables
+
+Many JavaScript features work with iterables:
+
+```javascript
+const nums = [1, 2, 3];
+
+// for...of loop
+for (const n of nums) { /* ... */ }
+
+// Spread operator
+const copy = [...nums];           // [1, 2, 3]
+const merged = [...nums, 4, 5];   // [1, 2, 3, 4, 5]
+
+// Destructuring
+const [first, second] = nums;     // first=1, second=2
+
+// Array.from()
+Array.from(nums);                 // [1, 2, 3]
+
+// new Set() / new Map()
+new Set(nums);                    // Set {1, 2, 3}
+
+// Promise.all()
+Promise.all(nums.map(n => Promise.resolve(n)));
+
+// yield*
+function* gen() { yield* nums; }
+```
+
+<ProgressCheckpoint section="built-in-iterables" xpReward={20} />
+
+---
+
+## Section 4: Creating Custom Iterables
+
+### Making Any Object Iterable
+
+Let's make a custom `Range` class iterable:
+
+```javascript
+class Range {
+  constructor(start, end) {
+    this.start = start;
+    this.end = end;
+  }
+  
+  // Implement the iterable protocol
+  [Symbol.iterator]() {
+    let current = this.start;
+    const end = this.end;
+    
+    // Return an iterator
+    return {
+      next() {
+        if (current <= end) {
+          return { value: current++, done: false };
+        }
+        return { done: true };
+      }
+    };
+  }
+}
+
+const range = new Range(1, 5);
+
+// Now it works with for...of!
+for (const num of range) {
+  console.log(num); // 1, 2, 3, 4, 5
+}
+
+// And spread!
+console.log([...range]); // [1, 2, 3, 4, 5]
+```
+
+### Iterable Iterator Pattern
+
+Often, you want an object to be both iterable AND an iterator:
+
+```javascript
+const counter = {
+  count: 0,
+  max: 3,
+  
+  // Iterator protocol
+  next() {
+    if (this.count < this.max) {
+      return { value: this.count++, done: false };
+    }
+    return { done: true };
+  },
+  
+  // Iterable protocol - returns itself!
+  [Symbol.iterator]() {
+    return this;
+  }
+};
+
+// Works as iterator
+console.log(counter.next()); // { value: 0, done: false }
+
+// Also works with for...of (but continues from where we left off)
+for (const n of counter) {
+  console.log(n); // 1, 2
+}
+```
+
+<InfoBox type="tip">
+When `[Symbol.iterator]()` returns `this`, the object is an **iterable iterator**. This is the pattern used by generator objects and built-in iterators.
+</InfoBox>
+
+### Infinite Iterables
+
+Iterables don't have to be finite:
+
+```javascript
+const infiniteNumbers = {
+  [Symbol.iterator]() {
+    let n = 0;
+    return {
+      next() {
+        return { value: n++, done: false }; // Never done!
+      }
+    };
+  }
+};
+
+// ⚠️ Don't spread infinite iterables!
+// [...infiniteNumbers] // 💥 Infinite loop!
+
+// ✅ Use with break or take a limited amount
+for (const num of infiniteNumbers) {
+  if (num > 5) break;
+  console.log(num); // 0, 1, 2, 3, 4, 5
+}
+```
+
+<CodePlayground
+  initialCode={`// Create an iterable that produces random numbers
+const randomNumbers = {
+  [Symbol.iterator]() {
+    let count = 0;
+    const max = 5;
+    
+    return {
+      next() {
+        if (count < max) {
+          count++;
+          return { 
+            value: Math.floor(Math.random() * 100), 
+            done: false 
+          };
+        }
+        return { done: true };
+      }
+    };
+  }
+};
+
+// Each iteration produces new random numbers
+console.log('First iteration:');
+console.log([...randomNumbers]);
+
+console.log('Second iteration:');
+console.log([...randomNumbers]);`}
+  title="Custom Random Number Iterable"
+/>
+
+### Quick Knowledge Check
+
+<Quiz id="iterable-method-quiz">
+  <Question>What method must an object have to be iterable?</Question>
+  <Answer>next()</Answer>
+  <Answer>iterate()</Answer>
+  <Answer correct>[Symbol.iterator]()</Answer>
+  <Answer>forEach()</Answer>
+</Quiz>
+
+<Quiz id="iterable-returns-quiz">
+  <Question>What does [Symbol.iterator]() return?</Question>
+  <Answer>The first value</Answer>
+  <Answer>An array of values</Answer>
+  <Answer correct>An iterator object with a next() method</Answer>
+  <Answer>A boolean</Answer>
+</Quiz>
+
+<Quiz id="plain-object-quiz">
+  <Question>Are plain objects {} iterable by default?</Question>
+  <Answer>Yes, they iterate over keys</Answer>
+  <Answer>Yes, they iterate over values</Answer>
+  <Answer correct>No, they need Symbol.iterator implemented</Answer>
+  <Answer>Yes, but only with for...in</Answer>
+</Quiz>
+
+### Summary
+
+| Concept | Description |
+|:--------|:------------|
+| Iterable | Object with `[Symbol.iterator]()` method |
+| Symbol.iterator | Built-in symbol used as method key |
+| Returns | An iterator object |
+| Built-in iterables | Array, String, Map, Set, TypedArray |
+| NOT iterable | Plain objects `{}` |
+| Enables | `for...of`, spread, destructuring |
+
+<KeyConcept title="What's Next?">
+You now understand both protocols! Next, learn about **Generator Functions** — a powerful syntax that makes creating iterators incredibly easy with `function*` and `yield`.
+</KeyConcept>
+
+<ProgressCheckpoint section="custom-iterable" xpReward={20} />

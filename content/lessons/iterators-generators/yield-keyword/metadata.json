@@ -1,0 +1,18 @@
+{
+  "id": "yield-keyword",
+  "title": "yield Keyword",
+  "description": "Deep dive into the yield keyword - pause execution, produce values, and enable two-way communication between generators and callers.",
+  "milestone": "iterators-generators",
+  "order": 4,
+  "sections": [
+    "yield-basics",
+    "yield-expression",
+    "two-way-communication",
+    "advanced-patterns"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 14,
+  "xpReward": 85,
+  "prerequisites": ["iterators-generators/generator-functions"],
+  "tags": ["javascript", "yield", "generators", "coroutines", "two-way-communication"]
+}

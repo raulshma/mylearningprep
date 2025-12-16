@@ -1,0 +1,19 @@
+{
+  "id": "explicit-type-casting",
+  "title": "Explicit Type Casting",
+  "description": "Master the art of intentional type conversion using JavaScript's built-in functions like Number(), String(), Boolean(), and more.",
+  "milestone": "type-casting",
+  "order": 2,
+  "sections": [
+    "intro-explicit",
+    "number-conversion",
+    "string-conversion",
+    "boolean-conversion",
+    "advanced-techniques"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 15,
+  "xpReward": 75,
+  "prerequisites": ["type-conversion-coercion"],
+  "tags": ["javascript", "type-casting", "explicit", "Number", "String", "Boolean", "parseInt", "parseFloat"]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "commonjs-modules",
+  "title": "CommonJS Modules",
+  "description": "Learn the Node.js module system with require() and module.exports for server-side JavaScript development.",
+  "milestone": "modules",
+  "order": 2,
+  "sections": [
+    "commonjs-basics",
+    "exports-patterns",
+    "require-mechanics",
+    "commonjs-vs-esm"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 12,
+  "xpReward": 70,
+  "prerequisites": ["modules/es-modules"],
+  "tags": ["javascript", "modules", "nodejs", "commonjs", "require"]
+}

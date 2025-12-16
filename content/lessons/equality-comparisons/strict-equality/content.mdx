@@ -1,0 +1,331 @@
+# Strict Equality (===)
+
+After the chaos of loose equality, strict equality is like a breath of fresh air. No type coercion, no surprises — just straightforward comparison. If the types don't match, it's `false`. Period.
+
+---
+
+## Section 1: What is Strict Equality?
+
+### The Strict Librarian Analogy 📚
+
+Imagine a very particular librarian. When you ask "Is this the same book?", they check:
+1. Is it the same **edition**? (type)
+2. Is it the same **content**? (value)
+
+If either differs, the answer is "No" — no exceptions, no "close enough."
+
+**JavaScript's `===` operator works exactly like this:**
+
+| Comparison | Types Match? | Values Match? | Result |
+|:-----------|:-------------|:--------------|:-------|
+| `5 === 5` | ✅ number | ✅ same | `true` |
+| `"5" === 5` | ❌ string vs number | — | `false` |
+| `"5" === "5"` | ✅ string | ✅ same | `true` |
+| `true === 1` | ❌ boolean vs number | — | `false` |
+
+<InfoBox type="info">
+**Strict Equality** (`===`) compares both **type AND value** without any type conversion. Different types = `false`, always.
+</InfoBox>
+
+### The Triple Equals Algorithm
+
+The algorithm is beautifully simple:
+
+```javascript
+// Step 1: Check if types are the same
+"5" === 5        // string !== number → false (stop here!)
+true === 1       // boolean !== number → false (stop here!)
+
+// Step 2: If types match, compare values
+5 === 5          // number === number, 5 === 5 → true
+"hello" === "hi" // string === string, "hello" !== "hi" → false
+null === null    // null === null → true
+```
+
+<KeyConcept title="The Beauty of ===">
+Strict equality is predictable. If you know the types, you know the result. No mental gymnastics required!
+</KeyConcept>
+
+<ProgressCheckpoint section="intro-strict-equality" xpReward={15} />
+
+---
+
+## Section 2: How Strict Equality Works
+
+### Type-by-Type Breakdown
+
+```javascript
+// === PRIMITIVES ===
+
+// Numbers
+42 === 42           // true
+42 === 42.0         // true (same numeric value)
+0 === -0            // true (!) — we'll discuss this
+NaN === NaN         // false (!) — the one quirk
+
+// Strings
+"hello" === "hello" // true
+"Hello" === "hello" // false (case-sensitive)
+"" === ""           // true
+
+// Booleans
+true === true       // true
+false === false     // true
+true === false      // false
+
+// null and undefined
+null === null           // true
+undefined === undefined // true
+null === undefined      // false (!) — different types
+
+// === OBJECTS (Reference Comparison) ===
+
+// Objects compare by reference, not value
+const obj1 = { a: 1 };
+const obj2 = { a: 1 };
+const obj3 = obj1;
+
+obj1 === obj2       // false (different objects in memory)
+obj1 === obj3       // true (same reference)
+
+// Same for arrays
+[1, 2] === [1, 2]   // false (different arrays)
+const arr = [1, 2];
+arr === arr         // true (same reference)
+```
+
+### Visual Comparison
+
+<EqualityComparisonVisualizer mode="strict" />
+
+### Comparing with Loose Equality
+
+| Expression | `==` (Loose) | `===` (Strict) | Why Different? |
+|:-----------|:-------------|:---------------|:---------------|
+| `"5" == 5` | `true` | `false` | Loose converts string to number |
+| `0 == false` | `true` | `false` | Loose converts boolean to number |
+| `"" == false` | `true` | `false` | Both convert to 0 with loose |
+| `null == undefined` | `true` | `false` | Special loose equality rule |
+| `[1] == "1"` | `true` | `false` | Loose converts array to string |
+
+<CodePlayground
+  initialCode={`// Compare loose vs strict equality
+const comparisons = [
+  { left: "5", right: 5 },
+  { left: 0, right: false },
+  { left: "", right: false },
+  { left: null, right: undefined },
+  { left: [1], right: "1" },
+];
+
+comparisons.forEach(({ left, right }) => {
+  console.log(\`\${JSON.stringify(left)} vs \${JSON.stringify(right)}\`);
+  console.log(\`  == : \${left == right}\`);
+  console.log(\`  === : \${left === right}\`);
+  console.log("");
+});`}
+  title="Loose vs Strict Comparison"
+/>
+
+<ProgressCheckpoint section="how-it-works" xpReward={15} />
+
+---
+
+## Section 3: Special Cases
+
+### The Two Quirks of Strict Equality
+
+Even strict equality has two edge cases that might surprise you:
+
+#### Quirk #1: NaN is Not Equal to Itself
+
+```javascript
+NaN === NaN  // false (!)
+
+// This is by design (IEEE 754 floating-point standard)
+// NaN represents "Not a Number" — an invalid computation result
+// Two invalid results aren't necessarily the same
+
+// How to check for NaN:
+const value = NaN;
+
+// ❌ Don't do this
+if (value === NaN) { } // Never true!
+
+// ✅ Do this instead
+if (Number.isNaN(value)) { } // true
+if (Object.is(value, NaN)) { } // true (ES6+)
+```
+
+#### Quirk #2: Positive and Negative Zero
+
+```javascript
++0 === -0  // true (!)
+
+// JavaScript treats +0 and -0 as equal
+// But they're mathematically different:
+1 / +0   // Infinity
+1 / -0   // -Infinity
+
+// To distinguish them:
+Object.is(+0, -0)  // false
+1 / +0 === 1 / -0  // false (Infinity !== -Infinity)
+```
+
+<InfoBox type="warning">
+**Remember**: `NaN === NaN` is `false`, and `+0 === -0` is `true`. These are the only "surprises" with strict equality. Use `Object.is()` if you need to handle these cases differently.
+</InfoBox>
+
+### Object Reference Comparison
+
+A common source of confusion:
+
+```javascript
+// Objects with identical content are NOT strictly equal
+const user1 = { name: "Alice", age: 30 };
+const user2 = { name: "Alice", age: 30 };
+
+user1 === user2  // false (different objects!)
+
+// They're only equal if they're the same reference
+const user3 = user1;
+user1 === user3  // true (same object!)
+
+// Same applies to arrays
+[1, 2, 3] === [1, 2, 3]  // false
+
+// And functions
+const fn1 = () => {};
+const fn2 = () => {};
+fn1 === fn2  // false
+```
+
+### How to Compare Object Values
+
+```javascript
+// Option 1: JSON.stringify (simple objects only)
+JSON.stringify(user1) === JSON.stringify(user2)  // true
+// ⚠️ Doesn't work with functions, undefined, or circular refs
+
+// Option 2: Manual comparison
+function shallowEqual(obj1, obj2) {
+  const keys1 = Object.keys(obj1);
+  const keys2 = Object.keys(obj2);
+  
+  if (keys1.length !== keys2.length) return false;
+  
+  return keys1.every(key => obj1[key] === obj2[key]);
+}
+
+// Option 3: Use a library (lodash, fast-deep-equal, etc.)
+// import isEqual from 'lodash/isEqual';
+// isEqual(user1, user2)  // true
+```
+
+<ProgressCheckpoint section="special-cases" xpReward={15} />
+
+---
+
+## Section 4: Best Practices
+
+### Always Prefer Strict Equality
+
+```javascript
+// ❌ Avoid loose equality
+if (value == null) { }      // Only exception!
+if (count == 0) { }         // Could match "", false, null
+if (name == "admin") { }    // Could match object with toString()
+
+// ✅ Use strict equality
+if (value === null || value === undefined) { }
+if (count === 0) { }
+if (name === "admin") { }
+```
+
+### Type Checking Patterns
+
+```javascript
+// Check type before comparing
+function processInput(input) {
+  // Validate type first
+  if (typeof input !== "string") {
+    throw new TypeError("Expected a string");
+  }
+  
+  // Now safe to use strict equality
+  if (input === "") {
+    return "Empty input";
+  }
+  
+  return input.toUpperCase();
+}
+
+// Or use explicit conversion
+function compareNumbers(a, b) {
+  const numA = Number(a);
+  const numB = Number(b);
+  
+  // Handle NaN
+  if (Number.isNaN(numA) || Number.isNaN(numB)) {
+    return false;
+  }
+  
+  return numA === numB;
+}
+```
+
+### ESLint Configuration
+
+Most projects enforce strict equality via ESLint:
+
+```javascript
+// .eslintrc.js
+module.exports = {
+  rules: {
+    "eqeqeq": ["error", "always", { "null": "ignore" }]
+    // Requires === except for null checks
+  }
+};
+```
+
+### Quick Knowledge Check
+
+<Quiz id="strict-equality-types-quiz">
+  <Question>What is the result of `"5" === 5`?</Question>
+  <Answer>true</Answer>
+  <Answer correct>false</Answer>
+  <Answer>TypeError</Answer>
+  <Answer>undefined</Answer>
+</Quiz>
+
+<Quiz id="strict-equality-nan-quiz">
+  <Question>What is the result of `NaN === NaN`?</Question>
+  <Answer>true</Answer>
+  <Answer correct>false</Answer>
+  <Answer>TypeError</Answer>
+  <Answer>NaN</Answer>
+</Quiz>
+
+<Quiz id="strict-equality-objects-quiz">
+  <Question>Why is `{a: 1} === {a: 1}` false?</Question>
+  <Answer>The values are different</Answer>
+  <Answer>The types are different</Answer>
+  <Answer correct>They are different object references in memory</Answer>
+  <Answer>Objects can't be compared with ===</Answer>
+</Quiz>
+
+### Summary
+
+| Concept | Description |
+|:--------|:------------|
+| **Strict Equality** | `===` compares type AND value, no coercion |
+| **Type Mismatch** | Different types always return `false` |
+| **NaN Quirk** | `NaN === NaN` is `false` — use `Number.isNaN()` |
+| **Zero Quirk** | `+0 === -0` is `true` — use `Object.is()` if needed |
+| **Objects** | Compared by reference, not by value |
+
+<KeyConcept title="What's Next?">
+You've mastered strict equality! But what about those edge cases with NaN and signed zeros? Let's explore **Same-value Equality (Object.is)** — the most precise comparison method in JavaScript!
+</KeyConcept>
+
+<ProgressCheckpoint section="best-practices" xpReward={10} />

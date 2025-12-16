@@ -1,0 +1,19 @@
+{
+  "id": "implicit-type-casting",
+  "title": "Implicit Type Casting",
+  "description": "Understand how JavaScript automatically converts types during operations, comparisons, and logical expressions — and how to avoid common pitfalls.",
+  "milestone": "type-casting",
+  "order": 3,
+  "sections": [
+    "intro-implicit",
+    "operator-coercion",
+    "comparison-coercion",
+    "boolean-context",
+    "gotchas-best-practices"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 15,
+  "xpReward": 75,
+  "prerequisites": ["type-conversion-coercion", "explicit-type-casting"],
+  "tags": ["javascript", "type-casting", "implicit", "coercion", "operators", "equality"]
+}

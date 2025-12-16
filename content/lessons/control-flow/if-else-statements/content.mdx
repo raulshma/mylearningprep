@@ -1,0 +1,391 @@
+# if...else Statements
+
+Every program needs to make decisions. Should we show the login button or the dashboard? Is the user old enough? Did the payment succeed? These decisions are the heart of programming, and `if...else` statements are how JavaScript makes them.
+
+---
+
+## Section 1: The Decision-Making Analogy
+
+### The Bouncer at the Club 🚪
+
+Imagine a bouncer at a nightclub. Their job is simple:
+
+- **Check ID** → Is the person 21 or older?
+- **If yes** → Let them in
+- **If no** → Turn them away
+
+**JavaScript's `if` statement works exactly the same way:**
+
+| Real World | JavaScript |
+|:-----------|:-----------|
+| Check the condition | `if (age >= 21)` |
+| Do something if true | `{ allowEntry(); }` |
+| Do something if false | `else { denyEntry(); }` |
+
+<InfoBox type="info">
+**Conditional statements** let your code make decisions based on whether a condition is `true` or `false`. The `if...else` statement is the most fundamental way to control program flow.
+</InfoBox>
+
+### Why Conditionals Matter
+
+Without conditionals, programs would be like trains on a single track — they can only go one direction:
+
+```javascript
+// ❌ Without conditionals - always does the same thing
+console.log("Welcome!");
+console.log("Here's your dashboard");
+// What if the user isn't logged in?!
+
+// ✅ With conditionals - adapts to the situation
+if (isLoggedIn) {
+  console.log("Welcome back!");
+  showDashboard();
+} else {
+  console.log("Please log in");
+  showLoginForm();
+}
+```
+
+<KeyConcept title="Truthy and Falsy">
+JavaScript doesn't just check for `true` or `false`. It evaluates whether values are **truthy** (treated as true) or **falsy** (treated as false). Falsy values: `false`, `0`, `""`, `null`, `undefined`, `NaN`. Everything else is truthy!
+</KeyConcept>
+
+<JsControlFlowVisualizer scenario="basic-if" />
+
+<ProgressCheckpoint section="intro-conditionals" xpReward={15} />
+
+---
+
+## Section 2: if...else Basics
+
+### The Basic if Statement
+
+The simplest form — do something only if a condition is true:
+
+```javascript
+const temperature = 35;
+
+if (temperature > 30) {
+  console.log("It's hot outside! 🌡️");
+}
+// Output: "It's hot outside! 🌡️"
+
+const temperature2 = 20;
+
+if (temperature2 > 30) {
+  console.log("It's hot outside! 🌡️");
+}
+// No output - condition is false
+```
+
+### Adding else
+
+Handle both outcomes — what to do when the condition is false:
+
+```javascript
+const hour = 14;
+
+if (hour < 12) {
+  console.log("Good morning! ☀️");
+} else {
+  console.log("Good afternoon! 🌤️");
+}
+// Output: "Good afternoon! 🌤️"
+```
+
+### The Syntax Breakdown
+
+```javascript
+if (condition) {
+  // Code runs if condition is truthy
+} else {
+  // Code runs if condition is falsy
+}
+```
+
+| Part | Description |
+|:-----|:------------|
+| `if` | Keyword that starts the conditional |
+| `(condition)` | Expression evaluated for truthiness |
+| `{ }` | Block containing statements to execute |
+| `else` | Optional — handles the false case |
+
+### Real-World Examples
+
+```javascript
+// User authentication
+const user = { name: "Alice", isAdmin: false };
+
+if (user.isAdmin) {
+  showAdminPanel();
+} else {
+  showUserDashboard();
+}
+
+// Form validation
+const email = "user@example.com";
+
+if (email.includes("@")) {
+  console.log("Valid email format ✓");
+} else {
+  console.log("Please enter a valid email ✗");
+}
+
+// Feature flags
+const betaFeatureEnabled = true;
+
+if (betaFeatureEnabled) {
+  renderNewUI();
+} else {
+  renderClassicUI();
+}
+```
+
+<CodePlayground
+  initialCode={`// Try changing these values!
+const age = 25;
+const hasTicket = true;
+
+if (age >= 18) {
+  console.log("Age check passed ✓");
+  
+  if (hasTicket) {
+    console.log("Welcome to the concert! 🎵");
+  } else {
+    console.log("You need a ticket!");
+  }
+} else {
+  console.log("Sorry, 18+ only");
+}
+
+// Try: age = 16, or hasTicket = false`}
+  title="Nested if Statements"
+/>
+
+<ProgressCheckpoint section="if-else-basics" xpReward={20} />
+
+---
+
+## Section 3: else if Chains
+
+### Multiple Conditions
+
+When you have more than two possibilities, use `else if`:
+
+```javascript
+const score = 85;
+
+if (score >= 90) {
+  console.log("Grade: A 🌟");
+} else if (score >= 80) {
+  console.log("Grade: B 👍");
+} else if (score >= 70) {
+  console.log("Grade: C 📚");
+} else if (score >= 60) {
+  console.log("Grade: D 😬");
+} else {
+  console.log("Grade: F 📉");
+}
+// Output: "Grade: B 👍"
+```
+
+### The Weather App Pattern
+
+```javascript
+const temperature = 22;
+
+if (temperature < 0) {
+  console.log("Freezing! Stay inside 🥶");
+} else if (temperature < 10) {
+  console.log("Cold - wear a coat 🧥");
+} else if (temperature < 20) {
+  console.log("Cool - bring a jacket 🧣");
+} else if (temperature < 30) {
+  console.log("Nice weather! 😎");
+} else {
+  console.log("Hot! Stay hydrated 🌡️");
+}
+```
+
+<InfoBox type="warning">
+**Order Matters!** Conditions are checked top-to-bottom. The first truthy condition wins, and the rest are skipped. Put more specific conditions first!
+</InfoBox>
+
+### Order Matters — A Common Bug
+
+```javascript
+const age = 65;
+
+// ❌ WRONG ORDER - "Adult" always matches first!
+if (age >= 18) {
+  console.log("Adult");
+} else if (age >= 65) {
+  console.log("Senior"); // Never reached!
+}
+// Output: "Adult" (wrong!)
+
+// ✅ CORRECT ORDER - Check specific cases first
+if (age >= 65) {
+  console.log("Senior");
+} else if (age >= 18) {
+  console.log("Adult");
+} else {
+  console.log("Minor");
+}
+// Output: "Senior" (correct!)
+```
+
+### Combining Conditions
+
+Use logical operators for complex conditions:
+
+```javascript
+const age = 25;
+const hasLicense = true;
+const hasInsurance = true;
+
+// AND (&&) - all conditions must be true
+if (age >= 18 && hasLicense && hasInsurance) {
+  console.log("You can rent a car! 🚗");
+}
+
+// OR (||) - at least one condition must be true
+const isWeekend = true;
+const isHoliday = false;
+
+if (isWeekend || isHoliday) {
+  console.log("No work today! 🎉");
+}
+
+// NOT (!) - inverts the condition
+const isLoggedIn = false;
+
+if (!isLoggedIn) {
+  console.log("Please log in to continue");
+}
+```
+
+<JsControlFlowVisualizer scenario="else-if-chain" />
+
+<ProgressCheckpoint section="else-if-chains" xpReward={20} />
+
+---
+
+## Section 4: Best Practices
+
+### Always Use Braces
+
+Even for single statements, braces prevent bugs:
+
+```javascript
+// ❌ Dangerous - easy to introduce bugs
+if (isAdmin)
+  deleteUser();
+  sendNotification(); // This ALWAYS runs! Not part of if!
+
+// ✅ Safe - clear and explicit
+if (isAdmin) {
+  deleteUser();
+  sendNotification();
+}
+```
+
+### The Dangling Else Problem
+
+```javascript
+// ❌ Confusing - which if does else belong to?
+if (a === 1)
+  if (b === 2)
+    console.log("a is 1 and b is 2");
+else
+  console.log("a is not 1"); // Actually runs when a=1 but b≠2!
+
+// ✅ Clear with braces
+if (a === 1) {
+  if (b === 2) {
+    console.log("a is 1 and b is 2");
+  }
+} else {
+  console.log("a is not 1");
+}
+```
+
+### Early Returns (Guard Clauses)
+
+Reduce nesting by returning early:
+
+```javascript
+// ❌ Deeply nested
+function processOrder(order) {
+  if (order) {
+    if (order.items.length > 0) {
+      if (order.paymentValid) {
+        // Finally, the actual logic!
+        return submitOrder(order);
+      } else {
+        return "Invalid payment";
+      }
+    } else {
+      return "Cart is empty";
+    }
+  } else {
+    return "No order provided";
+  }
+}
+
+// ✅ Guard clauses - flat and readable
+function processOrder(order) {
+  if (!order) return "No order provided";
+  if (order.items.length === 0) return "Cart is empty";
+  if (!order.paymentValid) return "Invalid payment";
+  
+  // Happy path - the main logic
+  return submitOrder(order);
+}
+```
+
+<InfoBox type="tip">
+**Pro Tip**: Guard clauses handle edge cases first, letting the main logic flow without deep nesting. This pattern is especially useful in validation and API handlers.
+</InfoBox>
+
+### Quick Knowledge Check
+
+<Quiz id="if-else-basic-quiz">
+  <Question>What will this code output? `if (0) { console.log("A"); } else { console.log("B"); }`</Question>
+  <Answer>A</Answer>
+  <Answer correct>B</Answer>
+  <Answer>undefined</Answer>
+  <Answer>Error</Answer>
+</Quiz>
+
+<Quiz id="if-else-order-quiz">
+  <Question>In an else if chain, how many blocks can execute?</Question>
+  <Answer>All that match</Answer>
+  <Answer correct>At most one</Answer>
+  <Answer>Exactly one</Answer>
+  <Answer>At least one</Answer>
+</Quiz>
+
+<Quiz id="if-else-truthy-quiz">
+  <Question>Which value is truthy?</Question>
+  <Answer>`0`</Answer>
+  <Answer>`""`</Answer>
+  <Answer correct>`"false"`</Answer>
+  <Answer>`null`</Answer>
+</Quiz>
+
+### Summary
+
+| Concept | Description |
+|:--------|:------------|
+| `if` | Execute code when condition is truthy |
+| `else` | Execute code when condition is falsy |
+| `else if` | Check additional conditions in sequence |
+| Truthy/Falsy | JavaScript's way of evaluating conditions |
+| Guard Clauses | Early returns to reduce nesting |
+
+<KeyConcept title="What's Next?">
+Now that you understand if...else statements, you're ready to learn about the **switch statement** — a cleaner way to handle multiple specific values!
+</KeyConcept>
+
+<ProgressCheckpoint section="best-practices" xpReward={15} />

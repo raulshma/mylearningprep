@@ -1,0 +1,18 @@
+{
+  "id": "same-value-equality",
+  "title": "Same-value Equality (Object.is)",
+  "description": "Learn about Object.is() — JavaScript's most precise equality comparison that correctly handles NaN and signed zeros.",
+  "milestone": "equality-comparisons",
+  "order": 3,
+  "sections": [
+    "intro-object-is",
+    "nan-handling",
+    "signed-zeros",
+    "when-to-use"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 10,
+  "xpReward": 55,
+  "prerequisites": ["strict-equality"],
+  "tags": ["javascript", "equality", "object-is", "comparison", "es6"]
+}

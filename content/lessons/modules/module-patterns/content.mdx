@@ -1,0 +1,551 @@
+# Module Patterns
+
+Beyond basic import/export, there are powerful patterns for organizing code. These patterns help you create maintainable, encapsulated, and reusable modules!
+
+---
+
+## Section 1: The Revealing Module Pattern
+
+### The Vending Machine Analogy 🥤
+
+A vending machine has:
+- **Public interface** — Buttons you can press, coin slot, item dispenser
+- **Private internals** — Motor, inventory tracking, money counter
+
+You interact with the public parts, but the complex machinery is hidden inside!
+
+```javascript
+// The Revealing Module Pattern
+const VendingMachine = (function() {
+  // Private variables - hidden inside
+  let inventory = { cola: 10, water: 15, chips: 8 };
+  let totalMoney = 0;
+  
+  // Private functions - internal use only
+  function checkInventory(item) {
+    return inventory[item] > 0;
+  }
+  
+  function dispenseItem(item) {
+    inventory[item]--;
+    console.log(`Dispensing ${item}...`);
+  }
+  
+  // Public interface - what users can access
+  return {
+    insertMoney(amount) {
+      totalMoney += amount;
+      console.log(`Balance: $${totalMoney}`);
+    },
+    
+    selectItem(item, price) {
+      if (totalMoney < price) {
+        console.log('Insufficient funds!');
+        return false;
+      }
+      if (!checkInventory(item)) {
+        console.log('Out of stock!');
+        return false;
+      }
+      totalMoney -= price;
+      dispenseItem(item);
+      return true;
+    },
+    
+    getBalance() {
+      return totalMoney;
+    }
+  };
+})();
+
+// Usage
+VendingMachine.insertMoney(2);     // "Balance: $2"
+VendingMachine.selectItem('cola', 1.50); // "Dispensing cola..."
+console.log(VendingMachine.getBalance()); // 0.5
+
+// Can't access private parts!
+console.log(VendingMachine.inventory);    // undefined
+console.log(VendingMachine.totalMoney);   // undefined
+```
+
+<KeyConcept title="Revealing Module Pattern">
+Use an IIFE (Immediately Invoked Function Expression) to create private scope, then return an object with only the public methods. Private variables stay hidden via closure!
+</KeyConcept>
+
+### Modern ES Module Version
+
+The same pattern works beautifully with ES Modules:
+
+```javascript
+// vendingMachine.js - Modern ES Module version
+// Private - not exported
+let inventory = { cola: 10, water: 15, chips: 8 };
+let totalMoney = 0;
+
+function checkInventory(item) {
+  return inventory[item] > 0;
+}
+
+function dispenseItem(item) {
+  inventory[item]--;
+}
+
+// Public - exported
+export function insertMoney(amount) {
+  totalMoney += amount;
+  return totalMoney;
+}
+
+export function selectItem(item, price) {
+  if (totalMoney < price) return { success: false, error: 'Insufficient funds' };
+  if (!checkInventory(item)) return { success: false, error: 'Out of stock' };
+  
+  totalMoney -= price;
+  dispenseItem(item);
+  return { success: true, item };
+}
+
+export function getBalance() {
+  return totalMoney;
+}
+```
+
+<ScopeChainVisualizer />
+
+<ProgressCheckpoint section="revealing-module" xpReward={20} />
+
+---
+
+## Section 2: The Singleton Pattern
+
+### The President Analogy 🏛️
+
+A country has only ONE president at a time. No matter how many times you ask "who's the president?", you get the same person!
+
+```javascript
+// Singleton Pattern - Only one instance ever exists
+const Database = (function() {
+  let instance = null;
+  
+  function createInstance() {
+    // Private state
+    const connections = [];
+    let isConnected = false;
+    
+    return {
+      connect(connectionString) {
+        if (isConnected) {
+          console.log('Already connected!');
+          return this;
+        }
+        console.log(`Connecting to ${connectionString}...`);
+        isConnected = true;
+        return this;
+      },
+      
+      query(sql) {
+        if (!isConnected) throw new Error('Not connected!');
+        console.log(`Executing: ${sql}`);
+        return []; // Results would go here
+      },
+      
+      disconnect() {
+        isConnected = false;
+        console.log('Disconnected');
+      }
+    };
+  }
+  
+  return {
+    getInstance() {
+      if (!instance) {
+        instance = createInstance();
+      }
+      return instance;
+    }
+  };
+})();
+
+// Usage - always get the same instance
+const db1 = Database.getInstance();
+const db2 = Database.getInstance();
+
+console.log(db1 === db2); // true - same instance!
+
+db1.connect('mongodb://localhost');
+db2.query('SELECT * FROM users'); // Works! Same connection
+```
+
+### ES Module Singleton
+
+ES Modules are singletons by default! The module code runs once, and all imports share the same instance:
+
+```javascript
+// database.js - ES Module Singleton
+let connection = null;
+let isConnected = false;
+
+export function connect(connectionString) {
+  if (isConnected) {
+    console.log('Already connected');
+    return;
+  }
+  console.log(`Connecting to ${connectionString}`);
+  connection = { url: connectionString };
+  isConnected = true;
+}
+
+export function query(sql) {
+  if (!isConnected) throw new Error('Not connected');
+  return { sql, connection };
+}
+
+export function getConnection() {
+  return connection;
+}
+```
+
+```javascript
+// app.js
+import { connect, query } from './database.js';
+connect('mongodb://localhost');
+
+// userService.js
+import { query, getConnection } from './database.js';
+// Same connection! Module state is shared
+console.log(getConnection()); // { url: 'mongodb://localhost' }
+```
+
+<InfoBox type="tip">
+**ES Modules are natural singletons!** The module's top-level code runs once, and all importers share the same module instance. No special pattern needed!
+</InfoBox>
+
+<ProgressCheckpoint section="singleton-pattern" xpReward={20} />
+
+---
+
+## Section 3: The Factory Pattern
+
+### The Pizza Shop Analogy 🍕
+
+A pizza shop doesn't give you raw ingredients — it creates pizzas based on your order. You say "pepperoni pizza" and get a complete pizza back!
+
+```javascript
+// Factory Pattern - Creates objects based on input
+function createUser(type, data) {
+  const baseUser = {
+    id: crypto.randomUUID(),
+    createdAt: new Date(),
+    ...data
+  };
+  
+  switch (type) {
+    case 'admin':
+      return {
+        ...baseUser,
+        role: 'admin',
+        permissions: ['read', 'write', 'delete', 'manage-users'],
+        canAccessAdmin: true
+      };
+      
+    case 'editor':
+      return {
+        ...baseUser,
+        role: 'editor',
+        permissions: ['read', 'write'],
+        canAccessAdmin: false
+      };
+      
+    case 'viewer':
+      return {
+        ...baseUser,
+        role: 'viewer',
+        permissions: ['read'],
+        canAccessAdmin: false
+      };
+      
+    default:
+      throw new Error(`Unknown user type: ${type}`);
+  }
+}
+
+// Usage
+const admin = createUser('admin', { name: 'Alice', email: 'alice@example.com' });
+const editor = createUser('editor', { name: 'Bob', email: 'bob@example.com' });
+
+console.log(admin.permissions); // ['read', 'write', 'delete', 'manage-users']
+console.log(editor.permissions); // ['read', 'write']
+```
+
+### Factory with Classes
+
+```javascript
+// notification-factory.js
+class EmailNotification {
+  constructor(to, subject, body) {
+    this.type = 'email';
+    this.to = to;
+    this.subject = subject;
+    this.body = body;
+  }
+  
+  send() {
+    console.log(`Sending email to ${this.to}: ${this.subject}`);
+  }
+}
+
+class SMSNotification {
+  constructor(phone, message) {
+    this.type = 'sms';
+    this.phone = phone;
+    this.message = message;
+  }
+  
+  send() {
+    console.log(`Sending SMS to ${this.phone}: ${this.message}`);
+  }
+}
+
+class PushNotification {
+  constructor(userId, title, body) {
+    this.type = 'push';
+    this.userId = userId;
+    this.title = title;
+    this.body = body;
+  }
+  
+  send() {
+    console.log(`Sending push to user ${this.userId}: ${this.title}`);
+  }
+}
+
+// The Factory
+export function createNotification(type, ...args) {
+  const notifications = {
+    email: EmailNotification,
+    sms: SMSNotification,
+    push: PushNotification
+  };
+  
+  const NotificationClass = notifications[type];
+  if (!NotificationClass) {
+    throw new Error(`Unknown notification type: ${type}`);
+  }
+  
+  return new NotificationClass(...args);
+}
+
+// Usage
+const email = createNotification('email', 'user@example.com', 'Welcome!', 'Thanks for signing up');
+const sms = createNotification('sms', '+1234567890', 'Your code is 123456');
+const push = createNotification('push', 'user-123', 'New message', 'You have a new message');
+
+email.send(); // Sending email to user@example.com: Welcome!
+sms.send();   // Sending SMS to +1234567890: Your code is 123456
+push.send();  // Sending push to user user-123: New message
+```
+
+<CodePlayground
+  initialCode={`// Factory Pattern Demo
+function createShape(type, options) {
+  const shapes = {
+    circle: (opts) => ({
+      type: 'circle',
+      radius: opts.radius,
+      area: () => Math.PI * opts.radius ** 2,
+      describe: () => \`Circle with radius \${opts.radius}\`
+    }),
+    
+    rectangle: (opts) => ({
+      type: 'rectangle',
+      width: opts.width,
+      height: opts.height,
+      area: () => opts.width * opts.height,
+      describe: () => \`Rectangle \${opts.width}x\${opts.height}\`
+    }),
+    
+    triangle: (opts) => ({
+      type: 'triangle',
+      base: opts.base,
+      height: opts.height,
+      area: () => (opts.base * opts.height) / 2,
+      describe: () => \`Triangle with base \${opts.base}\`
+    })
+  };
+  
+  const factory = shapes[type];
+  if (!factory) throw new Error(\`Unknown shape: \${type}\`);
+  return factory(options);
+}
+
+// Create different shapes
+const circle = createShape('circle', { radius: 5 });
+const rect = createShape('rectangle', { width: 4, height: 6 });
+const tri = createShape('triangle', { base: 3, height: 4 });
+
+console.log(circle.describe(), '- Area:', circle.area().toFixed(2));
+console.log(rect.describe(), '- Area:', rect.area());
+console.log(tri.describe(), '- Area:', tri.area());`}
+  title="Factory Pattern Demo"
+/>
+
+<ProgressCheckpoint section="factory-pattern" xpReward={20} />
+
+---
+
+## Section 4: Barrel Exports
+
+### The Department Store Analogy 🏬
+
+Instead of visiting 10 different specialty shops, you go to one department store that has everything organized by section!
+
+```
+Without barrel exports:
+import { Button } from './components/ui/Button.js';
+import { Input } from './components/ui/Input.js';
+import { Modal } from './components/ui/Modal.js';
+import { Card } from './components/ui/Card.js';
+import { Tooltip } from './components/ui/Tooltip.js';
+
+With barrel exports:
+import { Button, Input, Modal, Card, Tooltip } from './components/ui';
+```
+
+### Creating a Barrel File
+
+```javascript
+// components/ui/index.js - The barrel file
+export { Button } from './Button.js';
+export { Input } from './Input.js';
+export { Modal } from './Modal.js';
+export { Card } from './Card.js';
+export { Tooltip } from './Tooltip.js';
+
+// Re-export with rename
+export { Button as PrimaryButton } from './Button.js';
+
+// Re-export everything from a module
+export * from './icons.js';
+
+// Re-export default as named
+export { default as Avatar } from './Avatar.js';
+```
+
+### Organizing a Component Library
+
+```
+components/
+├── ui/
+│   ├── index.js          ← Barrel file
+│   ├── Button.js
+│   ├── Input.js
+│   ├── Modal.js
+│   └── Card.js
+├── forms/
+│   ├── index.js          ← Barrel file
+│   ├── TextField.js
+│   ├── Select.js
+│   └── Checkbox.js
+└── index.js              ← Main barrel
+```
+
+```javascript
+// components/ui/index.js
+export { Button } from './Button.js';
+export { Input } from './Input.js';
+export { Modal } from './Modal.js';
+export { Card } from './Card.js';
+
+// components/forms/index.js
+export { TextField } from './TextField.js';
+export { Select } from './Select.js';
+export { Checkbox } from './Checkbox.js';
+
+// components/index.js - Main barrel
+export * from './ui/index.js';
+export * from './forms/index.js';
+```
+
+```javascript
+// Now you can import from one place!
+import { 
+  Button, 
+  Input, 
+  Modal, 
+  TextField, 
+  Select 
+} from './components';
+```
+
+### Barrel Export Best Practices
+
+<InfoBox type="warning">
+**Watch out for circular dependencies!** If module A imports from the barrel, and the barrel imports from module A, you'll have problems. Keep barrel files simple — just re-exports!
+</InfoBox>
+
+| Do ✅ | Don't ❌ |
+|:------|:---------|
+| Keep barrels simple (just exports) | Add logic in barrel files |
+| Group related modules | Create one giant barrel |
+| Use for public APIs | Use for internal modules |
+| Consider tree-shaking | Export everything blindly |
+
+### Tree-Shaking Considerations
+
+```javascript
+// ❌ This might import everything (bad for bundle size)
+import * as UI from './components/ui';
+UI.Button; // Only using Button, but might load all
+
+// ✅ This allows tree-shaking (only imports what's used)
+import { Button } from './components/ui';
+```
+
+<ModuleDependencyVisualizer />
+
+### Quick Knowledge Check
+
+<Quiz id="revealing-module-quiz">
+  <Question>What's the main benefit of the Revealing Module Pattern?</Question>
+  <Answer>Faster code execution</Answer>
+  <Answer correct>Encapsulation - hiding private implementation details</Answer>
+  <Answer>Automatic memory management</Answer>
+  <Answer>Better syntax highlighting</Answer>
+</Quiz>
+
+<Quiz id="singleton-quiz">
+  <Question>Why are ES Modules natural singletons?</Question>
+  <Answer>They use the Singleton class</Answer>
+  <Answer>They're compiled differently</Answer>
+  <Answer correct>Module code runs once and all imports share the same instance</Answer>
+  <Answer>They have a special singleton keyword</Answer>
+</Quiz>
+
+<Quiz id="barrel-export-quiz">
+  <Question>What is a barrel file?</Question>
+  <Answer>A file that stores binary data</Answer>
+  <Answer correct>An index file that re-exports from multiple modules</Answer>
+  <Answer>A compressed JavaScript file</Answer>
+  <Answer>A configuration file for bundlers</Answer>
+</Quiz>
+
+### Summary
+
+| Pattern | Use Case | Key Benefit |
+|:--------|:---------|:------------|
+| **Revealing Module** | Hide implementation | Encapsulation |
+| **Singleton** | Shared state/resources | Single instance |
+| **Factory** | Create objects dynamically | Flexible object creation |
+| **Barrel Exports** | Organize public API | Cleaner imports |
+
+<KeyConcept title="Congratulations! 🎉">
+You've completed the JavaScript Modules milestone! You now understand:
+- **ES Modules** - Modern import/export syntax
+- **CommonJS** - Node.js require/exports
+- **Dynamic Imports** - On-demand code loading
+- **Module Patterns** - Professional code organization
+
+These skills are essential for building maintainable JavaScript applications!
+</KeyConcept>
+
+<ProgressCheckpoint section="barrel-exports" xpReward={20} />

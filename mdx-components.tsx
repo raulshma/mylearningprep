@@ -97,6 +97,10 @@ import { KeyedCollectionExplorer } from '@/components/learn/interactive/javascri
 import { JsonPlayground } from '@/components/learn/interactive/javascript/JsonPlayground';
 import { LoopVisualizer } from '@/components/learn/interactive/javascript/LoopVisualizer';
 import { FunctionVisualizer } from '@/components/learn/interactive/javascript/FunctionVisualizer';
+import { TypeCastingVisualizer } from '@/components/learn/interactive/javascript/TypeCastingVisualizer';
+import { EqualityComparisonVisualizer } from '@/components/learn/interactive/javascript/EqualityComparisonVisualizer';
+import { IteratorGeneratorVisualizer, YieldVisualizer, IterableBuilder } from '@/components/learn/interactive/javascript/IteratorGeneratorVisualizer';
+import { ControlFlowVisualizer as JsControlFlowVisualizer } from '@/components/learn/interactive/javascript/ControlFlowVisualizer';
 
 // React Lesson Components
 import {
@@ -350,6 +354,12 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     ThisKeywordVisualizer,
     LoopVisualizer,
     FunctionVisualizer,
+    TypeCastingVisualizer,
+    EqualityComparisonVisualizer,
+    JsControlFlowVisualizer,
+    IteratorGeneratorVisualizer,
+    YieldVisualizer,
+    IterableBuilder,
 
     // React Lesson Components
     ReactPlayground,

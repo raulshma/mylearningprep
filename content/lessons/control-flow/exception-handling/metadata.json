@@ -1,0 +1,18 @@
+{
+  "id": "exception-handling",
+  "title": "Exception Handling (try/catch/finally)",
+  "description": "Learn to handle errors gracefully with try, catch, finally blocks and throw custom exceptions in JavaScript.",
+  "milestone": "control-flow",
+  "order": 4,
+  "sections": [
+    "intro-exceptions",
+    "try-catch-basics",
+    "finally-block",
+    "throwing-errors"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 16,
+  "xpReward": 80,
+  "prerequisites": ["if-else-statements"],
+  "tags": ["javascript", "control-flow", "error-handling", "try-catch", "exceptions"]
+}

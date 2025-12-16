@@ -1,0 +1,18 @@
+{
+  "id": "if-else-statements",
+  "title": "if...else Statements",
+  "description": "Master conditional branching in JavaScript with if, else if, and else statements to control program flow based on conditions.",
+  "milestone": "control-flow",
+  "order": 1,
+  "sections": [
+    "intro-conditionals",
+    "if-else-basics",
+    "else-if-chains",
+    "best-practices"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 14,
+  "xpReward": 70,
+  "prerequisites": [],
+  "tags": ["javascript", "control-flow", "conditionals", "if-else", "fundamentals"]
+}

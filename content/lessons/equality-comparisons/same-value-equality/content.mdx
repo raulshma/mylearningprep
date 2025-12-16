@@ -1,0 +1,320 @@
+# Same-value Equality (Object.is)
+
+You've learned that `===` is great, but it has two quirks: `NaN !== NaN` and `+0 === -0`. Enter `Object.is()` — introduced in ES6 to provide the most mathematically correct equality comparison in JavaScript.
+
+---
+
+## Section 1: What is Object.is()?
+
+### The Perfectionist Scientist Analogy 🔬
+
+Imagine a scientist who's extremely precise. When comparing two samples:
+- If both are "unknown substances" (NaN), they're considered the same category
+- If one is "positive zero" and one is "negative zero", they're different (because they behave differently in calculations)
+
+**`Object.is()` is that scientist:**
+
+| Comparison | `===` | `Object.is()` | Why Different? |
+|:-----------|:------|:--------------|:---------------|
+| `NaN, NaN` | `false` | `true` | NaN should equal itself logically |
+| `+0, -0` | `true` | `false` | They have different mathematical behaviors |
+| `5, 5` | `true` | `true` | Same for normal values |
+| `"a", "a"` | `true` | `true` | Same for normal values |
+
+<InfoBox type="info">
+**Object.is()** (ES6+) determines whether two values are the **same value** using the SameValue algorithm. It's like `===` but fixes the NaN and signed zero edge cases.
+</InfoBox>
+
+### Basic Syntax
+
+```javascript
+// Object.is(value1, value2)
+Object.is(5, 5)           // true
+Object.is("hello", "hello") // true
+Object.is(null, null)     // true
+
+// The key differences from ===
+Object.is(NaN, NaN)       // true (unlike ===)
+Object.is(+0, -0)         // false (unlike ===)
+```
+
+<KeyConcept title="When to Use Object.is()">
+Use `Object.is()` when you need mathematically precise comparisons, especially when dealing with special numeric values like NaN or when the sign of zero matters.
+</KeyConcept>
+
+<ProgressCheckpoint section="intro-object-is" xpReward={15} />
+
+---
+
+## Section 2: Handling NaN Correctly
+
+### The NaN Problem
+
+NaN (Not a Number) represents an invalid or undefined mathematical result:
+
+```javascript
+// Ways to get NaN
+0 / 0           // NaN
+Math.sqrt(-1)   // NaN
+parseInt("abc") // NaN
+Number("hello") // NaN
+
+// The problem with ===
+const result = 0 / 0;
+result === NaN  // false (!)
+NaN === NaN     // false (!)
+
+// This makes checking for NaN tricky
+if (result === NaN) {
+  // This NEVER runs!
+}
+```
+
+### Why NaN !== NaN?
+
+This behavior comes from the IEEE 754 floating-point standard:
+
+```javascript
+// NaN represents "an undefined or unrepresentable value"
+// Two undefined values aren't necessarily the same
+
+const a = 0 / 0;        // NaN (0 divided by 0)
+const b = Math.sqrt(-1); // NaN (square root of negative)
+
+// Are these the "same"? Not really — they came from different operations
+// So the standard says NaN !== NaN
+```
+
+### Object.is() Fixes This
+
+```javascript
+// Object.is() treats NaN as equal to itself
+Object.is(NaN, NaN)           // true ✅
+Object.is(0 / 0, NaN)         // true ✅
+Object.is(Number("abc"), NaN) // true ✅
+
+// Practical example: Finding NaN in an array
+const values = [1, 2, NaN, 4, 5];
+
+// ❌ This doesn't work
+values.indexOf(NaN)  // -1 (not found!)
+
+// ✅ Use findIndex with Object.is
+values.findIndex(v => Object.is(v, NaN))  // 2
+
+// ✅ Or use Number.isNaN() for simple checks
+values.findIndex(Number.isNaN)  // 2
+```
+
+<CodePlayground
+  initialCode={`// NaN comparison methods
+const nanValue = 0 / 0;
+
+console.log("=== comparison:");
+console.log("NaN === NaN:", NaN === NaN);
+console.log("nanValue === NaN:", nanValue === NaN);
+
+console.log("\\nObject.is() comparison:");
+console.log("Object.is(NaN, NaN):", Object.is(NaN, NaN));
+console.log("Object.is(nanValue, NaN):", Object.is(nanValue, NaN));
+
+console.log("\\nNumber.isNaN() check:");
+console.log("Number.isNaN(NaN):", Number.isNaN(NaN));
+console.log("Number.isNaN(nanValue):", Number.isNaN(nanValue));
+
+// Finding NaN in array
+const arr = [1, NaN, 3];
+console.log("\\nFinding NaN in [1, NaN, 3]:");
+console.log("indexOf(NaN):", arr.indexOf(NaN));
+console.log("findIndex with Object.is:", arr.findIndex(v => Object.is(v, NaN)));`}
+  title="NaN Comparison Methods"
+/>
+
+<ProgressCheckpoint section="nan-handling" xpReward={15} />
+
+---
+
+## Section 3: Signed Zeros
+
+### Why Do +0 and -0 Exist?
+
+JavaScript (following IEEE 754) has two zeros: positive zero (`+0`) and negative zero (`-0`):
+
+```javascript
+// Creating signed zeros
+const positiveZero = 0;
+const negativeZero = -0;
+
+// They look the same
+console.log(positiveZero)  // 0
+console.log(negativeZero)  // 0 (not -0!)
+console.log(String(-0))    // "0" (not "-0"!)
+
+// But they're mathematically different
+1 / positiveZero  // Infinity
+1 / negativeZero  // -Infinity (!)
+
+Math.sign(positiveZero)  // 0
+Math.sign(negativeZero)  // 0 (doesn't help!)
+```
+
+### When Signed Zeros Matter
+
+```javascript
+// In most code, you don't care about signed zeros
+// But in some mathematical/scientific contexts, they matter:
+
+// Example: Tracking direction of approach to zero
+function getApproachDirection(value) {
+  if (value === 0) {
+    // Was it approaching from positive or negative?
+    // === can't tell us!
+    return Object.is(value, -0) ? "from negative" : "from positive";
+  }
+  return value > 0 ? "positive" : "negative";
+}
+
+// Example: Preserving sign in calculations
+const values = [5, 3, -0, 2];
+const product = values.reduce((a, b) => a * b, 1);
+// product is -0, not 0!
+
+Object.is(product, -0)  // true
+product === 0           // true (can't distinguish!)
+```
+
+### Object.is() Distinguishes Them
+
+```javascript
+// === treats them as equal
++0 === -0           // true
+0 === -0            // true
+
+// Object.is() sees the difference
+Object.is(+0, -0)   // false
+Object.is(0, -0)    // false
+Object.is(-0, -0)   // true
+Object.is(+0, +0)   // true
+
+// Practical check for negative zero
+function isNegativeZero(value) {
+  return Object.is(value, -0);
+}
+
+isNegativeZero(-0)  // true
+isNegativeZero(0)   // false
+isNegativeZero(-1)  // false
+```
+
+<EqualityComparisonVisualizer mode="object-is" />
+
+<ProgressCheckpoint section="signed-zeros" xpReward={15} />
+
+---
+
+## Section 4: When to Use Each Method
+
+### The Complete Comparison
+
+<EqualityComparisonVisualizer mode="comparison" />
+
+### Decision Guide
+
+```javascript
+// 🎯 Use === for 99% of comparisons
+if (user.role === "admin") { }
+if (count === 0) { }
+if (name === expectedName) { }
+
+// 🎯 Use == only for null/undefined check
+if (value == null) { }  // Catches both null and undefined
+
+// 🎯 Use Object.is() for special cases:
+
+// 1. When checking for NaN
+if (Object.is(result, NaN)) { }
+// Or better: Number.isNaN(result)
+
+// 2. When signed zero matters
+if (Object.is(value, -0)) { }
+
+// 3. In polyfills or library code
+function sameValue(a, b) {
+  return Object.is(a, b);
+}
+
+// 4. When implementing Map-like structures
+// (Map uses SameValueZero, similar to Object.is but +0 === -0)
+```
+
+### Comparison Summary Table
+
+| Scenario | `==` | `===` | `Object.is()` |
+|:---------|:-----|:------|:--------------|
+| `5, 5` | ✅ true | ✅ true | ✅ true |
+| `"5", 5` | ✅ true | ❌ false | ❌ false |
+| `null, undefined` | ✅ true | ❌ false | ❌ false |
+| `NaN, NaN` | ❌ false | ❌ false | ✅ true |
+| `+0, -0` | ✅ true | ✅ true | ❌ false |
+| `{}, {}` | ❌ false | ❌ false | ❌ false |
+
+### Polyfill for Older Browsers
+
+```javascript
+// Object.is() polyfill (for pre-ES6 environments)
+if (!Object.is) {
+  Object.is = function(x, y) {
+    // SameValue algorithm
+    if (x === y) {
+      // Handle +0 vs -0
+      return x !== 0 || 1 / x === 1 / y;
+    } else {
+      // Handle NaN
+      return x !== x && y !== y;
+    }
+  };
+}
+```
+
+### Quick Knowledge Check
+
+<Quiz id="object-is-nan-quiz">
+  <Question>What is the result of `Object.is(NaN, NaN)`?</Question>
+  <Answer correct>true</Answer>
+  <Answer>false</Answer>
+  <Answer>NaN</Answer>
+  <Answer>TypeError</Answer>
+</Quiz>
+
+<Quiz id="object-is-zero-quiz">
+  <Question>What is the result of `Object.is(+0, -0)`?</Question>
+  <Answer>true</Answer>
+  <Answer correct>false</Answer>
+  <Answer>0</Answer>
+  <Answer>TypeError</Answer>
+</Quiz>
+
+<Quiz id="object-is-use-quiz">
+  <Question>When should you use Object.is() instead of ===?</Question>
+  <Answer>For all comparisons</Answer>
+  <Answer>When comparing strings</Answer>
+  <Answer correct>When you need to correctly handle NaN or distinguish +0 from -0</Answer>
+  <Answer>When comparing objects by value</Answer>
+</Quiz>
+
+### Summary
+
+| Method | Type Coercion | NaN === NaN | +0 === -0 | Best For |
+|:-------|:--------------|:------------|:----------|:---------|
+| `==` | Yes | false | true | Only `== null` check |
+| `===` | No | false | true | Most comparisons |
+| `Object.is()` | No | true | false | Special numeric cases |
+
+<KeyConcept title="Congratulations!">
+You've mastered all three equality comparison methods in JavaScript! Remember:
+- **`===`** for everyday comparisons
+- **`== null`** for null/undefined checks
+- **`Object.is()`** for NaN and signed zero edge cases
+</KeyConcept>
+
+<ProgressCheckpoint section="when-to-use" xpReward={10} />

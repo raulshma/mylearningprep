@@ -1,0 +1,18 @@
+{
+  "id": "loose-equality",
+  "title": "Loose Equality (==)",
+  "description": "Understand how JavaScript's loose equality operator performs type coercion before comparing values, and learn when it can lead to unexpected results.",
+  "milestone": "equality-comparisons",
+  "order": 1,
+  "sections": [
+    "intro-loose-equality",
+    "coercion-rules",
+    "common-gotchas",
+    "when-to-use"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 12,
+  "xpReward": 60,
+  "prerequisites": ["type-conversion-coercion"],
+  "tags": ["javascript", "equality", "coercion", "comparison", "fundamentals"]
+}

@@ -1,0 +1,431 @@
+# switch Statement
+
+When you're comparing one value against many possible matches, `if...else if...else if...` chains get messy fast. The `switch` statement is JavaScript's elegant solution for multi-way branching based on a single expression.
+
+---
+
+## Section 1: When switch Shines
+
+### The Vending Machine Analogy 🥤
+
+Imagine a vending machine. You press a button (A1, A2, B1, B2...), and the machine checks which item to dispense:
+
+- Press **A1** → Dispense Cola
+- Press **A2** → Dispense Sprite  
+- Press **B1** → Dispense Water
+- Press **anything else** → Show "Invalid selection"
+
+**This is exactly what `switch` does:**
+
+| Vending Machine | JavaScript switch |
+|:----------------|:------------------|
+| Button pressed | `switch (selection)` |
+| Check A1 | `case "A1":` |
+| Dispense item | `dispenseCola(); break;` |
+| Invalid button | `default:` |
+
+<InfoBox type="info">
+**switch** evaluates an expression once and compares it against multiple `case` values using **strict equality** (`===`). When a match is found, that case's code runs.
+</InfoBox>
+
+### switch vs if...else
+
+```javascript
+// ❌ Repetitive if...else chain
+const day = "Monday";
+
+if (day === "Monday") {
+  console.log("Start of work week");
+} else if (day === "Tuesday") {
+  console.log("Second day");
+} else if (day === "Wednesday") {
+  console.log("Midweek");
+} else if (day === "Thursday") {
+  console.log("Almost Friday!");
+} else if (day === "Friday") {
+  console.log("TGIF! 🎉");
+} else {
+  console.log("Weekend! 🏖️");
+}
+
+// ✅ Clean switch statement
+switch (day) {
+  case "Monday":
+    console.log("Start of work week");
+    break;
+  case "Tuesday":
+    console.log("Second day");
+    break;
+  case "Wednesday":
+    console.log("Midweek");
+    break;
+  case "Thursday":
+    console.log("Almost Friday!");
+    break;
+  case "Friday":
+    console.log("TGIF! 🎉");
+    break;
+  default:
+    console.log("Weekend! 🏖️");
+}
+```
+
+<KeyConcept title="When to Use switch">
+Use `switch` when comparing **one value** against **multiple specific values**. Use `if...else` when checking **different conditions** or **ranges**.
+</KeyConcept>
+
+<JsControlFlowVisualizer scenario="switch-basic" />
+
+<ProgressCheckpoint section="intro-switch" xpReward={15} />
+
+---
+
+## Section 2: switch Syntax Deep Dive
+
+### The Anatomy of switch
+
+```javascript
+switch (expression) {
+  case value1:
+    // Code for value1
+    break;
+  case value2:
+    // Code for value2
+    break;
+  default:
+    // Code if no case matches
+}
+```
+
+| Part | Description |
+|:-----|:------------|
+| `switch (expression)` | Value to compare (evaluated once) |
+| `case value:` | A possible match (uses `===`) |
+| `break` | Exits the switch (important!) |
+| `default` | Runs if no case matches (optional) |
+
+### Real-World Examples
+
+```javascript
+// HTTP Status Code Handler
+function handleResponse(status) {
+  switch (status) {
+    case 200:
+      console.log("Success! ✓");
+      break;
+    case 201:
+      console.log("Created successfully");
+      break;
+    case 400:
+      console.log("Bad request - check your input");
+      break;
+    case 401:
+      console.log("Unauthorized - please log in");
+      break;
+    case 404:
+      console.log("Not found");
+      break;
+    case 500:
+      console.log("Server error - try again later");
+      break;
+    default:
+      console.log(`Unknown status: ${status}`);
+  }
+}
+
+handleResponse(200); // "Success! ✓"
+handleResponse(404); // "Not found"
+handleResponse(418); // "Unknown status: 418"
+```
+
+```javascript
+// User Role Permissions
+function getPermissions(role) {
+  switch (role) {
+    case "admin":
+      return ["read", "write", "delete", "manage_users"];
+    case "editor":
+      return ["read", "write"];
+    case "viewer":
+      return ["read"];
+    default:
+      return [];
+  }
+}
+
+console.log(getPermissions("admin")); 
+// ["read", "write", "delete", "manage_users"]
+```
+
+<InfoBox type="warning">
+**Strict Equality Alert!** switch uses `===`, not `==`. This means `case "5"` won't match the number `5`. Types must match exactly!
+</InfoBox>
+
+```javascript
+// ⚠️ Type mismatch gotcha
+const value = "5";
+
+switch (value) {
+  case 5:
+    console.log("Number five");
+    break;
+  case "5":
+    console.log("String five");
+    break;
+}
+// Output: "String five" (strict equality!)
+```
+
+<CodePlayground
+  initialCode={`// Try different fruits!
+const fruit = "apple";
+
+switch (fruit) {
+  case "apple":
+    console.log("🍎 Apples are $1.50/lb");
+    break;
+  case "banana":
+    console.log("🍌 Bananas are $0.75/lb");
+    break;
+  case "orange":
+    console.log("🍊 Oranges are $2.00/lb");
+    break;
+  case "grape":
+    console.log("🍇 Grapes are $3.00/lb");
+    break;
+  default:
+    console.log("🤷 We don't have that fruit");
+}
+
+// Try: "banana", "mango", "APPLE" (case-sensitive!)`}
+  title="Fruit Price Checker"
+/>
+
+<ProgressCheckpoint section="switch-syntax" xpReward={15} />
+
+---
+
+## Section 3: Fall-Through Behavior
+
+### The break Statement is Crucial
+
+Without `break`, execution "falls through" to the next case:
+
+```javascript
+const grade = "B";
+
+// ❌ Missing breaks - falls through!
+switch (grade) {
+  case "A":
+    console.log("Excellent!");
+  case "B":
+    console.log("Good job!");
+  case "C":
+    console.log("You passed");
+  default:
+    console.log("Keep trying");
+}
+// Output:
+// "Good job!"
+// "You passed"
+// "Keep trying"
+// All three print because of fall-through!
+```
+
+### Intentional Fall-Through
+
+Sometimes fall-through is useful — grouping cases that share code:
+
+```javascript
+const day = "Saturday";
+
+switch (day) {
+  case "Monday":
+  case "Tuesday":
+  case "Wednesday":
+  case "Thursday":
+  case "Friday":
+    console.log("Weekday - time to work! 💼");
+    break;
+  case "Saturday":
+  case "Sunday":
+    console.log("Weekend - time to relax! 🏖️");
+    break;
+  default:
+    console.log("Invalid day");
+}
+// Output: "Weekend - time to relax! 🏖️"
+```
+
+```javascript
+// Month days calculator
+function getDaysInMonth(month) {
+  switch (month) {
+    case "January":
+    case "March":
+    case "May":
+    case "July":
+    case "August":
+    case "October":
+    case "December":
+      return 31;
+    case "April":
+    case "June":
+    case "September":
+    case "November":
+      return 30;
+    case "February":
+      return 28; // Simplified, ignoring leap years
+    default:
+      return "Invalid month";
+  }
+}
+
+console.log(getDaysInMonth("July"));     // 31
+console.log(getDaysInMonth("November")); // 30
+```
+
+<InfoBox type="tip">
+**Pro Tip**: When using intentional fall-through, add a comment like `// falls through` to make your intent clear to other developers (and linters!).
+</InfoBox>
+
+### Block Scoping in Cases
+
+Variables declared in cases can cause issues. Use blocks for isolation:
+
+```javascript
+// ❌ Variable scope issue
+switch (action) {
+  case "create":
+    let message = "Created!"; // Error if 'update' case also declares 'message'
+    break;
+  case "update":
+    let message = "Updated!"; // SyntaxError: Identifier 'message' already declared
+    break;
+}
+
+// ✅ Use blocks for case-specific variables
+switch (action) {
+  case "create": {
+    const message = "Created!";
+    console.log(message);
+    break;
+  }
+  case "update": {
+    const message = "Updated!"; // No conflict - different block scope
+    console.log(message);
+    break;
+  }
+}
+```
+
+<JsControlFlowVisualizer scenario="switch-fallthrough" />
+
+<ProgressCheckpoint section="fall-through" xpReward={20} />
+
+---
+
+## Section 4: switch vs if...else
+
+### When to Use Each
+
+| Use switch When... | Use if...else When... |
+|:-------------------|:----------------------|
+| Comparing one value to many constants | Checking different conditions |
+| Values are discrete (exact matches) | Checking ranges (`x > 10`) |
+| Many cases (3+) | Few conditions (1-2) |
+| Cases are mutually exclusive | Conditions may overlap |
+
+### Examples of Each
+
+```javascript
+// ✅ Good for switch - discrete values
+switch (userType) {
+  case "free":
+    return { storage: "5GB", features: ["basic"] };
+  case "pro":
+    return { storage: "100GB", features: ["basic", "advanced"] };
+  case "enterprise":
+    return { storage: "unlimited", features: ["basic", "advanced", "admin"] };
+}
+
+// ✅ Good for if...else - ranges and complex conditions
+if (score >= 90 && attendance > 80) {
+  grade = "A";
+} else if (score >= 80 || hasExtraCredit) {
+  grade = "B";
+} else if (score >= 70) {
+  grade = "C";
+}
+```
+
+### Modern Alternative: Object Lookup
+
+For simple value mapping, objects can be cleaner than switch:
+
+```javascript
+// switch version
+function getEmoji(weather) {
+  switch (weather) {
+    case "sunny": return "☀️";
+    case "cloudy": return "☁️";
+    case "rainy": return "🌧️";
+    case "snowy": return "❄️";
+    default: return "🌡️";
+  }
+}
+
+// Object lookup version - often cleaner!
+const weatherEmojis = {
+  sunny: "☀️",
+  cloudy: "☁️",
+  rainy: "🌧️",
+  snowy: "❄️"
+};
+
+function getEmoji(weather) {
+  return weatherEmojis[weather] ?? "🌡️";
+}
+```
+
+### Quick Knowledge Check
+
+<Quiz id="switch-break-quiz">
+  <Question>What happens if you forget `break` in a switch case?</Question>
+  <Answer>The switch exits immediately</Answer>
+  <Answer>An error is thrown</Answer>
+  <Answer correct>Execution falls through to the next case</Answer>
+  <Answer>The default case runs</Answer>
+</Quiz>
+
+<Quiz id="switch-equality-quiz">
+  <Question>What type of equality does switch use?</Question>
+  <Answer>Loose equality (==)</Answer>
+  <Answer correct>Strict equality (===)</Answer>
+  <Answer>Object.is()</Answer>
+  <Answer>Type coercion</Answer>
+</Quiz>
+
+<Quiz id="switch-default-quiz">
+  <Question>When does the `default` case run?</Question>
+  <Answer>Always, after all cases</Answer>
+  <Answer>Only if explicitly called</Answer>
+  <Answer correct>When no other case matches</Answer>
+  <Answer>Before checking other cases</Answer>
+</Quiz>
+
+### Summary
+
+| Concept | Description |
+|:--------|:------------|
+| `switch` | Multi-way branch based on one expression |
+| `case` | A value to match against (uses `===`) |
+| `break` | Exits the switch, prevents fall-through |
+| `default` | Handles unmatched values |
+| Fall-through | Intentionally omitting break to group cases |
+
+<KeyConcept title="What's Next?">
+You've mastered switch statements! Next up: the **ternary operator** — a concise way to write simple conditionals in a single line.
+</KeyConcept>
+
+<ProgressCheckpoint section="switch-vs-if" xpReward={15} />

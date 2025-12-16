@@ -1,0 +1,18 @@
+{
+  "id": "strict-equality",
+  "title": "Strict Equality (===)",
+  "description": "Master JavaScript's strict equality operator that compares values without type coercion — the recommended approach for most comparisons.",
+  "milestone": "equality-comparisons",
+  "order": 2,
+  "sections": [
+    "intro-strict-equality",
+    "how-it-works",
+    "special-cases",
+    "best-practices"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 10,
+  "xpReward": 55,
+  "prerequisites": ["loose-equality"],
+  "tags": ["javascript", "equality", "strict", "comparison", "fundamentals"]
+}

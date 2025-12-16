@@ -1,0 +1,339 @@
+# Iterator Protocol
+
+Ever wondered how `for...of` loops know how to get the next item from an array? The answer is the **Iterator Protocol** — a standardized contract that defines how to produce a sequence of values, one at a time.
+
+---
+
+## Section 1: What is an Iterator?
+
+### The Vending Machine Analogy 🎰
+
+Think of an iterator like a vending machine with a single button:
+
+| Vending Machine | Iterator |
+|:----------------|:---------|
+| Press the button | Call `next()` |
+| Get one item | Receive `{ value, done }` |
+| "Out of stock" light | `done: true` |
+| Items inside | The data source |
+
+Every time you press the button, you get exactly one item. When there's nothing left, the machine tells you it's empty.
+
+<InfoBox type="info">
+The **Iterator Protocol** was introduced in ES6 (2015) and defines a standard way for any object to produce a sequence of values. It's the foundation for `for...of` loops, spread operators, and many built-in APIs.
+</InfoBox>
+
+### The Core Concept
+
+An **iterator** is any object that implements a `next()` method which returns an object with two properties:
+
+```javascript
+{
+  value: any,  // The current value
+  done: boolean // Is the sequence finished?
+}
+```
+
+<KeyConcept title="Iterator Definition">
+An iterator is an object with a `next()` method that returns `{ value, done }`. Each call to `next()` advances through the sequence until `done` becomes `true`.
+</KeyConcept>
+
+<IteratorGeneratorVisualizer 
+  title="Iterator Protocol in Action"
+  mode="iterator"
+/>
+
+<ProgressCheckpoint section="what-is-iterator" xpReward={20} />
+
+---
+
+## Section 2: The next() Method
+
+### How next() Works
+
+The `next()` method is the heart of every iterator. Here's what happens each time you call it:
+
+```javascript
+// Getting an iterator from an array
+const fruits = ['apple', 'banana', 'cherry'];
+const iterator = fruits[Symbol.iterator]();
+
+// Each next() call advances the iterator
+console.log(iterator.next()); // { value: 'apple', done: false }
+console.log(iterator.next()); // { value: 'banana', done: false }
+console.log(iterator.next()); // { value: 'cherry', done: false }
+console.log(iterator.next()); // { value: undefined, done: true }
+```
+
+### The Conveyor Belt Mental Model 🏭
+
+Imagine a conveyor belt in a factory:
+
+1. **Call `next()`** → Belt moves one position
+2. **Get `value`** → Pick up the item at current position
+3. **Check `done`** → Is the belt empty?
+
+```javascript
+// Visualizing the conveyor belt
+const belt = ['📦', '📦', '📦'];
+const worker = belt[Symbol.iterator]();
+
+// Worker picks items one by one
+worker.next(); // Picks first 📦, belt has 2 left
+worker.next(); // Picks second 📦, belt has 1 left
+worker.next(); // Picks third 📦, belt is empty
+worker.next(); // Nothing left! done: true
+```
+
+<InfoBox type="tip">
+Once an iterator returns `done: true`, all subsequent calls to `next()` should also return `done: true`. The iterator is "exhausted" and cannot be restarted.
+</InfoBox>
+
+### One-Way Street
+
+Iterators are **forward-only** — you can't go back:
+
+```javascript
+const numbers = [1, 2, 3];
+const iter = numbers[Symbol.iterator]();
+
+iter.next(); // { value: 1, done: false }
+iter.next(); // { value: 2, done: false }
+
+// ❌ Can't go back to 1!
+// ❌ No iter.previous() method exists
+
+iter.next(); // { value: 3, done: false }
+iter.next(); // { value: undefined, done: true }
+```
+
+<ProgressCheckpoint section="next-method" xpReward={20} />
+
+---
+
+## Section 3: The IteratorResult Object
+
+### Understanding { value, done }
+
+Every `next()` call returns an **IteratorResult** object:
+
+| Property | Type | Description |
+|:---------|:-----|:------------|
+| `value` | any | The current value in the sequence |
+| `done` | boolean | `false` if more values exist, `true` if finished |
+
+### The Three States
+
+```javascript
+const iterator = [10, 20][Symbol.iterator]();
+
+// State 1: Has value, not done
+iterator.next(); // { value: 10, done: false }
+
+// State 2: Has value, not done
+iterator.next(); // { value: 20, done: false }
+
+// State 3: No value, done
+iterator.next(); // { value: undefined, done: true }
+```
+
+<Comparison
+  title="IteratorResult States"
+  items={[
+    {
+      label: "{ value: X, done: false }",
+      description: "More items available. The value X is the current item.",
+      isCorrect: true
+    },
+    {
+      label: "{ value: undefined, done: true }",
+      description: "Sequence complete. No more items to iterate.",
+      isCorrect: true
+    }
+  ]}
+/>
+
+### Optional Properties
+
+In practice, both properties are optional:
+
+```javascript
+// These are equivalent:
+{ done: false, value: undefined }
+{ done: false }  // value defaults to undefined
+{}               // Both default (done: false, value: undefined)
+
+// When done is true:
+{ done: true, value: undefined }
+{ done: true }   // value defaults to undefined
+```
+
+<InfoBox type="warning">
+While properties are technically optional, always include both for clarity. Returning a non-object from `next()` will throw a `TypeError` in built-in language features like `for...of`.
+</InfoBox>
+
+<ProgressCheckpoint section="iterator-result" xpReward={20} />
+
+---
+
+## Section 4: Building a Custom Iterator
+
+### Creating Your Own Iterator
+
+Let's build an iterator from scratch — a countdown timer:
+
+```javascript
+function createCountdown(start) {
+  let current = start;
+  
+  return {
+    next() {
+      if (current >= 0) {
+        return { value: current--, done: false };
+      }
+      return { value: undefined, done: true };
+    }
+  };
+}
+
+const countdown = createCountdown(3);
+
+console.log(countdown.next()); // { value: 3, done: false }
+console.log(countdown.next()); // { value: 2, done: false }
+console.log(countdown.next()); // { value: 1, done: false }
+console.log(countdown.next()); // { value: 0, done: false }
+console.log(countdown.next()); // { value: undefined, done: true }
+```
+
+### A Range Iterator
+
+Here's a more practical example — iterating over a range of numbers:
+
+```javascript
+function createRange(start, end, step = 1) {
+  let current = start;
+  
+  return {
+    next() {
+      if (current <= end) {
+        const value = current;
+        current += step;
+        return { value, done: false };
+      }
+      return { done: true };
+    }
+  };
+}
+
+const range = createRange(1, 5);
+
+console.log(range.next().value); // 1
+console.log(range.next().value); // 2
+console.log(range.next().value); // 3
+console.log(range.next().value); // 4
+console.log(range.next().value); // 5
+console.log(range.next().done);  // true
+```
+
+### Optional: return() and throw()
+
+Iterators can also implement optional cleanup methods:
+
+```javascript
+const resourceIterator = {
+  data: ['a', 'b', 'c'],
+  index: 0,
+  
+  next() {
+    if (this.index < this.data.length) {
+      return { value: this.data[this.index++], done: false };
+    }
+    return { done: true };
+  },
+  
+  // Called when iteration ends early (break, return, throw)
+  return(value) {
+    console.log('Cleaning up resources...');
+    return { done: true, value };
+  },
+  
+  // Called to signal an error condition
+  throw(error) {
+    console.log('Error occurred:', error);
+    return { done: true };
+  }
+};
+```
+
+<CodePlayground
+  initialCode={`// Build your own iterator!
+function createFibonacci(limit) {
+  let prev = 0, curr = 1, count = 0;
+  
+  return {
+    next() {
+      if (count >= limit) {
+        return { done: true };
+      }
+      
+      const value = prev;
+      [prev, curr] = [curr, prev + curr];
+      count++;
+      
+      return { value, done: false };
+    }
+  };
+}
+
+const fib = createFibonacci(8);
+
+// Get first 8 Fibonacci numbers
+let result;
+while (!(result = fib.next()).done) {
+  console.log(result.value);
+}`}
+  title="Custom Fibonacci Iterator"
+/>
+
+### Quick Knowledge Check
+
+<Quiz id="iterator-next-quiz">
+  <Question>What does the next() method return?</Question>
+  <Answer>Just the value</Answer>
+  <Answer>An array of values</Answer>
+  <Answer correct>An object with value and done properties</Answer>
+  <Answer>A boolean</Answer>
+</Quiz>
+
+<Quiz id="iterator-done-quiz">
+  <Question>When done is true, what does it mean?</Question>
+  <Answer>The iterator encountered an error</Answer>
+  <Answer correct>The sequence is complete, no more values</Answer>
+  <Answer>The current value is the last one</Answer>
+  <Answer>The iterator needs to be reset</Answer>
+</Quiz>
+
+<Quiz id="iterator-reuse-quiz">
+  <Question>Can you restart an exhausted iterator?</Question>
+  <Answer>Yes, call reset()</Answer>
+  <Answer>Yes, call next() with true</Answer>
+  <Answer correct>No, you need to create a new iterator</Answer>
+  <Answer>Yes, set done to false</Answer>
+</Quiz>
+
+### Summary
+
+| Concept | Description |
+|:--------|:------------|
+| Iterator | Object with a `next()` method |
+| `next()` | Returns `{ value, done }` |
+| `value` | Current item in sequence |
+| `done` | `true` when sequence is complete |
+| `return()` | Optional cleanup method |
+| `throw()` | Optional error handling method |
+
+<KeyConcept title="What's Next?">
+Now that you understand the Iterator Protocol, you're ready to learn about the **Iterable Protocol** — which defines how objects advertise that they can be iterated with `for...of` loops!
+</KeyConcept>
+
+<ProgressCheckpoint section="custom-iterator" xpReward={20} />

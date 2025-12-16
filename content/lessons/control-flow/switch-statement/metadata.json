@@ -1,0 +1,18 @@
+{
+  "id": "switch-statement",
+  "title": "switch Statement",
+  "description": "Learn to use switch statements for cleaner multi-way branching when comparing a value against multiple cases.",
+  "milestone": "control-flow",
+  "order": 2,
+  "sections": [
+    "intro-switch",
+    "switch-syntax",
+    "fall-through",
+    "switch-vs-if"
+  ],
+  "singleLevel": true,
+  "estimatedMinutes": 12,
+  "xpReward": 65,
+  "prerequisites": ["if-else-statements"],
+  "tags": ["javascript", "control-flow", "switch", "conditionals"]
+}
