@@ -18,7 +18,7 @@ vi.mock('@/lib/db/repositories/visibility-repository', () => ({
 }));
 
 vi.mock('@/lib/db/collections', () => ({
-  getjourneysCollection: vi.fn(),
+  getJourneysCollection: vi.fn(),
 }));
 
 vi.mock('./audit-log', () => ({

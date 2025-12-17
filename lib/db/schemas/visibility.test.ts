@@ -123,7 +123,8 @@ describe('Visibility Schema Property Tests', () => {
     });
 
     it('should reject invalid entity types', () => {
-      const invalidTypes = ['invalid', 'journey', 'Milestone', '', 'node', 'topic'];
+      // Note: valid types are exactly: 'journey' | 'milestone' | 'objective'
+      const invalidTypes = ['invalid', 'Journey', 'Milestone', '', 'node', 'topic', 'milestones', 'objectives'];
       for (const invalidType of invalidTypes) {
         const result = EntityTypeSchema.safeParse(invalidType);
         expect(result.success).toBe(false);

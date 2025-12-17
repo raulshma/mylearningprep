@@ -10,9 +10,10 @@ import {
   updateVisibility,
   getVisibilityOverview as getVisibilityOverviewService,
   getJourneyVisibilityDetails as getJourneyVisibilityDetailsService,
+  updateObjectiveContentVisibility,
 } from "@/lib/services/visibility-service";
 import { setVisibilityBatch } from "@/lib/db/repositories/visibility-repository";
-import { logVisibilityChange } from "@/lib/services/audit-log";
+import { logAdminAction, logVisibilityChange } from "@/lib/services/audit-log";
 import { getVisibility } from "@/lib/db/repositories/visibility-repository";
 import type {
   EntityType,
@@ -105,12 +106,11 @@ export interface BatchVisibilityUpdate {
 }
 
 /**
- * Toggle visibility for multiple entities of the same type (batch operation)
- * 
- * All updates are performed atomically using bulkWrite.
- * 
- * @param entityType - Type of entities (journey, milestone, objective)
- * @param updates - Array of updates with entityId and isPublic values
+ * Apply visibility updates to multiple entities of the same type in a single operation.
+ *
+ * @param entityType - The entity kind to update (e.g., "journey", "milestone", "objective").
+ * @param updates - Array of update objects containing `entityId`, `isPublic`, and optional `parentJourneySlug` and `parentMilestoneId`.
+ * @returns `BatchVisibilityResult` on success containing the updated settings and the number of updated records; `VisibilityErrorResult` with an `error` message on failure; or `UnauthorizedResponse` when the caller lacks required admin privileges.
  */
 export async function toggleVisibilityBatch(
   entityType: EntityType,
@@ -165,11 +165,13 @@ export async function toggleVisibilityBatch(
 
       // Invalidate relevant caches
       revalidatePath("/admin");
+      revalidatePath("/explore");
       if (entityType === "journey") {
         revalidatePath("/journeys");
         // Revalidate each journey page
         for (const update of updates) {
           revalidatePath(`/journeys/${update.entityId}`);
+          revalidatePath(`/explore/${update.entityId}`);
         }
       }
 
@@ -180,6 +182,120 @@ export async function toggleVisibilityBatch(
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
+      return { success: false, error: message };
+    }
+  });
+}
+
+/**
+ * Set whether an objective's lesson content is visible on the public explore page for its parent journey.
+ *
+ * @param objectiveEntityId - The objective entity's identifier
+ * @param contentPublic - Whether the objective's lesson content should be visible on the public explore page
+ * @param parentJourneySlug - Slug of the parent journey containing the objective
+ * @param parentMilestoneId - Identifier of the parent milestone containing the objective
+ * @returns `success` with the updated visibility setting on success, `error` with a message otherwise
+ */
+export async function toggleObjectiveContentVisibility(
+  objectiveEntityId: string,
+  contentPublic: boolean,
+  parentJourneySlug: string,
+  parentMilestoneId: string
+): Promise<VisibilityResult | VisibilityErrorResult | UnauthorizedResponse> {
+  return requireAdmin(async () => {
+    const user = await getAuthUser();
+    if (!user) {
+      return { success: false, error: "User not found" };
+    }
+
+    try {
+      const setting = await updateObjectiveContentVisibility(
+        user.clerkId,
+        objectiveEntityId,
+        contentPublic,
+        parentJourneySlug,
+        parentMilestoneId
+      );
+
+      revalidatePath('/admin');
+      revalidatePath('/explore');
+      revalidatePath(`/explore/${parentJourneySlug}`);
+
+      return { success: true, setting };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      return { success: false, error: message };
+    }
+  });
+}
+
+export interface BatchObjectiveContentUpdate {
+  objectiveEntityId: string;
+  contentPublic: boolean;
+  parentJourneySlug: string;
+  parentMilestoneId: string;
+}
+
+/**
+ * Apply multiple updates that set whether each objective's lesson content is visible on the public explore pages.
+ *
+ * @param updates - Array of batch updates specifying `objectiveEntityId`, `contentPublic`, and optional `parentJourneySlug` and `parentMilestoneId` for each objective.
+ * @returns `true`-case: `{ success: true, settings: VisibilitySetting[], updatedCount: number }` where `settings` reflects the new visibility records and `updatedCount` is the number applied; error-case: `{ success: false, error: string }` describing the failure; or `UnauthorizedResponse` if the caller is not an admin.
+ */
+export async function toggleObjectiveContentVisibilityBatch(
+  updates: BatchObjectiveContentUpdate[]
+): Promise<BatchVisibilityResult | VisibilityErrorResult | UnauthorizedResponse> {
+  return requireAdmin(async () => {
+    const user = await getAuthUser();
+    if (!user) {
+      return { success: false, error: 'User not found' };
+    }
+
+    if (updates.length === 0) {
+      return { success: true, settings: [], updatedCount: 0 };
+    }
+
+    try {
+      const currentSettings = await Promise.all(
+        updates.map(u => getVisibility('objective', u.objectiveEntityId))
+      );
+
+      await Promise.all(
+        updates.map(async (update, index) => {
+          const current = currentSettings[index];
+          const oldValue = current?.contentPublic ?? null;
+          await logAdminAction('objective_content_visibility_change', user.clerkId, undefined, {
+            entityType: 'objective',
+            entityId: update.objectiveEntityId,
+            oldValue,
+            newValue: update.contentPublic,
+            parentJourneySlug: update.parentJourneySlug,
+            parentMilestoneId: update.parentMilestoneId,
+          });
+        })
+      );
+
+      const settings = await setVisibilityBatch(
+        updates.map((update, index) => ({
+          entityType: 'objective' as const,
+          entityId: update.objectiveEntityId,
+          isPublic: currentSettings[index]?.isPublic ?? false,
+          contentPublic: update.contentPublic,
+          parentJourneySlug: update.parentJourneySlug,
+          parentMilestoneId: update.parentMilestoneId,
+          updatedBy: user.clerkId,
+        }))
+      );
+
+      revalidatePath('/admin');
+      revalidatePath('/explore');
+      for (const update of updates) {
+        revalidatePath(`/explore/${update.parentJourneySlug}`);
+      }
+
+      return { success: true, settings, updatedCount: settings.length };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
       return { success: false, error: message };
     }
   });

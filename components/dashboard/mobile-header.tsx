@@ -8,8 +8,8 @@ import { Logo } from "@/components/ui/logo";
 import Link from "next/link";
 
 interface MobileHeaderProps {
-  /** Slot for the hamburger menu trigger (MobileSidebar component) */
-  menuTrigger: React.ReactNode;
+  /** Optional slot for a menu trigger (was used for the hamburger sidebar) */
+  menuTrigger?: React.ReactNode;
   /** Optional title to display in the header */
   title?: string;
   /** Whether to show a back button instead of the logo */
@@ -18,6 +18,15 @@ interface MobileHeaderProps {
   backUrl?: string;
 }
 
+/**
+ * Render a mobile-only header containing an optional menu trigger, centered title/logo or back button, and a balancing placeholder.
+ *
+ * @param menuTrigger - Optional element displayed at the left (e.g., a hamburger button); a fixed 44px placeholder is used when absent
+ * @param title - Optional center title text; shown when `showBackButton` is false and a title is provided
+ * @param showBackButton - When true, shows a back button in the center that navigates to `backUrl` or performs a browser back action
+ * @param backUrl - Optional URL to navigate to when the back button is pressed; falls back to router.back() if not provided
+ * @returns The header JSX element used as the mobile top navigation
+ */
 export function MobileHeader({
   menuTrigger,
   title,
@@ -38,7 +47,7 @@ export function MobileHeader({
     <header data-mobile-header className="md:hidden sticky top-0 z-40 flex items-center justify-between h-14 px-4 border-b bg-background">
       {/* Left side: Menu trigger */}
       <div className="flex items-center gap-2">
-        {menuTrigger}
+        {menuTrigger ?? <div className="w-[44px]" />}
       </div>
 
       {/* Center: Logo or Title */}

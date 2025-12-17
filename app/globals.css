@@ -396,6 +396,27 @@ html.cyberpunk [data-rehype-pretty-code-figure] pre,
     font-size: 14px;
   }
 
+  /* Standalone PWA: respect notch / system bars when using viewport-fit=cover */
+  @media (display-mode: standalone) {
+    body {
+      padding-top: env(safe-area-inset-top, 0px);
+      padding-left: env(safe-area-inset-left, 0px);
+      padding-right: env(safe-area-inset-right, 0px);
+    }
+
+    /* Hide the mobile top header inside the app shell to maximize usable space */
+    [data-mobile-header] {
+      display: none !important;
+    }
+  }
+
+  /* Mobile view: also hide the mobile top header to maximize usable space */
+  @media (max-width: 767px) {
+    [data-mobile-header] {
+      display: none !important;
+    }
+  }
+
   /* Responsive typography scale for mobile */
   @media (min-width: 768px) {
     body {
@@ -530,6 +551,11 @@ html.cyberpunk [data-rehype-pretty-code-figure] pre,
 
 .pr-safe {
   padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* Used by the global mobile bottom nav (non-(sidebar) pages) */
+body.has-mobile-bottom-nav {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 76px);
 }
 
 /* Scrollbar utility classes */

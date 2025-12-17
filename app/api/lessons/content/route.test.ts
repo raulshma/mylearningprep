@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GET } from './route';
 import { NextRequest } from 'next/server';
-import fs from 'fs/promises';
+import { readFile } from 'fs/promises';
 
 // Mock Clerk auth
 vi.mock('@clerk/nextjs/server', () => ({
@@ -9,7 +9,16 @@ vi.mock('@clerk/nextjs/server', () => ({
 }));
 
 // Mock fs
-vi.mock('fs/promises');
+vi.mock('fs/promises', () => {
+  const readFileMock = vi.fn();
+  return {
+    __esModule: true,
+    readFile: readFileMock,
+    default: {
+      readFile: readFileMock,
+    },
+  };
+});
 
 describe('Lessons Content API - CSS Lessons', () => {
   beforeEach(() => {
@@ -69,7 +78,7 @@ describe('Lessons Content API - CSS Lessons', () => {
     (auth as any).mockResolvedValue({ userId: 'user123' });
 
     const mockContent = '# CSS Selectors - Beginner\n\nLearn the basics of CSS selectors.';
-    (fs.readFile as any).mockResolvedValue(mockContent);
+    vi.mocked(readFile).mockResolvedValue(mockContent as any);
 
     const request = new NextRequest('http://localhost:3000/api/lessons/content?path=css/selectors&level=beginner');
     const response = await GET(request);
@@ -85,7 +94,7 @@ describe('Lessons Content API - CSS Lessons', () => {
     (auth as any).mockResolvedValue({ userId: 'user123' });
 
     const mockContent = '# CSS Selectors - Intermediate\n\nAdvanced selector techniques.';
-    (fs.readFile as any).mockResolvedValue(mockContent);
+    vi.mocked(readFile).mockResolvedValue(mockContent as any);
 
     const request = new NextRequest('http://localhost:3000/api/lessons/content?path=css/selectors&level=intermediate');
     const response = await GET(request);
@@ -101,7 +110,7 @@ describe('Lessons Content API - CSS Lessons', () => {
     (auth as any).mockResolvedValue({ userId: 'user123' });
 
     const mockContent = '# CSS Selectors - Advanced\n\nMaster complex selectors.';
-    (fs.readFile as any).mockResolvedValue(mockContent);
+    vi.mocked(readFile).mockResolvedValue(mockContent as any);
 
     const request = new NextRequest('http://localhost:3000/api/lessons/content?path=css/selectors&level=advanced');
     const response = await GET(request);
@@ -116,7 +125,7 @@ describe('Lessons Content API - CSS Lessons', () => {
     const { auth } = await import('@clerk/nextjs/server');
     (auth as any).mockResolvedValue({ userId: 'user123' });
 
-    (fs.readFile as any).mockRejectedValue(new Error('ENOENT: no such file or directory'));
+    vi.mocked(readFile).mockRejectedValue(new Error('ENOENT: no such file or directory'));
 
     const request = new NextRequest('http://localhost:3000/api/lessons/content?path=css/nonexistent&level=beginner');
     const response = await GET(request);
@@ -138,7 +147,7 @@ describe('Lessons Content API - CSS Lessons', () => {
     expect(response.status).toBe(400);
     const data = await response.json();
     expect(data.error).toBe('Invalid path');
-    expect(fs.readFile).not.toHaveBeenCalled();
+    expect(readFile).not.toHaveBeenCalled();
   });
 
   it('returns 400 for absolute/windows paths and does not read files', async () => {
@@ -159,7 +168,7 @@ describe('Lessons Content API - CSS Lessons', () => {
     expect(windowsResponse.status).toBe(400);
     expect((await windowsResponse.json()).error).toBe('Invalid path');
 
-    expect(fs.readFile).not.toHaveBeenCalled();
+    expect(readFile).not.toHaveBeenCalled();
   });
 
   it('loads content for all CSS lesson topics', async () => {
@@ -181,7 +190,7 @@ describe('Lessons Content API - CSS Lessons', () => {
 
     for (const topic of cssTopics) {
       const mockContent = `# ${topic} - Beginner`;
-      (fs.readFile as any).mockResolvedValue(mockContent);
+      vi.mocked(readFile).mockResolvedValue(mockContent as any);
 
       const request = new NextRequest(`http://localhost:3000/api/lessons/content?path=${topic}&level=beginner`);
       const response = await GET(request);
@@ -201,7 +210,7 @@ describe('Lessons Content API - CSS Lessons', () => {
 
     for (const level of levels) {
       const mockContent = `# CSS Selectors - ${level}`;
-      (fs.readFile as any).mockResolvedValue(mockContent);
+      vi.mocked(readFile).mockResolvedValue(mockContent as any);
 
       const request = new NextRequest(`http://localhost:3000/api/lessons/content?path=css/selectors&level=${level}`);
       const response = await GET(request);

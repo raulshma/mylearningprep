@@ -23,18 +23,23 @@ import { Badge } from '@/components/ui/badge';
 import { Header } from '@/components/landing/header';
 import { Footer } from '@/components/landing/footer';
 import { getPublicJourneyBySlug } from '@/lib/actions/public-journeys';
-import { getObjectiveTitle } from '@/lib/utils/lesson-utils';
+import { MDXRemote, type MDXRemoteSerializeResult } from 'next-mdx-remote';
+import { useMDXComponents } from '@/mdx-components';
 import type { PublicJourney, PublicJourneyNode } from '@/lib/db/schemas/visibility';
 
 /**
- * Public Journey Detail Page
- * 
- * Displays a specific public journey with filtered content.
- * Shows only public milestones and objectives.
- * Returns 404 for private journeys.
- * No authentication required.
- * 
- * Requirements: 4.2, 4.3, 4.4
+ * Render a card for a journey node (milestone or topic) including header metadata and an optional expandable
+ * list of learning objectives.
+ *
+ * When expanded, the card shows each objective's title, a "content" badge if the objective is public, and
+ * renders MDX content for objectives that include MDX.
+ *
+ * @param node - The public journey node to display (milestone or topic), including title, description,
+ *   difficulty, estimatedMinutes, and learningObjectives.
+ * @param index - Zero-based position of this card in the list; used to stagger entrance animation.
+ * @param isExpanded - Whether the card is currently expanded to reveal learning objectives.
+ * @param onToggle - Callback invoked when the card header is clicked to toggle expansion.
+ * @returns A JSX element representing the rendered milestone/topic card.
  */
 
 function MilestoneCard({ 
@@ -49,6 +54,7 @@ function MilestoneCard({
   onToggle: () => void;
 }) {
   const isMilestone = node.type === 'milestone';
+  const mdxComponents = useMDXComponents({});
   
   return (
     <motion.div
@@ -141,7 +147,27 @@ function MilestoneCard({
                         <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 text-xs font-medium">
                           {objIndex + 1}
                         </div>
-                        <span className="text-sm text-foreground">{getObjectiveTitle(objective)}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-sm text-foreground">{objective.title}</span>
+                            {objective.contentPublic && (
+                              <Badge variant="secondary" className="text-[10px] uppercase tracking-wider">
+                                content
+                              </Badge>
+                            )}
+                          </div>
+
+                          {objective.contentMdx && (
+                            <div className="mt-3 rounded-xl border border-border/60 bg-background/60 p-4">
+                              <article className="prose prose-sm dark:prose-invert max-w-none">
+                                <MDXRemote
+                                  {...(objective.contentMdx as MDXRemoteSerializeResult)}
+                                  components={mdxComponents}
+                                />
+                              </article>
+                            </div>
+                          )}
+                        </div>
                       </li>
                     ))}
                   </ul>

@@ -418,13 +418,13 @@ describe('Visibility Admin Actions Property Tests', () => {
     it('batch updates should preserve parent references', async () => {
       await fc.assert(
         fc.asyncProperty(
-          fc.array(
+          fc.uniqueArray(
             fc.record({
               entityId: entityIdArb,
               isPublic: fc.boolean(),
-              parentjourneySlug: journeySlugArb,
+              parentJourneySlug: journeySlugArb,
             }),
-            { minLength: 1, maxLength: 5 }
+            { selector: (u) => u.entityId, minLength: 1, maxLength: 5 }
           ),
           adminIdArb,
           async (updates, adminId) => {
@@ -454,7 +454,7 @@ describe('Visibility Admin Actions Property Tests', () => {
             
             // Setup: batch update returns the updated settings with parent refs
             const expectedSettings = updates.map(u => 
-              createMockVisibilitySetting('milestone', u.entityId, u.isPublic, u.parentjourneySlug)
+              createMockVisibilitySetting('milestone', u.entityId, u.isPublic, u.parentJourneySlug)
             );
             mockSetVisibilityBatch.mockResolvedValue(expectedSettings);
             
@@ -472,7 +472,7 @@ describe('Visibility Admin Actions Property Tests', () => {
             for (let i = 0; i < updates.length; i++) {
               const setting = batchCall.find((s: { entityId: string }) => s.entityId === updates[i].entityId) as { entityId: string; parentJourneySlug?: string } | undefined;
               expect(setting).toBeDefined();
-              expect(setting?.parentJourneySlug).toBe(updates[i].parentjourneySlug);
+              expect(setting?.parentJourneySlug).toBe(updates[i].parentJourneySlug);
             }
             
             return true;

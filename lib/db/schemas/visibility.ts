@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { JourneyCategory, JourneyNodeType, NodePosition, JourneyEdge, LearningObjective } from './journey';
 import type { DifficultyLevel } from './learning-path';
+import type { MDXRemoteSerializeResult } from 'next-mdx-remote';
 
 // Entity types that can have visibility settings
 export const EntityTypeSchema = z.enum([
@@ -19,6 +20,8 @@ export const VisibilitySettingSchema = z.object({
   parentMilestoneId: z.string().optional(),
   // Visibility flag
   isPublic: z.boolean().default(false),
+  // Objective-specific option: if true and objective is publicly visible, lesson content may be shown in public explore
+  contentPublic: z.boolean().optional(),
   // Audit fields
   updatedBy: z.string().min(1), // Admin clerk ID
   updatedAt: z.date(),
@@ -64,9 +67,19 @@ export interface PublicJourneyNode {
   type: JourneyNodeType;
   position: NodePosition;
   // Only public objectives included
-  learningObjectives: LearningObjective[];
+  learningObjectives: PublicLearningObjective[];
   estimatedMinutes: number;
   difficulty?: DifficultyLevel;
+}
+
+export interface PublicLearningObjective {
+  title: string;
+  /** Normalized lesson id (slug-like), if available */
+  lessonId?: string;
+  /** True when admins enabled content visibility for this objective */
+  contentPublic?: boolean;
+  /** Serialized MDX content for public display (only present when contentPublic is true and content exists) */
+  contentMdx?: MDXRemoteSerializeResult;
 }
 
 // Visibility overview types for admin UI
@@ -108,4 +121,6 @@ export interface ObjectiveVisibilityInfo {
   title: string;
   isPublic: boolean;
   effectivelyPublic: boolean; // Considering parent visibility
+  contentPublic: boolean;
+  effectivelyContentPublic: boolean; // Considering parent visibility + objective visibility
 }

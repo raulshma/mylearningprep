@@ -309,7 +309,7 @@ describe('Visibility Repository', () => {
             _id: 'vis-1',
             entityType: 'milestone',
             entityId: 'milestone-1',
-            parentjourneySlug: 'frontend',
+            parentJourneySlug: 'frontend',
             isPublic: true,
             updatedBy: 'admin-1',
             updatedAt: new Date(),

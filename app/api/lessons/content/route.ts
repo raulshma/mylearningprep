@@ -1,12 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import fs from 'fs/promises';
+import { readFile } from 'fs/promises';
 import path from 'path';
 import type { ExperienceLevel } from '@/lib/db/schemas/lesson-progress';
 import { resolvePathWithinRoot } from '@/lib/utils/safe-path';
 
 const CONTENT_DIR = path.join(process.cwd(), 'content', 'lessons');
 
+/**
+ * Serve MDX lesson content for an authenticated user using the requested lesson path and experience level.
+ *
+ * Expects query parameters `path` (relative lesson path) and `level` (`beginner`, `intermediate`, or `advanced`).
+ *
+ * @param request - The incoming NextRequest whose search params must include `path` and `level`.
+ * @returns On success, a JSON object with `source` containing the MDX file contents and `level` indicating the requested experience level. On failure, a JSON object with an `error` message describing the problem.
+ */
 export async function GET(request: NextRequest) {
   const { userId } = await auth();
   if (!userId) {
@@ -44,7 +52,7 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       );
     }
-    const source = await fs.readFile(mdxPath, 'utf-8');
+    const source = await readFile(mdxPath, 'utf-8');
     console.log('[API] Loaded content, first 100 chars:', source.substring(0, 100));
     
     // Allow caching - lesson MDX content is static

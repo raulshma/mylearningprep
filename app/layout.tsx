@@ -10,6 +10,7 @@ import { Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { PWAProvider } from "@/components/pwa-provider";
+import { MobileBottomNavGlobal } from "@/components/navigation/mobile-bottom-nav-global";
 
 // Initialize fonts
 const _geistMono = Geist_Mono({
@@ -27,7 +28,9 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    // "black-translucent" enables a more full-screen feel on iOS PWAs.
+    // We add safe-area padding in CSS for standalone mode to avoid notch overlap.
+    statusBarStyle: "black-translucent",
     title: "MyLearningPrep",
   },
   formatDetection: {
@@ -54,8 +57,18 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#0a0a0a",
+  viewportFit: "cover",
 };
 
+/**
+ * Wraps the application content with global providers, layout structure, and app-level UI.
+ *
+ * Provides authentication (Clerk), theming, PWA support, global UI elements (toaster and mobile bottom nav),
+ * and renders analytics and performance insights outside the provider stack.
+ *
+ * @param children - The application content to render inside the global providers
+ * @returns The root React element containing global providers and app-level UI components
+ */
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -72,7 +85,10 @@ export default function RootLayout({
             themes={["light", "dark", "dark-dim", "cyberpunk", "system"]}
             disableTransitionOnChange
           >
-            <PWAProvider>{children}</PWAProvider>
+            <PWAProvider>
+              {children}
+              <MobileBottomNavGlobal />
+            </PWAProvider>
             <Toaster />
           </ThemeProvider>
           <Analytics />
