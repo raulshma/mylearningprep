@@ -20,6 +20,13 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { motion, AnimatePresence } from "framer-motion";
 import { APP_STAGE } from "@/lib/constants/version";
 
+/**
+ * Renders the application's responsive top navigation header with branding, navigation links, user/auth controls, and utility actions.
+ *
+ * The header includes a logo and app stage badge, desktop and mobile navigation, external GitHub and install buttons, a theme toggle, and an authentication area that shows either sign-in/get-started actions or a signed-in user avatar with a dropdown (dashboard, theme toggle on mobile, GitHub, and sign out). It also tracks scroll state to adjust styling and manages view transitions when navigating or signing out.
+ *
+ * @returns The header React element used at the top of the application layout.
+ */
 export function Header() {
   const { user, isSignedIn, isLoaded } = useUser();
   const { signOut } = useClerk();

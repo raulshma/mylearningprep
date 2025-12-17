@@ -17,6 +17,13 @@ interface ResponsiveSidebarLayoutProps {
   desktopSidebar: React.ReactNode;
 }
 
+/**
+ * Render a responsive app shell that shows a desktop sidebar on larger screens, a mobile header and bottom navigation on small screens, and a PixelPet overlay.
+ *
+ * @param sidebarData - Configuration for the sidebar and PixelPet overlay (includes pixelPet preferences and usage plan)
+ * @param desktopSidebar - Pre-rendered React node to use as the desktop sidebar
+ * @returns A React element representing the responsive layout with main content, navigation components appropriate to the viewport, and the PixelPet overlay configured from `sidebarData`
+ */
 function ResponsiveSidebarLayoutContent({
   children,
   sidebarData,

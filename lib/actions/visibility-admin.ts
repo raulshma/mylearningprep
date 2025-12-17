@@ -106,12 +106,11 @@ export interface BatchVisibilityUpdate {
 }
 
 /**
- * Toggle visibility for multiple entities of the same type (batch operation)
- * 
- * All updates are performed atomically using bulkWrite.
- * 
- * @param entityType - Type of entities (journey, milestone, objective)
- * @param updates - Array of updates with entityId and isPublic values
+ * Apply visibility updates to multiple entities of the same type in a single operation.
+ *
+ * @param entityType - The entity kind to update (e.g., "journey", "milestone", "objective").
+ * @param updates - Array of update objects containing `entityId`, `isPublic`, and optional `parentJourneySlug` and `parentMilestoneId`.
+ * @returns `BatchVisibilityResult` on success containing the updated settings and the number of updated records; `VisibilityErrorResult` with an `error` message on failure; or `UnauthorizedResponse` when the caller lacks required admin privileges.
  */
 export async function toggleVisibilityBatch(
   entityType: EntityType,
@@ -189,8 +188,13 @@ export async function toggleVisibilityBatch(
 }
 
 /**
- * Toggle whether an objective's lesson content is visible on the public explore journey page.
- * Note: this does NOT automatically make the objective public.
+ * Set whether an objective's lesson content is visible on the public explore page for its parent journey.
+ *
+ * @param objectiveEntityId - The objective entity's identifier
+ * @param contentPublic - Whether the objective's lesson content should be visible on the public explore page
+ * @param parentJourneySlug - Slug of the parent journey containing the objective
+ * @param parentMilestoneId - Identifier of the parent milestone containing the objective
+ * @returns `success` with the updated visibility setting on success, `error` with a message otherwise
  */
 export async function toggleObjectiveContentVisibility(
   objectiveEntityId: string,
@@ -232,6 +236,12 @@ export interface BatchObjectiveContentUpdate {
   parentMilestoneId: string;
 }
 
+/**
+ * Apply multiple updates that set whether each objective's lesson content is visible on the public explore pages.
+ *
+ * @param updates - Array of batch updates specifying `objectiveEntityId`, `contentPublic`, and optional `parentJourneySlug` and `parentMilestoneId` for each objective.
+ * @returns `true`-case: `{ success: true, settings: VisibilitySetting[], updatedCount: number }` where `settings` reflects the new visibility records and `updatedCount` is the number applied; error-case: `{ success: false, error: string }` describing the failure; or `UnauthorizedResponse` if the caller is not an admin.
+ */
 export async function toggleObjectiveContentVisibilityBatch(
   updates: BatchObjectiveContentUpdate[]
 ): Promise<BatchVisibilityResult | VisibilityErrorResult | UnauthorizedResponse> {
