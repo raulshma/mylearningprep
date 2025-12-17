@@ -74,6 +74,8 @@ export {
   getAIToolsConfig,
   updateAIToolStatus,
   getEnabledToolIds,
+  getAITitleGenerationEnabled,
+  updateAITitleGenerationEnabled,
   type AdminStats,
   type AILogWithDetails,
   type UsageTrendData,

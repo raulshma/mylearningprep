@@ -441,6 +441,41 @@ function PromptsTab() {
 function ConfigurationTab() {
   const [isReseeding, setIsReseeding] = useState(false);
   const [reseedResult, setReseedResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [aiTitleEnabled, setAiTitleEnabled] = useState(true);
+  const [isLoadingTitleSetting, setIsLoadingTitleSetting] = useState(true);
+  const [isSavingTitleSetting, setIsSavingTitleSetting] = useState(false);
+
+  // Load AI title generation setting on mount
+  useEffect(() => {
+    const loadSetting = async () => {
+      try {
+        const { getAITitleGenerationEnabled } = await import("@/lib/actions/admin");
+        const enabled = await getAITitleGenerationEnabled();
+        setAiTitleEnabled(enabled);
+      } catch (error) {
+        console.error("Failed to load AI title setting:", error);
+      } finally {
+        setIsLoadingTitleSetting(false);
+      }
+    };
+    loadSetting();
+  }, []);
+
+  const handleToggleAiTitle = async () => {
+    setIsSavingTitleSetting(true);
+    try {
+      const { updateAITitleGenerationEnabled } = await import("@/lib/actions/admin");
+      const newValue = !aiTitleEnabled;
+      const result = await updateAITitleGenerationEnabled(newValue);
+      if ("success" in result && result.success) {
+        setAiTitleEnabled(newValue);
+      }
+    } catch (error) {
+      console.error("Failed to update AI title setting:", error);
+    } finally {
+      setIsSavingTitleSetting(false);
+    }
+  };
 
   const handleReseedjourneys = async () => {
     setIsReseeding(true);
@@ -458,6 +493,49 @@ function ConfigurationTab() {
 
   return (
     <div className="space-y-8">
+      {/* AI Chat Configuration */}
+      <Card className="border-0 shadow-xl shadow-black/5 dark:shadow-black/20 bg-card/80 rounded-3xl overflow-hidden">
+        <CardHeader className="border-b border-border/50 p-6 md:p-8">
+          <div className="flex items-center gap-3 mb-1">
+            <div className="p-2 rounded-xl bg-primary/10">
+              <Settings className="w-5 h-5 text-primary" />
+            </div>
+            <CardTitle className="text-xl font-bold">AI Chat Configuration</CardTitle>
+          </div>
+          <CardDescription>Configure AI chat behavior and features</CardDescription>
+        </CardHeader>
+        <CardContent className="p-6 md:p-8 space-y-6">
+          <div className="p-6 rounded-2xl bg-secondary/30 border border-border/50">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-1">
+                <h3 className="font-semibold text-foreground">AI-Generated Conversation Titles</h3>
+                <p className="text-sm text-muted-foreground">
+                  {aiTitleEnabled 
+                    ? "Conversation titles are generated using AI based on the first message." 
+                    : "Conversation titles use the first words from the message instead of AI generation."}
+                </p>
+              </div>
+              <Button 
+                onClick={handleToggleAiTitle} 
+                disabled={isLoadingTitleSetting || isSavingTitleSetting} 
+                variant={aiTitleEnabled ? "default" : "outline"} 
+                className="rounded-full px-6 shrink-0"
+              >
+                {isLoadingTitleSetting || isSavingTitleSetting ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                    {isLoadingTitleSetting ? "Loading..." : "Saving..."}
+                  </>
+                ) : (
+                  aiTitleEnabled ? "Enabled" : "Disabled"
+                )}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Data Configuration */}
       <Card className="border-0 shadow-xl shadow-black/5 dark:shadow-black/20 bg-card/80 rounded-3xl overflow-hidden">
         <CardHeader className="border-b border-border/50 p-6 md:p-8">
           <div className="flex items-center gap-3 mb-1">

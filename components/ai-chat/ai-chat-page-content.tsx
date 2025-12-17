@@ -1,14 +1,12 @@
 "use client";
 
 import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 import { PanelLeftClose, PanelRightClose, Layers, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChatHistorySidebar } from "./chat-history-sidebar";
 import { AIChatMain } from "./chat-main";
-import { MultiModelChatMain } from "./multi-model";
-import { ToolsSidebar } from "./tools-sidebar";
-import { ArchivedConversationsModal } from "./archived-conversations-modal";
 import {
   AriaLiveProvider,
   SkipLinks,
@@ -33,6 +31,25 @@ import {
   useConversationActions,
 } from "@/lib/store/chat";
 import type { Conversation } from "@/lib/store/chat/types";
+
+// Dynamic imports for code splitting - these components are loaded on demand
+// MultiModelChatMain: Only needed for MAX plan users in compare mode
+const MultiModelChatMain = dynamic(
+  () => import("./multi-model").then((mod) => mod.MultiModelChatMain),
+  { ssr: false }
+);
+
+// ToolsSidebar: Loaded when user opens the tools panel
+const ToolsSidebar = dynamic(
+  () => import("./tools-sidebar").then((mod) => mod.ToolsSidebar),
+  { ssr: false }
+);
+
+// ArchivedConversationsModal: Loaded only when viewing archived chats
+const ArchivedConversationsModal = dynamic(
+  () => import("./archived-conversations-modal").then((mod) => mod.ArchivedConversationsModal),
+  { ssr: false }
+);
 
 // Faster animation config for snappier transitions
 const sidebarTransition = { type: "tween" as const, duration: 0.15, ease: [0.4, 0, 0.2, 1] as const };

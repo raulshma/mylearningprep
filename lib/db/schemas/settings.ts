@@ -38,6 +38,9 @@ export const SETTINGS_KEYS = {
   CRAWL_MAX_URLS_FREE: "crawl.maxUrls.free",
   CRAWL_MAX_URLS_PRO: "crawl.maxUrls.pro",
   CRAWL_MAX_URLS_MAX: "crawl.maxUrls.max",
+
+  // AI Chat settings
+  AI_TITLE_GENERATION_ENABLED: "ai_chat.title_generation_enabled",
 } as const;
 
 export type SettingsKey = (typeof SETTINGS_KEYS)[keyof typeof SETTINGS_KEYS];

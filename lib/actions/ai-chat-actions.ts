@@ -130,7 +130,29 @@ export async function updateConversationTitle(
 }
 
 /**
+ * Generate a title from the first words of a message (fallback method)
+ */
+function generateFallbackTitle(message: string): string {
+  // Get first ~50 chars, but try to break at word boundary
+  const maxLength = 50;
+  if (message.length <= maxLength) {
+    return message;
+  }
+  
+  const truncated = message.slice(0, maxLength);
+  const lastSpace = truncated.lastIndexOf(" ");
+  
+  // If there's a space in the last 15 chars, break there for cleaner title
+  if (lastSpace > maxLength - 15) {
+    return truncated.slice(0, lastSpace) + "...";
+  }
+  
+  return truncated + "...";
+}
+
+/**
  * Generate a conversation title using low-tier AI model
+ * If AI title generation is disabled in admin settings, uses first words from message
  */
 export async function generateConversationTitle(
   conversationId: string,
@@ -144,6 +166,18 @@ export async function generateConversationTitle(
 
     if (!conversation || conversation.userId !== userId) {
       return { success: false, error: "Conversation not found" };
+    }
+
+    // Check if AI title generation is enabled
+    const { getAITitleGenerationEnabled } = await import("@/lib/actions/admin");
+    const aiTitleEnabled = await getAITitleGenerationEnabled();
+    
+    if (!aiTitleEnabled) {
+      // Use fallback: first words from message
+      const fallbackTitle = generateFallbackTitle(firstMessage);
+      await aiConversationRepository.updateTitle(conversationId, fallbackTitle);
+      revalidatePath("/ai-chat");
+      return { success: true, data: fallbackTitle };
     }
 
     // Get low tier model config
@@ -194,7 +228,7 @@ export async function generateConversationTitle(
     console.error("Failed to generate title:", error);
     
     // Fall back to truncated message
-    const fallbackTitle = firstMessage.slice(0, 50) + (firstMessage.length > 50 ? "..." : "");
+    const fallbackTitle = generateFallbackTitle(firstMessage);
     try {
       await aiConversationRepository.updateTitle(conversationId, fallbackTitle);
     } catch {

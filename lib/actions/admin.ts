@@ -1647,3 +1647,30 @@ export async function getEnabledToolIds(): Promise<Set<AIToolId>> {
 
   return new Set(enabledTools);
 }
+
+/**
+ * Get AI title generation enabled status
+ * Returns true by default if not configured
+ */
+export async function getAITitleGenerationEnabled(): Promise<boolean> {
+  const collection = await getSettingsCollection();
+  const doc = await collection.findOne({ key: SETTINGS_KEYS.AI_TITLE_GENERATION_ENABLED });
+  return doc?.value !== false; // Default to true
+}
+
+/**
+ * Update AI title generation enabled status (admin only)
+ */
+export async function updateAITitleGenerationEnabled(
+  enabled: boolean
+): Promise<{ success: boolean } | UnauthorizedResponse> {
+  return requireAdmin(async () => {
+    const collection = await getSettingsCollection();
+    await collection.updateOne(
+      { key: SETTINGS_KEYS.AI_TITLE_GENERATION_ENABLED },
+      { $set: { key: SETTINGS_KEYS.AI_TITLE_GENERATION_ENABLED, value: enabled, updatedAt: new Date() } },
+      { upsert: true }
+    );
+    return { success: true };
+  });
+}
