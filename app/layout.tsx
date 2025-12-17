@@ -60,6 +60,15 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
+/**
+ * Wraps the application content with global providers, layout structure, and app-level UI.
+ *
+ * Provides authentication (Clerk), theming, PWA support, global UI elements (toaster and mobile bottom nav),
+ * and renders analytics and performance insights outside the provider stack.
+ *
+ * @param children - The application content to render inside the global providers
+ * @returns The root React element containing global providers and app-level UI components
+ */
 export default function RootLayout({
   children,
 }: Readonly<{

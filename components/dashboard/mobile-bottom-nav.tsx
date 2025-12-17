@@ -30,6 +30,16 @@ interface MobileBottomNavProps {
   sidebarData: SidebarData;
 }
 
+/**
+ * Determine whether a navigation link should be considered active for the current pathname.
+ *
+ * Treats `/dashboard`, `/dashboard/new`, `/journeys`, and `/ai-chat` as requiring exact matches;
+ * for other routes, a link is active when `pathname` equals `href` or starts with `href + '/'`.
+ *
+ * @param pathname - The current location pathname (e.g., from the router)
+ * @param href - The link href to test for activity
+ * @returns `true` if the link should be considered active, `false` otherwise
+ */
 function isActiveRoute(pathname: string, href: string) {
   // Exact match for specific routes
   if (
@@ -44,6 +54,15 @@ function isActiveRoute(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(href + "/");
 }
 
+/**
+ * Renders a navigation item as a vertically stacked icon and label linking to the given route.
+ *
+ * @param href - Destination URL for the navigation item.
+ * @param label - Text label displayed beneath the icon.
+ * @param icon - Icon component to render above the label; receives a `className` prop for sizing and color.
+ * @param active - Whether the item is active; applies active styling and sets `aria-current="page"`.
+ * @returns A Link element containing the icon and label styled for the mobile bottom navigation.
+ */
 function NavItem({
   href,
   label,
@@ -77,6 +96,12 @@ function NavItem({
   );
 }
 
+/**
+ * Render the mobile bottom navigation bar for small screens with primary navigation items, a prominent "New" action, and a "More" sheet containing full navigation, usage, and user details.
+ *
+ * @param sidebarData - Data used to determine admin status, plan/usage details, and user information shown in the More sheet
+ * @returns The navigation element containing the mobile dashboard controls and the expandable More sheet
+ */
 export function MobileBottomNav({ sidebarData }: MobileBottomNavProps) {
   const pathname = usePathname() ?? "/";
 

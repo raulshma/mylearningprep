@@ -25,6 +25,15 @@ import type { JourneyDocument } from '@/lib/db/collections';
 import { getObjectiveLessonId, getObjectiveTitle } from '@/lib/utils/lesson-utils';
 import { getLessonContent, resolveLessonPath } from '@/lib/actions/lessons';
 
+/**
+ * Extracts the numeric objective index from an objective entity ID that may follow several historical formats.
+ *
+ * Supports common formats such as `<milestoneId>-<index>`, `<milestoneId>-objective-<index>`, and other variants that end with `-<index>`.
+ *
+ * @param entityId - The objective entity identifier to parse.
+ * @param parentMilestoneId - The parent milestone ID used to detect milestone-prefixed formats.
+ * @returns The parsed objective index as an integer if present and valid, `null` otherwise.
+ */
 function parseObjectiveIndexFromEntityId(entityId: string, parentMilestoneId: string): number | null {
   // Supported historical/canonical formats:
   // 1) `${milestoneId}-${index}`
@@ -262,7 +271,12 @@ export const getPublicJourneyBySlug = cache(async (
 });
 
 /**
- * Filter journey content to only include publicly visible milestones and objectives
+ * Produce a PublicJourney containing only the milestones and objectives that are publicly visible.
+ *
+ * Filters the provided journey's nodes and edges to include only milestones marked public and, for each such milestone, only learning objectives whose visibility is public. Objective content MDX is loaded only when the objective's contentPublic flag is true.
+ *
+ * @param journey - The journey document to filter
+ * @returns A PublicJourney whose nodes and edges are pruned to publicly visible milestones and objectives, or `null` if the journey has no public milestones
  */
 async function filterJourneyForPublic(
   journey: JourneyDocument
@@ -485,8 +499,11 @@ export const getJourneyVisibilityDetails = cache(async (
 });
 
 /**
- * Update objective "contentPublic" without changing its isPublic value.
- * This controls whether lesson content is included in public explore.
+ * Update an objective's content visibility flag without modifying its public visibility.
+ *
+ * @param objectiveEntityId - The visibility entity id for the objective to update
+ * @param contentPublic - Whether the objective's lesson content should be exposed in public views
+ * @returns The updated VisibilitySetting for the objective
  */
 export async function updateObjectiveContentVisibility(
   adminId: string,

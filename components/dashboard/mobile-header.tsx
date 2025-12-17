@@ -18,6 +18,15 @@ interface MobileHeaderProps {
   backUrl?: string;
 }
 
+/**
+ * Render a mobile-only header containing an optional menu trigger, centered title/logo or back button, and a balancing placeholder.
+ *
+ * @param menuTrigger - Optional element displayed at the left (e.g., a hamburger button); a fixed 44px placeholder is used when absent
+ * @param title - Optional center title text; shown when `showBackButton` is false and a title is provided
+ * @param showBackButton - When true, shows a back button in the center that navigates to `backUrl` or performs a browser back action
+ * @param backUrl - Optional URL to navigate to when the back button is pressed; falls back to router.back() if not provided
+ * @returns The header JSX element used as the mobile top navigation
+ */
 export function MobileHeader({
   menuTrigger,
   title,

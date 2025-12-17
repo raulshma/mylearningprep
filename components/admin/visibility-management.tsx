@@ -49,6 +49,14 @@ interface VisibilityManagementProps {
   initialData: VisibilityOverview;
 }
 
+/**
+ * Renders the Visibility Management UI for journeys, milestones, and objectives.
+ *
+ * Provides controls for selecting items, performing individual and bulk visibility changes, and viewing nested journey details. The component applies optimistic UI updates for visibility changes and reverts them on server failure, and it lazily loads journey details when a journey is expanded.
+ *
+ * @param initialData - Initial visibility overview including journeys, milestones, objectives, and stats used to populate the UI.
+ * @returns The Visibility Management user interface as a JSX element.
+ */
 export function VisibilityManagement({ initialData }: VisibilityManagementProps) {
   const [data, setData] = useState(initialData);
   const [expandedjourneys, setExpandedjourneys] = useState<Set<string>>(() => new Set<string>());
@@ -270,6 +278,21 @@ interface JourneyVisibilityItemProps {
   onDetailsUpdate: (details: JourneyVisibilityDetails) => void;
 }
 
+/**
+ * Renders a collapsible UI row for a journey containing selection, visibility controls, and its milestone list.
+ *
+ * @param journey - The journey's visibility metadata and display info.
+ * @param selected - Whether the journey is currently selected for bulk actions.
+ * @param onSelectedChange - Callback invoked with the new selection state when the item's checkbox changes.
+ * @param isExpanded - Whether the journey's details panel is open.
+ * @param details - Optional loaded details for the journey, including milestones.
+ * @param isLoadingDetails - Whether journey details are currently being fetched.
+ * @param onToggleExpand - Callback invoked when the collapsible open state is toggled.
+ * @param onVisibilityChange - Callback invoked with the new public state when the journey visibility switch is changed.
+ * @param onDetailsUpdate - Callback invoked with updated JourneyVisibilityDetails when milestone data within the details changes.
+ *
+ * @returns The rendered journey item element with collapsible milestones and visibility controls.
+ */
 function JourneyVisibilityItem({
   journey,
   selected,
@@ -371,6 +394,17 @@ interface MilestonesListProps {
   onUpdate: (milestones: MilestoneVisibilityInfo[]) => void;
 }
 
+/**
+ * Renders a list of milestones with per-milestone selection, expansion, and visibility controls, plus bulk actions for selected milestones and their objectives.
+ *
+ * The component updates milestone state via the provided `onUpdate` callback and performs optimistic visibility changes (reverted if server calls fail).
+ *
+ * @param milestones - Array of milestone visibility info to render.
+ * @param journeySlug - Slug of the parent journey used for visibility API requests.
+ * @param journeyIsPublic - Whether the parent journey is public; used to compute effective visibility.
+ * @param onUpdate - Callback invoked with an updated milestones array when the component applies optimistic changes or reverts after failures.
+ * @returns A React element containing milestone rows, bulk action controls, and nested objective controls.
+ */
 function MilestonesList({ milestones, journeySlug, journeyIsPublic, onUpdate }: MilestonesListProps) {
   const [expandedMilestones, setExpandedMilestones] = useState<Set<string>>(() => new Set<string>());
   const [selectedMilestones, setSelectedMilestones] = useState<Set<string>>(() => new Set<string>());
@@ -715,6 +749,22 @@ interface MilestoneVisibilityItemProps {
   onObjectiveContentVisibilityChange: (objective: ObjectiveVisibilityInfo, contentPublic: boolean) => void;
 }
 
+/**
+ * Render a collapsible UI block for a milestone with selection, visibility, and objective bulk controls.
+ *
+ * Renders the milestone title, selection checkbox, effective visibility indicator, a public/private switch for the milestone, and an expandable list of objectives with per-objective visibility and content-visibility controls plus "All public"/"All private" bulk actions.
+ *
+ * @param milestone - Milestone data including title and its objectives
+ * @param journeyIsPublic - Whether the parent journey is public (affects effective visibility)
+ * @param isExpanded - Whether the milestone's collapsible content is open
+ * @param selected - Whether the milestone is selected for bulk actions
+ * @param onSelectedChange - Called when the milestone selection checkbox changes
+ * @param onToggleExpand - Called when the milestone's expanded state is toggled
+ * @param onVisibilityChange - Called when the milestone's isPublic switch changes
+ * @param onObjectiveVisibilityChange - Called when an individual objective's isPublic changes; receives the objective and the new boolean state
+ * @param onAllObjectivesVisibilityChange - Called to set all objectives under this milestone to public or private
+ * @param onObjectiveContentVisibilityChange - Called when an objective's contentPublic value changes; receives the objective and the new boolean state
+ */
 function MilestoneVisibilityItem({
   milestone,
   journeyIsPublic,
@@ -840,6 +890,15 @@ interface ObjectiveVisibilityItemProps {
   onContentVisibilityChange: (contentPublic: boolean) => void;
 }
 
+/**
+ * Renders a single objective row with controls to toggle its visibility and its lesson content visibility, and displays its effective visibility state.
+ *
+ * @param objective - Objective data (title, isPublic, contentPublic, effectivelyContentPublic) used to render labels and control states
+ * @param milestoneIsPublic - Whether the parent milestone is public; used to compute the objective's effective visibility
+ * @param journeyIsPublic - Whether the parent journey is public; used to compute the objective's effective visibility
+ * @param onVisibilityChange - Called with the new `isPublic` value when the objective's visibility switch is toggled
+ * @param onContentVisibilityChange - Called with the new `contentPublic` value when the objective's content visibility switch is toggled
+ */
 function ObjectiveVisibilityItem({
   objective,
   milestoneIsPublic,

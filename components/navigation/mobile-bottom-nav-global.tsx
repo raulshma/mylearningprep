@@ -28,6 +28,16 @@ import { APP_NAME } from "@/lib/constants";
 
 const SHOW_ON_PREFIXES = ["/interview", "/learning", "/plan"];
 
+/**
+ * Determine whether a navigation href should be considered active for the current pathname.
+ *
+ * For most routes an href is active when the pathname equals the href or starts with `href + "/"`.
+ * For the dashboard-like routes `/dashboard`, `/dashboard/new`, `/journeys`, and `/ai-chat` only an exact pathname match counts as active.
+ *
+ * @param pathname - The current location pathname (e.g., `"/dashboard/settings"`).
+ * @param href - The route href to test for activity (e.g., `"/dashboard"`).
+ * @returns `true` if the href is active for the given pathname, `false` otherwise.
+ */
 function isActiveRoute(pathname: string, href: string) {
   if (
     href === "/dashboard" ||
@@ -40,6 +50,13 @@ function isActiveRoute(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(href + "/");
 }
 
+/**
+ * Renders a navigation link displaying an icon and label, with styles and accessibility reflecting the active state.
+ *
+ * @param icon - React component used as the item's icon; receives an optional `className` prop for styling.
+ * @param active - When true, applies active styles and sets `aria-current="page"`.
+ * @returns The rendered navigation link element.
+ */
 function NavItem({
   href,
   label,
@@ -74,9 +91,11 @@ function NavItem({
 }
 
 /**
- * Bottom nav used for routes that are NOT under the (sidebar) layout, but still part of the authenticated app.
+ * Renders the mobile bottom navigation bar for authenticated app routes that are not inside the sidebar layout.
  *
- * This avoids duplicating the (sidebar) layout's own bottom nav.
+ * The bar appears only on mobile when the user is signed in and the current path starts with one of the configured prefixes. It includes Home, Journeys, a central "New" action, AI Chat, and a "More" sheet with Settings, conditional Admin, and Sign Out. While visible, the component adds the `has-mobile-bottom-nav` class to the document body to reserve layout space.
+ *
+ * @returns The navigation element when it should be shown, `null` otherwise.
  */
 export function MobileBottomNavGlobal() {
   const pathname = usePathname() ?? "/";

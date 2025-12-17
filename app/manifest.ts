@@ -1,5 +1,10 @@
 import type { MetadataRoute } from "next";
 
+/**
+ * Provide the web app manifest for the MyLearningPrep application.
+ *
+ * @returns A `MetadataRoute.Manifest` object containing app metadata such as name, short_name, description, start_url, scope, id, display modes, theme/background colors, orientation, and icons.
+ */
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "MyLearningPrep",

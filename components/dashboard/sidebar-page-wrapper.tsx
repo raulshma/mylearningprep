@@ -18,6 +18,16 @@ const paddingConfig = {
   default: "p-4 md:p-6 lg:p-8", // All-around padding for other pages
 } as const;
 
+/**
+ * Wraps page content with a shared header and applies route-sensitive padding for the sidebar layout.
+ *
+ * The component adds a safe-area-aware bottom padding to the outer wrapper and selects one of three
+ * padding presets based on the current pathname: no padding for `/ai-chat` routes, small padding
+ * for exact `/journeys/{id}` pages, and the default padding for all other routes.
+ *
+ * @param children - Page content rendered beneath the shared header
+ * @returns A JSX element containing the shared header and the provided children with appropriate layout padding
+ */
 export function SidebarPageWrapper({ children }: SidebarPageWrapperProps) {
   const pathname = usePathname();
 

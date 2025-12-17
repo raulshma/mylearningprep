@@ -28,14 +28,18 @@ import { useMDXComponents } from '@/mdx-components';
 import type { PublicJourney, PublicJourneyNode } from '@/lib/db/schemas/visibility';
 
 /**
- * Public Journey Detail Page
- * 
- * Displays a specific public journey with filtered content.
- * Shows only public milestones and objectives.
- * Returns 404 for private journeys.
- * No authentication required.
- * 
- * Requirements: 4.2, 4.3, 4.4
+ * Render a card for a journey node (milestone or topic) including header metadata and an optional expandable
+ * list of learning objectives.
+ *
+ * When expanded, the card shows each objective's title, a "content" badge if the objective is public, and
+ * renders MDX content for objectives that include MDX.
+ *
+ * @param node - The public journey node to display (milestone or topic), including title, description,
+ *   difficulty, estimatedMinutes, and learningObjectives.
+ * @param index - Zero-based position of this card in the list; used to stagger entrance animation.
+ * @param isExpanded - Whether the card is currently expanded to reveal learning objectives.
+ * @param onToggle - Callback invoked when the card header is clicked to toggle expansion.
+ * @returns A JSX element representing the rendered milestone/topic card.
  */
 
 function MilestoneCard({ 

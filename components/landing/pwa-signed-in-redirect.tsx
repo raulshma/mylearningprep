@@ -4,6 +4,13 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 
+/**
+ * Detects whether the app is running as an installed Progressive Web App (PWA).
+ *
+ * Safely returns `false` when executed outside a browser environment (for example, during server-side rendering).
+ *
+ * @returns `true` if the app is running as an installed PWA (standalone display mode or iOS standalone), `false` otherwise.
+ */
 function isRunningAsPwa(): boolean {
   // Chrome/Edge/Android
   if (typeof window !== "undefined") {
@@ -18,9 +25,11 @@ function isRunningAsPwa(): boolean {
 }
 
 /**
- * Redirect signed-in users to /dashboard ONLY when the app is running as an installed PWA.
+ * Redirects authenticated users to /dashboard when the app is running as an installed PWA.
  *
- * This intentionally does NOT redirect in normal browser tabs.
+ * Does not perform navigation in regular browser tabs; renders nothing otherwise.
+ *
+ * @returns The component renders `null`.
  */
 export function PwaSignedInRedirect() {
   const router = useRouter();
