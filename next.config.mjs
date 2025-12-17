@@ -5,7 +5,7 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    unoptimized: true,
+    // unoptimized: true, // Optimizing images now
   },
   experimental: {
     viewTransition: true,

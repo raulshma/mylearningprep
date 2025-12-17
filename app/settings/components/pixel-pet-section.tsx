@@ -23,7 +23,12 @@ import { PIXEL_PET_REGISTRY } from "@/lib/pixel-pet/registry";
 import { updatePixelPetPreferences } from "@/lib/actions/user";
 import { usePixelPetStore } from "@/hooks/use-pixel-pet";
 import { toast } from "sonner";
-import { PixelPetCalibration } from "@/components/pixel-pet/pixel-pet-calibration";
+import dynamic from "next/dynamic";
+
+const PixelPetCalibration = dynamic(
+  () => import("@/components/pixel-pet/pixel-pet-calibration").then((mod) => mod.PixelPetCalibration),
+  { ssr: false }
+);
 
 interface PixelPetSectionProps {
   plan: "FREE" | "PRO" | "MAX";

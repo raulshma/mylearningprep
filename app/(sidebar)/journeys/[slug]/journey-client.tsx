@@ -4,11 +4,19 @@ import { useState, useCallback, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  JourneyViewer,
   JourneySidebar,
   JourneyTopicDetail,
   JourneyCommandMenu,
 } from "@/components/journey";
+import dynamic from "next/dynamic";
+
+const JourneyViewer = dynamic(
+  () => import("@/components/journey").then((mod) => mod.JourneyViewer),
+  {
+    loading: () => <div className="w-full h-[500px] bg-card/30 rounded-2xl animate-pulse" />,
+    ssr: false,
+  }
+);
 import {
   startNode,
   completeNode,
