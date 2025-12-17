@@ -85,6 +85,9 @@ export function VisibilityManagement({ initialData }: VisibilityManagementProps)
     const slugs = Array.from(selectedJourneys);
     if (slugs.length === 0) return;
 
+    // Capture original state before optimistic update for reliable revert
+    const originalJourneys = data.journeys.map(j => ({ ...j }));
+
     // Optimistic update
     setData(prev => {
       const journeys = prev.journeys.map(j => (selectedJourneys.has(j.slug) ? { ...j, isPublic } : j));
@@ -105,19 +108,15 @@ export function VisibilityManagement({ initialData }: VisibilityManagementProps)
     );
 
     if ('success' in result && !result.success) {
-      // Re-fetch would be ideal; for now revert by flipping back.
-      setData(prev => {
-        const journeys = prev.journeys.map(j => (selectedJourneys.has(j.slug) ? { ...j, isPublic: !isPublic } : j));
-        const publicJourneys = journeys.filter(j => j.isPublic).length;
-        return {
-          ...prev,
-          journeys,
-          stats: {
-            ...prev.stats,
-            publicJourneys,
-          },
-        };
-      });
+      // Revert to captured original state
+      setData(prev => ({
+        ...prev,
+        journeys: originalJourneys,
+        stats: {
+          ...prev.stats,
+          publicJourneys: originalJourneys.filter(j => j.isPublic).length,
+        },
+      }));
     } else {
       setSelectedJourneys(new Set());
     }
@@ -558,6 +557,16 @@ function MilestonesList({ milestones, journeySlug, journeyIsPublic, onUpdate }: 
     milestone: MilestoneVisibilityInfo,
     isPublic: boolean
   ) => {
+    // Capture original objectives before optimistic update for reliable revert
+    const originalObjectivesByMilestoneId = new Map<string, ObjectiveVisibilityInfo[]>(
+      milestones.map(m => [
+        m.nodeId,
+        m.objectives.map(o => ({
+          ...o,
+        })),
+      ])
+    );
+
     // Optimistic update
     onUpdate(
       milestones.map(m =>
@@ -586,21 +595,17 @@ function MilestonesList({ milestones, journeySlug, journeyIsPublic, onUpdate }: 
     );
 
     if ('success' in result && !result.success) {
-      // Revert
+      // Revert to captured original state
       onUpdate(
-        milestones.map(m =>
-          m.nodeId === milestone.nodeId
+        milestones.map(m => {
+          const originalObjectives = originalObjectivesByMilestoneId.get(m.nodeId);
+          return m.nodeId === milestone.nodeId && originalObjectives
             ? {
                 ...m,
-                objectives: m.objectives.map(o => ({
-                  ...o,
-                  isPublic: !isPublic,
-                  effectivelyPublic: journeyIsPublic && m.isPublic && !isPublic,
-                  effectivelyContentPublic: journeyIsPublic && m.isPublic && !isPublic && o.contentPublic,
-                })),
+                objectives: originalObjectives,
               }
-            : m
-        )
+            : m;
+        })
       );
     }
   };
