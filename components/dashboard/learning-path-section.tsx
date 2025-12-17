@@ -1,27 +1,32 @@
-'use client';
+import Link from "next/link";
+import { Brain } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { getActiveLearningPath } from "@/lib/actions/dashboard";
+import { LearningPathSummaryCard } from "./learning-path-summary-card";
 
-import { motion } from 'framer-motion';
-import { BookOpen } from 'lucide-react';
-import { LearningPathCard } from './learning-path-card';
-import type { LearningPath } from '@/lib/db/schemas/learning-path';
+/**
+ * Async Server Component for learning path section
+ * Streams independently with its own Suspense boundary
+ */
+export async function LearningPathSection() {
+  const learningPath = await getActiveLearningPath();
 
-interface LearningPathSectionProps {
-  learningPath: LearningPath | null;
-}
-
-export function LearningPathSection({ learningPath }: LearningPathSectionProps) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: 0.15 }}
-      className="mb-8"
-    >
-      <div className="flex items-center gap-2 mb-4">
-        <BookOpen className="w-4 h-4 text-primary" />
-        <h2 className="font-mono text-foreground">Learning Path</h2>
+  if (!learningPath) {
+    return (
+      <div className="relative overflow-hidden rounded-3xl bg-card border border-border/50 hover:border-primary/20 transition-all duration-300 min-h-[240px] flex flex-col items-center justify-center text-center space-y-4 py-8 p-6">
+        <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center">
+          <Brain className="w-6 h-6 text-muted-foreground" />
+        </div>
+        <div className="space-y-1">
+          <p className="font-medium">No active focus</p>
+          <p className="text-sm text-muted-foreground">Start a learning path to track progress</p>
+        </div>
+        <Button variant="outline" size="sm" className="rounded-full" asChild>
+          <Link href="/learning">Explore Paths</Link>
+        </Button>
       </div>
-      <LearningPathCard learningPath={learningPath} />
-    </motion.div>
-  );
+    );
+  }
+
+  return <LearningPathSummaryCard learningPath={learningPath} />;
 }

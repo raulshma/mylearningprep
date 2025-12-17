@@ -194,15 +194,15 @@ export function JourneyCommandMenu({ currentJourneySlug, onNodeSelect }: Journey
       setQuery('');
 
       if (result.type === 'journey') {
-        router.push(`/Journeys/${result.journeySlug}`);
+        router.push(`/journeys/${result.journeySlug}`);
       } else if (result.type === 'objective' && result.lessonId && result.nodeId) {
-        router.push(`/Journeys/${result.journeySlug}/learn/${result.nodeId}/${result.lessonId}`);
+        router.push(`/journeys/${result.journeySlug}/learn/${result.nodeId}/${result.lessonId}`);
       } else if (result.nodeId) {
         // Navigate to Journey and select node
         if (currentJourneySlug === result.journeySlug && onNodeSelect) {
           onNodeSelect(result.nodeId);
         } else {
-          router.push(`/Journeys/${result.journeySlug}?node=${result.nodeId}`);
+          router.push(`/journeys/${result.journeySlug}?node=${result.nodeId}`);
         }
       }
     },

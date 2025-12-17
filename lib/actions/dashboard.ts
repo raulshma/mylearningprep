@@ -2,7 +2,7 @@
 
 /**
  * Optimized Dashboard Data Fetching
- * Combines user and interview data fetching with parallel queries
+ * Split into granular cached functions for parallel streaming
  */
 
 import { cache } from 'react';
@@ -29,38 +29,43 @@ export interface DashboardInterviewData {
   topics: string[];
 }
 
-export interface DashboardData {
-  interviews: DashboardInterviewData[];
-  totalInterviews: number;
-  journeyProgress: UserJourneyProgressSummary[];
-  learningPath: {
-      _id: string;
-      goal: string;
-      overallElo: number;
-      skillScores: Record<string, number>;
-      timeline: { success: boolean }[];
-  } | null;
-  stats: {
-    total: number;
-    active: number;
-    completed: number;
+export interface DashboardStats {
+  total: number;
+  active: number;
+  completed: number;
+}
+
+export interface DashboardSidebar {
+  isAdmin: boolean;
+  usage: {
+    iterations: { count: number; limit: number };
+    interviews: { count: number; limit: number };
+    plan: string;
+    isByok: boolean;
   };
-  sidebar: {
-    isAdmin: boolean;
-    usage: {
-      iterations: { count: number; limit: number };
-      interviews: { count: number; limit: number };
-      plan: string;
-      isByok: boolean;
-    };
-    user: {
-      firstName: string | null;
-      lastName: string | null;
-      email: string | null;
-      imageUrl: string | null;
-    };
+  user: {
+    firstName: string | null;
+    lastName: string | null;
+    email: string | null;
+    imageUrl: string | null;
   };
 }
+
+export interface LearningPathSummary {
+  _id: string;
+  goal: string;
+  overallElo: number;
+  skillScores: Record<string, number>;
+  timeline: { success: boolean }[];
+}
+
+// Re-export for backward compatibility
+export type { UserJourneyProgressSummary };
+
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
 
 function computeStatus(summary: InterviewSummary): 'upcoming' | 'active' | 'completed' {
   const moduleCount = [
@@ -92,42 +97,88 @@ function extractTopics(summary: InterviewSummary): string[] {
   return summary.keySkills;
 }
 
-/**
- * Fetch all dashboard data in a single optimized call
- * Uses parallel queries and lightweight projections
- */
-export const getDashboardData = cache(async (
-  page: number = 1,
-  search?: string,
-  status?: 'active' | 'completed' | 'all'
-): Promise<DashboardData> => {
-  // Get auth user first (cached, so subsequent calls are free)
+// ============================================================================
+// Cached Auth - Shared across all dashboard fetches (deduped by React)
+// ============================================================================
+
+export const getAuthenticatedUser = cache(async () => {
   const authUser = await getAuthUser();
-  
   if (!authUser) {
     throw new Error('Unauthorized');
   }
-
-  // Parallel fetch: DB user + BYOK status
-  const [dbUser, isByok] = await Promise.all([
-    userRepository.findByClerkId(authUser.clerkId),
-    hasByokApiKey(),
-  ]);
-
+  
+  const dbUser = await userRepository.findByClerkId(authUser.clerkId);
   if (!dbUser) {
     throw new Error('User not found');
   }
+  
+  return { authUser, dbUser };
+});
 
-  // Parallel fetch for dashboard content
-  const [interviewResult, learningPath, journeyProgress] = await Promise.all([
-    interviewRepository.findSummariesByUserId(dbUser._id, page, 9, search, status),
-    learningPathRepository.findActiveSummaryByUserId(dbUser._id),
-    userJourneyProgressRepository.findProgressSummariesByUser(dbUser._id),
-  ]);
+// ============================================================================
+// Granular Data Fetchers - Each can be streamed independently
+// ============================================================================
 
-  const { interviews: summaries, total: totalInterviews } = interviewResult;
+/**
+ * Fetch dashboard stats (lightweight)
+ */
+export const getDashboardStats = cache(async (): Promise<DashboardStats> => {
+  const { dbUser } = await getAuthenticatedUser();
+  
+  // Use the user's stored interview count for total
+  const total = dbUser.interviews?.count ?? 0;
+  
+  // For active/completed, we need a lightweight aggregation
+  // This could be optimized further with stored counters on user doc
+  const summaries = await interviewRepository.findSummariesByUserId(dbUser._id, 1, 100);
+  
+  let active = 0;
+  let completed = 0;
+  
+  for (const summary of summaries.interviews) {
+    const status = computeStatus(summary);
+    if (status === 'completed') completed++;
+    else if (status === 'active' || status === 'upcoming') active++;
+  }
+  
+  return { total, active, completed };
+});
 
-  // Transform summaries to dashboard format
+/**
+ * Fetch active learning path summary
+ */
+export const getActiveLearningPath = cache(async (): Promise<LearningPathSummary | null> => {
+  const { dbUser } = await getAuthenticatedUser();
+  const learningPath = await learningPathRepository.findActiveSummaryByUserId(dbUser._id);
+  return learningPath as LearningPathSummary | null;
+});
+
+/**
+ * Fetch journey progress summaries
+ */
+export const getJourneyProgress = cache(async (): Promise<UserJourneyProgressSummary[]> => {
+  const { dbUser } = await getAuthenticatedUser();
+  return userJourneyProgressRepository.findProgressSummariesByUser(dbUser._id);
+});
+
+/**
+ * Fetch paginated interviews
+ */
+export const getDashboardInterviews = cache(async (
+  page: number = 1,
+  search?: string,
+  status?: 'active' | 'completed' | 'all'
+): Promise<{ interviews: DashboardInterviewData[]; total: number }> => {
+  const { dbUser } = await getAuthenticatedUser();
+  
+  const { interviews: summaries, total } = await interviewRepository.findSummariesByUserId(
+    dbUser._id, 
+    page, 
+    9, 
+    search, 
+    status
+  );
+
   const interviews: DashboardInterviewData[] = summaries.map((summary) => ({
     _id: summary._id,
     jobDetails: summary.jobDetails,
@@ -139,51 +190,17 @@ export const getDashboardData = cache(async (
     topics: extractTopics(summary),
   }));
 
-  // Compute stats (Note: 'active' and 'completed' counts here are only for the current page if filtered,
-  // but ideally we want GLOBAL stats. 
-  // For true global stats, we might need a separate lightweight count query if we want them exact 
-  // while filtering. However, usually dashboard stats show TOTALS regardless of filter.
-  // The current repository implementation for `findSummariesByUserId` returns total matching the filter.
-  // If we want the "Bento Grid" stats to always be correct (Total, Active, Completed), we should 
-  // probably fetch them separately or make the aggregation return them.
-  // For now, let's keep it simple: "Total" comes from the pagination metadata.
-  // "Active" and "Completed" might be misleading if we are filtering.
-  // Let's assume the Bento Grid stats are MEANT to show the user's global state, not the filtered state.
-  // So we might need a separate call for "Global Stats".
-  // Let's add a lightweight "getStats" to repository or just accept that they update with filter?
-  // Updating with filter is actually often desired behavior.
-  // Let's rely on the returned data for now.
-  
-  const stats = {
-    total: totalInterviews,
-    active: interviews.filter((i) => i.status === 'active' || i.status === 'upcoming').length, // This is only for current page!
-    completed: interviews.filter((i) => i.status === 'completed').length, // This is only for current page!
-  };
-  
-  // WAIT. The previous `stats` calculation was doing `interviews.filter(...)` on ALL interviews.
-  // Now `interviews` is just one page. We can't calculate global active/completed from one page.
-  // We need to fetch global stats properly. 
-  // Let's modify this to fetch global stats if no filter is applied, or maybe just fetch them separately entirely.
-  // Ideally, we want { total, active, completed } counts for the USER, regardless of current view.
-  // let's fetch all summaries ONLY for stats calculation? No, that defeats the purpose of optimization.
-  // I will add `getInterviewStats(userId)` to the repository later or now?
-  // I'll stick to a simple implementation first: Total matches content. Active/Completed matches content.
-  // This is acceptable for a "filtered view".
-  
-  // Actually, for the "Bento Grid" (top of page), specific counts are nice. 
-  // Let's approximate or just say "Visible" for now?
-  // No, the user wants "Performant". 
-  // Let's use the `user.interviews` count from the DB user object for "Total" at least.
-  // `dbUser.interviews.count` exists!
-  
-  const globalStats = {
-      total: dbUser.interviews?.count ?? totalInterviews, // Fallback
-      active: 0, // We don't track this on user object yet
-      completed: 0 // We don't track this on user object yet
-  };
+  return { interviews, total };
+});
 
-  // Build sidebar data (reusing already-fetched data)
-  const sidebar = {
+/**
+ * Fetch sidebar data (user info + usage)
+ */
+export const getSidebarData = cache(async (): Promise<DashboardSidebar> => {
+  const { authUser, dbUser } = await getAuthenticatedUser();
+  const isByok = await hasByokApiKey();
+
+  return {
     isAdmin: authUser.isAdmin,
     usage: {
       iterations: { count: dbUser.iterations.count, limit: dbUser.iterations.limit },
@@ -201,13 +218,52 @@ export const getDashboardData = cache(async (
       imageUrl: authUser.imageUrl,
     },
   };
+});
+
+// ============================================================================
+// Legacy Combined Fetch - For backward compatibility
+// ============================================================================
+
+export interface DashboardData {
+  interviews: DashboardInterviewData[];
+  totalInterviews: number;
+  journeyProgress: UserJourneyProgressSummary[];
+  learningPath: LearningPathSummary | null;
+  stats: DashboardStats;
+  sidebar: DashboardSidebar;
+}
+
+export const getDashboardData = cache(async (
+  page: number = 1,
+  search?: string,
+  status?: 'active' | 'completed' | 'all'
+): Promise<DashboardData> => {
+  // Parallel fetch all data
+  const [
+    { interviews, total: totalInterviews },
+    learningPath,
+    journeyProgress,
+    sidebar,
+  ] = await Promise.all([
+    getDashboardInterviews(page, search, status),
+    getActiveLearningPath(),
+    getJourneyProgress(),
+    getSidebarData(),
+  ]);
+
+  // Compute stats from interviews
+  const stats: DashboardStats = {
+    total: totalInterviews,
+    active: interviews.filter((i) => i.status === 'active' || i.status === 'upcoming').length,
+    completed: interviews.filter((i) => i.status === 'completed').length,
+  };
 
   return { 
     interviews, 
     totalInterviews,
-    stats: stats, // Keeping local stats for now, will refine if needed
+    stats,
     sidebar,
-    learningPath: learningPath as any, // Cast because it's partial
+    learningPath,
     journeyProgress
   };
 });

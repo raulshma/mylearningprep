@@ -58,7 +58,7 @@ export function JourneyBreadcrumb({ journey, parentJourney }: JourneyBreadcrumbP
       className="flex items-center gap-1.5 text-sm text-muted-foreground flex-wrap"
     >
       <Link
-        href="/Journeys"
+        href="/journeys"
         className="flex items-center gap-1.5 hover:text-foreground transition-colors"
       >
         <Home className="w-3.5 h-3.5" />
@@ -69,7 +69,7 @@ export function JourneyBreadcrumb({ journey, parentJourney }: JourneyBreadcrumbP
         <>
           <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
           <Link
-            href={`/Journeys/${parentJourney.slug}`}
+            href={`/journeys/${parentJourney.slug}`}
             className="hover:text-foreground transition-colors truncate max-w-[150px]"
             title={parentJourney.title}
           >

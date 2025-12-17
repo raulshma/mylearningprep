@@ -192,7 +192,7 @@ export function JourneyClient({
 
           if (subJourneyInfo.exists) {
             // Navigate to sub-Journey page (Requirements: 1.1)
-            router.push(`/Journeys/${selectedNode.subJourneySlug}`);
+            router.push(`/journeys/${selectedNode.subJourneySlug}`);
             return;
           } else {
             // Show "Coming Soon" message if sub-Journey doesn't exist (Requirements: 1.3)

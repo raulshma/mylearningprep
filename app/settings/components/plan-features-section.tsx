@@ -1,12 +1,8 @@
-'use client';
-
-import { motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Sparkles,
   Check,
-  Lock,
   Zap,
   FileDown,
   Key,
@@ -53,7 +49,7 @@ const FEATURE_INFO: Record<PlanFeature, { label: string; description: string; ic
   },
   web_search_crawl: {
     label: 'Web Search & Crawl',
-    description: 'AI-powered web search and content extraction for up-to-date information',
+    description: 'AI-powered web search and content extraction',
     icon: <Globe className="w-5 h-5" />,
     minPlan: 'PRO',
   },
@@ -77,7 +73,7 @@ const FEATURE_INFO: Record<PlanFeature, { label: string; description: string; ic
   },
   custom_theme: {
     label: 'Custom Theme',
-    description: 'Personalize your workspace with custom shadcn/ui themes',
+    description: 'Personalize your workspace with custom themes',
     icon: <Palette className="w-5 h-5" />,
     minPlan: 'PRO',
   },
@@ -89,7 +85,7 @@ const FEATURE_INFO: Record<PlanFeature, { label: string; description: string; ic
   },
   analytics: {
     label: 'Analytics & Insights',
-    description: 'Track your preparation progress with visualizations',
+    description: 'Track your preparation progress',
     icon: <BarChart3 className="w-5 h-5" />,
     minPlan: 'PRO',
   },
@@ -102,17 +98,11 @@ const FEATURE_INFO: Record<PlanFeature, { label: string; description: string; ic
 };
 
 const ALL_FEATURES: PlanFeature[] = [
-  'ai_chat',
-  'ai_tools',
-  'analogy_all_styles',
-  'pdf_export',
-  'web_search_crawl',
-  'advanced_ai',
-  'custom_theme',
-  'analytics',
-  'custom_prompts',
-  'byok',
+  'ai_chat', 'ai_tools', 'analogy_all_styles', 'pdf_export',
+  'web_search_crawl', 'advanced_ai', 'custom_theme', 'analytics',
+  'custom_prompts', 'byok',
 ];
+
 
 export function PlanFeaturesSection({ plan }: PlanFeaturesSectionProps) {
   const availableFeatures = getAvailableFeatures(plan);
@@ -121,21 +111,14 @@ export function PlanFeaturesSection({ plan }: PlanFeaturesSectionProps) {
   const isFreePlan = plan === 'FREE';
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.2 }}
-      className="bg-card/50  border border-white/10 p-6 md:p-8 rounded-3xl hover:border-primary/20 transition-all duration-300 shadow-sm"
-    >
+    <div className="bg-card/50 border border-white/10 p-6 md:p-8 rounded-3xl hover:border-primary/20 transition-all duration-300 shadow-sm">
       <div className="flex items-center gap-4 mb-8">
         <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/10">
           <Sparkles className="w-6 h-6 text-primary" />
         </div>
         <div>
           <h2 className="text-lg font-bold text-foreground">Plan Features</h2>
-          <p className="text-sm text-muted-foreground">
-            Your {plan} plan includes:
-          </p>
+          <p className="text-sm text-muted-foreground">Your {plan} plan includes:</p>
         </div>
       </div>
 
@@ -145,11 +128,8 @@ export function PlanFeaturesSection({ plan }: PlanFeaturesSectionProps) {
           const isAvailable = availableFeatures.includes(feature);
 
           return (
-            <motion.div
+            <div
               key={feature}
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.05 }}
               className={`flex items-start gap-4 p-4 rounded-2xl border transition-all ${
                 isAvailable
                   ? 'border-primary/20 bg-primary/5'
@@ -158,9 +138,7 @@ export function PlanFeaturesSection({ plan }: PlanFeaturesSectionProps) {
             >
               <div
                 className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                  isAvailable
-                    ? 'bg-primary/10 text-primary'
-                    : 'bg-muted-foreground/10 text-muted-foreground'
+                  isAvailable ? 'bg-primary/10 text-primary' : 'bg-muted-foreground/10 text-muted-foreground'
                 }`}
               >
                 {info.icon}
@@ -173,16 +151,14 @@ export function PlanFeaturesSection({ plan }: PlanFeaturesSectionProps) {
                   {isAvailable ? (
                     <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
                   ) : (
-                    <Badge variant="outline" className="text-xs px-2 py-0.5 rounded-full">
-                      {info.minPlan}+
-                    </Badge>
+                    <Badge variant="outline" className="text-xs px-2 py-0.5 rounded-full">{info.minPlan}+</Badge>
                   )}
                 </div>
                 <p className={`text-xs ${isAvailable ? 'text-muted-foreground' : 'text-muted-foreground/70'}`}>
                   {info.description}
                 </p>
               </div>
-            </motion.div>
+            </div>
           );
         })}
       </div>
@@ -191,14 +167,9 @@ export function PlanFeaturesSection({ plan }: PlanFeaturesSectionProps) {
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-5 rounded-2xl bg-primary/5 border border-primary/20">
           <div className="flex-1">
             <p className="text-sm font-bold text-foreground mb-1">Unlock Premium Features</p>
-            <p className="text-xs text-muted-foreground">
-              Upgrade to PRO or MAX to access all features and unlock your full potential.
-            </p>
+            <p className="text-xs text-muted-foreground">Upgrade to PRO or MAX to access all features.</p>
           </div>
-          <Button
-            asChild
-            className="h-10 rounded-full px-6 font-medium shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex-shrink-0"
-          >
+          <Button asChild className="h-10 rounded-full px-6 font-medium shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex-shrink-0">
             <Link href="/settings/upgrade">Upgrade Now</Link>
           </Button>
         </div>
@@ -208,14 +179,9 @@ export function PlanFeaturesSection({ plan }: PlanFeaturesSectionProps) {
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-5 rounded-2xl bg-purple-500/5 border border-purple-500/20">
           <div className="flex-1">
             <p className="text-sm font-bold text-foreground mb-1">Upgrade to MAX</p>
-            <p className="text-xs text-muted-foreground">
-              Get BYOK and custom system prompts with the MAX plan.
-            </p>
+            <p className="text-xs text-muted-foreground">Get BYOK and custom system prompts.</p>
           </div>
-          <Button
-            asChild
-            className="h-10 rounded-full px-6 font-medium shadow-lg shadow-purple-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex-shrink-0 bg-purple-600 hover:bg-purple-700"
-          >
+          <Button asChild className="h-10 rounded-full px-6 font-medium shadow-lg shadow-purple-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex-shrink-0 bg-purple-600 hover:bg-purple-700">
             <Link href="/settings/upgrade">Upgrade to MAX</Link>
           </Button>
         </div>
@@ -224,11 +190,9 @@ export function PlanFeaturesSection({ plan }: PlanFeaturesSectionProps) {
       {isMaxPlan && (
         <div className="flex items-center gap-3 p-5 rounded-2xl bg-green-500/5 border border-green-500/20">
           <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
-          <p className="text-sm text-muted-foreground">
-            You have access to all premium features. Enjoy unlimited possibilities!
-          </p>
+          <p className="text-sm text-muted-foreground">You have access to all premium features!</p>
         </div>
       )}
-    </motion.div>
+    </div>
   );
 }

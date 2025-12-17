@@ -9,6 +9,7 @@ export { JourneyEdges } from './journey-edges';
 export { JourneyTopicDetail } from './journey-topic-detail';
 export { JourneySidebar, JourneyBreadcrumb } from './journey-sidebar';
 export { JourneyCommandMenu } from './journey-command-menu';
+// Note: JourneyList and JourneysContent are server components - import directly
 
 // Skeleton Components
 export {
